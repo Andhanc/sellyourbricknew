@@ -44,11 +44,11 @@ import {
   PiWarehouse,
 } from 'react-icons/pi'
 
-const propertyTypes = [
-  { label: 'Дом', icon: PiHouseLine },
-  { label: 'Карта', icon: FiMap, isMap: true },
-  { label: 'Апартаменты', icon: PiBuildingApartment },
-  { label: 'Вилла', icon: PiBuildings },
+const getPropertyTypes = (t) => [
+  { label: 'House', displayLabel: t.house, icon: PiHouseLine },
+  { label: 'Map', displayLabel: t.map, icon: FiMap, isMap: true },
+  { label: 'Apartment', displayLabel: t.apartment, icon: PiBuildingApartment, image: '/apartment-icon.jpg' },
+  { label: 'Villa', displayLabel: t.villa, icon: PiBuildings },
 ]
 
 const resortLocations = [
@@ -64,18 +64,18 @@ const resortLocations = [
   'El Médano, Tenerife',
 ]
 
-const navigationItems = [
-  { id: 'home', label: 'Главная', icon: FaHome },
-  { id: 'favourite', label: 'Понравились', icon: FaHeartSolid },
-  { id: 'auction', label: 'Аукцион', icon: FaGavel },
-  { id: 'chat', label: 'Чат', icon: FaComment },
-  { id: 'profile', label: 'Профиль', icon: FaUser },
+const getNavigationItems = (t) => [
+  { id: 'home', label: t.home, icon: FaHome },
+  { id: 'favourite', label: t.favorites, icon: FaHeartSolid },
+  { id: 'auction', label: t.auction, icon: FaGavel },
+  { id: 'chat', label: t.chat, icon: FaComment },
+  { id: 'profile', label: t.profile, icon: FaUser },
 ]
 
 const recommendedProperties = [
   {
     id: 1,
-    tag: 'Apartment',
+    tag: 'House',
     name: 'Lakeshore Blvd West',
     location: '70 Washington Square South, New York, NY 10012, United States',
     price: 797500,
@@ -103,7 +103,7 @@ const recommendedProperties = [
   },
   {
     id: 2,
-    tag: 'Apartment',
+    tag: 'House',
     name: 'Eleanor Pena Property',
     location: 'Costa Adeje, Tenerife, Spain',
     price: 1200,
@@ -134,7 +134,7 @@ const recommendedProperties = [
 const nearbyProperties = [
   {
     id: 1,
-    tag: 'Apartment',
+    tag: 'House',
     name: 'Bessie Cooper Property',
     location: 'Los Cristianos, Tenerife, Spain',
     price: 1000,
@@ -193,6 +193,7 @@ const nearbyProperties = [
 function App() {
   const [selectedLocation, setSelectedLocation] = useState(resortLocations[0])
   const [isLocationOpen, setIsLocationOpen] = useState(false)
+  const [propertyMode, setPropertyMode] = useState('rent') // 'rent' для аренды, 'buy' для покупки
   const [favoriteProperties, setFavoriteProperties] = useState(() => {
     const initialFavorites = new Map()
     recommendedProperties.forEach((property) => {
@@ -223,13 +224,79 @@ function App() {
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [showMap, setShowMap] = useState(false)
   const [selectedChat, setSelectedChat] = useState(null)
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [activeCategory, setActiveCategory] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [filteredProperties, setFilteredProperties] = useState(null)
   const locationRef = useRef(null)
   const chatMessagesRef = useRef(null)
+  const notificationRef = useRef(null)
+
+  const heroImages = {
+    rent: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
+    buy: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80'
+  }
+  
+  const heroImage = heroImages[propertyMode]
+
+  const translations = {
+    ru: {
+      rent: 'Аренда',
+      buy: 'Покупка',
+      house: 'Дом',
+      map: 'Карта',
+      apartment: 'Апартаменты',
+      villa: 'Вилла',
+      home: 'Главная',
+      favorites: 'Понравились',
+      auction: 'Аукцион',
+      chat: 'Чат',
+      profile: 'Профиль',
+      location: 'Локация',
+      search: 'Поиск',
+      recommended: 'Рекомендуемые',
+      nearby: 'Поблизости',
+      whatsapp: 'Перейти в WhatsApp',
+      contactManager: 'Связаться с менеджером',
+      downloadAndroid: 'Загрузите на',
+      downloadIOS: 'Загрузите на',
+      englishVersion: 'English version',
+      russianVersion: 'Русская версия',
+    },
+    en: {
+      rent: 'Rent',
+      buy: 'Buy',
+      house: 'House',
+      map: 'Map',
+      apartment: 'Apartment',
+      villa: 'Villa',
+      home: 'Home',
+      favorites: 'Favorites',
+      auction: 'Auction',
+      chat: 'Chat',
+      profile: 'Profile',
+      location: 'Location',
+      search: 'Search',
+      recommended: 'Recommended',
+      nearby: 'Nearby',
+      whatsapp: 'Go to WhatsApp',
+      contactManager: 'Contact Manager',
+      downloadAndroid: 'Download on',
+      downloadIOS: 'Download on',
+      englishVersion: 'English version',
+      russianVersion: 'Русская версия',
+    },
+  }
+
+  const t = translations[language]
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (locationRef.current && !locationRef.current.contains(event.target)) {
         setIsLocationOpen(false)
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false)
       }
     }
 
@@ -238,6 +305,7 @@ function App() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
 
   const handleLocationSelect = (location) => {
     setSelectedLocation(location)
@@ -320,6 +388,54 @@ function App() {
 
   const handleLanguageChange = () => {
     setLanguage((prev) => (prev === 'ru' ? 'en' : 'ru'))
+  }
+
+  const handleCategoryClick = (categoryLabel) => {
+    if (categoryLabel === 'Map') {
+      setShowMap(true)
+      setFilteredProperties(null)
+      setActiveCategory(null)
+      return
+    }
+
+    setIsLoading(true)
+    setActiveCategory(categoryLabel)
+
+    setTimeout(() => {
+      // Фильтруем объявления по типу
+      let filteredRecommended = recommendedProperties
+      let filteredNearby = nearbyProperties
+
+      if (categoryLabel === 'House') {
+        // Фильтруем только дома
+        filteredRecommended = recommendedProperties.filter((p) => 
+          p.tag.toLowerCase() === 'house'
+        )
+        filteredNearby = nearbyProperties.filter((p) => 
+          p.tag.toLowerCase() === 'house'
+        )
+      } else if (categoryLabel === 'Apartment') {
+        filteredRecommended = recommendedProperties.filter((p) => 
+          p.tag.toLowerCase() === 'apartment'
+        )
+        filteredNearby = nearbyProperties.filter((p) => 
+          p.tag.toLowerCase() === 'apartment'
+        )
+      } else if (categoryLabel === 'Villa') {
+        filteredRecommended = recommendedProperties.filter((p) => 
+          p.tag.toLowerCase() === 'villa'
+        )
+        filteredNearby = nearbyProperties.filter((p) => 
+          p.tag.toLowerCase() === 'villa'
+        )
+      }
+
+      setFilteredProperties({
+        recommended: filteredRecommended,
+        nearby: filteredNearby,
+      })
+      setIsLoading(false)
+    }, 2000)
   }
 
   const handleSocialLink = (platform) => {
@@ -425,6 +541,8 @@ function App() {
     )
   }
 
+  const navigationItems = getNavigationItems(t)
+
   // Если выбран чат, показываем страницу чата
   if (selectedChat) {
     return (
@@ -486,13 +604,18 @@ function App() {
 
   return (
     <div className="app">
-      <header className="header">
+      <section className="hero-section">
+        <div className={`hero-section__image hero-section__image--rent ${propertyMode === 'rent' ? 'hero-section__image--active' : ''}`} style={{ backgroundImage: `url(${heroImages.rent})` }}></div>
+        <div className={`hero-section__image hero-section__image--buy ${propertyMode === 'buy' ? 'hero-section__image--active' : ''}`} style={{ backgroundImage: `url(${heroImages.buy})` }}></div>
+        <div className="hero-section__overlay"></div>
+        <div className="hero-section__content">
+          <header className="header">
         <div className="header__location">
           <span className="header__location-icon">
             <IoLocationOutline size={20} />
           </span>
           <div className="header__location-info" ref={locationRef}>
-            <span className="header__location-label">Location</span>
+            <span className="header__location-label">{t.location}</span>
             <button
               type="button"
               className="header__location-select"
@@ -527,46 +650,143 @@ function App() {
           </div>
         </div>
 
-        <div className="header__actions">
-          <button type="button" className="header__action-btn">
+        <div className="header__actions" ref={notificationRef}>
+          <button 
+            type="button" 
+            className="header__action-btn"
+            onClick={() => setIsNotificationOpen((prev) => !prev)}
+            aria-expanded={isNotificationOpen}
+          >
             <FiBell size={18} />
             <span className="header__action-indicator" />
           </button>
+          {isNotificationOpen && (
+            <>
+              <div 
+                className="notification-backdrop"
+                onClick={() => setIsNotificationOpen(false)}
+              />
+              <div className="notification-panel">
+                <div className="notification-panel__content">
+                <div className="notification-panel__header">
+                  <h3 className="notification-panel__title">Уведомления</h3>
+                  <button 
+                    type="button" 
+                    className="notification-panel__close"
+                    onClick={() => setIsNotificationOpen(false)}
+                    aria-label="Закрыть уведомления"
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+                <div className="notification-panel__list">
+                  <div className="notification-item notification-item--property">
+                    <div className="notification-item__content">
+                      <h4 className="notification-item__title">Нашли для вас объявление!</h4>
+                      <div className="notification-item__property">
+                        <div className="notification-item__image">
+                          <img 
+                            src={recommendedProperties[0].image}
+                            alt={recommendedProperties[0].name}
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
+                            }}
+                          />
+                        </div>
+                        <div className="notification-item__info">
+                          <p className="notification-item__property-name">{recommendedProperties[0].name}</p>
+                          <p className="notification-item__property-location">{recommendedProperties[0].location}</p>
+                          <button 
+                            type="button" 
+                            className="notification-item__button"
+                            onClick={() => {
+                              setIsNotificationOpen(false)
+                              handlePropertyClick('recommended', recommendedProperties[0].id)
+                            }}
+                          >
+                            Перейти
+                            <FiArrowRight size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </>
+          )}
         </div>
       </header>
+
+      <section className="mode-switcher">
+        <div className="mode-switcher__container">
+          <button
+            type="button"
+            className={`mode-switcher__option ${propertyMode === 'rent' ? 'mode-switcher__option--active' : ''}`}
+            onClick={() => setPropertyMode('rent')}
+          >
+            <span className="mode-switcher__label">{t.rent}</span>
+          </button>
+          <button
+            type="button"
+            className={`mode-switcher__option ${propertyMode === 'buy' ? 'mode-switcher__option--active' : ''}`}
+            onClick={() => setPropertyMode('buy')}
+          >
+            <span className="mode-switcher__label">{t.buy}</span>
+          </button>
+          <div className={`mode-switcher__indicator ${propertyMode === 'buy' ? 'mode-switcher__indicator--right' : ''}`} />
+        </div>
+      </section>
+        </div>
 
       <section className="search">
         <div className="search__field">
           <FiSearch size={18} className="search__icon" />
           <input
             type="text"
-            placeholder="Search"
+            placeholder={t.search}
             className="search__input"
           />
+          <button type="button" className="search__filter">
+            <FiSliders size={18} />
+          </button>
         </div>
-        <button type="button" className="search__filter">
-          <FiSliders size={18} />
-        </button>
+      </section>
       </section>
 
+      <div className="app__content">
+      {isLoading && (
+        <div className="loader-overlay">
+          <div className="loader">
+            <div className="loader__circle loader__circle--1"></div>
+            <div className="loader__circle loader__circle--2"></div>
+          </div>
+        </div>
+      )}
       <nav className="categories">
-        {propertyTypes.map((type) => {
+        {getPropertyTypes(t).map((type) => {
           const IconComponent = type.icon
+          const isActive = activeCategory === type.label
           return (
             <button
               type="button"
-              className="categories__item"
+              className={`categories__item ${isActive ? 'categories__item--active' : ''}`}
               key={type.label}
-              onClick={() => {
-                if (type.isMap) {
-                  setShowMap(true)
-                }
-              }}
+              onClick={() => handleCategoryClick(type.label)}
             >
               <span className="categories__icon">
-                <IconComponent size={28} />
+                {type.image ? (
+                  <img 
+                    src={type.image} 
+                    alt={type.displayLabel}
+                    className="categories__icon-image"
+                  />
+                ) : (
+                  <IconComponent size={28} />
+                )}
               </span>
-              <span className="categories__label">{type.label}</span>
+              <span className="categories__label">{type.displayLabel}</span>
             </button>
           )
         })}
@@ -574,11 +794,11 @@ function App() {
 
       <section className="section">
         <div className="section__header">
-          <h2 className="section__title">Recommended Property</h2>
+          <h2 className="section__title">{t.recommended} Property</h2>
         </div>
 
         <div className="property-list property-list--horizontal">
-          {recommendedProperties.map((property) => (
+          {(filteredProperties?.recommended || recommendedProperties).map((property) => (
             <article
               className="property-card"
               key={property.id}
@@ -614,9 +834,11 @@ function App() {
                 <p className="property-card__location">{property.location}</p>
                 <div className="property-card__price">
                   <span className="property-card__price-amount">
-                    ${property.price}
+                    ${propertyMode === 'rent' ? property.price : property.price * 240}
                   </span>
-                  <span className="property-card__price-period">/Month</span>
+                  <span className="property-card__price-period">
+                    {propertyMode === 'rent' ? '/Month' : ''}
+                  </span>
                 </div>
               </div>
             </article>
@@ -626,11 +848,11 @@ function App() {
 
       <section className="section section--spaced">
         <div className="section__header">
-          <h2 className="section__title">Nearby Property</h2>
+          <h2 className="section__title">{t.nearby} Property</h2>
         </div>
 
         <div className="property-list property-list--vertical">
-          {nearbyProperties.map((property) => (
+          {(filteredProperties?.nearby || nearbyProperties).map((property) => (
             <article
               className="property-card property-card--horizontal"
               key={property.id}
@@ -666,9 +888,11 @@ function App() {
                 <p className="property-card__location">{property.location}</p>
                 <div className="property-card__price">
                   <span className="property-card__price-amount">
-                    ${property.price}
+                    ${propertyMode === 'rent' ? property.price : property.price * 240}
                   </span>
-                  <span className="property-card__price-period">/Month</span>
+                  <span className="property-card__price-period">
+                    {propertyMode === 'rent' ? '/Month' : ''}
+                  </span>
                 </div>
               </div>
             </article>
@@ -740,6 +964,7 @@ function App() {
           </form>
         </div>
       </section>
+      </div>
 
       <nav className="bottom-nav">
         {navigationItems.map((item, index) => {
@@ -858,18 +1083,18 @@ function App() {
                 type="button"
                 className="footer__contact-link"
                 onClick={handleWhatsApp}
-                aria-label="Перейти в WhatsApp"
+                aria-label={t.whatsapp}
               >
-                <span className="footer__contact-link-text">Перейти в WhatsApp</span>
+                <span className="footer__contact-link-text">{t.whatsapp}</span>
                 <span className="footer__contact-link-arrow">→</span>
               </button>
               <button
                 type="button"
                 className="footer__contact-link"
                 onClick={handleCallManager}
-                aria-label="Связаться с менеджером"
+                aria-label={t.contactManager}
               >
-                <span className="footer__contact-link-text">Связаться с менеджером</span>
+                <span className="footer__contact-link-text">{t.contactManager}</span>
                 <span className="footer__contact-link-arrow">→</span>
               </button>
             </div>
@@ -886,7 +1111,7 @@ function App() {
                   <FaAndroid size={32} />
                 </div>
                 <div className="footer__download-text">
-                  <span className="footer__download-label">Загрузите на</span>
+                  <span className="footer__download-label">{t.downloadAndroid}</span>
                   <span className="footer__download-platform">Android</span>
                 </div>
               </button>
@@ -895,13 +1120,13 @@ function App() {
                 type="button"
                 className="footer__download-btn"
                 onClick={() => handleDownloadApp('ios')}
-                aria-label="Загрузить на iOS"
+                aria-label={t.downloadIOS + ' iOS'}
               >
                 <div className="footer__download-icon footer__download-icon--ios">
                   <FaApple size={32} />
                 </div>
                 <div className="footer__download-text">
-                  <span className="footer__download-label">Загрузите на</span>
+                  <span className="footer__download-label">{t.downloadIOS}</span>
                   <span className="footer__download-platform">iOS</span>
                 </div>
               </button>
@@ -948,17 +1173,17 @@ function App() {
               type="button"
               className="footer__language-btn"
               onClick={handleLanguageChange}
-              aria-label="Изменить язык"
+              aria-label={language === 'ru' ? 'Switch to English' : 'Переключить на русский'}
             >
               {language === 'ru' ? (
                 <>
                   <span className="footer__flag footer__flag--gb"></span>
-                  <span>English version</span>
+                  <span>{t.englishVersion}</span>
                 </>
               ) : (
                 <>
                   <span className="footer__flag footer__flag--ru"></span>
-                  <span>Русская версия</span>
+                  <span>{t.russianVersion}</span>
                 </>
               )}
             </button>
