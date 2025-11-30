@@ -32,6 +32,19 @@ body {
   background-color: transparent;
 }
 
+/* Убираем ограничение ширины на десктопе */
+@media (min-width: 1024px) {
+  #root {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+  }
+
+  body {
+    overflow-x: visible;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;

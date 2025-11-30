@@ -19,6 +19,9 @@ import {
   FiGlobe,
   FiPhone,
   FiMap,
+  FiMenu,
+  FiUser,
+  FiCheck,
 } from 'react-icons/fi'
 import {
   FaHome,
@@ -45,10 +48,10 @@ import {
 } from 'react-icons/pi'
 
 const getPropertyTypes = (t) => [
-  { label: 'House', displayLabel: t.house, icon: PiHouseLine },
-  { label: 'Map', displayLabel: t.map, icon: FiMap, isMap: true },
-  { label: 'Apartment', displayLabel: t.apartment, icon: PiBuildingApartment, image: '/apartment-icon.jpg' },
-  { label: 'Villa', displayLabel: t.villa, icon: PiBuildings },
+  { label: 'House', displayLabel: t.house, icon: PiHouseLine, image: '/house.png' },
+  { label: 'Map', displayLabel: t.map, icon: FiMap, isMap: true, image: '/map.png' },
+  { label: 'Apartment', displayLabel: t.apartment, icon: PiBuildingApartment, image: '/appartaments.png' },
+  { label: 'Villa', displayLabel: t.villa, icon: PiBuildings, image: '/villa.png' },
 ]
 
 const resortLocations = [
@@ -190,6 +193,120 @@ const nearbyProperties = [
   },
 ]
 
+const apartmentsData = [
+  {
+    id: 1,
+    name: 'Тропарево Парк',
+    location: 'Costa Adeje, Tenerife',
+    price: 8500372,
+    owner: { firstName: 'Иван', lastName: 'Петров' },
+    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 2,
+    name: 'Клубный город на реке Primavera',
+    location: 'Playa de las Américas, Tenerife',
+    price: 25748010,
+    owner: { firstName: 'Мария', lastName: 'Сидорова' },
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 3,
+    name: 'Slava',
+    location: 'Los Cristianos, Tenerife',
+    price: 28078032,
+    owner: { firstName: 'Алексей', lastName: 'Иванов' },
+    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 4,
+    name: 'Пригород Лесное',
+    location: 'Puerto de la Cruz, Tenerife',
+    price: 4441729,
+    owner: { firstName: 'Елена', lastName: 'Козлова' },
+    image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 5,
+    name: 'LUZHNIKI COLLECTION',
+    location: 'Santa Cruz de Tenerife, Tenerife',
+    price: 71874000,
+    owner: { firstName: 'Дмитрий', lastName: 'Смирнов' },
+    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 6,
+    name: 'SHIFT',
+    location: 'La Laguna, Tenerife',
+    price: 40824208,
+    owner: { firstName: 'Анна', lastName: 'Волкова' },
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+]
+
+const villasData = [
+  {
+    id: 1,
+    name: 'Villa Paradise',
+    location: 'Costa Adeje, Tenerife',
+    price: 12000000,
+    owner: { firstName: 'Сергей', lastName: 'Новиков' },
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 2,
+    name: 'Luxury Beach Villa',
+    location: 'Playa de las Américas, Tenerife',
+    price: 18500000,
+    owner: { firstName: 'Ольга', lastName: 'Морозова' },
+    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 3,
+    name: 'Ocean View Villa',
+    location: 'Los Cristianos, Tenerife',
+    price: 22000000,
+    owner: { firstName: 'Павел', lastName: 'Соколов' },
+    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 4,
+    name: 'Mountain Retreat',
+    location: 'Puerto de la Cruz, Tenerife',
+    price: 9500000,
+    owner: { firstName: 'Татьяна', lastName: 'Лебедева' },
+    image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 5,
+    name: 'Elite Collection Villa',
+    location: 'Santa Cruz de Tenerife, Tenerife',
+    price: 35000000,
+    owner: { firstName: 'Андрей', lastName: 'Кузнецов' },
+    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+  {
+    id: 6,
+    name: 'Modern Villa Design',
+    location: 'La Laguna, Tenerife',
+    price: 28000000,
+    owner: { firstName: 'Екатерина', lastName: 'Федорова' },
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    hasSamolyot: false,
+  },
+]
+
 function App() {
   const [selectedLocation, setSelectedLocation] = useState(resortLocations[0])
   const [isLocationOpen, setIsLocationOpen] = useState(false)
@@ -201,6 +318,12 @@ function App() {
     })
     nearbyProperties.forEach((property) => {
       initialFavorites.set(`nearby-${property.id}`, false)
+    })
+    apartmentsData.forEach((property) => {
+      initialFavorites.set(`apartment-${property.id}`, false)
+    })
+    villasData.forEach((property) => {
+      initialFavorites.set(`villa-${property.id}`, false)
     })
     return initialFavorites
   })
@@ -228,6 +351,8 @@ function App() {
   const [activeCategory, setActiveCategory] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [filteredProperties, setFilteredProperties] = useState(null)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
+  const [activeFilter, setActiveFilter] = useState('Для всех')
   const locationRef = useRef(null)
   const chatMessagesRef = useRef(null)
   const notificationRef = useRef(null)
@@ -241,7 +366,7 @@ function App() {
 
   const translations = {
     ru: {
-      rent: 'Аренда',
+      rent: 'Тест-Драйв',
       buy: 'Покупка',
       house: 'Дом',
       map: 'Карта',
@@ -300,9 +425,18 @@ function App() {
       }
     }
 
+    // Проверяем ширину экрана для десктопа
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+
+    checkDesktop()
+    window.addEventListener('resize', checkDesktop)
+
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('resize', checkDesktop)
     }
   }, [])
 
@@ -470,6 +604,8 @@ function App() {
     const allProperties = [
       ...recommendedProperties.map((p) => ({ ...p, category: 'recommended' })),
       ...nearbyProperties.map((p) => ({ ...p, category: 'nearby' })),
+      ...apartmentsData.map((p) => ({ ...p, category: 'apartment' })),
+      ...villasData.map((p) => ({ ...p, category: 'villa' })),
     ]
     const property = allProperties.find(
       (p) => p.category === category && p.id === propertyId
@@ -609,35 +745,156 @@ function App() {
         <div className={`hero-section__image hero-section__image--buy ${propertyMode === 'buy' ? 'hero-section__image--active' : ''}`} style={{ backgroundImage: `url(${heroImages.buy})` }}></div>
         <div className="hero-section__overlay"></div>
         <div className="hero-section__content">
+          {/* Старый хедер для мобильной версии */}
           <header className="header">
-        <div className="header__location">
-          <span className="header__location-icon">
-            <IoLocationOutline size={20} />
-          </span>
-          <div className="header__location-info" ref={locationRef}>
-            <span className="header__location-label">{t.location}</span>
-            <button
-              type="button"
-              className="header__location-select"
-              onClick={() => setIsLocationOpen((prev) => !prev)}
-              aria-haspopup="listbox"
-              aria-expanded={isLocationOpen}
-            >
-              <span className="header__location-value">{selectedLocation}</span>
-              <FiChevronDown
-                size={16}
-                className={`header__location-select-icon ${
-                  isLocationOpen ? 'header__location-select-icon--open' : ''
-                }`}
-              />
-            </button>
+            <div className="header__location">
+              <span className="header__location-icon">
+                <IoLocationOutline size={20} />
+              </span>
+              <div className="header__location-info" ref={locationRef}>
+                <span className="header__location-label">{t.location}</span>
+                <button
+                  type="button"
+                  className="header__location-select"
+                  onClick={() => setIsLocationOpen((prev) => !prev)}
+                  aria-haspopup="listbox"
+                  aria-expanded={isLocationOpen}
+                >
+                  <span className="header__location-value">{selectedLocation}</span>
+                  <FiChevronDown
+                    size={16}
+                    className={`header__location-select-icon ${
+                      isLocationOpen ? 'header__location-select-icon--open' : ''
+                    }`}
+                  />
+                </button>
+                {isLocationOpen && (
+                  <div className="header__location-dropdown">
+                    {resortLocations.map((location) => (
+                      <button
+                        type="button"
+                        className={`header__location-option ${
+                          location === selectedLocation ? 'header__location-option--active' : ''
+                        }`}
+                        key={location}
+                        onClick={() => handleLocationSelect(location)}
+                      >
+                        {location}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="header__actions" ref={notificationRef}>
+              <button 
+                type="button" 
+                className="header__action-btn"
+                onClick={() => setIsNotificationOpen((prev) => !prev)}
+                aria-expanded={isNotificationOpen}
+              >
+                <FiBell size={18} />
+                <span className="header__action-indicator" />
+              </button>
+              {isNotificationOpen && (
+                <>
+                  <div 
+                    className="notification-backdrop"
+                    onClick={() => setIsNotificationOpen(false)}
+                  />
+                  <div className="notification-panel">
+                    <div className="notification-panel__content">
+                      <div className="notification-panel__header">
+                        <h3 className="notification-panel__title">Уведомления</h3>
+                        <button 
+                          type="button" 
+                          className="notification-panel__close"
+                          onClick={() => setIsNotificationOpen(false)}
+                          aria-label="Закрыть уведомления"
+                        >
+                          <FiX size={20} />
+                        </button>
+                      </div>
+                      <div className="notification-panel__list">
+                        <div className="notification-item notification-item--property">
+                          <div className="notification-item__content">
+                            <h4 className="notification-item__title">Нашли для вас объявление!</h4>
+                            <div className="notification-item__property">
+                              <div className="notification-item__image">
+                                <img 
+                                  src={recommendedProperties[0].image}
+                                  alt={recommendedProperties[0].name}
+                                  onError={(e) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
+                                  }}
+                                />
+                              </div>
+                              <div className="notification-item__info">
+                                <p className="notification-item__property-name">{recommendedProperties[0].name}</p>
+                                <p className="notification-item__property-location">{recommendedProperties[0].location}</p>
+                                <button 
+                                  type="button" 
+                                  className="notification-item__button"
+                                  onClick={() => {
+                                    setIsNotificationOpen(false)
+                                    handlePropertyClick('recommended', recommendedProperties[0].id)
+                                  }}
+                                >
+                                  Перейти
+                                  <FiArrowRight size={18} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              <button 
+                type="button" 
+                className="header__action-btn"
+                onClick={() => setActiveNav('profile')}
+                aria-label="Профиль"
+              >
+                <FiUser size={18} />
+              </button>
+            </div>
+          </header>
+
+          {/* Новый хедер для десктопной версии */}
+          <header className="new-header">
+        <div className="new-header__left">
+          <div className="new-header__location">
+            <span className="new-header__location-icon">
+              <IoLocationOutline size={24} />
+            </span>
+            <div className="new-header__location-info" ref={locationRef}>
+              <span className="new-header__location-label">{t.location}</span>
+              <button
+                type="button"
+                className="new-header__location-select"
+                onClick={() => setIsLocationOpen((prev) => !prev)}
+                aria-haspopup="listbox"
+                aria-expanded={isLocationOpen}
+              >
+                <span className="new-header__location-value">{selectedLocation}</span>
+                <FiChevronDown
+                  size={16}
+                  className={`new-header__location-select-icon ${
+                    isLocationOpen ? 'new-header__location-select-icon--open' : ''
+                  }`}
+                />
+              </button>
             {isLocationOpen && (
-              <div className="header__location-dropdown">
+              <div className="new-header__location-dropdown">
                 {resortLocations.map((location) => (
                   <button
                     type="button"
-                    className={`header__location-option ${
-                      location === selectedLocation ? 'header__location-option--active' : ''
+                    className={`new-header__location-option ${
+                      location === selectedLocation ? 'new-header__location-option--active' : ''
                     }`}
                     key={location}
                     onClick={() => handleLocationSelect(location)}
@@ -647,18 +904,69 @@ function App() {
                 ))}
               </div>
             )}
+            </div>
           </div>
+          <button className="new-header__burger-btn" aria-label="Меню">
+            <FiMenu size={24} />
+          </button>
+          <button className="new-header__menu-btn">
+            <span>Меню</span>
+          </button>
         </div>
 
-        <div className="header__actions" ref={notificationRef}>
+            <div className="new-header__filters">
+              <button
+                type="button"
+                className={`new-header__filter-btn ${activeNav === 'chat' ? 'new-header__filter-btn--active' : ''}`}
+                onClick={() => setActiveNav('chat')}
+              >
+                <span>Чат</span>
+              </button>
+              <button
+                type="button"
+                className={`new-header__filter-btn ${activeNav === 'favourite' ? 'new-header__filter-btn--active' : ''}`}
+                onClick={() => setActiveNav('favourite')}
+              >
+                <span>Понравившиеся</span>
+              </button>
+              <button
+                type="button"
+                className={`new-header__filter-btn ${isChatOpen ? 'new-header__filter-btn--active' : ''}`}
+                onClick={toggleChat}
+              >
+                <span>Умный помощник</span>
+              </button>
+              <button
+                type="button"
+                className={`new-header__filter-btn ${showMap ? 'new-header__filter-btn--active' : ''}`}
+                onClick={() => setShowMap(true)}
+              >
+                <span>Карта</span>
+              </button>
+            </div>
+
+        <div className="new-header__right">
+          <button className="new-header__search-btn">
+            <FiSearch size={24} />
+          </button>
+          <button 
+            type="button"
+            className="new-header__auction-btn"
+            onClick={() => setActiveNav('auction')}
+          >
+            Аукцион
+          </button>
+          <button className="new-header__user-btn">
+            <FiUser size={20} />
+          </button>
           <button 
             type="button" 
-            className="header__action-btn"
+            className="new-header__notification-btn"
             onClick={() => setIsNotificationOpen((prev) => !prev)}
             aria-expanded={isNotificationOpen}
           >
-            <FiBell size={18} />
-            <span className="header__action-indicator" />
+            <FiBell size={20} />
+            <span className="new-header__notification-indicator" />
           </button>
           {isNotificationOpen && (
             <>
@@ -719,6 +1027,7 @@ function App() {
         </div>
       </header>
 
+      {/* Блок Аренда/Покупка сдвинут вниз */}
       <section className="mode-switcher">
         <div className="mode-switcher__container">
           <button
@@ -753,6 +1062,374 @@ function App() {
           </button>
         </div>
       </section>
+      </section>
+
+      {/* Блок "Что расскажем про ваш дом" */}
+      <section className="info-section">
+        <div className="info-section__container">
+          <h2 className="info-section__title">Что расскажем про ваш дом</h2>
+          
+          <div className="info-section__cards">
+            {/* Левая карточка - Стоимость и доход от аренды */}
+            <div className="info-card info-card--left" style={{ backgroundColor: '#f3f4f6' }}>
+              <h3 className="info-card__title">Стоимость и доход от аренды</h3>
+              <p className="info-card__description">
+                Оценим и учтём всё: ремонт, этаж и даже баню на участке
+              </p>
+              
+              <div className="info-card__content-wrapper">
+                <div className="info-card__inner-cards">
+                  <div className="info-card__inner-card info-card__inner-card--small">
+                    <div className="info-card__inner-card-content">
+                      <p className="info-card__inner-card-label">Доход от посуточной аренды</p>
+                    </div>
+                  </div>
+                  
+                  <div className="info-card__inner-card">
+                    <div className="info-card__inner-card-content">
+                      <p className="info-card__inner-card-label">Доход от долгосрочной аренды</p>
+                      <div className="info-card__inner-card-value">
+                        <span className="info-card__value-amount">38 000 Р/мес</span>
+                        <span className="info-card__value-tag info-card__value-tag--green">+3% за полгода</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="info-card__chart">
+                  <div className="info-card__chart-header">
+                    <h4 className="info-card__chart-title">Оценка стоимости</h4>
+                    <div className="info-card__chart-value-header">
+                      <span className="info-card__value-amount">9,5 млн Р</span>
+                      <span className="info-card__value-tag info-card__value-tag--green">+3% за полгода</span>
+                    </div>
+                  </div>
+                 
+                </div>
+              </div>
+            </div>
+            
+            {/* Правая карточка - Мечтайте по-новому */}
+            <div className="info-card info-card--right">
+              <div className="info-card__header">
+                <span className="info-card__badge info-card__badge--red">
+                  <span className="info-card__badge-icon" role="img" aria-label="fire">🔥</span>
+                  Популярное
+                </span>
+                <button className="info-card__arrow">
+                  <FiArrowRight size={20} />
+                </button>
+              </div>
+              <h3 className="info-card__title">Мечтайте по-новому</h3>
+              <p className="info-card__description">
+                Например, как переехать в новостройку или загород
+              </p>
+              
+              <div className="info-card__properties">
+                <div className="info-card__property">
+                  <div className="info-card__property-image">
+                    <img 
+                      src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80" 
+                      alt="Дом с гаражом"
+                    />
+                  </div>
+                  <div className="info-card__property-info">
+                    <p className="info-card__property-details">160 м² · 2 эт. шоссе</p>
+                    <p className="info-card__property-price">000 P</p>
+                  </div>
+                </div>
+                
+                <div className="info-card__property">
+                  <div className="info-card__property-image">
+                    <img 
+                      src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" 
+                      alt="Новостройка"
+                    />
+                  </div>
+                  <div className="info-card__property-info">
+                    <p className="info-card__property-details">2-к. кв. · 40,87 м² · 17/25...</p>
+                    <p className="info-card__property-location">м. Варшавская</p>
+                    <p className="info-card__property-price">15 700 000 Р</p>
+                  </div>
+                </div>
+                
+                <div className="info-card__property">
+                  <div className="info-card__property-image">
+                    <img 
+                      src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80" 
+                      alt="Квартира"
+                    />
+                  </div>
+                  <div className="info-card__property-info">
+                    <p className="info-card__property-details">2-к. кв. · 43,14 м² · 5/9 эт.</p>
+                    <p className="info-card__property-location">м. Каширская</p>
+                    <p className="info-card__property-price">10 500 000 Р</p>
+                  </div>
+                </div>
+                
+                <div className="info-card__property">
+                  <div className="info-card__property-image">
+                    <img 
+                      src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80" 
+                      alt="Дом"
+                    />
+                  </div>
+                  <div className="info-card__property-info">
+                    <p className="info-card__property-details">Дом · 130 м² · 2 эт.</p>
+                    <p className="info-card__property-location">м. Бунинская аллея</p>
+                    <p className="info-card__property-price">9 800 000 Р</p>
+                  </div>
+                </div>
+                
+                <div className="info-card__property">
+                  <div className="info-card__property-image">
+                    <img 
+                      src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80" 
+                      alt="Коттедж"
+                    />
+                  </div>
+                  <div className="info-card__property-info">
+                    <p className="info-card__property-details">Коттедж · 160 м² · 2 эт.</p>
+                    <p className="info-card__property-location">Каширское шоссе</p>
+                    <p className="info-card__property-price">13 999 000 Р</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Блок "Аппартаменты" */}
+      <section className="apartments-section">
+        <div className="apartments-section__container">
+          <div className="apartments-section__header">
+            <h2 className="apartments-section__title">Аппартаменты</h2>
+            <FiArrowRight size={24} className="apartments-section__arrow" />
+          </div>
+          
+          <div className="apartments-section__content">
+            <div className="apartments-section__grid">
+              {apartmentsData.map((apartment) => (
+                <article
+                  key={apartment.id}
+                  className="apartment-card"
+                  onClick={() => handlePropertyClick('apartment', apartment.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="apartment-card__image">
+                    {apartment.hasSamolyot && (
+                      <span className="apartment-card__samolyot">самолет</span>
+                    )}
+                    <img src={apartment.image} alt={apartment.name} />
+                    <button
+                      type="button"
+                      className={`apartment-card__favorite ${
+                        favoriteProperties.get(`apartment-${apartment.id}`)
+                          ? 'apartment-card__favorite--active'
+                          : ''
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleFavorite('apartment', apartment.id)
+                      }}
+                      aria-pressed={favoriteProperties.get(`apartment-${apartment.id}`)}
+                    >
+                      {favoriteProperties.get(`apartment-${apartment.id}`) ? (
+                        <FaHeartSolid size={16} />
+                      ) : (
+                        <FiHeart size={16} />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="apartment-card__content">
+                    <div className="apartment-card__price">
+                      от {apartment.price.toLocaleString('ru-RU')} $
+                    </div>
+                    <h3 className="apartment-card__name">{apartment.name}</h3>
+                    <p className="apartment-card__location">{apartment.location}</p>
+                    <p className="apartment-card__owner">
+                      {apartment.owner.firstName} {apartment.owner.lastName}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            
+            <div className="apartments-section__personal">
+              <div className="personal-selection">
+                <div className="personal-selection__banner">ПЕРСОНАЛЬНАЯ</div>
+                <div className="personal-selection__content">
+                  <h3 className="personal-selection__title">ПОДБОРКА</h3>
+                  <h3 className="personal-selection__title">АППАРТАМЕНТОВ</h3>
+                  <p className="personal-selection__text">С вас - пожелания,</p>
+                  <p className="personal-selection__text">с нас - подходящие варианты</p>
+                  <button 
+                    className="personal-selection__button"
+                    onClick={() => setIsChatOpen(true)}
+                  >
+                    Подробнее
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Блок "Виллы" */}
+      <section className="apartments-section">
+        <div className="apartments-section__container">
+          <div className="apartments-section__header">
+            <h2 className="apartments-section__title">Виллы</h2>
+            <FiArrowRight size={24} className="apartments-section__arrow" />
+          </div>
+          
+          <div className="apartments-section__content">
+            <div className="apartments-section__grid">
+              {villasData.map((villa) => (
+                <article
+                  key={villa.id}
+                  className="apartment-card"
+                  onClick={() => handlePropertyClick('villa', villa.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="apartment-card__image">
+                    {villa.hasSamolyot && (
+                      <span className="apartment-card__samolyot">самолет</span>
+                    )}
+                    <img src={villa.image} alt={villa.name} />
+                    <button
+                      type="button"
+                      className={`apartment-card__favorite ${
+                        favoriteProperties.get(`villa-${villa.id}`)
+                          ? 'apartment-card__favorite--active'
+                          : ''
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleFavorite('villa', villa.id)
+                      }}
+                      aria-pressed={favoriteProperties.get(`villa-${villa.id}`)}
+                    >
+                      {favoriteProperties.get(`villa-${villa.id}`) ? (
+                        <FaHeartSolid size={16} />
+                      ) : (
+                        <FiHeart size={16} />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="apartment-card__content">
+                    <div className="apartment-card__price">
+                      от {villa.price.toLocaleString('ru-RU')} $
+                    </div>
+                    <h3 className="apartment-card__name">{villa.name}</h3>
+                    <p className="apartment-card__location">{villa.location}</p>
+                    <p className="apartment-card__owner">
+                      {villa.owner.firstName} {villa.owner.lastName}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            
+            <div className="apartments-section__personal">
+              <div className="personal-selection">
+                <div className="personal-selection__banner">ПЕРСОНАЛЬНАЯ</div>
+                <div className="personal-selection__content">
+                  <h3 className="personal-selection__title">ПОДБОРКА</h3>
+                  <h3 className="personal-selection__title">ВИЛЛ</h3>
+                  <p className="personal-selection__text">С вас - пожелания,</p>
+                  <p className="personal-selection__text">с нас - подходящие варианты</p>
+                  <button 
+                    className="personal-selection__button"
+                    onClick={() => setIsChatOpen(true)}
+                  >
+                    Подробнее
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Форма обратной связи */}
+      <section className="contact-form-section">
+        <div className="contact-form-container">
+          <div className="contact-form-wrapper">
+            <div className="contact-form__image-wrapper">
+              <h2 className="contact-form__image-title">Остались вопросы?</h2>
+              <div className="contact-form__image">
+                <img 
+                  src="https://static.cdn-cian.ru/frontend/valuation-my-home-page-frontend/card_6_1.9222208e0e2f6d4d.svg" 
+                  alt="Contact illustration" 
+                />
+              </div>
+            </div>
+            <form className="contact-form" onSubmit={handleContactFormSubmit}>
+            <div className="contact-form__header">
+              <h2 className="contact-form__title">
+                <span className="contact-form__title-accent">Напишите нам</span>
+                <FiArrowRight className="contact-form__arrow" size={24} />
+              </h2>
+            </div>
+            <div className="contact-form__row">
+              <div className="contact-form__field">
+                <label htmlFor="email-contact" className="contact-form__label">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email-contact"
+                  name="email"
+                  value={contactForm.email}
+                  onChange={handleContactFormChange}
+                  className="contact-form__input"
+                  placeholder="your@email.com"
+                  required
+                />
+              </div>
+              <div className="contact-form__field">
+                <label htmlFor="fullName-contact" className="contact-form__label">
+                  ФИО
+                </label>
+                <input
+                  type="text"
+                  id="fullName-contact"
+                  name="fullName"
+                  value={contactForm.fullName}
+                  onChange={handleContactFormChange}
+                  className="contact-form__input"
+                  placeholder="Иванов Иван Иванович"
+                  required
+                />
+              </div>
+            </div>
+            <div className="contact-form__field">
+              <label htmlFor="message-contact" className="contact-form__label">
+                Описание вопроса
+              </label>
+              <textarea
+                id="message-contact"
+                name="message"
+                value={contactForm.message}
+                onChange={handleContactFormChange}
+                className="contact-form__textarea"
+                placeholder="Опишите ваш вопрос подробно..."
+                rows="5"
+                required
+              />
+            </div>
+            <button type="submit" className="contact-form__submit">
+              <span>Отправить</span>
+              <FiArrowRight size={18} />
+            </button>
+          </form>
+          </div>
+        </div>
       </section>
 
       <div className="app__content">
@@ -792,7 +1469,7 @@ function App() {
         })}
       </nav>
 
-      <section className="section">
+      <section className="section section--recommended">
         <div className="section__header">
           <h2 className="section__title">{t.recommended} Property</h2>
         </div>
@@ -897,71 +1574,6 @@ function App() {
               </div>
             </article>
           ))}
-        </div>
-      </section>
-
-      <section className="contact-form-section">
-        <div className="contact-form-container">
-          <form className="contact-form" onSubmit={handleContactFormSubmit}>
-            <div className="contact-form__header">
-              <h2 className="contact-form__title">
-                Есть вопросы?
-                <span className="contact-form__title-accent">Напишите нам</span>
-                <FiArrowRight className="contact-form__arrow" size={24} />
-              </h2>
-            </div>
-            <div className="contact-form__row">
-              <div className="contact-form__field">
-                <label htmlFor="email" className="contact-form__label">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={contactForm.email}
-                  onChange={handleContactFormChange}
-                  className="contact-form__input"
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
-              <div className="contact-form__field">
-                <label htmlFor="fullName" className="contact-form__label">
-                  ФИО
-                </label>
-                <input
-                  type="text"
-                  id="fullName"
-                  name="fullName"
-                  value={contactForm.fullName}
-                  onChange={handleContactFormChange}
-                  className="contact-form__input"
-                  placeholder="Иванов Иван Иванович"
-                  required
-                />
-              </div>
-            </div>
-            <div className="contact-form__field">
-              <label htmlFor="message" className="contact-form__label">
-                Описание вопроса
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={contactForm.message}
-                onChange={handleContactFormChange}
-                className="contact-form__textarea"
-                placeholder="Опишите ваш вопрос подробно..."
-                rows="5"
-                required
-              />
-            </div>
-            <button type="submit" className="contact-form__submit">
-              <span>Отправить</span>
-              <FiArrowRight size={18} />
-            </button>
-          </form>
         </div>
       </section>
       </div>
@@ -1075,118 +1687,77 @@ function App() {
 
       <footer className="footer">
         <div className="footer__container">
-          {/* Секция с кнопками загрузки и контактами */}
-          <section className="footer__actions">
-            {/* Текстовые ссылки сверху */}
-            <div className="footer__contact-links">
-              <button
-                type="button"
-                className="footer__contact-link"
-                onClick={handleWhatsApp}
-                aria-label={t.whatsapp}
-              >
-                <span className="footer__contact-link-text">{t.whatsapp}</span>
-                <span className="footer__contact-link-arrow">→</span>
-              </button>
-              <button
-                type="button"
-                className="footer__contact-link"
-                onClick={handleCallManager}
-                aria-label={t.contactManager}
-              >
-                <span className="footer__contact-link-text">{t.contactManager}</span>
-                <span className="footer__contact-link-arrow">→</span>
-              </button>
+          <div className="footer__content">
+            {/* Логотип слева */}
+            <div className="footer__logo">
+              <div className="footer__logo-icon">
+                <IoLocationOutline size={24} />
+              </div>
+              <span className="footer__logo-text">Sellyourbrick</span>
             </div>
 
-            {/* Кнопки загрузки приложений */}
-            <div className="footer__download-grid">
-              <button
-                type="button"
-                className="footer__download-btn"
-                onClick={() => handleDownloadApp('android')}
-                aria-label="Загрузить на Android"
-              >
-                <div className="footer__download-icon footer__download-icon--android">
-                  <FaAndroid size={32} />
-                </div>
-                <div className="footer__download-text">
-                  <span className="footer__download-label">{t.downloadAndroid}</span>
-                  <span className="footer__download-platform">Android</span>
-                </div>
-              </button>
+            {/* Кнопки загрузки и переключатель справа */}
+            <div className="footer__right">
+              <div className="footer__download-buttons">
+                <button
+                  type="button"
+                  className="footer__app-btn"
+                  onClick={() => handleDownloadApp('android')}
+                  aria-label="Скачать из Google Play"
+                >
+                  <div className="footer__app-btn-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5Z" fill="#4285F4"/>
+                      <path d="M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12Z" fill="#EA4335"/>
+                      <path d="M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z" fill="#FBBC04"/>
+                      <path d="M16.81 8.88L20.16 6.51C20.66 6.26 21 5.75 21 5.16V18.84C21 18.25 20.66 17.74 20.16 17.49L16.81 15.12L14.54 12.85L16.81 8.88Z" fill="#34A853"/>
+                    </svg>
+                  </div>
+                  <div className="footer__app-btn-text">
+                    <span className="footer__app-btn-label">СКАЧАТЬ ИЗ</span>
+                    <span className="footer__app-btn-name">Google Play</span>
+                  </div>
+                </button>
 
+                <button
+                  type="button"
+                  className="footer__app-btn"
+                  onClick={() => handleDownloadApp('ios')}
+                  aria-label="Загрузите в App Store"
+                >
+                  <div className="footer__app-btn-icon">
+                    <FaApple size={20} />
+                  </div>
+                  <div className="footer__app-btn-text">
+                    <span className="footer__app-btn-label">Загрузите в</span>
+                    <span className="footer__app-btn-name">App Store</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Бейдж с рейтингом */}
+              <div className="footer__rating-badge">0+</div>
+
+              {/* Переключатель локализации */}
               <button
                 type="button"
-                className="footer__download-btn"
-                onClick={() => handleDownloadApp('ios')}
-                aria-label={t.downloadIOS + ' iOS'}
+                className="footer__language-switcher"
+                onClick={handleLanguageChange}
+                aria-label={language === 'ru' ? 'Switch to English' : 'Переключить на русский'}
               >
-                <div className="footer__download-icon footer__download-icon--ios">
-                  <FaApple size={32} />
-                </div>
-                <div className="footer__download-text">
-                  <span className="footer__download-label">{t.downloadIOS}</span>
-                  <span className="footer__download-platform">iOS</span>
-                </div>
+                {language === 'ru' ? (
+                  <>
+                    <span className="footer__flag footer__flag--gb"></span>
+                    <span>English</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="footer__flag footer__flag--ru"></span>
+                    <span>Русский</span>
+                  </>
+                )}
               </button>
             </div>
-          </section>
-
-          <div className="footer__bottom">
-            <div className="footer__social">
-              <button
-                type="button"
-                className="footer__social-btn"
-                onClick={() => handleSocialLink('instagram')}
-                aria-label="Instagram"
-              >
-                <FaInstagram size={22} />
-              </button>
-              <button
-                type="button"
-                className="footer__social-btn"
-                onClick={() => handleSocialLink('whatsapp')}
-                aria-label="WhatsApp"
-              >
-                <FaWhatsapp size={22} />
-              </button>
-              <button
-                type="button"
-                className="footer__social-btn"
-                onClick={() => handleSocialLink('youtube')}
-                aria-label="YouTube"
-              >
-                <FaYoutube size={22} />
-              </button>
-              <button
-                type="button"
-                className="footer__social-btn"
-                onClick={() => handleSocialLink('twitter')}
-                aria-label="X (Twitter)"
-              >
-                <FaXTwitter size={22} />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="footer__language-btn"
-              onClick={handleLanguageChange}
-              aria-label={language === 'ru' ? 'Switch to English' : 'Переключить на русский'}
-            >
-              {language === 'ru' ? (
-                <>
-                  <span className="footer__flag footer__flag--gb"></span>
-                  <span>{t.englishVersion}</span>
-                </>
-              ) : (
-                <>
-                  <span className="footer__flag footer__flag--ru"></span>
-                  <span>{t.russianVersion}</span>
-                </>
-              )}
-            </button>
           </div>
         </div>
       </footer>
