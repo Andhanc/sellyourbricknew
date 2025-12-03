@@ -353,9 +353,11 @@ function App() {
   const [filteredProperties, setFilteredProperties] = useState(null)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
   const [activeFilter, setActiveFilter] = useState('Для всех')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const locationRef = useRef(null)
   const chatMessagesRef = useRef(null)
   const notificationRef = useRef(null)
+  const menuRef = useRef(null)
 
   const heroImages = {
     rent: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
@@ -422,6 +424,9 @@ function App() {
       }
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false)
+      }
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false)
       }
     }
 
@@ -866,10 +871,11 @@ function App() {
 
           {/* Новый хедер для десктопной версии */}
           <header className="new-header">
+        <div className="new-header__container">
         <div className="new-header__left">
           <div className="new-header__location">
             <span className="new-header__location-icon">
-              <IoLocationOutline size={24} />
+              <IoLocationOutline size={20} />
             </span>
             <div className="new-header__location-info" ref={locationRef}>
               <span className="new-header__location-label">{t.location}</span>
@@ -906,12 +912,118 @@ function App() {
             )}
             </div>
           </div>
-          <button className="new-header__burger-btn" aria-label="Меню">
-            <FiMenu size={24} />
-          </button>
-          <button className="new-header__menu-btn">
-            <span>Меню</span>
-          </button>
+          <div className="new-header__menu-wrapper" ref={menuRef}>
+            <button 
+              className="new-header__menu-btn"
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+              aria-label="Меню"
+              aria-expanded={isMenuOpen}
+            >
+              <FiMenu size={20} />
+              <span>Меню</span>
+            </button>
+            {isMenuOpen && (
+              <>
+                <div 
+                  className="menu-backdrop"
+                  onClick={() => setIsMenuOpen(false)}
+                />
+                <div className="menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="menu-dropdown__content">
+                    <div className="menu-dropdown__columns">
+                      <div className="menu-dropdown__column">
+                        <button className="menu-dropdown__item">
+                          <span>Недвижимость</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Покупка</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Аренда</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Продажа</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Ипотека</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Карты</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Вклады</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Инвестиции</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Платежи</span>
+                        </button>
+                      </div>
+                      <div className="menu-dropdown__column">
+                        <button className="menu-dropdown__item">
+                          <span>Премиум</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Бонусы</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Поддержка</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Приложения</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Автолюбителям</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Страхование</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Курсы валют</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Офисы и банкоматы</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Переводы</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="menu-dropdown__right">
+                      <div className="menu-dropdown__icons">
+                        <button className="menu-dropdown__icon-item">
+                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--blue">
+                            <FaHeart size={24} />
+                          </div>
+                          <span className="menu-dropdown__icon-label">Близкие</span>
+                        </button>
+                        <button className="menu-dropdown__icon-item">
+                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--silver">
+                            <FiMap size={24} />
+                          </div>
+                          <span className="menu-dropdown__icon-label">Авто</span>
+                        </button>
+                        <button className="menu-dropdown__icon-item">
+                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--green">
+                            <FaHome size={24} />
+                          </div>
+                          <span className="menu-dropdown__icon-label">Дом</span>
+                        </button>
+                      </div>
+                      <div className="menu-dropdown__filter">
+                        <button className="menu-dropdown__filter-btn">
+                          <FiCheck size={16} />
+                          <span>Для всех</span>
+                          <FiChevronDown size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
             <div className="new-header__filters">
@@ -1024,6 +1136,7 @@ function App() {
             </div>
             </>
           )}
+        </div>
         </div>
       </header>
 

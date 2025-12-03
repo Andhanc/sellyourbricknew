@@ -2407,13 +2407,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 60px;
+    padding: 0;
     background: transparent;
     width: 100%;
+    margin: 40px auto 0;
     position: relative;
     z-index: 10;
+  }
+
+  .new-header__container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: calc(100% - 120px);
+    max-width: 1250px;
     gap: 4px;
-    margin-top: 40px;
   }
 
   .new-header__left {
@@ -2446,16 +2458,14 @@
     height: auto;
     padding: 15px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.95);
+    background: transparent;
     color: #111827;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     flex-shrink: 0;
   }
 
   .new-header__location-icon svg {
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
   }
 
   .new-header__location-info {
@@ -2522,20 +2532,8 @@
     background: rgba(17, 24, 39, 0.12);
   }
 
-  .new-header__burger-btn {
-    width: auto;
-    height: auto;
-    padding: 0;
-    border-radius: 12px;
-    border: none;
-    background: transparent;
-    color: #111827;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-    margin-right: -16px;
+  .new-header__menu-wrapper {
+    position: relative;
   }
 
   .new-header__menu-btn {
@@ -2550,18 +2548,207 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    transition: background-color 0.2s ease;
+  }
+
+  .new-header__menu-btn:hover {
+    background: rgba(17, 24, 39, 0.05);
+  }
+
+  .new-header__menu-btn svg {
+    flex-shrink: 0;
+  }
+
+  .menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(17, 24, 39, 0.3);
+    backdrop-filter: blur(4px);
+    z-index: 199;
+    animation: backdropFadeIn 0.2s ease-out;
+  }
+
+  .menu-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 
+      0 20px 60px -12px rgba(17, 24, 39, 0.4),
+      0 8px 24px -8px rgba(17, 24, 39, 0.3),
+      0 0 0 1px rgba(17, 24, 39, 0.1);
+    z-index: 200;
+    min-width: 800px;
+    max-width: 900px;
+    animation: menuSlideDown 0.3s ease-out;
+    overflow: hidden;
+  }
+
+  @keyframes menuSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .menu-dropdown__content {
+    display: flex;
+    gap: 40px;
+    padding: 32px;
+  }
+
+  .menu-dropdown__columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    flex: 1;
+  }
+
+  .menu-dropdown__column {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .menu-dropdown__item {
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 400;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+  }
+
+  .menu-dropdown__item:hover {
+    background: rgba(17, 24, 39, 0.05);
+  }
+
+  .menu-dropdown__right {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-left: 24px;
+    border-left: 1px solid rgba(17, 24, 39, 0.1);
+    min-width: 200px;
+  }
+
+  .menu-dropdown__icons {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .menu-dropdown__icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .menu-dropdown__icon-item:hover {
+    transform: translateY(-2px);
+  }
+
+  .menu-dropdown__icon-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .menu-dropdown__icon-box--blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+  }
+
+  .menu-dropdown__icon-box--silver {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    color: #111827;
+  }
+
+  .menu-dropdown__icon-box--green {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+  }
+
+  .menu-dropdown__icon-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+  }
+
+  .menu-dropdown__filter {
+    display: flex;
+    align-items: center;
+  }
+
+  .menu-dropdown__filter-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .menu-dropdown__filter-btn:hover {
+    border-color: rgba(17, 24, 39, 0.2);
+    background: rgba(17, 24, 39, 0.02);
+  }
+
+  .menu-dropdown__filter-btn svg:first-child {
+    color: #10b981;
+    flex-shrink: 0;
+  }
+
+  .menu-dropdown__filter-btn svg:last-child {
+    margin-left: auto;
+    color: #6b7280;
+    flex-shrink: 0;
   }
 
   .new-header__filters {
     flex: 0 1 auto;
     display: flex;
     align-items: center;
-    gap: 48px;
+    gap: 12px;
     --filter-gap: 32px;
     --filter-padding-y: 12px;
     --filter-padding-x: 18px;
-    background: #ffffff;
-    padding: 16px 32px;
+    background: linear-gradient(135deg, #d0d8f0 0%, #e8e8f5 40%, #f0e0eb 70%, #f8e8f0 100%);
+    padding: 8px 20px;
     border-radius: 12px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -2578,7 +2765,7 @@
   }
 
   .new-header__filter-btn {
-    padding: 0;
+    padding: 8px 16px;
     border: none;
     background: transparent;
     color: #111827;
@@ -2590,39 +2777,17 @@
     line-height: 1;
     position: relative;
     z-index: 1;
+    transition: all 0.2s ease;
   }
 
-  .new-header__filter-btn::before {
-    content: '';
-    position: absolute;
-    top: calc(-1 * var(--filter-padding-y) - 1px);
-    left: calc(-1 * var(--filter-gap) / 2 - 1px);
-    right: calc(-1 * var(--filter-gap) / 2 - 1px);
-    bottom: calc(-1 * var(--filter-padding-y) - 1px);
-    background: transparent;
-    border-radius: 10px;
-    z-index: -1;
-    transition: background 0.2s ease;
-  }
-
-  .new-header__filter-btn:hover::before {
-    background: rgba(17, 24, 39, 0.08);
-  }
-
-  /* Для первой кнопки - ховер до левого края */
-  .new-header__filter-btn:first-child::before {
-    left: calc(-1 * var(--filter-padding-x, 32px) - 1px);
-  }
-
-  /* Для последней кнопки - ховер до правого края */
-  .new-header__filter-btn:last-child::before {
-    right: calc(-1 * var(--filter-padding-x, 32px) - 1px);
+  .new-header__filter-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 
   .new-header__filter-btn--active {
-    background: rgba(17, 24, 39, 0.1);
+    background: rgba(255, 255, 255, 0.5);
     color: #111827;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-weight: 500;
   }
 
   .new-header__right {
@@ -2637,7 +2802,7 @@
     height: auto;
     padding: 15px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.95);
+    background: transparent;
     border: none;
     color: #111827;
     display: inline-flex;
@@ -2645,8 +2810,6 @@
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .new-header__search-btn svg {
@@ -2655,7 +2818,7 @@
   }
 
   .new-header__auction-btn {
-    padding: 16px 32px;
+    padding: 14px 24px;
     min-width: 120px;
     height: auto;
     border: none;
@@ -2679,15 +2842,13 @@
     padding: 15px;
     border-radius: 12px;
     border: none;
-    background: rgba(255, 255, 255, 0.95);
+    background: transparent;
     color: #111827;
-    backdrop-filter: blur(10px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .new-header__notification-btn {
@@ -2696,16 +2857,14 @@
     padding: 15px;
     border-radius: 12px;
     border: none;
-    background: rgba(255, 255, 255, 0.95);
+    background: transparent;
     color: #111827;
-    backdrop-filter: blur(10px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     position: relative;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .new-header__notification-indicator {
@@ -2749,13 +2908,37 @@
   /* Перемещаем переключатель Аренда/Покупка вниз фона */
   .mode-switcher {
     position: absolute;
-    bottom: 40px;
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
     z-index: 10;
     padding: 0 60px;
     box-sizing: border-box;
+  }
+
+  .mode-switcher__container {
+    max-width: 440px;
+    padding: 6px;
+    border-radius: 20px;
+  }
+
+  .mode-switcher__option {
+    padding: 18px 32px;
+    font-size: 18px;
+    border-radius: 16px;
+  }
+
+  .mode-switcher__indicator {
+    top: 6px;
+    left: 6px;
+    width: calc(50% - 6px);
+    height: calc(100% - 12px);
+    border-radius: 16px;
+  }
+
+  .mode-switcher__indicator--right {
+    transform: translateX(calc(100% + 6px));
   }
 
   /* Скрываем кнопку AI на десктопе */
