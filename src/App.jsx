@@ -23,9 +23,11 @@ import {
   FiUser,
   FiCheck,
   FiStar,
+  FiMail,
 } from 'react-icons/fi'
 import {
   FaHome,
+  FaHeart,
   FaHeart as FaHeartSolid,
   FaGavel,
   FaComment,
@@ -35,6 +37,7 @@ import {
   FaWhatsapp,
   FaInstagram,
   FaYoutube,
+  FaCar,
 } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
 import { IoLocationOutline } from 'react-icons/io5'
@@ -626,6 +629,31 @@ function App() {
     }
   }, [])
 
+  // Изменяем фон body когда меню открыто
+  useEffect(() => {
+    if (isMenuOpen) {
+      const originalBodyBg = document.body.style.backgroundColor
+      const originalHtmlBg = document.documentElement.style.backgroundColor
+      document.body.style.backgroundColor = 'transparent'
+      document.documentElement.style.backgroundColor = 'transparent'
+      document.body.style.overflow = 'hidden'
+      // Скрываем переключатель
+      const modeSwitcher = document.querySelector('.mode-switcher')
+      if (modeSwitcher) {
+        modeSwitcher.style.display = 'none'
+      }
+      return () => {
+        document.body.style.backgroundColor = originalBodyBg
+        document.documentElement.style.backgroundColor = originalHtmlBg
+        document.body.style.overflow = ''
+        // Показываем переключатель обратно
+        if (modeSwitcher) {
+          modeSwitcher.style.display = ''
+        }
+      }
+    }
+  }, [isMenuOpen])
+
 
   const handleLocationSelect = (location) => {
     setSelectedLocation(location)
@@ -1103,108 +1131,150 @@ function App() {
               <FiMenu size={20} />
               <span>Меню</span>
             </button>
-            {isMenuOpen && (
-              <>
-                <div 
-                  className="menu-backdrop"
-                  onClick={() => setIsMenuOpen(false)}
-                />
-                <div className="menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="menu-dropdown__content">
-                    <div className="menu-dropdown__columns">
-                      <div className="menu-dropdown__column">
-                        <button className="menu-dropdown__item">
-                          <span>Недвижимость</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Покупка</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Аренда</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Продажа</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Ипотека</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Карты</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Вклады</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Инвестиции</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Платежи</span>
-                        </button>
-                      </div>
-                      <div className="menu-dropdown__column">
-                        <button className="menu-dropdown__item">
-                          <span>Премиум</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Бонусы</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Поддержка</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Приложения</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Автолюбителям</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Страхование</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Курсы валют</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Офисы и банкоматы</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Переводы</span>
-                        </button>
-                      </div>
+          </div>
+          
+          {/* Модальное окно меню рендерится вне menu-wrapper */}
+          {isMenuOpen && (
+            <>
+              <div 
+                className="menu-backdrop"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  zIndex: 9998,
+                  margin: 0,
+                  padding: 0,
+                  border: 'none',
+                  outline: 'none',
+                  display: 'block',
+                  opacity: 1
+                }}
+              />
+              <div 
+                className="menu-dropdown" 
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  zIndex: 9999
+                }}
+              >
+                <div className="menu-dropdown__content">
+                  <div className="menu-dropdown__columns">
+                    <div className="menu-dropdown__column">
+                      <button className="menu-dropdown__item">
+                        <span>Недвижимость</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Покупка</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Аренда</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Продажа</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Ипотека</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Карты</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Вклады</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Инвестиции</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Платежи</span>
+                      </button>
                     </div>
-                    <div className="menu-dropdown__right">
-                      <div className="menu-dropdown__icons">
-                        <button className="menu-dropdown__icon-item">
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--blue">
-                            <FaHeart size={24} />
-                          </div>
-                          <span className="menu-dropdown__icon-label">Близкие</span>
-                        </button>
-                        <button className="menu-dropdown__icon-item">
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--silver">
-                            <FiMap size={24} />
-                          </div>
-                          <span className="menu-dropdown__icon-label">Авто</span>
-                        </button>
-                        <button className="menu-dropdown__icon-item">
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--green">
-                            <FaHome size={24} />
-                          </div>
-                          <span className="menu-dropdown__icon-label">Дом</span>
-                        </button>
-                      </div>
-                      <div className="menu-dropdown__filter">
-                        <button className="menu-dropdown__filter-btn">
-                          <FiCheck size={16} />
-                          <span>Для всех</span>
-                          <FiChevronDown size={16} />
-                        </button>
-                      </div>
+                    <div className="menu-dropdown__column">
+                      <button className="menu-dropdown__item">
+                        <span>Премиум</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Бонусы</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Поддержка</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Приложения</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Автолюбителям</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Страхование</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Курсы валют</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Офисы и банкоматы</span>
+                      </button>
+                      <button className="menu-dropdown__item">
+                        <span>Переводы</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="menu-dropdown__right">
+                    <div className="menu-dropdown__icons">
+                      <a 
+                        href="https://instagram.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="menu-dropdown__icon-item"
+                      >
+                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--instagram">
+                          <FaInstagram size={24} />
+                        </div>
+                        <span className="menu-dropdown__icon-label">Instagram</span>
+                      </a>
+                      <a 
+                        href="https://wa.me" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="menu-dropdown__icon-item"
+                      >
+                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--whatsapp">
+                          <FaWhatsapp size={24} />
+                        </div>
+                        <span className="menu-dropdown__icon-label">WhatsApp</span>
+                      </a>
+                      <a 
+                        href="mailto:info@example.com" 
+                        className="menu-dropdown__icon-item"
+                      >
+                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--gmail">
+                          <FiMail size={24} />
+                        </div>
+                        <span className="menu-dropdown__icon-label">Email</span>
+                      </a>
+                      <a 
+                        href="tel:+1234567890" 
+                        className="menu-dropdown__icon-item"
+                      >
+                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--phone">
+                          <FiPhone size={24} />
+                        </div>
+                        <span className="menu-dropdown__icon-label">Позвонить</span>
+                      </a>
                     </div>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
             <div className="new-header__filters">
@@ -1358,141 +1428,6 @@ function App() {
       </section>
       </section>
 
-      {/* Блок "Что расскажем про ваш дом" */}
-      <section className="info-section">
-        <div className="info-section__container">
-          <h2 className="info-section__title">Что расскажем про ваш дом</h2>
-          
-          <div className="info-section__cards">
-            {/* Левая карточка - Стоимость и доход от аренды */}
-            <div className="info-card info-card--left" style={{ backgroundColor: '#f3f4f6' }}>
-              <h3 className="info-card__title">Стоимость и доход от аренды</h3>
-              <p className="info-card__description">
-                Оценим и учтём всё: ремонт, этаж и даже баню на участке
-              </p>
-              
-              <div className="info-card__content-wrapper">
-                <div className="info-card__inner-cards">
-                  <div className="info-card__inner-card info-card__inner-card--small">
-                    <div className="info-card__inner-card-content">
-                      <p className="info-card__inner-card-label">Доход от посуточной аренды</p>
-                    </div>
-                  </div>
-                  
-                  <div className="info-card__inner-card">
-                    <div className="info-card__inner-card-content">
-                      <p className="info-card__inner-card-label">Доход от долгосрочной аренды</p>
-                      <div className="info-card__inner-card-value">
-                        <span className="info-card__value-amount">38 000 Р/мес</span>
-                        <span className="info-card__value-tag info-card__value-tag--green">+3% за полгода</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="info-card__chart">
-                  <div className="info-card__chart-header">
-                    <h4 className="info-card__chart-title">Оценка стоимости</h4>
-                    <div className="info-card__chart-value-header">
-                      <span className="info-card__value-amount">9,5 млн Р</span>
-                      <span className="info-card__value-tag info-card__value-tag--green">+3% за полгода</span>
-                    </div>
-                  </div>
-                 
-                </div>
-              </div>
-            </div>
-            
-            {/* Правая карточка - Мечтайте по-новому */}
-            <div className="info-card info-card--right">
-              <div className="info-card__header">
-                <span className="info-card__badge info-card__badge--red">
-                  <span className="info-card__badge-icon" role="img" aria-label="fire">🔥</span>
-                  Популярное
-                </span>
-                <button className="info-card__arrow">
-                  <FiArrowRight size={20} />
-                </button>
-              </div>
-              <h3 className="info-card__title">Мечтайте по-новому</h3>
-              <p className="info-card__description">
-                Например, как переехать в новостройку или загород
-              </p>
-              
-              <div className="info-card__properties">
-                <div className="info-card__property">
-                  <div className="info-card__property-image">
-                    <img 
-                      src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80" 
-                      alt="Дом с гаражом"
-                    />
-                  </div>
-                  <div className="info-card__property-info">
-                    <p className="info-card__property-details">160 м² · 2 эт. шоссе</p>
-                    <p className="info-card__property-price">000 P</p>
-                  </div>
-                </div>
-                
-                <div className="info-card__property">
-                  <div className="info-card__property-image">
-                    <img 
-                      src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" 
-                      alt="Новостройка"
-                    />
-                  </div>
-                  <div className="info-card__property-info">
-                    <p className="info-card__property-details">2-к. кв. · 40,87 м² · 17/25...</p>
-                    <p className="info-card__property-location">м. Варшавская</p>
-                    <p className="info-card__property-price">15 700 000 Р</p>
-                  </div>
-                </div>
-                
-                <div className="info-card__property">
-                  <div className="info-card__property-image">
-                    <img 
-                      src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80" 
-                      alt="Квартира"
-                    />
-                  </div>
-                  <div className="info-card__property-info">
-                    <p className="info-card__property-details">2-к. кв. · 43,14 м² · 5/9 эт.</p>
-                    <p className="info-card__property-location">м. Каширская</p>
-                    <p className="info-card__property-price">10 500 000 Р</p>
-                  </div>
-                </div>
-                
-                <div className="info-card__property">
-                  <div className="info-card__property-image">
-                    <img 
-                      src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80" 
-                      alt="Дом"
-                    />
-                  </div>
-                  <div className="info-card__property-info">
-                    <p className="info-card__property-details">Дом · 130 м² · 2 эт.</p>
-                    <p className="info-card__property-location">м. Бунинская аллея</p>
-                    <p className="info-card__property-price">9 800 000 Р</p>
-                  </div>
-                </div>
-                
-                <div className="info-card__property">
-                  <div className="info-card__property-image">
-                    <img 
-                      src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80" 
-                      alt="Коттедж"
-                    />
-                  </div>
-                  <div className="info-card__property-info">
-                    <p className="info-card__property-details">Коттедж · 160 м² · 2 эт.</p>
-                    <p className="info-card__property-location">Каширское шоссе</p>
-                    <p className="info-card__property-price">13 999 000 Р</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Блок "Аппартаменты" */}
       <section className="apartments-section">
