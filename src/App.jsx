@@ -22,6 +22,7 @@ import {
   FiMenu,
   FiUser,
   FiCheck,
+  FiStar,
 } from 'react-icons/fi'
 import {
   FaHome,
@@ -202,6 +203,9 @@ const apartmentsData = [
     owner: { firstName: 'Иван', lastName: 'Петров' },
     image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 2,
+    baths: 1,
+    sqft: 850,
   },
   {
     id: 2,
@@ -211,6 +215,9 @@ const apartmentsData = [
     owner: { firstName: 'Мария', lastName: 'Сидорова' },
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 3,
+    baths: 2,
+    sqft: 1200,
   },
   {
     id: 3,
@@ -220,6 +227,9 @@ const apartmentsData = [
     owner: { firstName: 'Алексей', lastName: 'Иванов' },
     image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 1,
+    baths: 1,
+    sqft: 650,
   },
   {
     id: 4,
@@ -229,6 +239,9 @@ const apartmentsData = [
     owner: { firstName: 'Елена', lastName: 'Козлова' },
     image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 2,
+    baths: 1,
+    sqft: 950,
   },
   {
     id: 5,
@@ -238,6 +251,9 @@ const apartmentsData = [
     owner: { firstName: 'Дмитрий', lastName: 'Смирнов' },
     image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 4,
+    baths: 3,
+    sqft: 1800,
   },
   {
     id: 6,
@@ -247,6 +263,9 @@ const apartmentsData = [
     owner: { firstName: 'Анна', lastName: 'Волкова' },
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 3,
+    baths: 2,
+    sqft: 1400,
   },
 ]
 
@@ -259,6 +278,9 @@ const villasData = [
     owner: { firstName: 'Сергей', lastName: 'Новиков' },
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 4,
+    baths: 3,
+    sqft: 2500,
   },
   {
     id: 2,
@@ -268,6 +290,9 @@ const villasData = [
     owner: { firstName: 'Ольга', lastName: 'Морозова' },
     image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 5,
+    baths: 4,
+    sqft: 3200,
   },
   {
     id: 3,
@@ -277,6 +302,9 @@ const villasData = [
     owner: { firstName: 'Павел', lastName: 'Соколов' },
     image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 6,
+    baths: 5,
+    sqft: 4000,
   },
   {
     id: 4,
@@ -286,6 +314,9 @@ const villasData = [
     owner: { firstName: 'Татьяна', lastName: 'Лебедева' },
     image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 3,
+    baths: 2,
+    sqft: 2000,
   },
   {
     id: 5,
@@ -295,6 +326,9 @@ const villasData = [
     owner: { firstName: 'Андрей', lastName: 'Кузнецов' },
     image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 7,
+    baths: 6,
+    sqft: 5000,
   },
   {
     id: 6,
@@ -304,13 +338,16 @@ const villasData = [
     owner: { firstName: 'Екатерина', lastName: 'Федорова' },
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     hasSamolyot: false,
+    beds: 5,
+    baths: 4,
+    sqft: 3500,
   },
 ]
 
 function App() {
   const [selectedLocation, setSelectedLocation] = useState(resortLocations[0])
   const [isLocationOpen, setIsLocationOpen] = useState(false)
-  const [propertyMode, setPropertyMode] = useState('rent') // 'rent' для аренды, 'buy' для покупки
+  const [propertyMode, setPropertyMode] = useState('buy') // 'rent' для аренды, 'buy' для покупки
   const [favoriteProperties, setFavoriteProperties] = useState(() => {
     const initialFavorites = new Map()
     recommendedProperties.forEach((property) => {
@@ -1059,7 +1096,7 @@ function App() {
 
         <div className="new-header__right">
           <button className="new-header__search-btn">
-            <FiSearch size={24} />
+            <FiSearch size={20} />
           </button>
           <button 
             type="button"
@@ -1145,19 +1182,19 @@ function App() {
         <div className="mode-switcher__container">
           <button
             type="button"
-            className={`mode-switcher__option ${propertyMode === 'rent' ? 'mode-switcher__option--active' : ''}`}
-            onClick={() => setPropertyMode('rent')}
-          >
-            <span className="mode-switcher__label">{t.rent}</span>
-          </button>
-          <button
-            type="button"
             className={`mode-switcher__option ${propertyMode === 'buy' ? 'mode-switcher__option--active' : ''}`}
             onClick={() => setPropertyMode('buy')}
           >
             <span className="mode-switcher__label">{t.buy}</span>
           </button>
-          <div className={`mode-switcher__indicator ${propertyMode === 'buy' ? 'mode-switcher__indicator--right' : ''}`} />
+          <button
+            type="button"
+            className={`mode-switcher__option ${propertyMode === 'rent' ? 'mode-switcher__option--active' : ''}`}
+            onClick={() => setPropertyMode('rent')}
+          >
+            <span className="mode-switcher__label">{t.rent}</span>
+          </button>
+          <div className={`mode-switcher__indicator ${propertyMode === 'rent' ? 'mode-switcher__indicator--right' : ''}`} />
         </div>
       </section>
         </div>
@@ -1360,11 +1397,21 @@ function App() {
                     <div className="apartment-card__price">
                       от {apartment.price.toLocaleString('ru-RU')} $
                     </div>
-                    <h3 className="apartment-card__name">{apartment.name}</h3>
+                    <div className="apartment-card__info">
+                      <div className="apartment-card__info-item">
+                        <MdBed size={16} />
+                        <span>{apartment.beds || 0}</span>
+                      </div>
+                      <div className="apartment-card__info-item">
+                        <MdOutlineBathtub size={16} />
+                        <span>{apartment.baths || 0}</span>
+                      </div>
+                      <div className="apartment-card__info-item">
+                        <BiArea size={16} />
+                        <span>{apartment.sqft || 0} м²</span>
+                      </div>
+                    </div>
                     <p className="apartment-card__location">{apartment.location}</p>
-                    <p className="apartment-card__owner">
-                      {apartment.owner.firstName} {apartment.owner.lastName}
-                    </p>
                   </div>
                 </article>
               ))}
@@ -1372,17 +1419,46 @@ function App() {
             
             <div className="apartments-section__personal">
               <div className="personal-selection">
-                <div className="personal-selection__banner">ПЕРСОНАЛЬНАЯ</div>
+                <div className="personal-selection__banner">
+                  <FiStar className="personal-selection__banner-icon" size={14} />
+                  ПЕРСОНАЛЬНАЯ
+                </div>
                 <div className="personal-selection__content">
+                  <div className="personal-selection__decorative">
+                    <div className="personal-selection__icon personal-selection__icon--1">
+                      <PiBuildingApartment size={32} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--2">
+                      <FiHeart size={24} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--3">
+                      <FiCheck size={20} />
+                    </div>
+                  </div>
                   <h3 className="personal-selection__title">ПОДБОРКА</h3>
                   <h3 className="personal-selection__title">АППАРТАМЕНТОВ</h3>
+                  <div className="personal-selection__features">
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Индивидуальный подход</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Быстрый подбор</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Только лучшие варианты</span>
+                    </div>
+                  </div>
                   <p className="personal-selection__text">С вас - пожелания,</p>
                   <p className="personal-selection__text">с нас - подходящие варианты</p>
                   <button 
                     className="personal-selection__button"
                     onClick={() => setIsChatOpen(true)}
                   >
-                    Подробнее
+                    <span>Подробнее</span>
+                    <FiArrowRight className="personal-selection__button-icon" size={18} />
                   </button>
                 </div>
               </div>
@@ -1438,11 +1514,21 @@ function App() {
                     <div className="apartment-card__price">
                       от {villa.price.toLocaleString('ru-RU')} $
                     </div>
-                    <h3 className="apartment-card__name">{villa.name}</h3>
+                    <div className="apartment-card__info">
+                      <div className="apartment-card__info-item">
+                        <MdBed size={16} />
+                        <span>{villa.beds || 0}</span>
+                      </div>
+                      <div className="apartment-card__info-item">
+                        <MdOutlineBathtub size={16} />
+                        <span>{villa.baths || 0}</span>
+                      </div>
+                      <div className="apartment-card__info-item">
+                        <BiArea size={16} />
+                        <span>{villa.sqft || 0} м²</span>
+                      </div>
+                    </div>
                     <p className="apartment-card__location">{villa.location}</p>
-                    <p className="apartment-card__owner">
-                      {villa.owner.firstName} {villa.owner.lastName}
-                    </p>
                   </div>
                 </article>
               ))}
@@ -1450,17 +1536,46 @@ function App() {
             
             <div className="apartments-section__personal">
               <div className="personal-selection">
-                <div className="personal-selection__banner">ПЕРСОНАЛЬНАЯ</div>
+                <div className="personal-selection__banner">
+                  <FiStar className="personal-selection__banner-icon" size={14} />
+                  ПЕРСОНАЛЬНАЯ
+                </div>
                 <div className="personal-selection__content">
+                  <div className="personal-selection__decorative">
+                    <div className="personal-selection__icon personal-selection__icon--1">
+                      <PiBuildings size={32} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--2">
+                      <FiHeart size={24} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--3">
+                      <FiCheck size={20} />
+                    </div>
+                  </div>
                   <h3 className="personal-selection__title">ПОДБОРКА</h3>
                   <h3 className="personal-selection__title">ВИЛЛ</h3>
+                  <div className="personal-selection__features">
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Индивидуальный подход</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Быстрый подбор</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Только лучшие варианты</span>
+                    </div>
+                  </div>
                   <p className="personal-selection__text">С вас - пожелания,</p>
                   <p className="personal-selection__text">с нас - подходящие варианты</p>
                   <button 
                     className="personal-selection__button"
                     onClick={() => setIsChatOpen(true)}
                   >
-                    Подробнее
+                    <span>Подробнее</span>
+                    <FiArrowRight className="personal-selection__button-icon" size={18} />
                   </button>
                 </div>
               </div>
@@ -1620,7 +1735,20 @@ function App() {
 
               <div className="property-card__content">
                 <span className="property-card__badge">{property.tag}</span>
-                <h3 className="property-card__title">{property.name}</h3>
+                <div className="property-card__info">
+                  <div className="property-card__info-item">
+                    <MdBed size={16} />
+                    <span>{property.beds || 0}</span>
+                  </div>
+                  <div className="property-card__info-item">
+                    <MdOutlineBathtub size={16} />
+                    <span>{property.baths || 0}</span>
+                  </div>
+                  <div className="property-card__info-item">
+                    <BiArea size={16} />
+                    <span>{property.sqft || 0} м²</span>
+                  </div>
+                </div>
                 <p className="property-card__location">{property.location}</p>
                 <div className="property-card__price">
                   <span className="property-card__price-amount">
@@ -1674,7 +1802,20 @@ function App() {
 
               <div className="property-card__content">
                 <span className="property-card__badge">{property.tag}</span>
-                <h3 className="property-card__title">{property.name}</h3>
+                <div className="property-card__info">
+                  <div className="property-card__info-item">
+                    <MdBed size={16} />
+                    <span>{property.beds || 0}</span>
+                  </div>
+                  <div className="property-card__info-item">
+                    <MdOutlineBathtub size={16} />
+                    <span>{property.baths || 0}</span>
+                  </div>
+                  <div className="property-card__info-item">
+                    <BiArea size={16} />
+                    <span>{property.sqft || 0} м²</span>
+                  </div>
+                </div>
                 <p className="property-card__location">{property.location}</p>
                 <div className="property-card__price">
                   <span className="property-card__price-amount">
@@ -1800,77 +1941,133 @@ function App() {
 
       <footer className="footer">
         <div className="footer__container">
-          <div className="footer__content">
-            {/* Логотип слева */}
-            <div className="footer__logo">
-              <div className="footer__logo-icon">
-                <IoLocationOutline size={24} />
+          {/* Верхний блок ссылок, как на ЦИАН — по колонкам */}
+          <div className="footer__menu">
+            <div className="footer__menu-column">
+              <button type="button" className="footer__menu-link">Карта</button>
+              <button type="button" className="footer__menu-link">Тарифы и цены</button>
+              <button type="button" className="footer__menu-link">Аукцион</button>
+            </div>
+            <div className="footer__menu-column">
+              <button type="button" className="footer__menu-link">Юридические документы</button>
+              <button type="button" className="footer__menu-link">Реклама на сайте</button>
+              <button type="button" className="footer__menu-link">Карьера в Sellyourbrick</button>
+            </div>
+            <div className="footer__menu-column">
+              <button type="button" className="footer__menu-link">Поиск на карте</button>
+              <button type="button" className="footer__menu-link">Продвижение</button>
+              <button type="button" className="footer__menu-link">Сайт для инвесторов</button>
+            </div>
+            <div className="footer__menu-column">
+              <button type="button" className="footer__menu-link">Аукцион</button>
+              <button type="button" className="footer__menu-link">Вакансии агентов</button>
+            </div>
+            <div className="footer__menu-column">
+              <button type="button" className="footer__menu-link">Реклама Sellyourbrick на ТВ</button>
+              <button type="button" className="footer__menu-link">Помощь</button>
+            </div>
+            <div className="footer__menu-column">
+              <button type="button" className="footer__menu-link">Программа «Суперагенты»</button>
+              <button type="button" className="footer__menu-link">Ипотечный калькулятор</button>
+            </div>
+          </div>
+
+          {/* Текстовый блок описания сервиса */}
+          <div className="footer__description">
+            <p className="footer__description-text">
+              Sellyourbrick – база проверенных объявлений о продаже и аренде жилой, загородной и коммерческой недвижимости. Онлайн‑сервис №1 в России в категории «Недвижимость», по данным Similarweb на сентябрь 2023 г. Используя сервис, вы соглашаетесь с{' '}
+              <button type="button" className="footer__description-link">Пользовательским соглашением</button>{' '}
+              и{' '}
+              <button type="button" className="footer__description-link">Политикой конфиденциальности</button>{' '}
+              Sellyourbrick. Оплачивая услуги, вы принимаете{' '}
+              <button type="button" className="footer__description-link">Лицензионное соглашение</button>.
+            </p>
+            <p className="footer__description-text">
+              На информационном ресурсе применяются{' '}
+              <button type="button" className="footer__description-link">Рекомендательные технологии</button>.
+            </p>
+          </div>
+
+          {/* Нижняя полоса с логотипом и кнопками, как на скрине */}
+          <div className="footer__bottom">
+            <div className="footer__brand">
+              <div className="footer__brand-icon">
+                <span className="footer__brand-house" />
               </div>
-              <span className="footer__logo-text">Sellyourbrick</span>
+              <span className="footer__brand-text">Sellyourbrick</span>
             </div>
 
-            {/* Кнопки загрузки и переключатель справа */}
-            <div className="footer__right">
-              <div className="footer__download-buttons">
-                <button
-                  type="button"
-                  className="footer__app-btn"
-                  onClick={() => handleDownloadApp('android')}
-                  aria-label="Скачать из Google Play"
-                >
-                  <div className="footer__app-btn-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5Z" fill="#4285F4"/>
-                      <path d="M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12Z" fill="#EA4335"/>
-                      <path d="M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z" fill="#FBBC04"/>
-                      <path d="M16.81 8.88L20.16 6.51C20.66 6.26 21 5.75 21 5.16V18.84C21 18.25 20.66 17.74 20.16 17.49L16.81 15.12L14.54 12.85L16.81 8.88Z" fill="#34A853"/>
-                    </svg>
-                  </div>
-                  <div className="footer__app-btn-text">
-                    <span className="footer__app-btn-label">СКАЧАТЬ ИЗ</span>
-                    <span className="footer__app-btn-name">Google Play</span>
-                  </div>
-                </button>
+            <div className="footer__bottom-links">
+              <button type="button" className="footer__bottom-link">Мобильная версия сайта</button>
+              <button type="button" className="footer__bottom-link">О приложении</button>
+            </div>
 
-                <button
-                  type="button"
-                  className="footer__app-btn"
-                  onClick={() => handleDownloadApp('ios')}
-                  aria-label="Загрузите в App Store"
-                >
-                  <div className="footer__app-btn-icon">
-                    <FaApple size={20} />
-                  </div>
-                  <div className="footer__app-btn-text">
-                    <span className="footer__app-btn-label">Загрузите в</span>
-                    <span className="footer__app-btn-name">App Store</span>
-                  </div>
-                </button>
-              </div>
-
-              {/* Бейдж с рейтингом */}
-              <div className="footer__rating-badge">0+</div>
-
-              {/* Переключатель локализации */}
+            <div className="footer__store-buttons">
               <button
                 type="button"
-                className="footer__language-switcher"
-                onClick={handleLanguageChange}
-                aria-label={language === 'ru' ? 'Switch to English' : 'Переключить на русский'}
+                className="footer__store-btn"
+                onClick={() => handleDownloadApp('android')}
+                aria-label="Скачать из Google Play"
               >
-                {language === 'ru' ? (
-                  <>
-                    <span className="footer__flag footer__flag--gb"></span>
-                    <span>English</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="footer__flag footer__flag--ru"></span>
-                    <span>Русский</span>
-                  </>
-                )}
+                <div className="footer__store-icon footer__store-icon--google">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5Z" fill="#4285F4"/>
+                    <path d="M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12Z" fill="#EA4335"/>
+                    <path d="M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z" fill="#FBBC04"/>
+                    <path d="M16.81 8.88L20.16 6.51C20.66 6.26 21 5.75 21 5.16V18.84C21 18.25 20.66 17.74 20.16 17.49L16.81 15.12L14.54 12.85L16.81 8.88Z" fill="#34A853"/>
+                  </svg>
+                </div>
+                <div className="footer__store-text">
+                  <span className="footer__store-label">Скачать из</span>
+                  <span className="footer__store-name">Google Play</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="footer__store-btn"
+                onClick={() => handleDownloadApp('ios')}
+                aria-label="Загрузите в App Store"
+              >
+                <div className="footer__store-icon">
+                  <FaApple size={18} />
+                </div>
+                <div className="footer__store-text">
+                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-name">App Store</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="footer__store-btn"
+                aria-label="Загрузите в RuStore"
+              >
+                <div className="footer__store-icon footer__store-icon--rustore">
+                  <span className="footer__store-icon-text">Ru</span>
+                </div>
+                <div className="footer__store-text">
+                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-name">RuStore</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="footer__store-btn"
+                aria-label="Загрузите в AppGallery"
+              >
+                <div className="footer__store-icon footer__store-icon--appgallery">
+                  <span className="footer__store-icon-text">AG</span>
+                </div>
+                <div className="footer__store-text">
+                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-name">AppGallery</span>
+                </div>
               </button>
             </div>
+
+            <div className="footer__age-badge">0+</div>
           </div>
         </div>
       </footer>
