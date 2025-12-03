@@ -202,7 +202,11 @@ function PropertyDetailPage({
                 </div>
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">Продавец</span>
-                  <span className="property-detail-sidebar__feature-value">РИЕЛТОР</span>
+                  <span className="property-detail-sidebar__feature-value">
+                    {property.owner?.firstName && property.owner?.lastName
+                      ? `${property.owner.firstName} ${property.owner.lastName}`
+                      : property.broker?.name || 'Александр Иванов'}
+                  </span>
                 </div>
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">ID</span>
