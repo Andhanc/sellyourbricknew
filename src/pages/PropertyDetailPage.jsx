@@ -12,8 +12,30 @@ import {
 import { IoLocationOutline } from 'react-icons/io5'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import '../App.css'
 import './PropertyDetailPage.css'
+
+// Фикс для иконок Leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
+
+// Компонент для центрирования карты
+function CenterMap({ position, zoom }) {
+  const map = useMap()
+  useEffect(() => {
+    if (position) {
+      map.setView(position, zoom || 15)
+    }
+  }, [position, zoom, map])
+  return null
+}
 
 function PropertyDetailPage({
   property,
@@ -171,6 +193,24 @@ function PropertyDetailPage({
                 </div>
               </div>
             )}
+
+            {/* Кнопки действий */}
+            <div className="property-detail-gallery__action-buttons">
+              <button
+                type="button"
+                className="property-detail-gallery__buy-btn"
+                onClick={onBookNow}
+              >
+                Купить
+              </button>
+              <button
+                type="button"
+                className="property-detail-gallery__test-drive-btn"
+                onClick={() => alert('Тест-драйв будет доступен в ближайшее время')}
+              >
+                Тест-Драйв
+              </button>
+            </div>
           </div>
 
           {/* Правая колонка - Информация */}
@@ -208,10 +248,6 @@ function PropertyDetailPage({
                       : property.broker?.name || 'Александр Иванов'}
                   </span>
                 </div>
-                <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">ID</span>
-                  <span className="property-detail-sidebar__feature-value">{property.id || '124809292'}</span>
-                </div>
               </div>
 
               {/* Описание */}
@@ -221,6 +257,29 @@ function PropertyDetailPage({
                   {property.description || 'Предлагается в аренду 2 комнатная светлая квартира в районе Ивушки на Большой Московской, д. 128/10. рядом с магазином Осень. (это плюс). Квартира с косметическим ремонтом, теплая. Из мебели и техники есть всё необходимое для проживания. Двухспальная тахта, двухспальный диван, стенка, прихожая, комод, кондиционер, стильная машина, холодильник, кухонный гарнитур.'}
                 </p>
               </div>
+
+              {/* Карта */}
+              {property.coordinates && (
+                <div className="property-detail-sidebar__map">
+                  <h2 className="property-detail-sidebar__map-title">Местоположение</h2>
+                  <div className="property-detail-sidebar__map-container">
+                    <MapContainer
+                      center={property.coordinates}
+                      zoom={15}
+                      style={{ height: '100%', width: '100%', borderRadius: '12px' }}
+                      scrollWheelZoom={true}
+                      zoomControl={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <CenterMap position={property.coordinates} zoom={15} />
+                      <Marker position={property.coordinates} />
+                    </MapContainer>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

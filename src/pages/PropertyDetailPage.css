@@ -193,10 +193,10 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-top: 16px;
   width: 100%;
-  justify-content: center;
 }
 
 .property-detail-gallery__thumbnails {
@@ -207,9 +207,11 @@
   padding: 8px 4px;
   scrollbar-width: thin;
   scrollbar-color: #d1d5db transparent;
-  flex: 1;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
 }
 
 .property-detail-gallery__thumbnails::-webkit-scrollbar {
@@ -289,6 +291,69 @@
 .property-detail-gallery__thumbnail--active img {
   filter: blur(0);
   opacity: 1;
+}
+
+/* Кнопки действий */
+.property-detail-gallery__action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.property-detail-gallery__buy-btn,
+.property-detail-gallery__test-drive-btn {
+  flex: 1;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.property-detail-gallery__buy-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.property-detail-gallery__buy-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  transform: translateY(-2px);
+}
+
+.property-detail-gallery__buy-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.property-detail-gallery__test-drive-btn {
+  background: #ffffff;
+  color: #2563eb;
+  border: 2px solid #2563eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.property-detail-gallery__test-drive-btn:hover {
+  background: #f0f7ff;
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  transform: translateY(-2px);
+}
+
+.property-detail-gallery__test-drive-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 
@@ -383,6 +448,68 @@
   font-family: 'Poppins', sans-serif;
 }
 
+/* Карта */
+.property-detail-sidebar__map {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.property-detail-sidebar__map-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.property-detail-sidebar__map-container {
+  width: 100%;
+  height: 345px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.property-detail-sidebar__map-container .leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+.property-detail-sidebar__map-container .leaflet-control-zoom {
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.property-detail-sidebar__map-container .leaflet-control-zoom a {
+  background-color: #ffffff;
+  color: #111827;
+  border: none;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  font-size: 18px;
+  transition: background-color 0.2s ease;
+}
+
+.property-detail-sidebar__map-container .leaflet-control-zoom a:hover {
+  background-color: #f3f4f6;
+}
+
+.property-detail-sidebar__map-container .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.property-detail-sidebar__map-container .leaflet-marker-icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
 
 /* Адаптивность для мобильных устройств */
 @media (max-width: 1023px) {
@@ -402,5 +529,21 @@
 
   .property-detail-sidebar {
     position: static;
+  }
+
+  .property-detail-sidebar__map-container {
+    height: 350px;
+  }
+
+  .property-detail-gallery__action-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .property-detail-gallery__buy-btn,
+  .property-detail-gallery__test-drive-btn {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 15px;
   }
 }

@@ -94,16 +94,13 @@ const recommendedProperties = [
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
     ],
     beds: 2,
     baths: 2,
     sqft: 2000,
     description:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
-    owner: { firstName: 'Дмитрий', lastName: 'Соколов' },
+      'Роскошная недвижимость в самом сердце Манхэттена. Современная квартира с панорамными видами на город. Рядом находятся лучшие рестораны, магазины и культурные достопримечательности. Идеальное расположение для тех, кто ценит комфорт и престиж.',
+    owner: { firstName: 'Джон', lastName: 'Смит' },
     broker: {
       name: 'Muhammad Farhan',
       phone: '18392719103',
@@ -126,13 +123,14 @@ const recommendedProperties = [
       'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     ],
     beds: 2,
     baths: 1,
     sqft: 1500,
     description:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-    owner: { firstName: 'Елена', lastName: 'Петрова' },
+      'Прекрасная вилла в элитном районе Коста-Адехе. Современный дизайн, просторные террасы с видом на океан. Рядом находятся лучшие пляжи, гольф-клубы и рестораны. Идеальное место для отдыха и жизни на Тенерифе.',
+    owner: { firstName: 'Карлос', lastName: 'Родригес' },
     broker: {
       name: 'Muhammad Farhan',
       phone: '18392719103',
@@ -158,13 +156,14 @@ const nearbyProperties = [
       'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     ],
     beds: 2,
     baths: 2,
     sqft: 1800,
     description:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-    owner: { firstName: 'Андрей', lastName: 'Кузнецов' },
+      'Уютный дом в Лос-Кристианос, одном из самых популярных курортов Тенерифе. Близость к пляжу, магазинам и ресторанам. Тихое место с прекрасным климатом круглый год. Отличный вариант для постоянного проживания или отдыха.',
+    owner: { firstName: 'Мария', lastName: 'Гонсалес' },
     broker: {
       name: 'Muhammad Farhan',
       phone: '18392719103',
@@ -187,13 +186,14 @@ const nearbyProperties = [
       'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     ],
     beds: 1,
     baths: 1,
     sqft: 1200,
     description:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-    owner: { firstName: 'Мария', lastName: 'Иванова' },
+      'Светлая квартира в историческом Пуэрто-де-ла-Крус. Уникальное расположение на севере острова с мягким климатом. Рядом ботанический сад, пляжи с черным песком и множество достопримечательностей. Идеально для тех, кто любит спокойствие и природу.',
+    owner: { firstName: 'Антонио', lastName: 'Мартинес' },
     broker: {
       name: 'Muhammad Farhan',
       phone: '18392719103',
@@ -209,7 +209,8 @@ const apartmentsData = [
     name: 'Тропарево Парк',
     location: 'Costa Adeje, Tenerife',
     price: 8500372,
-    owner: { firstName: 'Иван', lastName: 'Петров' },
+    coordinates: [28.2916, -16.6291],
+    owner: { firstName: 'Хосе', lastName: 'Мендес' },
     image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
@@ -218,19 +219,21 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
     beds: 2,
     baths: 1,
     sqft: 850,
+    description:
+      'Современная квартира в престижном районе Коста-Адехе. Элитный комплекс с бассейном и инфраструктурой. Рядом лучшие пляжи острова, гольф-поля и рестораны высокой кухни. Идеальное место для инвестиций и отдыха.',
   },
   {
     id: 2,
     name: 'Клубный город на реке Primavera',
     location: 'Playa de las Américas, Tenerife',
     price: 25748010,
-    owner: { firstName: 'Мария', lastName: 'Сидорова' },
+    coordinates: [28.1000, -16.7200],
+    owner: { firstName: 'Хуан', lastName: 'Лопес' },
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
@@ -244,13 +247,16 @@ const apartmentsData = [
     beds: 3,
     baths: 2,
     sqft: 1200,
+    description:
+      'Роскошная квартира в самом центре Плайя-де-лас-Америкас. Шаговую доступность до пляжей, ночных клубов и развлечений. Современный дизайн, все удобства. Отличное место для активного отдыха и жизни на курорте.',
   },
   {
     id: 3,
     name: 'Slava',
     location: 'Los Cristianos, Tenerife',
     price: 28078032,
-    owner: { firstName: 'Алексей', lastName: 'Иванов' },
+    coordinates: [28.0500, -16.7167],
+    owner: { firstName: 'Педро', lastName: 'Санчес' },
     image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
@@ -264,13 +270,16 @@ const apartmentsData = [
     beds: 1,
     baths: 1,
     sqft: 650,
+    description:
+      'Компактная уютная квартира в Лос-Кристианос. Идеальный вариант для первого жилья или инвестиций. Рядом пляж, магазины и транспортная развязка. Отличное соотношение цены и качества в популярном курортном районе.',
   },
   {
     id: 4,
     name: 'Пригород Лесное',
     location: 'Puerto de la Cruz, Tenerife',
     price: 4441729,
-    owner: { firstName: 'Елена', lastName: 'Козлова' },
+    coordinates: [28.4167, -16.5500],
+    owner: { firstName: 'Изабель', lastName: 'Фернандес' },
     image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
@@ -285,13 +294,16 @@ const apartmentsData = [
     beds: 2,
     baths: 1,
     sqft: 950,
+    description:
+      'Прекрасная квартира в Пуэрто-де-ла-Крус с видом на океан. Исторический район с уникальной архитектурой. Рядом ботанический сад, термальные бассейны и пляжи. Идеально для тех, кто ценит спокойствие и близость к природе.',
   },
   {
     id: 5,
     name: 'LUZHNIKI COLLECTION',
     location: 'Santa Cruz de Tenerife, Tenerife',
     price: 71874000,
-    owner: { firstName: 'Дмитрий', lastName: 'Смирнов' },
+    coordinates: [28.4636, -16.2518],
+    owner: { firstName: 'Мигель', lastName: 'Торрес' },
     image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
@@ -300,19 +312,21 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
     beds: 4,
     baths: 3,
     sqft: 1800,
+    description:
+      'Элитная квартира в столице Тенерифе - Санта-Крус. Престижный район с развитой инфраструктурой. Рядом деловой центр, культурные достопримечательности и лучшие рестораны. Идеально для бизнеса и постоянного проживания.',
   },
   {
     id: 6,
     name: 'SHIFT',
     location: 'La Laguna, Tenerife',
     price: 40824208,
-    owner: { firstName: 'Анна', lastName: 'Волкова' },
+    coordinates: [28.4853, -16.3200],
+    owner: { firstName: 'Кармен', lastName: 'Руис' },
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
@@ -326,6 +340,8 @@ const apartmentsData = [
     beds: 3,
     baths: 2,
     sqft: 1400,
+    description:
+      'Современная квартира в историческом городе Ла-Лагуна, объекте Всемирного наследия ЮНЕСКО. Университетский город с богатой культурой. Рядом старый город, музеи и кафе. Идеально для студентов и любителей истории.',
   },
 ]
 
@@ -335,7 +351,8 @@ const villasData = [
     name: 'Villa Paradise',
     location: 'Costa Adeje, Tenerife',
     price: 12000000,
-    owner: { firstName: 'Сергей', lastName: 'Новиков' },
+    coordinates: [28.2916, -16.6291],
+    owner: { firstName: 'Франсиско', lastName: 'Гарсия' },
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
@@ -345,18 +362,22 @@ const villasData = [
       'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
     beds: 4,
     baths: 3,
     sqft: 2500,
+    description:
+      'Роскошная вилла в элитном районе Коста-Адехе с панорамным видом на океан. Частный бассейн, террасы, современная кухня. Рядом лучшие пляжи, гольф-клубы и рестораны. Идеальное место для роскошного отдыха и жизни.',
   },
   {
     id: 2,
     name: 'Luxury Beach Villa',
     location: 'Playa de las Américas, Tenerife',
     price: 18500000,
-    owner: { firstName: 'Ольга', lastName: 'Морозова' },
+    coordinates: [28.1000, -16.7200],
+    owner: { firstName: 'Анна', lastName: 'Морено' },
     image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
@@ -370,13 +391,16 @@ const villasData = [
     beds: 5,
     baths: 4,
     sqft: 3200,
+    description:
+      'Эксклюзивная вилла на первой линии пляжа в Плайя-де-лас-Америкас. Прямой выход к океану, частный пляж, бассейн с подогревом. Роскошный интерьер, современная техника. Идеально для тех, кто ищет премиум недвижимость.',
   },
   {
     id: 3,
     name: 'Ocean View Villa',
     location: 'Los Cristianos, Tenerife',
     price: 22000000,
-    owner: { firstName: 'Павел', lastName: 'Соколов' },
+    coordinates: [28.0500, -16.7167],
+    owner: { firstName: 'Луис', lastName: 'Хименес' },
     image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
@@ -385,19 +409,21 @@ const villasData = [
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
     beds: 6,
     baths: 5,
     sqft: 4000,
+    description:
+      'Великолепная вилла с видом на океан в Лос-Кристианос. Просторные террасы, сад, бассейн. Рядом пляжи, рестораны и развлечения. Идеальное место для большой семьи или приема гостей. Прекрасный климат круглый год.',
   },
   {
     id: 4,
     name: 'Mountain Retreat',
     location: 'Puerto de la Cruz, Tenerife',
     price: 9500000,
-    owner: { firstName: 'Татьяна', lastName: 'Лебедева' },
+    coordinates: [28.4167, -16.5500],
+    owner: { firstName: 'Элена', lastName: 'Васкес' },
     image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
@@ -411,13 +437,16 @@ const villasData = [
     beds: 3,
     baths: 2,
     sqft: 2000,
+    description:
+      'Уютная вилла в горах Пуэрто-де-ла-Крус с видом на вулкан Тейде. Тишина и покой, близость к природе. Рядом термальные источники и ботанический сад. Идеально для тех, кто ищет уединение и спокойствие.',
   },
   {
     id: 5,
     name: 'Elite Collection Villa',
     location: 'Santa Cruz de Tenerife, Tenerife',
     price: 35000000,
-    owner: { firstName: 'Андрей', lastName: 'Кузнецов' },
+    coordinates: [28.4636, -16.2518],
+    owner: { firstName: 'Роберто', lastName: 'Альварес' },
     image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
@@ -426,19 +455,21 @@ const villasData = [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
     beds: 7,
     baths: 6,
     sqft: 5000,
+    description:
+      'Эксклюзивная вилла в столице Тенерифе - Санта-Крус. Премиум локация с видом на океан и город. Роскошный интерьер, современная архитектура, частный сад и бассейн. Идеально для представительских целей и роскошной жизни.',
   },
   {
     id: 6,
     name: 'Modern Villa Design',
     location: 'La Laguna, Tenerife',
     price: 28000000,
-    owner: { firstName: 'Екатерина', lastName: 'Федорова' },
+    coordinates: [28.4853, -16.3200],
+    owner: { firstName: 'София', lastName: 'Рамос' },
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     images: [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
@@ -452,6 +483,8 @@ const villasData = [
     beds: 5,
     baths: 4,
     sqft: 3500,
+    description:
+      'Современная вилла в историческом городе Ла-Лагуна. Уникальный дизайн сочетает современность и традиции. Рядом старый город, университет и культурные достопримечательности. Идеально для тех, кто ценит культуру и комфорт.',
   },
 ]
 
