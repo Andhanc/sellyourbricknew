@@ -927,10 +927,32 @@
   color: #dc2626;
 }
 
-.property-card__content {
+.property-card__content-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  flex-direction: row;
+}
+
+.property-card__content-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.property-card__auction-badge {
+  width: 90px;
+  height: auto;
+  max-height: 90px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: none;
+  align-self: center;
+}
+
+.property-card__content {
   padding: 16px 18px 18px;
 }
 
@@ -2511,6 +2533,11 @@
     position: relative;
     z-index: 10;
   }
+  
+  /* Когда меню открыто, поднимаем хедер выше backdrop */
+  .new-header--menu-open {
+    z-index: 10001 !important; /* Выше backdrop (9998) и меню (9999) */
+  }
 
   .new-header__container {
     display: flex;
@@ -2523,6 +2550,7 @@
     width: calc(100% - 120px);
     max-width: 1250px;
     gap: 4px;
+    transition: border-radius 0.3s ease, box-shadow 0.3s ease;
   }
 
   .new-header__left {
@@ -2631,6 +2659,12 @@
 
   .new-header__menu-wrapper {
     position: relative;
+    z-index: 1; /* Базовый z-index */
+  }
+  
+  /* Когда меню открыто, поднимаем кнопку выше backdrop */
+  .new-header__menu-wrapper--active {
+    z-index: 10000 !important; /* Выше backdrop (9998) и меню (9999) */
   }
 
   .new-header__menu-btn {
@@ -2655,6 +2689,14 @@
   .new-header__menu-btn svg {
     flex-shrink: 0;
   }
+  
+  .new-header__menu-icon {
+    transition: transform 0.3s ease;
+  }
+  
+  .new-header__menu-btn--active .new-header__menu-icon {
+    transform: rotate(180deg);
+  }
 
   .menu-backdrop {
     position: fixed !important;
@@ -2664,16 +2706,12 @@
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background: rgba(0, 0, 0, 0.3) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+    background: transparent !important; /* Убрали затемнение */
     z-index: 9998 !important;
-    animation: backdropFadeIn 0.2s ease-out;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     outline: none !important;
-    opacity: 1 !important;
     display: block !important;
   }
   
@@ -2685,31 +2723,35 @@
 
   .menu-dropdown {
     position: fixed !important;
-    top: 50% !important;
+    top: 113px !important; /* 40px (margin-top хедера) + ~62px (высота хедера + отступ) - опускаем ниже */
     left: 50% !important;
-    transform: translate(-50%, -50%) !important;
+    transform: translateX(-50%) !important;
     background: #ffffff !important;
-    border-radius: 24px !important;
-    box-shadow: 
-      0 20px 60px -12px rgba(17, 24, 39, 0.4),
-      0 8px 24px -8px rgba(17, 24, 39, 0.3),
-      0 0 0 1px rgba(17, 24, 39, 0.1) !important;
+     /* Тонкая граница для визуального разделения */
+    border-radius: 0 0 16px 16px !important; /* Скругляем только нижние углы */
+   
     z-index: 9999 !important;
-    width: 90% !important;
-    max-width: 1200px !important;
-    max-height: 90vh !important;
+    width: calc(100% - 120px) !important;
+    max-width: 1250px !important;
+    max-height: calc(100vh - 120px) !important;
     animation: menuSlideDown 0.3s ease-out;
     overflow: hidden !important;
+  }
+  
+  /* Когда меню открыто, скругляем только верхние углы хедера */
+  .new-header__container--menu-open {
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05) !important;
   }
 
   @keyframes menuSlideDown {
     from {
       opacity: 0;
-      transform: translateY(-10px);
+      transform: translateX(-50%) translateY(-20px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
     }
   }
 
@@ -3878,11 +3920,33 @@
   color: #dc2626;
 }
 
-.apartment-card__content {
-  padding: 10px 14px;
+.apartment-card__content-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  flex-direction: row;
+}
+
+.apartment-card__content-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.apartment-card__auction-badge {
+  width: 90px;
+  height: auto;
+  max-height: 90px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: none;
+  align-self: center;
+}
+
+.apartment-card__content {
+  padding: 10px 14px;
 }
 
 .apartment-card__price {

@@ -140,7 +140,7 @@ function PropertyDetailPage({
   }, [currentImageIndex])
 
   // Формируем информацию о квартире для заголовка
-  const propertyInfo = `2-комн. квартира, ${displayProperty.sqft || 58} м², 9/10 этаж`
+  const propertyInfo = `2${t('rooms')} квартира, ${displayProperty.sqft || 58} ${t('squareMeters')}, 9/10 ${t('floor')}`
 
   return (
     <div className="property-detail-page-new">
@@ -153,10 +153,10 @@ function PropertyDetailPage({
             onClick={onBack}
           >
             <FiArrowLeft size={20} />
-            <span>Назад</span>
+            <span>{t('back')}</span>
           </button>
           <div className="property-detail-header__info">
-            <span className="property-detail-header__path">Результаты поиска</span>
+            <span className="property-detail-header__path">{t('searchResults')}</span>
             <span className="property-detail-header__separator">/</span>
             <span className="property-detail-header__property">{propertyInfo}</span>
           </div>
@@ -180,7 +180,7 @@ function PropertyDetailPage({
                     type="button"
                     className="property-detail-gallery__nav property-detail-gallery__nav--prev"
                     onClick={handlePreviousImage}
-                    aria-label="Предыдущее изображение"
+                    aria-label={t('previousImage')}
                   >
                     <FiChevronLeft size={24} />
                   </button>
@@ -188,7 +188,7 @@ function PropertyDetailPage({
                     type="button"
                     className="property-detail-gallery__nav property-detail-gallery__nav--next"
                     onClick={handleNextImage}
-                    aria-label="Следующее изображение"
+                    aria-label={t('nextImage')}
                   >
                     <FiChevronRight size={24} />
                   </button>
@@ -202,7 +202,7 @@ function PropertyDetailPage({
                   type="button"
                   className="property-detail-gallery__action-btn"
                   onClick={onShare}
-                  aria-label="Поделиться"
+                  aria-label={t('share')}
                 >
                   <FiShare2 size={20} />
                 </button>
@@ -212,7 +212,7 @@ function PropertyDetailPage({
                     isFavorite ? 'property-detail-gallery__action-btn--active' : ''
                   }`}
                   onClick={onToggleFavorite}
-                  aria-label="Добавить в избранное"
+                  aria-label={t('addToFavorites')}
                 >
                   {isFavorite ? <FaHeartSolid size={20} /> : <FiHeart size={20} />}
                 </button>
@@ -249,15 +249,17 @@ function PropertyDetailPage({
                 className="property-detail-gallery__buy-btn"
                 onClick={onBookNow}
               >
-                Купить
+                {t('buyNow')}
               </button>
-              <button
-                type="button"
-                className="property-detail-gallery__test-drive-btn"
-                onClick={() => alert('Тест-драйв будет доступен в ближайшее время')}
-              >
-                Тест-Драйв
-              </button>
+              {property.isAuction && (
+                <button
+                  type="button"
+                  className="property-detail-gallery__test-drive-btn"
+                  onClick={() => alert(t('testDriveAvailable'))}
+                >
+                  {t('testDrive')}
+                </button>
+              )}
             </div>
           </div>
 
@@ -277,30 +279,30 @@ function PropertyDetailPage({
               {/* Характеристики */}
               <div className="property-detail-sidebar__features">
                 <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">Площадь</span>
-                  <span className="property-detail-sidebar__feature-value">{displayProperty.sqft || 58} м²</span>
+                  <span className="property-detail-sidebar__feature-label">{t('area')}</span>
+                  <span className="property-detail-sidebar__feature-value">{displayProperty.sqft || 58} {t('squareMeters')}</span>
                 </div>
                 <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">Комнат</span>
+                  <span className="property-detail-sidebar__feature-label">{t('roomsCount')}</span>
                   <span className="property-detail-sidebar__feature-value">{displayProperty.beds || 2}</span>
                 </div>
                 <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">Этаж</span>
+                  <span className="property-detail-sidebar__feature-label">{t('floorNumber')}</span>
                   <span className="property-detail-sidebar__feature-value">9/10</span>
                 </div>
                 <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">Продавец</span>
+                  <span className="property-detail-sidebar__feature-label">{t('seller')}</span>
                   <span className="property-detail-sidebar__feature-value">
                     {displayProperty.owner?.firstName && displayProperty.owner?.lastName
                       ? `${displayProperty.owner.firstName} ${displayProperty.owner.lastName}`
-                      : displayProperty.broker?.name || 'Александр Иванов'}
+                      : displayProperty.broker?.name || t('defaultSeller') || 'Александр Иванов'}
                   </span>
                 </div>
               </div>
 
               {/* Описание */}
               <div className="property-detail-sidebar__description">
-                <h2 className="property-detail-sidebar__description-title">Описание</h2>
+                <h2 className="property-detail-sidebar__description-title">{t('description')}</h2>
                 <p className="property-detail-sidebar__description-text">
                   {displayProperty.description || 'Предлагается в аренду 2 комнатная светлая квартира в районе Ивушки на Большой Московской, д. 128/10. рядом с магазином Осень. (это плюс). Квартира с косметическим ремонтом, теплая. Из мебели и техники есть всё необходимое для проживания. Двухспальная тахта, двухспальный диван, стенка, прихожая, комод, кондиционер, стильная машина, холодильник, кухонный гарнитур.'}
                 </p>
@@ -309,7 +311,7 @@ function PropertyDetailPage({
               {/* Карта */}
               {property.coordinates && (
                 <div className="property-detail-sidebar__map">
-                  <h2 className="property-detail-sidebar__map-title">Местоположение</h2>
+                  <h2 className="property-detail-sidebar__map-title">{t('locationTitle')}</h2>
                   <div className="property-detail-sidebar__map-container">
                     <MapContainer
                       center={property.coordinates}
@@ -338,46 +340,46 @@ function PropertyDetailPage({
         <div className="footer__container">
           <div className="footer__menu">
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Карта</button>
-              <button type="button" className="footer__menu-link">Тарифы и цены</button>
-              <button type="button" className="footer__menu-link">Аукцион</button>
+              <button type="button" className="footer__menu-link">{t('mapLink')}</button>
+              <button type="button" className="footer__menu-link">{t('tariffs')}</button>
+              <button type="button" className="footer__menu-link">{t('auction')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Юридические документы</button>
-              <button type="button" className="footer__menu-link">Реклама на сайте</button>
-              <button type="button" className="footer__menu-link">Карьера в Sellyourbrick</button>
+              <button type="button" className="footer__menu-link">{t('legalDocs')}</button>
+              <button type="button" className="footer__menu-link">{t('advertising')}</button>
+              <button type="button" className="footer__menu-link">{t('career')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Поиск на карте</button>
-              <button type="button" className="footer__menu-link">Продвижение</button>
-              <button type="button" className="footer__menu-link">Сайт для инвесторов</button>
+              <button type="button" className="footer__menu-link">{t('mapSearch')}</button>
+              <button type="button" className="footer__menu-link">{t('promotion')}</button>
+              <button type="button" className="footer__menu-link">{t('investors')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Аукцион</button>
-              <button type="button" className="footer__menu-link">Вакансии агентов</button>
+              <button type="button" className="footer__menu-link">{t('auction')}</button>
+              <button type="button" className="footer__menu-link">{t('vacancies')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Реклама Sellyourbrick на ТВ</button>
-              <button type="button" className="footer__menu-link">Помощь</button>
+              <button type="button" className="footer__menu-link">{t('tvAdvertising')}</button>
+              <button type="button" className="footer__menu-link">{t('help')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Программа «Суперагенты»</button>
-              <button type="button" className="footer__menu-link">Ипотечный калькулятор</button>
+              <button type="button" className="footer__menu-link">{t('superAgents')}</button>
+              <button type="button" className="footer__menu-link">{t('mortgage')}</button>
             </div>
           </div>
 
           <div className="footer__description">
             <p className="footer__description-text">
-              Sellyourbrick – база проверенных объявлений о продаже и аренде жилой, загородной и коммерческой недвижимости. Онлайн‑сервис №1 в России в категории «Недвижимость», по данным Similarweb на сентябрь 2023 г. Используя сервис, вы соглашаетесь с{' '}
-              <button type="button" className="footer__description-link">Пользовательским соглашением</button>{' '}
-              и{' '}
-              <button type="button" className="footer__description-link">Политикой конфиденциальности</button>{' '}
-              Sellyourbrick. Оплачивая услуги, вы принимаете{' '}
-              <button type="button" className="footer__description-link">Лицензионное соглашение</button>.
+              {t('footerDescription')}{' '}
+              <button type="button" className="footer__description-link">{t('userAgreementLink')}</button>{' '}
+              {t('and')}{' '}
+              <button type="button" className="footer__description-link">{t('privacyPolicyLink')}</button>{' '}
+              Sellyourbrick. {t('payingForServices')}{' '}
+              <button type="button" className="footer__description-link">{t('licenseAgreement')}</button>.
             </p>
             <p className="footer__description-text">
-              На информационном ресурсе применяются{' '}
-              <button type="button" className="footer__description-link">Рекомендательные технологии</button>.
+              {t('recommendationTechDescription')}{' '}
+              <button type="button" className="footer__description-link">{t('recommendationTech')}</button>.
             </p>
           </div>
 
@@ -390,15 +392,15 @@ function PropertyDetailPage({
             </div>
 
             <div className="footer__bottom-links">
-              <button type="button" className="footer__bottom-link">Мобильная версия сайта</button>
-              <button type="button" className="footer__bottom-link">О приложении</button>
+              <button type="button" className="footer__bottom-link">{t('mobileVersion')}</button>
+              <button type="button" className="footer__bottom-link">{t('aboutApp')}</button>
             </div>
 
             <div className="footer__store-buttons">
               <button
                 type="button"
                 className="footer__store-btn"
-                aria-label="Скачать из Google Play"
+                aria-label={`${t('downloadFrom')} Google Play`}
               >
                 <div className="footer__store-icon footer__store-icon--google">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -409,7 +411,7 @@ function PropertyDetailPage({
                   </svg>
                 </div>
                 <div className="footer__store-text">
-                  <span className="footer__store-label">Скачать из</span>
+                  <span className="footer__store-label">{t('downloadFrom')}</span>
                   <span className="footer__store-name">Google Play</span>
                 </div>
               </button>
@@ -417,7 +419,7 @@ function PropertyDetailPage({
               <button
                 type="button"
                 className="footer__store-btn"
-                aria-label="Загрузите в App Store"
+                aria-label={`${t('downloadIn')} App Store`}
               >
                 <div className="footer__store-icon footer__store-icon--ios">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -425,7 +427,7 @@ function PropertyDetailPage({
                   </svg>
                 </div>
                 <div className="footer__store-text">
-                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-label">{t('downloadIn')}</span>
                   <span className="footer__store-name">App Store</span>
                 </div>
               </button>
@@ -446,13 +448,13 @@ function PropertyDetailPage({
               <button
                 type="button"
                 className="footer__store-btn"
-                aria-label="Загрузите в AppGallery"
+                aria-label={`${t('downloadIn')} AppGallery`}
               >
                 <div className="footer__store-icon footer__store-icon--appgallery">
                   <span>Huawei</span>
                 </div>
                 <div className="footer__store-text">
-                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-label">{t('downloadIn')}</span>
                   <span className="footer__store-name">AppGallery</span>
                 </div>
               </button>
@@ -463,7 +465,7 @@ function PropertyDetailPage({
                 type="button"
                 className="footer__language-selector-btn"
                 onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                aria-label="Выбрать язык"
+                aria-label={t('selectLanguage')}
               >
                 <span className={`footer__language-flag ${currentLanguage.flagClass}`}></span>
                 <span className="footer__language-name">{currentLanguage.name}</span>

@@ -87,6 +87,7 @@ const recommendedProperties = [
     beds: 2,
     baths: 2,
     sqft: 2000,
+    isAuction: true,
     description:
       'Роскошная недвижимость в самом сердце Манхэттена. Современная квартира с панорамными видами на город. Рядом находятся лучшие рестораны, магазины и культурные достопримечательности. Идеальное расположение для тех, кто ценит комфорт и престиж.',
     owner: { firstName: 'Джон', lastName: 'Смит' },
@@ -117,6 +118,7 @@ const recommendedProperties = [
     beds: 2,
     baths: 1,
     sqft: 1500,
+    isAuction: false,
     description:
       'Прекрасная вилла в элитном районе Коста-Адехе. Современный дизайн, просторные террасы с видом на океан. Рядом находятся лучшие пляжи, гольф-клубы и рестораны. Идеальное место для отдыха и жизни на Тенерифе.',
     owner: { firstName: 'Карлос', lastName: 'Родригес' },
@@ -150,6 +152,7 @@ const nearbyProperties = [
     beds: 2,
     baths: 2,
     sqft: 1800,
+    isAuction: false,
     description:
       'Уютный дом в Лос-Кристианос, одном из самых популярных курортов Тенерифе. Близость к пляжу, магазинам и ресторанам. Тихое место с прекрасным климатом круглый год. Отличный вариант для постоянного проживания или отдыха.',
     owner: { firstName: 'Мария', lastName: 'Гонсалес' },
@@ -180,6 +183,7 @@ const nearbyProperties = [
     beds: 1,
     baths: 1,
     sqft: 1200,
+    isAuction: true,
     description:
       'Светлая квартира в историческом Пуэрто-де-ла-Крус. Уникальное расположение на севере острова с мягким климатом. Рядом ботанический сад, пляжи с черным песком и множество достопримечательностей. Идеально для тех, кто любит спокойствие и природу.',
     owner: { firstName: 'Антонио', lastName: 'Мартинес' },
@@ -210,6 +214,7 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: true,
     beds: 2,
     baths: 1,
     sqft: 850,
@@ -233,6 +238,7 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 3,
     baths: 2,
     sqft: 1200,
@@ -256,6 +262,7 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: true,
     beds: 1,
     baths: 1,
     sqft: 650,
@@ -280,6 +287,7 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 2,
     baths: 1,
     sqft: 950,
@@ -303,6 +311,7 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 4,
     baths: 3,
     sqft: 1800,
@@ -326,6 +335,7 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 3,
     baths: 2,
     sqft: 1400,
@@ -354,6 +364,7 @@ const villasData = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: true,
     beds: 4,
     baths: 3,
     sqft: 2500,
@@ -377,6 +388,7 @@ const villasData = [
       'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 5,
     baths: 4,
     sqft: 3200,
@@ -400,6 +412,7 @@ const villasData = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 6,
     baths: 5,
     sqft: 4000,
@@ -423,6 +436,7 @@ const villasData = [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 3,
     baths: 2,
     sqft: 2000,
@@ -446,6 +460,7 @@ const villasData = [
       'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 7,
     baths: 6,
     sqft: 5000,
@@ -469,6 +484,7 @@ const villasData = [
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
+    isAuction: false,
     beds: 5,
     baths: 4,
     sqft: 3500,
@@ -573,9 +589,6 @@ function App() {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false)
       }
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsMenuOpen(false)
-      }
     }
 
     // Проверяем ширину экрана для десктопа
@@ -593,22 +606,15 @@ function App() {
     }
   }, [])
 
-  // Изменяем фон body когда меню открыто
+  // Закрытие меню обрабатывается через backdrop onClick
+
+  // Изменяем overflow body когда меню открыто (но не фон, чтобы не было белого экрана)
   useEffect(() => {
     if (isMenuOpen) {
-      const originalBodyBg = document.body.style.backgroundColor
-      const originalHtmlBg = document.documentElement.style.backgroundColor
-      document.body.style.backgroundColor = 'transparent'
-      document.documentElement.style.backgroundColor = 'transparent'
+      const originalOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
       return () => {
-        document.body.style.backgroundColor = originalBodyBg
-        document.documentElement.style.backgroundColor = originalHtmlBg
-        document.body.style.overflow = ''
-        // Показываем переключатель обратно
-        if (modeSwitcher) {
-          modeSwitcher.style.display = ''
-        }
+        document.body.style.overflow = originalOverflow
       }
     }
   }, [isMenuOpen])
@@ -1107,8 +1113,8 @@ function App() {
           </header>
 
           {/* Новый хедер для десктопной версии */}
-          <header className="new-header">
-        <div className="new-header__container">
+          <header className={`new-header ${isMenuOpen ? 'new-header--menu-open' : ''}`}>
+        <div className={`new-header__container ${isMenuOpen ? 'new-header__container--menu-open' : ''}`}>
         <div className="new-header__left">
           <div className="new-header__location">
             <span className="new-header__location-icon">
@@ -1149,14 +1155,18 @@ function App() {
             )}
             </div>
           </div>
-          <div className="new-header__menu-wrapper" ref={menuRef}>
+          <div className={`new-header__menu-wrapper ${isMenuOpen ? 'new-header__menu-wrapper--active' : ''}`} ref={menuRef}>
             <button 
-              className="new-header__menu-btn"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
+              className={`new-header__menu-btn ${isMenuOpen ? 'new-header__menu-btn--active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation() // Останавливаем всплытие события
+                e.preventDefault() // Предотвращаем стандартное поведение
+                setIsMenuOpen((prev) => !prev)
+              }}
               aria-label="Меню"
               aria-expanded={isMenuOpen}
             >
-              <FiMenu size={20} />
+              <FiMenu size={20} className="new-header__menu-icon" />
               <span>Меню</span>
             </button>
           </div>
@@ -1166,33 +1176,29 @@ function App() {
             <>
               <div 
                 className="menu-backdrop"
-                onClick={() => setIsMenuOpen(false)}
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: '100vw',
-                  height: '100vh',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  zIndex: 9998,
-                  margin: 0,
-                  padding: 0,
-                  border: 'none',
-                  outline: 'none',
-                  display: 'block',
-                  opacity: 1
+                onClick={(e) => {
+                  // Закрываем меню при клике на backdrop
+                  // Проверяем, что клик не по кнопке меню или самому меню
+                  const menuBtn = menuRef.current?.querySelector('.new-header__menu-btn')
+                  const menuDropdown = document.querySelector('.menu-dropdown')
+                  
+                  if (menuBtn && menuBtn.contains(e.target)) {
+                    // Клик по кнопке меню - не закрываем, кнопка сама переключит состояние
+                    return
+                  }
+                  
+                  if (menuDropdown && menuDropdown.contains(e.target)) {
+                    // Клик по меню - не закрываем
+                    return
+                  }
+                  
+                  // Клик по backdrop - закрываем меню
+                  setIsMenuOpen(false)
                 }}
               />
               <div 
                 className="menu-dropdown" 
                 onClick={(e) => e.stopPropagation()}
-                style={{
-                  zIndex: 9999
-                }}
               >
                 <div className="menu-dropdown__content">
                   <div className="menu-dropdown__columns">
@@ -1440,7 +1446,7 @@ function App() {
       <section className="apartments-section">
         <div className="apartments-section__container">
           <div className="apartments-section__header">
-            <h2 className="apartments-section__title">Аппартаменты</h2>
+            <h2 className="apartments-section__title">{t('apartmentsSection')}</h2>
             <FiArrowRight size={24} className="apartments-section__arrow" />
           </div>
           
@@ -1480,24 +1486,35 @@ function App() {
                   </div>
                   
                   <div className="apartment-card__content">
-                    <div className="apartment-card__price">
-                      от {apartment.price.toLocaleString('ru-RU')} $
+                    <div className="apartment-card__content-wrapper">
+                      <div className="apartment-card__content-main">
+                        <div className="apartment-card__price">
+                          от {apartment.price.toLocaleString('ru-RU')} $
+                        </div>
+                        <div className="apartment-card__info">
+                          <div className="apartment-card__info-item">
+                            <MdBed size={16} />
+                            <span>{apartment.beds || 0}</span>
+                          </div>
+                          <div className="apartment-card__info-item">
+                            <MdOutlineBathtub size={16} />
+                            <span>{apartment.baths || 0}</span>
+                          </div>
+                          <div className="apartment-card__info-item">
+                            <BiArea size={16} />
+                            <span>{apartment.sqft || 0} м²</span>
+                          </div>
+                        </div>
+                        <p className="apartment-card__location">{apartment.location}</p>
+                      </div>
+                      {apartment.isAuction && (
+                        <img 
+                          src="https://png.pngtree.com/png-vector/20220525/ourmid/pngtree-test-drive-rubber-stamp-png-image_4726533.png" 
+                          alt="Аукцион" 
+                          className="apartment-card__auction-badge"
+                        />
+                      )}
                     </div>
-                    <div className="apartment-card__info">
-                      <div className="apartment-card__info-item">
-                        <MdBed size={16} />
-                        <span>{apartment.beds || 0}</span>
-                      </div>
-                      <div className="apartment-card__info-item">
-                        <MdOutlineBathtub size={16} />
-                        <span>{apartment.baths || 0}</span>
-                      </div>
-                      <div className="apartment-card__info-item">
-                        <BiArea size={16} />
-                        <span>{apartment.sqft || 0} м²</span>
-                      </div>
-                    </div>
-                    <p className="apartment-card__location">{apartment.location}</p>
                   </div>
                 </article>
               ))}
@@ -1530,20 +1547,20 @@ function App() {
                     </div>
                     <div className="personal-selection__feature">
                       <FiCheck className="personal-selection__feature-icon" size={18} />
-                      <span>Быстрый подбор</span>
+                      <span>{t('quickSelection')}</span>
                     </div>
                     <div className="personal-selection__feature">
                       <FiCheck className="personal-selection__feature-icon" size={18} />
-                      <span>Только лучшие варианты</span>
+                      <span>{t('bestOptions')}</span>
                     </div>
                   </div>
-                  <p className="personal-selection__text">С вас - пожелания,</p>
-                  <p className="personal-selection__text">с нас - подходящие варианты</p>
+                  <p className="personal-selection__text">{t('fromYou')}</p>
+                  <p className="personal-selection__text">{t('fromUs')}</p>
                   <button 
                     className="personal-selection__button"
                     onClick={() => setIsChatOpen(true)}
                   >
-                    <span>Подробнее</span>
+                    <span>{t('learnMore')}</span>
                     <FiArrowRight className="personal-selection__button-icon" size={18} />
                   </button>
                 </div>
@@ -1557,7 +1574,7 @@ function App() {
       <section className="apartments-section">
         <div className="apartments-section__container">
           <div className="apartments-section__header">
-            <h2 className="apartments-section__title">Виллы</h2>
+            <h2 className="apartments-section__title">{t('villasSection')}</h2>
             <FiArrowRight size={24} className="apartments-section__arrow" />
           </div>
           
@@ -1597,24 +1614,35 @@ function App() {
                   </div>
                   
                   <div className="apartment-card__content">
-                    <div className="apartment-card__price">
-                      от {villa.price.toLocaleString('ru-RU')} $
+                    <div className="apartment-card__content-wrapper">
+                      <div className="apartment-card__content-main">
+                        <div className="apartment-card__price">
+                          от {villa.price.toLocaleString('ru-RU')} $
+                        </div>
+                        <div className="apartment-card__info">
+                          <div className="apartment-card__info-item">
+                            <MdBed size={16} />
+                            <span>{villa.beds || 0}</span>
+                          </div>
+                          <div className="apartment-card__info-item">
+                            <MdOutlineBathtub size={16} />
+                            <span>{villa.baths || 0}</span>
+                          </div>
+                          <div className="apartment-card__info-item">
+                            <BiArea size={16} />
+                            <span>{villa.sqft || 0} м²</span>
+                          </div>
+                        </div>
+                        <p className="apartment-card__location">{villa.location}</p>
+                      </div>
+                      {villa.isAuction && (
+                        <img 
+                          src="https://png.pngtree.com/png-vector/20220525/ourmid/pngtree-test-drive-rubber-stamp-png-image_4726533.png" 
+                          alt="Аукцион" 
+                          className="apartment-card__auction-badge"
+                        />
+                      )}
                     </div>
-                    <div className="apartment-card__info">
-                      <div className="apartment-card__info-item">
-                        <MdBed size={16} />
-                        <span>{villa.beds || 0}</span>
-                      </div>
-                      <div className="apartment-card__info-item">
-                        <MdOutlineBathtub size={16} />
-                        <span>{villa.baths || 0}</span>
-                      </div>
-                      <div className="apartment-card__info-item">
-                        <BiArea size={16} />
-                        <span>{villa.sqft || 0} м²</span>
-                      </div>
-                    </div>
-                    <p className="apartment-card__location">{villa.location}</p>
                   </div>
                 </article>
               ))}
@@ -1647,20 +1675,20 @@ function App() {
                     </div>
                     <div className="personal-selection__feature">
                       <FiCheck className="personal-selection__feature-icon" size={18} />
-                      <span>Быстрый подбор</span>
+                      <span>{t('quickSelection')}</span>
                     </div>
                     <div className="personal-selection__feature">
                       <FiCheck className="personal-selection__feature-icon" size={18} />
-                      <span>Только лучшие варианты</span>
+                      <span>{t('bestOptions')}</span>
                     </div>
                   </div>
-                  <p className="personal-selection__text">С вас - пожелания,</p>
-                  <p className="personal-selection__text">с нас - подходящие варианты</p>
+                  <p className="personal-selection__text">{t('fromYou')}</p>
+                  <p className="personal-selection__text">{t('fromUs')}</p>
                   <button 
                     className="personal-selection__button"
                     onClick={() => setIsChatOpen(true)}
                   >
-                    <span>Подробнее</span>
+                    <span>{t('learnMore')}</span>
                     <FiArrowRight className="personal-selection__button-icon" size={18} />
                   </button>
                 </div>
@@ -1675,7 +1703,7 @@ function App() {
         <div className="contact-form-container">
           <div className="contact-form-wrapper">
             <div className="contact-form__image-wrapper">
-              <h2 className="contact-form__image-title">Остались вопросы?</h2>
+              <h2 className="contact-form__image-title">{t('haveQuestions')}</h2>
               <div className="contact-form__image">
                 <img 
                   src="https://static.cdn-cian.ru/frontend/valuation-my-home-page-frontend/card_6_1.9222208e0e2f6d4d.svg" 
@@ -1686,7 +1714,7 @@ function App() {
             <form className="contact-form" onSubmit={handleContactFormSubmit}>
             <div className="contact-form__header">
               <h2 className="contact-form__title">
-                <span className="contact-form__title-accent">Напишите нам</span>
+                <span className="contact-form__title-accent">{t('writeToUs')}</span>
                 <FiArrowRight className="contact-form__arrow" size={24} />
               </h2>
             </div>
@@ -1887,29 +1915,40 @@ function App() {
               </div>
 
               <div className="property-card__content">
-                <span className="property-card__badge">{property.tag}</span>
-                <div className="property-card__info">
-                  <div className="property-card__info-item">
-                    <MdBed size={16} />
-                    <span>{property.beds || 0}</span>
+                <div className="property-card__content-wrapper">
+                  <div className="property-card__content-main">
+                    <span className="property-card__badge">{property.tag}</span>
+                    <div className="property-card__info">
+                      <div className="property-card__info-item">
+                        <MdBed size={16} />
+                        <span>{property.beds || 0}</span>
+                      </div>
+                      <div className="property-card__info-item">
+                        <MdOutlineBathtub size={16} />
+                        <span>{property.baths || 0}</span>
+                      </div>
+                      <div className="property-card__info-item">
+                        <BiArea size={16} />
+                        <span>{property.sqft || 0} м²</span>
+                      </div>
+                    </div>
+                    <p className="property-card__location">{property.location}</p>
+                    <div className="property-card__price">
+                      <span className="property-card__price-amount">
+                        ${propertyMode === 'rent' ? property.price : property.price * 240}
+                      </span>
+                      <span className="property-card__price-period">
+                        {propertyMode === 'rent' ? '/Month' : ''}
+                      </span>
+                    </div>
                   </div>
-                  <div className="property-card__info-item">
-                    <MdOutlineBathtub size={16} />
-                    <span>{property.baths || 0}</span>
-                  </div>
-                  <div className="property-card__info-item">
-                    <BiArea size={16} />
-                    <span>{property.sqft || 0} м²</span>
-                  </div>
-                </div>
-                <p className="property-card__location">{property.location}</p>
-                <div className="property-card__price">
-                  <span className="property-card__price-amount">
-                    ${propertyMode === 'rent' ? property.price : property.price * 240}
-                  </span>
-                  <span className="property-card__price-period">
-                    {propertyMode === 'rent' ? '/Month' : ''}
-                  </span>
+                  {property.isAuction && (
+                    <img 
+                      src="https://png.pngtree.com/png-vector/20220525/ourmid/pngtree-test-drive-rubber-stamp-png-image_4726533.png" 
+                      alt="Аукцион" 
+                      className="property-card__auction-badge"
+                    />
+                  )}
                 </div>
               </div>
             </article>
