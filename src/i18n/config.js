@@ -1,0 +1,533 @@
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import LanguageDetector from 'i18next-browser-languagedetector'
+
+// Базовые переводы для статического контента
+const resources = {
+  ru: {
+    translation: {
+      // Навигация
+      home: 'Главная',
+      favorites: 'Понравились',
+      auction: 'Аукцион',
+      chat: 'Чат',
+      profile: 'Профиль',
+      map: 'Карта',
+      
+      // Категории
+      house: 'Дом',
+      apartment: 'Апартаменты',
+      villa: 'Вилла',
+      
+      // Действия
+      buy: 'Покупка',
+      rent: 'Тест-Драйв',
+      search: 'Поиск',
+      location: 'Локация',
+      
+      // Общие
+      recommended: 'Рекомендуемые',
+      nearby: 'Поблизости',
+      whatsapp: 'Перейти в WhatsApp',
+      contactManager: 'Связаться с менеджером',
+      aiAssistant: 'Умный помощник',
+      downloadAndroid: 'Загрузите на',
+      downloadIOS: 'Загрузите на',
+      
+      // Футер
+      mapLink: 'Карта',
+      tariffs: 'Тарифы и цены',
+      auctionLink: 'Аукцион',
+      legalDocs: 'Юридические документы',
+      advertising: 'Реклама на сайте',
+      career: 'Карьера в Sellyourbrick',
+      mapSearch: 'Поиск на карте',
+      promotion: 'Продвижение',
+      investors: 'Сайт для инвесторов',
+      vacancies: 'Вакансии агентов',
+      tvAdvertising: 'Реклама Sellyourbrick на ТВ',
+      help: 'Помощь',
+      superAgents: 'Программа «Суперагенты»',
+      mortgage: 'Ипотечный калькулятор',
+      mobileVersion: 'Мобильная версия сайта',
+      aboutApp: 'О приложении',
+      userAgreement: 'Пользовательским соглашением',
+      privacyPolicy: 'Политикой конфиденциальности',
+      licenseAgreement: 'Лицензионное соглашение',
+      recommendationTech: 'Рекомендательные технологии',
+      
+      // Страница деталей
+      beds: 'спален',
+      baths: 'ванных',
+      sqft: 'кв.м',
+      bookNow: 'Купить',
+      testDrive: 'Тест-Драйв',
+      share: 'Поделиться',
+      callBroker: 'Позвонить брокеру',
+      chatBroker: 'Написать брокеру',
+      description: 'Описание',
+      characteristics: 'Характеристики',
+      location: 'Расположение',
+      
+      // Уведомления и действия
+      foundProperty: 'Нашли для вас объявление!',
+      goTo: 'Перейти',
+      send: 'Отправить',
+      sendMessage: 'Отправить сообщение',
+      
+      // Форма контакта
+      fullName: 'ФИО',
+      questionDescription: 'Описание вопроса',
+      fullNamePlaceholder: 'Иванов Иван Иванович',
+      questionPlaceholder: 'Опишите ваш вопрос подробно...',
+      emailPlaceholder: 'your@email.com',
+      thankYouMessage: 'Спасибо за обращение! Мы свяжемся с вами в ближайшее время.',
+      
+      // Чат
+      aiGreeting: 'Здравствуйте! Я ваш AI-консультант. Чем могу помочь?',
+      aiResponse: 'Спасибо за ваш вопрос! Я постараюсь помочь вам. Можете задать более подробный вопрос?',
+      
+      // Фильтры
+      forAll: 'Для всех',
+      
+      // Футер
+      footerDescription: 'Sellyourbrick – база проверенных объявлений о продаже и аренде жилой, загородной и коммерческой недвижимости. Онлайн‑сервис №1 в России в категории «Недвижимость», по данным Similarweb на сентябрь 2023 г. Используя сервис, вы соглашаетесь с',
+      userAgreementLink: 'Пользовательским соглашением',
+      and: 'и',
+      privacyPolicyLink: 'Политикой конфиденциальности',
+      payingForServices: 'Оплачивая услуги, вы принимаете',
+      recommendationTechDescription: 'На информационном ресурсе применяются',
+      downloadIn: 'Загрузите в',
+    }
+  },
+  en: {
+    translation: {
+      home: 'Home',
+      favorites: 'Favorites',
+      auction: 'Auction',
+      chat: 'Chat',
+      profile: 'Profile',
+      map: 'Map',
+      house: 'House',
+      apartment: 'Apartment',
+      villa: 'Villa',
+      buy: 'Buy',
+      rent: 'Rent',
+      search: 'Search',
+      location: 'Location',
+      recommended: 'Recommended',
+      nearby: 'Nearby',
+      whatsapp: 'Go to WhatsApp',
+      contactManager: 'Contact Manager',
+      aiAssistant: 'AI Assistant',
+      downloadAndroid: 'Download on',
+      downloadIOS: 'Download on',
+      mapLink: 'Map',
+      tariffs: 'Tariffs and prices',
+      auctionLink: 'Auction',
+      legalDocs: 'Legal documents',
+      advertising: 'Advertising on the site',
+      career: 'Career at Sellyourbrick',
+      mapSearch: 'Map search',
+      promotion: 'Promotion',
+      investors: 'Investor site',
+      vacancies: 'Agent vacancies',
+      tvAdvertising: 'Sellyourbrick TV advertising',
+      help: 'Help',
+      superAgents: 'Super Agents program',
+      mortgage: 'Mortgage calculator',
+      mobileVersion: 'Mobile version of the site',
+      aboutApp: 'About the app',
+      userAgreement: 'User agreement',
+      privacyPolicy: 'Privacy policy',
+      licenseAgreement: 'License agreement',
+      recommendationTech: 'Recommendation technologies',
+      beds: 'bedrooms',
+      baths: 'bathrooms',
+      sqft: 'sq.ft',
+      bookNow: 'Book Now',
+      testDrive: 'Test Drive',
+      share: 'Share',
+      callBroker: 'Call Broker',
+      chatBroker: 'Chat with Broker',
+      description: 'Description',
+      characteristics: 'Characteristics',
+      location: 'Location',
+      
+      // Уведомления и действия
+      foundProperty: 'Found a listing for you!',
+      goTo: 'Go to',
+      send: 'Send',
+      sendMessage: 'Send message',
+      
+      // Форма контакта
+      fullName: 'Full Name',
+      questionDescription: 'Question Description',
+      fullNamePlaceholder: 'John Doe',
+      questionPlaceholder: 'Describe your question in detail...',
+      emailPlaceholder: 'your@email.com',
+      thankYouMessage: 'Thank you for your inquiry! We will contact you soon.',
+      
+      // Чат
+      aiGreeting: 'Hello! I am your AI consultant. How can I help you?',
+      aiResponse: 'Thank you for your question! I will try to help you. Can you ask a more detailed question?',
+      
+      // Фильтры
+      forAll: 'For All',
+      
+      // Футер
+      footerDescription: 'Sellyourbrick is a database of verified listings for sale and rent of residential, country and commercial real estate. Online service #1 in Russia in the "Real Estate" category, according to Similarweb data for September 2023. By using the service, you agree to',
+      userAgreementLink: 'User Agreement',
+      and: 'and',
+      privacyPolicyLink: 'Privacy Policy',
+      payingForServices: 'By paying for services, you accept',
+      recommendationTechDescription: 'The information resource uses',
+      downloadIn: 'Download in',
+    }
+  },
+  de: {
+    translation: {
+      home: 'Startseite',
+      favorites: 'Favoriten',
+      auction: 'Auktion',
+      chat: 'Chat',
+      profile: 'Profil',
+      map: 'Karte',
+      house: 'Haus',
+      apartment: 'Wohnung',
+      villa: 'Villa',
+      buy: 'Kaufen',
+      rent: 'Mieten',
+      search: 'Suchen',
+      location: 'Standort',
+      recommended: 'Empfohlen',
+      nearby: 'In der Nähe',
+      whatsapp: 'Zu WhatsApp gehen',
+      aiAssistant: 'KI-Assistent',
+      contactManager: 'Manager kontaktieren',
+      downloadAndroid: 'Herunterladen auf',
+      downloadIOS: 'Herunterladen auf',
+      mapLink: 'Karte',
+      tariffs: 'Tarife und Preise',
+      auctionLink: 'Auktion',
+      legalDocs: 'Rechtliche Dokumente',
+      advertising: 'Werbung auf der Website',
+      career: 'Karriere bei Sellyourbrick',
+      mapSearch: 'Kartensuche',
+      promotion: 'Förderung',
+      investors: 'Investoren-Website',
+      vacancies: 'Agentenvakanzen',
+      tvAdvertising: 'Sellyourbrick TV-Werbung',
+      help: 'Hilfe',
+      superAgents: 'Super-Agenten-Programm',
+      mortgage: 'Hypothekenrechner',
+      mobileVersion: 'Mobile Version der Website',
+      aboutApp: 'Über die App',
+      userAgreement: 'Nutzungsvereinbarung',
+      privacyPolicy: 'Datenschutzrichtlinie',
+      licenseAgreement: 'Lizenzvereinbarung',
+      recommendationTech: 'Empfehlungstechnologien',
+      beds: 'Schlafzimmer',
+      baths: 'Badezimmer',
+      sqft: 'qm',
+      bookNow: 'Jetzt buchen',
+      testDrive: 'Probefahrt',
+      share: 'Teilen',
+      callBroker: 'Makler anrufen',
+      chatBroker: 'Mit Makler chatten',
+      description: 'Beschreibung',
+      characteristics: 'Eigenschaften',
+      location: 'Standort',
+      
+      // Футер
+      footerDescription: 'Sellyourbrick ist eine Datenbank mit verifizierten Anzeigen zum Verkauf und zur Miete von Wohn-, Land- und Gewerbeimmobilien. Online-Service Nr. 1 in Russland in der Kategorie "Immobilien", laut Similarweb-Daten für September 2023. Durch die Nutzung des Dienstes stimmen Sie zu',
+      userAgreementLink: 'Nutzungsbedingungen',
+      and: 'und',
+      privacyPolicyLink: 'Datenschutzrichtlinie',
+      payingForServices: 'Durch die Zahlung für Dienstleistungen akzeptieren Sie',
+      recommendationTechDescription: 'Die Informationsressource verwendet',
+      downloadIn: 'Herunterladen in',
+    }
+  },
+  es: {
+    translation: {
+      home: 'Inicio',
+      favorites: 'Favoritos',
+      auction: 'Subasta',
+      chat: 'Chat',
+      profile: 'Perfil',
+      map: 'Mapa',
+      house: 'Casa',
+      apartment: 'Apartamento',
+      villa: 'Villa',
+      buy: 'Comprar',
+      rent: 'Alquilar',
+      search: 'Buscar',
+      location: 'Ubicación',
+      recommended: 'Recomendado',
+      nearby: 'Cerca',
+      whatsapp: 'Ir a WhatsApp',
+      aiAssistant: 'Asistente IA',
+      contactManager: 'Contactar con el gerente',
+      downloadAndroid: 'Descargar en',
+      downloadIOS: 'Descargar en',
+      mapLink: 'Mapa',
+      tariffs: 'Tarifas y precios',
+      auctionLink: 'Subasta',
+      legalDocs: 'Documentos legales',
+      advertising: 'Publicidad en el sitio',
+      career: 'Carrera en Sellyourbrick',
+      mapSearch: 'Búsqueda en mapa',
+      promotion: 'Promoción',
+      investors: 'Sitio para inversores',
+      vacancies: 'Vacantes de agentes',
+      tvAdvertising: 'Publicidad de Sellyourbrick en TV',
+      help: 'Ayuda',
+      superAgents: 'Programa Super Agentes',
+      mortgage: 'Calculadora de hipoteca',
+      mobileVersion: 'Versión móvil del sitio',
+      aboutApp: 'Acerca de la aplicación',
+      userAgreement: 'Acuerdo de usuario',
+      privacyPolicy: 'Política de privacidad',
+      licenseAgreement: 'Acuerdo de licencia',
+      recommendationTech: 'Tecnologías de recomendación',
+      beds: 'dormitorios',
+      baths: 'baños',
+      sqft: 'm²',
+      bookNow: 'Reservar ahora',
+      testDrive: 'Prueba de manejo',
+      share: 'Compartir',
+      callBroker: 'Llamar al corredor',
+      chatBroker: 'Chatear con el corredor',
+      description: 'Descripción',
+      characteristics: 'Características',
+      location: 'Ubicación',
+      
+      // Уведомления и действия
+      foundProperty: '¡Encontramos un anuncio para ti!',
+      goTo: 'Ir a',
+      send: 'Enviar',
+      sendMessage: 'Enviar mensaje',
+      
+      // Форма контакта
+      fullName: 'Nombre completo',
+      questionDescription: 'Descripción de la pregunta',
+      fullNamePlaceholder: 'Juan Pérez',
+      questionPlaceholder: 'Describe tu pregunta en detalle...',
+      emailPlaceholder: 'tu@email.com',
+      thankYouMessage: '¡Gracias por tu consulta! Nos pondremos en contacto contigo pronto.',
+      
+      // Чат
+      aiGreeting: '¡Hola! Soy tu consultor de IA. ¿Cómo puedo ayudarte?',
+      aiResponse: '¡Gracias por tu pregunta! Intentaré ayudarte. ¿Puedes hacer una pregunta más detallada?',
+      
+      // Фильтры
+      forAll: 'Para todos',
+      
+      // Футер
+      footerDescription: 'Sellyourbrick es una base de datos de anuncios verificados para la venta y alquiler de bienes raíces residenciales, rurales y comerciales. Servicio en línea #1 en Rusia en la categoría "Bienes raíces", según datos de Similarweb de septiembre de 2023. Al usar el servicio, aceptas',
+      userAgreementLink: 'Acuerdo de usuario',
+      and: 'y',
+      privacyPolicyLink: 'Política de privacidad',
+      payingForServices: 'Al pagar por los servicios, aceptas',
+      recommendationTechDescription: 'El recurso de información utiliza',
+      downloadIn: 'Descargar en',
+    }
+  },
+  fr: {
+    translation: {
+      home: 'Accueil',
+      favorites: 'Favoris',
+      auction: 'Enchères',
+      chat: 'Chat',
+      profile: 'Profil',
+      map: 'Carte',
+      house: 'Maison',
+      apartment: 'Appartement',
+      villa: 'Villa',
+      buy: 'Acheter',
+      rent: 'Louer',
+      search: 'Rechercher',
+      location: 'Emplacement',
+      recommended: 'Recommandé',
+      nearby: 'À proximité',
+      whatsapp: 'Aller à WhatsApp',
+      aiAssistant: 'Assistant IA',
+      contactManager: 'Contacter le gestionnaire',
+      downloadAndroid: 'Télécharger sur',
+      downloadIOS: 'Télécharger sur',
+      mapLink: 'Carte',
+      tariffs: 'Tarifs et prix',
+      auctionLink: 'Enchères',
+      legalDocs: 'Documents juridiques',
+      advertising: 'Publicité sur le site',
+      career: 'Carrière chez Sellyourbrick',
+      mapSearch: 'Recherche sur la carte',
+      promotion: 'Promotion',
+      investors: 'Site pour investisseurs',
+      vacancies: 'Postes vacants d\'agents',
+      tvAdvertising: 'Publicité Sellyourbrick à la TV',
+      help: 'Aide',
+      superAgents: 'Programme Super Agents',
+      mortgage: 'Calculateur d\'hypothèque',
+      mobileVersion: 'Version mobile du site',
+      aboutApp: 'À propos de l\'application',
+      userAgreement: 'Accord utilisateur',
+      privacyPolicy: 'Politique de confidentialité',
+      licenseAgreement: 'Accord de licence',
+      recommendationTech: 'Technologies de recommandation',
+      beds: 'chambres',
+      baths: 'salles de bain',
+      sqft: 'm²',
+      bookNow: 'Réserver maintenant',
+      testDrive: 'Essai routier',
+      share: 'Partager',
+      callBroker: 'Appeler le courtier',
+      chatBroker: 'Chatter avec le courtier',
+      description: 'Description',
+      characteristics: 'Caractéristiques',
+      location: 'Emplacement',
+      
+      // Уведомления и действия
+      foundProperty: 'Nous avons trouvé une annonce pour vous!',
+      goTo: 'Aller à',
+      send: 'Envoyer',
+      sendMessage: 'Envoyer un message',
+      
+      // Форма контакта
+      fullName: 'Nom complet',
+      questionDescription: 'Description de la question',
+      fullNamePlaceholder: 'Jean Dupont',
+      questionPlaceholder: 'Décrivez votre question en détail...',
+      emailPlaceholder: 'votre@email.com',
+      thankYouMessage: 'Merci pour votre demande! Nous vous contacterons bientôt.',
+      
+      // Чат
+      aiGreeting: 'Bonjour! Je suis votre consultant IA. Comment puis-je vous aider?',
+      aiResponse: 'Merci pour votre question! Je vais essayer de vous aider. Pouvez-vous poser une question plus détaillée?',
+      
+      // Фильтры
+      forAll: 'Pour tous',
+      
+      // Футер
+      footerDescription: 'Sellyourbrick est une base de données d\'annonces vérifiées pour la vente et la location de biens immobiliers résidentiels, ruraux et commerciaux. Service en ligne n°1 en Russie dans la catégorie "Immobilier", selon les données de Similarweb pour septembre 2023. En utilisant le service, vous acceptez',
+      userAgreementLink: 'Accord utilisateur',
+      and: 'et',
+      privacyPolicyLink: 'Politique de confidentialité',
+      payingForServices: 'En payant pour les services, vous acceptez',
+      recommendationTechDescription: 'La ressource d\'information utilise',
+      downloadIn: 'Télécharger dans',
+    }
+  },
+  sv: {
+    translation: {
+      home: 'Hem',
+      favorites: 'Favoriter',
+      auction: 'Auktion',
+      chat: 'Chatt',
+      profile: 'Profil',
+      map: 'Karta',
+      house: 'Hus',
+      apartment: 'Lägenhet',
+      villa: 'Villa',
+      buy: 'Köpa',
+      rent: 'Hyra',
+      search: 'Sök',
+      location: 'Plats',
+      recommended: 'Rekommenderad',
+      nearby: 'I närheten',
+      whatsapp: 'Gå till WhatsApp',
+      aiAssistant: 'AI-assistent',
+      contactManager: 'Kontakta manager',
+      downloadAndroid: 'Ladda ner på',
+      downloadIOS: 'Ladda ner på',
+      mapLink: 'Karta',
+      tariffs: 'Tariffer och priser',
+      auctionLink: 'Auktion',
+      legalDocs: 'Juridiska dokument',
+      advertising: 'Reklam på webbplatsen',
+      career: 'Karriär på Sellyourbrick',
+      mapSearch: 'Kartsökning',
+      promotion: 'Befordran',
+      investors: 'Webbplats för investerare',
+      vacancies: 'Agentvakanser',
+      tvAdvertising: 'Sellyourbrick TV-reklam',
+      help: 'Hjälp',
+      superAgents: 'Super Agents-program',
+      mortgage: 'Bolånekalkylator',
+      mobileVersion: 'Mobilversion av webbplatsen',
+      aboutApp: 'Om appen',
+      userAgreement: 'Användaravtal',
+      privacyPolicy: 'Integritetspolicy',
+      licenseAgreement: 'Licensavtal',
+      recommendationTech: 'Rekommendationsteknologier',
+      beds: 'sovrum',
+      baths: 'badrum',
+      sqft: 'kvm',
+      bookNow: 'Boka nu',
+      testDrive: 'Provkörning',
+      share: 'Dela',
+      callBroker: 'Ring mäklare',
+      chatBroker: 'Chatta med mäklare',
+      description: 'Beskrivning',
+      characteristics: 'Egenskaper',
+      location: 'Plats',
+      
+      // Уведомления и действия
+      foundProperty: 'Vi hittade en annons för dig!',
+      goTo: 'Gå till',
+      send: 'Skicka',
+      sendMessage: 'Skicka meddelande',
+      
+      // Форма контакта
+      fullName: 'Fullständigt namn',
+      questionDescription: 'Frågebeskrivning',
+      fullNamePlaceholder: 'Anna Andersson',
+      questionPlaceholder: 'Beskriv din fråga i detalj...',
+      emailPlaceholder: 'din@email.com',
+      thankYouMessage: 'Tack för din förfrågan! Vi kommer att kontakta dig snart.',
+      
+      // Чат
+      aiGreeting: 'Hej! Jag är din AI-konsult. Hur kan jag hjälpa dig?',
+      aiResponse: 'Tack för din fråga! Jag kommer att försöka hjälpa dig. Kan du ställa en mer detaljerad fråga?',
+      
+      // Фильтры
+      forAll: 'För alla',
+      
+      // Футер
+      footerDescription: 'Sellyourbrick är en databas med verifierade annonser för försäljning och uthyrning av bostäder, landsbygd och kommersiella fastigheter. Onlinetjänst #1 i Ryssland i kategorin "Fastigheter", enligt Similarweb-data för september 2023. Genom att använda tjänsten godkänner du',
+      userAgreementLink: 'Användaravtal',
+      and: 'och',
+      privacyPolicyLink: 'Integritetspolicy',
+      payingForServices: 'Genom att betala för tjänster accepterar du',
+      recommendationTechDescription: 'Informationsresursen använder',
+      downloadIn: 'Ladda ner i',
+    }
+  }
+}
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources,
+    fallbackLng: 'ru',
+    debug: true, // Включаем отладку
+    interpolation: {
+      escapeValue: false
+    },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage']
+    },
+    react: {
+      useSuspense: false // Отключаем Suspense для упрощения
+    }
+  })
+
+// Отладочная информация при инициализации
+console.log('🚀 i18n initialized with languages:', Object.keys(resources))
+console.log('🚀 Default language:', i18n.language)
+
+export default i18n
+

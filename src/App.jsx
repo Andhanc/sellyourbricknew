@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import './App.css'
 import PropertyDetailPage from './pages/PropertyDetailPage'
 import MapPage from './pages/MapPage'
@@ -51,13 +52,6 @@ import {
   PiWarehouse,
 } from 'react-icons/pi'
 
-const getPropertyTypes = (t) => [
-  { label: 'House', displayLabel: t.house, icon: PiHouseLine, image: '/house.png' },
-  { label: 'Map', displayLabel: t.map, icon: FiMap, isMap: true, image: '/map.png' },
-  { label: 'Apartment', displayLabel: t.apartment, icon: PiBuildingApartment, image: '/appartaments.png' },
-  { label: 'Villa', displayLabel: t.villa, icon: PiBuildings, image: '/villa.png' },
-]
-
 const resortLocations = [
   'Costa Adeje, Tenerife',
   'Playa de las Américas, Tenerife',
@@ -69,14 +63,6 @@ const resortLocations = [
   'Golf del Sur, Tenerife',
   'Callao Salvaje, Tenerife',
   'El Médano, Tenerife',
-]
-
-const getNavigationItems = (t) => [
-  { id: 'home', label: t.home, icon: FaHome },
-  { id: 'favourite', label: t.favorites, icon: FaHeartSolid },
-  { id: 'auction', label: t.auction, icon: FaGavel },
-  { id: 'chat', label: t.chat, icon: FaComment },
-  { id: 'profile', label: t.profile, icon: FaUser },
 ]
 
 const recommendedProperties = [
@@ -518,16 +504,42 @@ function App() {
     message: '',
   })
   const [isChatOpen, setIsChatOpen] = useState(false)
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 1,
-      text: 'Здравствуйте! Я ваш AI-консультант. Чем могу помочь?',
-      sender: 'bot',
-      timestamp: new Date(),
-    },
-  ])
+  const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
-  const [language, setLanguage] = useState('ru')
+  const { t, i18n } = useTranslation()
+  
+  // Инициализируем первое сообщение бота при загрузке
+  useEffect(() => {
+    if (chatMessages.length === 0) {
+      setChatMessages([{
+        id: 1,
+        text: t('aiGreeting'),
+        sender: 'bot',
+        timestamp: new Date(),
+      }])
+    }
+  }, [i18n.language, t, chatMessages.length])
+  
+  // Отладочная информация о состоянии i18n
+  useEffect(() => {
+    console.log('🌐 i18n initialized:', i18n.isInitialized)
+    console.log('🌐 Current language:', i18n.language)
+    console.log('🌐 Available languages:', i18n.languages)
+    console.log('🌐 Test translation (home):', t('home'))
+  }, [i18n.language, i18n.isInitialized, t])
+  
+  // Инициализируем первое сообщение бота при загрузке
+  useEffect(() => {
+    if (chatMessages.length === 0) {
+      setChatMessages([{
+        id: 1,
+        text: t('aiGreeting'),
+        sender: 'bot',
+        timestamp: new Date(),
+      }])
+    }
+  }, [i18n.language, t])
+  
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [showMap, setShowMap] = useState(false)
   const [selectedChat, setSelectedChat] = useState(null)
@@ -536,12 +548,14 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [filteredProperties, setFilteredProperties] = useState(null)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
-  const [activeFilter, setActiveFilter] = useState('Для всех')
+  const [activeFilter, setActiveFilter] = useState(t('forAll'))
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
   const locationRef = useRef(null)
   const chatMessagesRef = useRef(null)
   const notificationRef = useRef(null)
   const menuRef = useRef(null)
+  const languageDropdownRef = useRef(null)
 
   const heroImages = {
     rent: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
@@ -549,57 +563,7 @@ function App() {
   }
   
   const heroImage = heroImages[propertyMode]
-
-  const translations = {
-    ru: {
-      rent: 'Тест-Драйв',
-      buy: 'Покупка',
-      house: 'Дом',
-      map: 'Карта',
-      apartment: 'Апартаменты',
-      villa: 'Вилла',
-      home: 'Главная',
-      favorites: 'Понравились',
-      auction: 'Аукцион',
-      chat: 'Чат',
-      profile: 'Профиль',
-      location: 'Локация',
-      search: 'Поиск',
-      recommended: 'Рекомендуемые',
-      nearby: 'Поблизости',
-      whatsapp: 'Перейти в WhatsApp',
-      contactManager: 'Связаться с менеджером',
-      downloadAndroid: 'Загрузите на',
-      downloadIOS: 'Загрузите на',
-      englishVersion: 'English version',
-      russianVersion: 'Русская версия',
-    },
-    en: {
-      rent: 'Rent',
-      buy: 'Buy',
-      house: 'House',
-      map: 'Map',
-      apartment: 'Apartment',
-      villa: 'Villa',
-      home: 'Home',
-      favorites: 'Favorites',
-      auction: 'Auction',
-      chat: 'Chat',
-      profile: 'Profile',
-      location: 'Location',
-      search: 'Search',
-      recommended: 'Recommended',
-      nearby: 'Nearby',
-      whatsapp: 'Go to WhatsApp',
-      contactManager: 'Contact Manager',
-      downloadAndroid: 'Download on',
-      downloadIOS: 'Download on',
-      englishVersion: 'English version',
-      russianVersion: 'Русская версия',
-    },
-  }
-
-  const t = translations[language]
+  
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -637,11 +601,6 @@ function App() {
       document.body.style.backgroundColor = 'transparent'
       document.documentElement.style.backgroundColor = 'transparent'
       document.body.style.overflow = 'hidden'
-      // Скрываем переключатель
-      const modeSwitcher = document.querySelector('.mode-switcher')
-      if (modeSwitcher) {
-        modeSwitcher.style.display = 'none'
-      }
       return () => {
         document.body.style.backgroundColor = originalBodyBg
         document.documentElement.style.backgroundColor = originalHtmlBg
@@ -685,7 +644,7 @@ function App() {
       fullName: '',
       message: '',
     })
-    alert('Спасибо за обращение! Мы свяжемся с вами в ближайшее время.')
+    alert(t('thankYouMessage'))
   }
 
   const toggleChat = () => {
@@ -716,7 +675,7 @@ function App() {
         setChatMessages((current) => {
           const botResponse = {
             id: current.length + 1,
-            text: 'Спасибо за ваш вопрос! Я постараюсь помочь вам. Можете задать более подробный вопрос?',
+            text: i18n.t('aiResponse'),
             sender: 'bot',
             timestamp: new Date(),
           }
@@ -734,9 +693,77 @@ function App() {
     }
   }, [chatMessages, isChatOpen])
 
-  const handleLanguageChange = () => {
-    setLanguage((prev) => (prev === 'ru' ? 'en' : 'ru'))
+  const languages = [
+    { code: 'ru', name: 'Русский', flagClass: 'footer__flag--ru' },
+    { code: 'en', name: 'English', flagClass: 'footer__flag--gb' },
+    { code: 'de', name: 'Deutsch', flagClass: 'footer__flag--de' },
+    { code: 'es', name: 'Español', flagClass: 'footer__flag--es' },
+    { code: 'fr', name: 'Français', flagClass: 'footer__flag--fr' },
+    { code: 'sv', name: 'Svenska', flagClass: 'footer__flag--sv' },
+  ]
+
+  const handleLanguageChange = async (langCode) => {
+    try {
+      console.log('🔄 Changing language to:', langCode)
+      console.log('📊 Current i18n language before change:', i18n.language)
+      console.log('📊 i18n ready:', i18n.isInitialized)
+      
+      // Меняем язык в i18n - это обновит весь статический контент
+      await i18n.changeLanguage(langCode)
+      
+      console.log('✅ Language changed to:', i18n.language)
+      console.log('📝 Test translation (home):', t('home'))
+      console.log('📝 Test translation (recommended):', t('recommended'))
+      
+      setIsLanguageDropdownOpen(false)
+    } catch (error) {
+      console.error('❌ Error changing language:', error)
+    }
   }
+
+  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0]
+  
+  // Функции для получения переведенных элементов (обновляются при смене языка)
+  const getPropertyTypes = useMemo(() => {
+    console.log('🔄 Updating getPropertyTypes, language:', i18n.language)
+    return [
+      { label: 'House', displayLabel: t('house'), icon: PiHouseLine, image: '/house.png' },
+      { label: 'Map', displayLabel: t('map'), icon: FiMap, isMap: true, image: '/map.png' },
+      { label: 'Apartment', displayLabel: t('apartment'), icon: PiBuildingApartment, image: '/appartaments.png' },
+      { label: 'Villa', displayLabel: t('villa'), icon: PiBuildings, image: '/villa.png' },
+    ]
+  }, [t, i18n.language])
+  
+  const navigationItems = useMemo(() => {
+    console.log('🔄 Updating navigationItems, language:', i18n.language)
+    return [
+      { id: 'home', label: t('home'), icon: FaHome },
+      { id: 'favourite', label: t('favorites'), icon: FaHeartSolid },
+      { id: 'auction', label: t('auction'), icon: FaGavel },
+      { id: 'chat', label: t('chat'), icon: FaComment },
+      { id: 'profile', label: t('profile'), icon: FaUser },
+    ]
+  }, [t, i18n.language])
+  
+  // Автоматический перевод пользовательского контента отключен из-за лимитов API
+  // Статический контент переводится через i18next
+
+  // Закрытие выпадающего списка при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+        setIsLanguageDropdownOpen(false)
+      }
+    }
+
+    if (isLanguageDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isLanguageDropdownOpen])
 
   const handleCategoryClick = (categoryLabel) => {
     if (categoryLabel === 'Map') {
@@ -891,7 +918,6 @@ function App() {
     )
   }
 
-  const navigationItems = getNavigationItems(t)
 
   // Если выбран чат, показываем страницу чата
   if (selectedChat) {
@@ -948,6 +974,8 @@ function App() {
         navigationItems={navigationItems}
         activeNav={activeNav}
         onNavChange={setActiveNav}
+        language={i18n.language}
+        onLanguageChange={handleLanguageChange}
       />
     )
   }
@@ -966,7 +994,7 @@ function App() {
                 <IoLocationOutline size={20} />
               </span>
               <div className="header__location-info" ref={locationRef}>
-                <span className="header__location-label">{t.location}</span>
+                <span className="header__location-label">{t('location')}</span>
                 <button
                   type="button"
                   className="header__location-select"
@@ -1033,7 +1061,7 @@ function App() {
                       <div className="notification-panel__list">
                         <div className="notification-item notification-item--property">
                           <div className="notification-item__content">
-                            <h4 className="notification-item__title">Нашли для вас объявление!</h4>
+                            <h4 className="notification-item__title">{t('foundProperty')}</h4>
                             <div className="notification-item__property">
                               <div className="notification-item__image">
                                 <img 
@@ -1055,7 +1083,7 @@ function App() {
                                     handlePropertyClick('recommended', recommendedProperties[0].id)
                                   }}
                                 >
-                                  Перейти
+                                  {t('goTo')}
                                   <FiArrowRight size={18} />
                                 </button>
                               </div>
@@ -1071,7 +1099,7 @@ function App() {
                 type="button" 
                 className="header__action-btn"
                 onClick={() => setActiveNav('profile')}
-                aria-label="Профиль"
+                aria-label={t('profile')}
               >
                 <FiUser size={18} />
               </button>
@@ -1087,7 +1115,7 @@ function App() {
               <IoLocationOutline size={20} />
             </span>
             <div className="new-header__location-info" ref={locationRef}>
-              <span className="new-header__location-label">{t.location}</span>
+              <span className="new-header__location-label">{t('location')}</span>
               <button
                 type="button"
                 className="new-header__location-select"
@@ -1283,28 +1311,28 @@ function App() {
                 className={`new-header__filter-btn ${activeNav === 'chat' ? 'new-header__filter-btn--active' : ''}`}
                 onClick={() => setActiveNav('chat')}
               >
-                <span>Чат</span>
+                <span>{t('chat')}</span>
               </button>
               <button
                 type="button"
                 className={`new-header__filter-btn ${activeNav === 'favourite' ? 'new-header__filter-btn--active' : ''}`}
                 onClick={() => setActiveNav('favourite')}
               >
-                <span>Понравившиеся</span>
+                <span>{t('favorites')}</span>
               </button>
               <button
                 type="button"
                 className={`new-header__filter-btn ${isChatOpen ? 'new-header__filter-btn--active' : ''}`}
                 onClick={toggleChat}
               >
-                <span>Умный помощник</span>
+                <span>{t('aiAssistant') || 'Умный помощник'}</span>
               </button>
               <button
                 type="button"
                 className={`new-header__filter-btn ${showMap ? 'new-header__filter-btn--active' : ''}`}
                 onClick={() => setShowMap(true)}
               >
-                <span>Карта</span>
+                <span>{t('map')}</span>
               </button>
             </div>
 
@@ -1317,7 +1345,7 @@ function App() {
             className="new-header__auction-btn"
             onClick={() => setActiveNav('auction')}
           >
-            Аукцион
+            {t('auction')}
           </button>
           <button className="new-header__user-btn">
             <FiUser size={20} />
@@ -1390,27 +1418,6 @@ function App() {
         </div>
         </div>
       </header>
-
-      {/* Блок Аренда/Покупка сдвинут вниз */}
-      <section className="mode-switcher">
-        <div className="mode-switcher__container">
-          <button
-            type="button"
-            className={`mode-switcher__option ${propertyMode === 'buy' ? 'mode-switcher__option--active' : ''}`}
-            onClick={() => setPropertyMode('buy')}
-          >
-            <span className="mode-switcher__label">{t.buy}</span>
-          </button>
-          <button
-            type="button"
-            className={`mode-switcher__option ${propertyMode === 'rent' ? 'mode-switcher__option--active' : ''}`}
-            onClick={() => setPropertyMode('rent')}
-          >
-            <span className="mode-switcher__label">{t.rent}</span>
-          </button>
-          <div className={`mode-switcher__indicator ${propertyMode === 'rent' ? 'mode-switcher__indicator--right' : ''}`} />
-        </div>
-      </section>
         </div>
 
       <section className="search">
@@ -1418,7 +1425,7 @@ function App() {
           <FiSearch size={18} className="search__icon" />
           <input
             type="text"
-            placeholder={t.search}
+            placeholder={t('search')}
             className="search__input"
           />
           <button type="button" className="search__filter">
@@ -1701,7 +1708,7 @@ function App() {
               </div>
               <div className="contact-form__field">
                 <label htmlFor="fullName-contact" className="contact-form__label">
-                  ФИО
+                  {t('fullName')}
                 </label>
                 <input
                   type="text"
@@ -1710,14 +1717,14 @@ function App() {
                   value={contactForm.fullName}
                   onChange={handleContactFormChange}
                   className="contact-form__input"
-                  placeholder="Иванов Иван Иванович"
+                  placeholder={t('fullNamePlaceholder')}
                   required
                 />
               </div>
             </div>
             <div className="contact-form__field">
               <label htmlFor="message-contact" className="contact-form__label">
-                Описание вопроса
+                {t('questionDescription')}
               </label>
               <textarea
                 id="message-contact"
@@ -1725,13 +1732,13 @@ function App() {
                 value={contactForm.message}
                 onChange={handleContactFormChange}
                 className="contact-form__textarea"
-                placeholder="Опишите ваш вопрос подробно..."
+                  placeholder={t('questionPlaceholder')}
                 rows="5"
                 required
               />
             </div>
             <button type="submit" className="contact-form__submit">
-              <span>Отправить</span>
+              <span>{t('send')}</span>
               <FiArrowRight size={18} />
             </button>
           </form>
@@ -1749,14 +1756,14 @@ function App() {
         </div>
       )}
       <nav className="categories">
-        {getPropertyTypes(t).map((type) => {
+        {getPropertyTypes.map((type) => {
           const IconComponent = type.icon
           const isActive = activeCategory === type.label
           return (
             <button
               type="button"
               className={`categories__item ${isActive ? 'categories__item--active' : ''}`}
-              key={type.label}
+              key={`${type.label}-${i18n.language}`}
               onClick={() => handleCategoryClick(type.label)}
             >
               <span className="categories__icon">
@@ -1778,7 +1785,7 @@ function App() {
 
       <section className="section section--recommended">
         <div className="section__header">
-          <h2 className="section__title">{t.recommended} Property</h2>
+          <h2 className="section__title">{t('recommended')} Property</h2>
         </div>
 
         <div className="property-list property-list--horizontal">
@@ -1845,7 +1852,7 @@ function App() {
 
       <section className="section section--spaced">
         <div className="section__header">
-          <h2 className="section__title">{t.nearby} Property</h2>
+          <h2 className="section__title">{t('nearby')} Property</h2>
         </div>
 
         <div className="property-list property-list--vertical">
@@ -1922,7 +1929,7 @@ function App() {
               <button
                 type="button"
                 className={`bottom-nav__center ${isActive ? 'bottom-nav__center--active' : ''}`}
-                key={item.id}
+                key={`${item.id}-${i18n.language}`}
                 onClick={() => setActiveNav(item.id)}
                 aria-label={item.label}
               >
@@ -1935,7 +1942,7 @@ function App() {
             <button
               type="button"
               className={`bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}
-              key={item.id}
+              key={`${item.id}-${i18n.language}`}
               onClick={() => setActiveNav(item.id)}
               aria-label={item.label}
             >
@@ -2010,7 +2017,7 @@ function App() {
             <button
               type="submit"
               className="chat-widget__send"
-              aria-label="Отправить сообщение"
+              aria-label={t('sendMessage')}
             >
               <FiSend size={18} />
             </button>
@@ -2023,47 +2030,47 @@ function App() {
           {/* Верхний блок ссылок, как на ЦИАН — по колонкам */}
           <div className="footer__menu">
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Карта</button>
-              <button type="button" className="footer__menu-link">Тарифы и цены</button>
-              <button type="button" className="footer__menu-link">Аукцион</button>
+              <button type="button" className="footer__menu-link">{t('mapLink')}</button>
+              <button type="button" className="footer__menu-link">{t('tariffs')}</button>
+              <button type="button" className="footer__menu-link">{t('auction')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Юридические документы</button>
-              <button type="button" className="footer__menu-link">Реклама на сайте</button>
-              <button type="button" className="footer__menu-link">Карьера в Sellyourbrick</button>
+              <button type="button" className="footer__menu-link">{t('legalDocs')}</button>
+              <button type="button" className="footer__menu-link">{t('advertising')}</button>
+              <button type="button" className="footer__menu-link">{t('career')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Поиск на карте</button>
-              <button type="button" className="footer__menu-link">Продвижение</button>
-              <button type="button" className="footer__menu-link">Сайт для инвесторов</button>
+              <button type="button" className="footer__menu-link">{t('mapSearch')}</button>
+              <button type="button" className="footer__menu-link">{t('promotion')}</button>
+              <button type="button" className="footer__menu-link">{t('investors')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Аукцион</button>
-              <button type="button" className="footer__menu-link">Вакансии агентов</button>
+              <button type="button" className="footer__menu-link">{t('auction')}</button>
+              <button type="button" className="footer__menu-link">{t('vacancies')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Реклама Sellyourbrick на ТВ</button>
-              <button type="button" className="footer__menu-link">Помощь</button>
+              <button type="button" className="footer__menu-link">{t('tvAdvertising')}</button>
+              <button type="button" className="footer__menu-link">{t('help')}</button>
             </div>
             <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">Программа «Суперагенты»</button>
-              <button type="button" className="footer__menu-link">Ипотечный калькулятор</button>
+              <button type="button" className="footer__menu-link">{t('superAgents')}</button>
+              <button type="button" className="footer__menu-link">{t('mortgage')}</button>
             </div>
           </div>
 
           {/* Текстовый блок описания сервиса */}
           <div className="footer__description">
             <p className="footer__description-text">
-              Sellyourbrick – база проверенных объявлений о продаже и аренде жилой, загородной и коммерческой недвижимости. Онлайн‑сервис №1 в России в категории «Недвижимость», по данным Similarweb на сентябрь 2023 г. Используя сервис, вы соглашаетесь с{' '}
-              <button type="button" className="footer__description-link">Пользовательским соглашением</button>{' '}
-              и{' '}
-              <button type="button" className="footer__description-link">Политикой конфиденциальности</button>{' '}
-              Sellyourbrick. Оплачивая услуги, вы принимаете{' '}
-              <button type="button" className="footer__description-link">Лицензионное соглашение</button>.
+              {t('footerDescription')}{' '}
+              <button type="button" className="footer__description-link">{t('userAgreementLink')}</button>{' '}
+              {t('and')}{' '}
+              <button type="button" className="footer__description-link">{t('privacyPolicyLink')}</button>{' '}
+              Sellyourbrick. {t('payingForServices')}{' '}
+              <button type="button" className="footer__description-link">{t('licenseAgreement')}</button>.
             </p>
             <p className="footer__description-text">
-              На информационном ресурсе применяются{' '}
-              <button type="button" className="footer__description-link">Рекомендательные технологии</button>.
+              {t('recommendationTechDescription')}{' '}
+              <button type="button" className="footer__description-link">{t('recommendationTech')}</button>.
             </p>
           </div>
 
@@ -2106,13 +2113,13 @@ function App() {
                 type="button"
                 className="footer__store-btn"
                 onClick={() => handleDownloadApp('ios')}
-                aria-label="Загрузите в App Store"
+                aria-label={`${t('downloadIn')} App Store`}
               >
                 <div className="footer__store-icon">
                   <FaApple size={18} />
                 </div>
                 <div className="footer__store-text">
-                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-label">{t('downloadIn')}</span>
                   <span className="footer__store-name">App Store</span>
                 </div>
               </button>
@@ -2120,13 +2127,13 @@ function App() {
               <button
                 type="button"
                 className="footer__store-btn"
-                aria-label="Загрузите в RuStore"
+                aria-label={`${t('downloadIn')} RuStore`}
               >
                 <div className="footer__store-icon footer__store-icon--rustore">
                   <span className="footer__store-icon-text">Ru</span>
                 </div>
                 <div className="footer__store-text">
-                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-label">{t('downloadIn')}</span>
                   <span className="footer__store-name">RuStore</span>
                 </div>
               </button>
@@ -2134,19 +2141,49 @@ function App() {
               <button
                 type="button"
                 className="footer__store-btn"
-                aria-label="Загрузите в AppGallery"
+                aria-label={`${t('downloadIn')} AppGallery`}
               >
                 <div className="footer__store-icon footer__store-icon--appgallery">
                   <span className="footer__store-icon-text">AG</span>
                 </div>
                 <div className="footer__store-text">
-                  <span className="footer__store-label">Загрузите в</span>
+                  <span className="footer__store-label">{t('downloadIn')}</span>
                   <span className="footer__store-name">AppGallery</span>
                 </div>
               </button>
             </div>
 
-            <div className="footer__age-badge">0+</div>
+            <div className="footer__language-selector" ref={languageDropdownRef}>
+              <button
+                type="button"
+                className="footer__language-selector-btn"
+                onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                aria-label="Выбрать язык"
+              >
+                <span className={`footer__language-flag ${currentLanguage.flagClass}`}></span>
+                <span className="footer__language-name">{currentLanguage.name}</span>
+                <FiChevronDown 
+                  size={16} 
+                  className={`footer__language-chevron ${isLanguageDropdownOpen ? 'footer__language-chevron--open' : ''}`}
+                />
+              </button>
+              {isLanguageDropdownOpen && (
+                <div className="footer__language-dropdown">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      className={`footer__language-option ${i18n.language === lang.code ? 'footer__language-option--active' : ''}`}
+                      onClick={() => handleLanguageChange(lang.code)}
+                    >
+                      <span className={`footer__language-flag ${lang.flagClass}`}></span>
+                      <span className="footer__language-name">{lang.name}</span>
+                      {i18n.language === lang.code && <FiCheck size={16} className="footer__language-check" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </footer>

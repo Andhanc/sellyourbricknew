@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   FiArrowLeft,
   FiShare2,
   FiHeart,
   FiChevronLeft,
   FiChevronRight,
+  FiChevronDown,
+  FiCheck,
 } from 'react-icons/fi'
 import {
   FaHeart as FaHeartSolid,
@@ -49,17 +52,62 @@ function PropertyDetailPage({
   navigationItems,
   activeNav,
   onNavChange,
+  language = 'ru',
+  onLanguageChange,
 }) {
+  const { t, i18n } = useTranslation()
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
+  const languageDropdownRef = useRef(null)
+  
+  // Автоматический перевод пользовательского контента отключен из-за лимитов API
+  // Используем исходное свойство
+  const displayProperty = property
+
+  const languages = [
+    { code: 'ru', name: 'Русский', flagClass: 'footer__flag--ru' },
+    { code: 'en', name: 'English', flagClass: 'footer__flag--gb' },
+    { code: 'de', name: 'Deutsch', flagClass: 'footer__flag--de' },
+    { code: 'es', name: 'Español', flagClass: 'footer__flag--es' },
+    { code: 'fr', name: 'Français', flagClass: 'footer__flag--fr' },
+    { code: 'sv', name: 'Svenska', flagClass: 'footer__flag--sv' },
+  ]
+
+  const handleLanguageSelect = async (langCode) => {
+    await i18n.changeLanguage(langCode)
+    if (onLanguageChange) {
+      onLanguageChange(langCode)
+    }
+    setIsLanguageDropdownOpen(false)
+  }
+
+  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0]
+
+  // Закрытие выпадающего списка при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+        setIsLanguageDropdownOpen(false)
+      }
+    }
+
+    if (isLanguageDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isLanguageDropdownOpen])
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const thumbnailScrollRef = useRef(null)
 
   // Создаем массив изображений - если есть массив images, используем его, иначе создаем из одного изображения
-  const images = property.images && property.images.length > 0 
-    ? property.images 
-    : property.image 
-      ? [property.image]
+  const images = displayProperty.images && displayProperty.images.length > 0 
+    ? displayProperty.images 
+    : displayProperty.image 
+      ? [displayProperty.image]
       : ['https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80'] // Fallback изображение
-  const currentImage = images[currentImageIndex] || images[0] || property.image
+  const currentImage = images[currentImageIndex] || images[0] || displayProperty.image
 
   const handlePreviousImage = () => {
     setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))
@@ -92,7 +140,7 @@ function PropertyDetailPage({
   }, [currentImageIndex])
 
   // Формируем информацию о квартире для заголовка
-  const propertyInfo = `2-комн. квартира, ${property.sqft || 58} м², 9/10 этаж`
+  const propertyInfo = `2-комн. квартира, ${displayProperty.sqft || 58} м², 9/10 этаж`
 
   return (
     <div className="property-detail-page-new">
@@ -123,7 +171,7 @@ function PropertyDetailPage({
             <div className="property-detail-gallery__main">
               <img
                 src={currentImage}
-                alt={property.name}
+                alt={displayProperty.name}
                 className="property-detail-gallery__main-image"
               />
               {images.length > 1 && (
@@ -187,7 +235,7 @@ function PropertyDetailPage({
                       }`}
                       onClick={() => handleThumbnailClick(index)}
                     >
-                      <img src={img} alt={`${property.name} ${index + 1}`} />
+                      <img src={img} alt={`${displayProperty.name} ${index + 1}`} />
                     </button>
                   ))}
                 </div>
@@ -223,18 +271,18 @@ function PropertyDetailPage({
               
               <div className="property-detail-sidebar__location">
                 <IoLocationOutline size={18} />
-                <span>{property.location || 'Новгородская область, Великий Новгород, Большая Московская улица, 128/10'}</span>
+                <span>{displayProperty.location || 'Новгородская область, Великий Новгород, Большая Московская улица, 128/10'}</span>
               </div>
 
               {/* Характеристики */}
               <div className="property-detail-sidebar__features">
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">Площадь</span>
-                  <span className="property-detail-sidebar__feature-value">{property.sqft || 58} м²</span>
+                  <span className="property-detail-sidebar__feature-value">{displayProperty.sqft || 58} м²</span>
                 </div>
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">Комнат</span>
-                  <span className="property-detail-sidebar__feature-value">{property.beds || 2}</span>
+                  <span className="property-detail-sidebar__feature-value">{displayProperty.beds || 2}</span>
                 </div>
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">Этаж</span>
@@ -243,9 +291,9 @@ function PropertyDetailPage({
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">Продавец</span>
                   <span className="property-detail-sidebar__feature-value">
-                    {property.owner?.firstName && property.owner?.lastName
-                      ? `${property.owner.firstName} ${property.owner.lastName}`
-                      : property.broker?.name || 'Александр Иванов'}
+                    {displayProperty.owner?.firstName && displayProperty.owner?.lastName
+                      ? `${displayProperty.owner.firstName} ${displayProperty.owner.lastName}`
+                      : displayProperty.broker?.name || 'Александр Иванов'}
                   </span>
                 </div>
               </div>
@@ -254,7 +302,7 @@ function PropertyDetailPage({
               <div className="property-detail-sidebar__description">
                 <h2 className="property-detail-sidebar__description-title">Описание</h2>
                 <p className="property-detail-sidebar__description-text">
-                  {property.description || 'Предлагается в аренду 2 комнатная светлая квартира в районе Ивушки на Большой Московской, д. 128/10. рядом с магазином Осень. (это плюс). Квартира с косметическим ремонтом, теплая. Из мебели и техники есть всё необходимое для проживания. Двухспальная тахта, двухспальный диван, стенка, прихожая, комод, кондиционер, стильная машина, холодильник, кухонный гарнитур.'}
+                  {displayProperty.description || 'Предлагается в аренду 2 комнатная светлая квартира в районе Ивушки на Большой Московской, д. 128/10. рядом с магазином Осень. (это плюс). Квартира с косметическим ремонтом, теплая. Из мебели и техники есть всё необходимое для проживания. Двухспальная тахта, двухспальный диван, стенка, прихожая, комод, кондиционер, стильная машина, холодильник, кухонный гарнитур.'}
                 </p>
               </div>
 
@@ -410,7 +458,37 @@ function PropertyDetailPage({
               </button>
             </div>
 
-            <div className="footer__age-badge">0+</div>
+            <div className="footer__language-selector" ref={languageDropdownRef}>
+              <button
+                type="button"
+                className="footer__language-selector-btn"
+                onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                aria-label="Выбрать язык"
+              >
+                <span className={`footer__language-flag ${currentLanguage.flagClass}`}></span>
+                <span className="footer__language-name">{currentLanguage.name}</span>
+                <FiChevronDown 
+                  size={16} 
+                  className={`footer__language-chevron ${isLanguageDropdownOpen ? 'footer__language-chevron--open' : ''}`}
+                />
+              </button>
+              {isLanguageDropdownOpen && (
+                <div className="footer__language-dropdown">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      className={`footer__language-option ${i18n.language === lang.code ? 'footer__language-option--active' : ''}`}
+                      onClick={() => handleLanguageSelect(lang.code)}
+                    >
+                      <span className={`footer__language-flag ${lang.flagClass}`}></span>
+                      <span className="footer__language-name">{lang.name}</span>
+                      {i18n.language === lang.code && <FiCheck size={16} className="footer__language-check" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </footer>
