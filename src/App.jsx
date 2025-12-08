@@ -6,6 +6,7 @@ import MapPage from './pages/MapPage'
 import ProfilePage from './pages/ProfilePage'
 import ChatListPage from './pages/ChatListPage'
 import ChatPage from './pages/ChatPage'
+import FavoritesPage from './pages/FavoritesPage'
 import {
   FiBell,
   FiSearch,
@@ -946,6 +947,25 @@ function App() {
         activeNav={activeNav}
         onNavChange={setActiveNav}
         onChatSelect={setSelectedChat}
+      />
+    )
+  }
+
+  // Если выбрана страница избранного
+  if (activeNav === 'favourite') {
+    return (
+      <FavoritesPage
+        favoriteProperties={favoriteProperties}
+        onToggleFavorite={toggleFavorite}
+        onPropertyClick={handlePropertyClick}
+        navigationItems={navigationItems}
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+        recommendedProperties={recommendedProperties}
+        nearbyProperties={nearbyProperties}
+        apartmentsData={apartmentsData}
+        villasData={villasData}
+        propertyMode={propertyMode}
       />
     )
   }
