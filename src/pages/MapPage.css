@@ -15,7 +15,7 @@
 }
 
 .map-sidebar {
-  width: 400px;
+  width: 50%;
   background: #fff;
   border-left: 1px solid #e0e0e0;
   display: flex;
@@ -74,17 +74,18 @@
 }
 
 .filters-button-map {
-  width: 100%;
-  padding: 12px;
+  width: auto;
+  padding: 10px 20px;
   background: #333;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   margin-top: 12px;
   transition: background 0.2s;
+  align-self: flex-start;
 }
 
 .filters-button-map:hover {
@@ -106,17 +107,22 @@
   overflow-x: hidden;
   padding: 12px;
   min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .map-property-card {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  margin-bottom: 12px;
   border: 2px solid transparent;
+  width: 100%;
+  max-width: 100%;
 }
 
 .map-property-card:hover {
@@ -129,16 +135,42 @@
   border-color: #4A90E2;
 }
 
-.map-property-image {
+.map-property-images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.map-property-main-image {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  height: 200px;
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
 }
 
-.map-property-image img {
+.map-property-main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-property-thumbnails {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.map-property-thumbnail {
+  flex: 1;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.map-property-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -211,7 +243,7 @@
   background: #e8e8e8;
   overflow: hidden;
   height: 100vh;
-  width: calc(100vw - 400px);
+  width: 50%;
   min-width: 0;
   align-self: flex-start;
 }

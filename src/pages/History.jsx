@@ -1,0 +1,303 @@
+import { Link } from 'react-router-dom'
+import Footer from '../components/Footer'
+import './History.css'
+
+const History = () => {
+  // Примерные данные истории
+  const purchaseHistory = [
+    {
+      id: 1,
+      propertyTitle: "2-комн. квартира, 58 м², 9/10 этаж",
+      location: "Новгородская область, Великий Новгород, Большая Московская улица, 128/10",
+      purchasePrice: 3500000,
+      purchaseDate: "2024-01-15",
+      status: "completed",
+      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800"
+    },
+    {
+      id: 2,
+      propertyTitle: "3-комн. квартира, 85 м², 5/9 этаж",
+      location: "Москва, ул. Ленина, д. 45",
+      purchasePrice: 12500000,
+      purchaseDate: "2023-11-20",
+      status: "completed",
+      image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800"
+    }
+  ]
+
+  const bidHistory = [
+    {
+      id: 1,
+      propertyTitle: "1-комн. квартира, 35 м², 3/5 этаж",
+      location: "Санкт-Петербург, Невский проспект, д. 12",
+      bidAmount: 2800000,
+      bidDate: "2024-01-20",
+      bidTime: "14:30",
+      status: "active",
+      currentBid: 3200000,
+      endTime: "2024-01-25T18:00:00"
+    },
+    {
+      id: 2,
+      propertyTitle: "Студия, 28 м², 2/10 этаж",
+      location: "Москва, ул. Тверская, д. 8",
+      bidAmount: 1500000,
+      bidDate: "2024-01-18",
+      bidTime: "10:15",
+      status: "outbid",
+      currentBid: 1800000
+    },
+    {
+      id: 3,
+      propertyTitle: "2-комн. квартира, 65 м², 7/12 этаж",
+      location: "Казань, ул. Баумана, д. 25",
+      bidAmount: 4500000,
+      bidDate: "2024-01-10",
+      bidTime: "16:45",
+      status: "won",
+      finalPrice: 4500000
+    },
+    {
+      id: 4,
+      propertyTitle: "4-комн. квартира, 120 м², 1/3 этаж",
+      location: "Сочи, ул. Навагинская, д. 15",
+      bidAmount: 8500000,
+      bidDate: "2023-12-28",
+      bidTime: "11:20",
+      status: "lost",
+      finalPrice: 9200000
+    }
+  ]
+
+  const formatPrice = (price) => {
+    if (price >= 1000000) {
+      return `${(price / 1000000).toFixed(1)} млн Р`
+    }
+    return `${price.toLocaleString('ru-RU')} Р`
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'completed':
+        return 'Завершена'
+      case 'active':
+        return 'Активна'
+      case 'outbid':
+        return 'Перебита'
+      case 'won':
+        return 'Выиграна'
+      case 'lost':
+        return 'Проиграна'
+      default:
+        return status
+    }
+  }
+
+  const getStatusClass = (status) => {
+    switch(status) {
+      case 'completed':
+      case 'won':
+        return 'status-success'
+      case 'active':
+        return 'status-active'
+      case 'outbid':
+      case 'lost':
+        return 'status-failed'
+      default:
+        return ''
+    }
+  }
+
+  return (
+    <div className="history-page">
+      <div className="history-container">
+        <aside className="history-sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#gradient1)"/>
+                <path d="M2 17L12 22L22 17" stroke="url(#gradient1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="url(#gradient1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#4A90E2" />
+                    <stop offset="100%" stopColor="#357ABD" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span>Профиль</span>
+            </div>
+          </div>
+          <nav className="sidebar-nav">
+            <Link to="/profile" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" fill="currentColor"/>
+                <path d="M10 12C5.58172 12 2 13.7909 2 16V20H18V16C18 13.7909 14.4183 12 10 12Z" fill="currentColor"/>
+              </svg>
+              <span>Профиль</span>
+            </Link>
+            <Link to="/data" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>Данные</span>
+            </Link>
+            <Link to="/subscriptions" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2L12.5 7.5L19 10L12.5 12.5L10 19L7.5 12.5L1 10L7.5 7.5L10 2Z" fill="currentColor"/>
+              </svg>
+              <span>Подписки</span>
+            </Link>
+            <Link to="/history" className="nav-item active">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M6 8H14M6 12H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>История</span>
+            </Link>
+            <Link to="/chat" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M7 8H13M7 12H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>Чат</span>
+            </Link>
+            <a href="#" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2L12.5 7.5L19 10L12.5 12.5L10 19L7.5 12.5L1 10L7.5 7.5L10 2Z" fill="currentColor"/>
+              </svg>
+              <span>Фаворит</span>
+            </a>
+          </nav>
+        </aside>
+
+        <main className="history-main">
+          <h1 className="history-title">История</h1>
+
+          <div className="history-content">
+            <section className="history-section">
+              <h2 className="section-title">Покупки</h2>
+              <div className="history-list">
+                {purchaseHistory.length > 0 ? (
+                  purchaseHistory.map((purchase) => (
+                    <div key={purchase.id} className="history-card purchase-card">
+                      <div className="card-image">
+                        <img src={purchase.image} alt={purchase.propertyTitle} />
+                        <div className="card-badge status-badge status-success">
+                          {getStatusLabel(purchase.status)}
+                        </div>
+                      </div>
+                      <div className="card-content">
+                        <h3 className="card-title">{purchase.propertyTitle}</h3>
+                        <p className="card-location">{purchase.location}</p>
+                        <div className="card-details">
+                          <div className="detail-item">
+                            <span className="detail-label">Цена покупки:</span>
+                            <span className="detail-value price">{formatPrice(purchase.purchasePrice)}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Дата покупки:</span>
+                            <span className="detail-value">{formatDate(purchase.purchaseDate)}</span>
+                          </div>
+                        </div>
+                        <Link to={`/property/${purchase.id}`} className="card-link">
+                          Посмотреть объект →
+                        </Link>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <p>У вас пока нет покупок</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="history-section">
+              <h2 className="section-title">Ставки на аукционе</h2>
+              <div className="history-list">
+                {bidHistory.length > 0 ? (
+                  bidHistory.map((bid) => (
+                    <div key={bid.id} className="history-card bid-card">
+                      <div className="card-content">
+                        <div className="card-header">
+                          <h3 className="card-title">{bid.propertyTitle}</h3>
+                          <div className={`status-badge ${getStatusClass(bid.status)}`}>
+                            {getStatusLabel(bid.status)}
+                          </div>
+                        </div>
+                        <p className="card-location">{bid.location}</p>
+                        <div className="card-details">
+                          <div className="detail-item">
+                            <span className="detail-label">Ваша ставка:</span>
+                            <span className="detail-value price">{formatPrice(bid.bidAmount)}</span>
+                          </div>
+                          {bid.status === 'active' && (
+                            <div className="detail-item">
+                              <span className="detail-label">Текущая ставка:</span>
+                              <span className="detail-value price">{formatPrice(bid.currentBid)}</span>
+                            </div>
+                          )}
+                          {(bid.status === 'won' || bid.status === 'lost') && (
+                            <div className="detail-item">
+                              <span className="detail-label">Финальная цена:</span>
+                              <span className="detail-value price">{formatPrice(bid.finalPrice)}</span>
+                            </div>
+                          )}
+                          {bid.status === 'outbid' && (
+                            <div className="detail-item">
+                              <span className="detail-label">Текущая ставка:</span>
+                              <span className="detail-value price">{formatPrice(bid.currentBid)}</span>
+                            </div>
+                          )}
+                          <div className="detail-item">
+                            <span className="detail-label">Дата ставки:</span>
+                            <span className="detail-value">{formatDate(bid.bidDate)} в {bid.bidTime}</span>
+                          </div>
+                        </div>
+                        {bid.status === 'active' && (
+                          <Link to={`/property/${bid.id}`} className="card-button">
+                            Продолжить участие
+                          </Link>
+                        )}
+                        {bid.status === 'outbid' && (
+                          <Link to={`/property/${bid.id}`} className="card-button">
+                            Повысить ставку
+                          </Link>
+                        )}
+                        {(bid.status === 'won' || bid.status === 'lost') && (
+                          <Link to={`/property/${bid.id}`} className="card-link">
+                            Посмотреть объект →
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <p>У вас пока нет ставок</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+      <Footer />
+    </div>
+  )
+}
+
+export default History
+

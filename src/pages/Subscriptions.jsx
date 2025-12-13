@@ -1,0 +1,166 @@
+import { Link } from 'react-router-dom'
+import Footer from '../components/Footer'
+import premiumImage from '../img/premium.png'
+import standardImage from '../img/standart.png'
+import basicImage from '../img/basicc.png'
+import './Subscriptions.css'
+
+const Subscriptions = () => {
+
+  const subscriptions = [
+    {
+      id: 'premium',
+      title: 'Премиум',
+      description: 'Получите полный доступ ко всем функциям платформы. Неограниченный просмотр объявлений, приоритетная поддержка и эксклюзивные возможности для работы с недвижимостью.',
+      price: 999,
+      icon: 'premium'
+    },
+    {
+      id: 'standard',
+      title: 'Стандарт',
+      description: 'Расширенные возможности для работы с недвижимостью. Доступ к базе объявлений, уведомления о новых предложениях и базовые инструменты для анализа рынка.',
+      price: 749,
+      icon: 'standard'
+    },
+    {
+      id: 'basic',
+      title: 'Базовый',
+      description: 'Начните работу с платформой. Базовый доступ к объявлениям, возможность просмотра основных данных и простые инструменты для поиска недвижимости.',
+      price: 499,
+      icon: 'basic'
+    }
+  ]
+
+  const handleActivate = (subscription) => {
+    // Открываем внешний платежный сервис (Stripe или аналогичный)
+    // В реальном приложении здесь будет URL вашего платежного сервиса
+    const paymentUrl = `https://checkout.stripe.com/pay?amount=${subscription.price * 100}&currency=rub&description=${encodeURIComponent(`Подписка ${subscription.title}`)}`
+    
+    // Открываем в новом окне
+    window.open(paymentUrl, '_blank', 'width=600,height=800')
+    
+    // Альтернативный вариант - редирект на страницу оплаты
+    // window.location.href = paymentUrl
+  }
+
+  return (
+    <div className="subscriptions-page">
+      <div className="subscriptions-container">
+        <aside className="subscriptions-sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#gradient1)"/>
+                <path d="M2 17L12 22L22 17" stroke="url(#gradient1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="url(#gradient1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#4A90E2" />
+                    <stop offset="100%" stopColor="#357ABD" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span>Профиль</span>
+            </div>
+          </div>
+          <nav className="sidebar-nav">
+            <Link to="/profile" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" fill="currentColor"/>
+                <path d="M10 12C5.58172 12 2 13.7909 2 16V20H18V16C18 13.7909 14.4183 12 10 12Z" fill="currentColor"/>
+              </svg>
+              <span>Профиль</span>
+            </Link>
+            <Link to="/data" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>Данные</span>
+            </Link>
+            <Link to="/subscriptions" className="nav-item active">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2L12.5 7.5L19 10L12.5 12.5L10 19L7.5 12.5L1 10L7.5 7.5L10 2Z" fill="currentColor"/>
+              </svg>
+              <span>Подписки</span>
+            </Link>
+            <Link to="/history" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M6 8H14M6 12H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>История</span>
+            </Link>
+            <Link to="/chat" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M7 8H13M7 12H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>Чат</span>
+            </Link>
+            <a href="#" className="nav-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2L12.5 7.5L19 10L12.5 12.5L10 19L7.5 12.5L1 10L7.5 7.5L10 2Z" fill="currentColor"/>
+              </svg>
+              <span>Фаворит</span>
+            </a>
+          </nav>
+        </aside>
+
+        <main className="subscriptions-main">
+          <h1 className="subscriptions-title">Мои подписки</h1>
+          
+          <div className="subscriptions-cards">
+            {subscriptions.map((subscription) => (
+              <div key={subscription.id} className="subscription-card">
+                <div className="card-content">
+                  <h2 className="card-title">{subscription.title}</h2>
+                  <p className="card-description">{subscription.description}</p>
+                  <div className="card-price">
+                    <span className="price-value">{subscription.price} ₽</span>
+                    <span className="price-period">/месяц</span>
+                  </div>
+                  <button 
+                    className="card-button"
+                    onClick={() => handleActivate(subscription)}
+                  >
+                    Активировать
+                  </button>
+                </div>
+                <div className="card-image">
+                  {subscription.icon === 'premium' && (
+                    <img 
+                      src={premiumImage} 
+                      alt="Премиум подписка"
+                      className="subscription-image"
+                    />
+                  )}
+                  {subscription.icon === 'standard' && (
+                    <img 
+                      src={standardImage} 
+                      alt="Стандартный тариф"
+                      className="subscription-image"
+                    />
+                  )}
+                  {subscription.icon === 'basic' && (
+                    <div className="basic-image-wrapper">
+                      <img 
+                        src={basicImage} 
+                        alt="Базовый тариф"
+                        className="subscription-image"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+      <Footer />
+    </div>
+  )
+}
+
+export default Subscriptions
+

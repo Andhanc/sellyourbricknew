@@ -17,7 +17,7 @@ const MapPage = () => {
     if (price >= 1000000) {
       return `${(price / 1000000).toFixed(1)} млн Р`
     }
-    return `${price.toLocaleString('ru-RU')} Р/мес`
+    return `${price.toLocaleString('ru-RU')} Р`
   }
 
   const filteredProperties = properties.filter(property => {
@@ -277,30 +277,39 @@ const MapPage = () => {
                   className={`map-property-card ${selectedProperty?.id === property.id ? 'selected' : ''}`}
                   onClick={() => setSelectedProperty(property)}
                 >
-                  <div className="map-property-image">
-                    <img src={property.images[0]} alt={property.title} />
-                    <button 
-                      className={`map-favorite ${favorites.has(property.id) ? 'active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const newFavorites = new Set(favorites)
-                        if (newFavorites.has(property.id)) {
-                          newFavorites.delete(property.id)
-                        } else {
-                          newFavorites.add(property.id)
-                        }
-                        setFavorites(newFavorites)
-                      }}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path 
-                          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          fill={favorites.has(property.id) ? "currentColor" : "none"}
-                        />
-                      </svg>
-                    </button>
+                  <div className="map-property-images">
+                    <div className="map-property-main-image">
+                      <img src={property.images[0]} alt={property.title} />
+                      <button 
+                        className={`map-favorite ${favorites.has(property.id) ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const newFavorites = new Set(favorites)
+                          if (newFavorites.has(property.id)) {
+                            newFavorites.delete(property.id)
+                          } else {
+                            newFavorites.add(property.id)
+                          }
+                          setFavorites(newFavorites)
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                          <path 
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            fill={favorites.has(property.id) ? "currentColor" : "none"}
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="map-property-thumbnails">
+                      {property.images.slice(1, 4).map((image, idx) => (
+                        <div key={idx} className="map-property-thumbnail">
+                          <img src={image} alt={`${property.title} ${idx + 2}`} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="map-property-info">
                     <div className="map-property-price">{formatPrice(property.price)}</div>

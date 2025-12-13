@@ -1,0 +1,116 @@
+.date-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.date-picker__label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-picker__calendar {
+  background: #fff;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.date-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.date-picker__nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #000;
+  transition: all 0.2s;
+}
+
+.date-picker__nav-btn:hover {
+  background: #f5f5f5;
+  border-color: #4A90E2;
+  color: #4A90E2;
+}
+
+.date-picker__month-year {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+}
+
+.date-picker__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.date-picker__weekday {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  padding: 8px;
+}
+
+.date-picker__days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.date-picker__day {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-picker__day:hover:not(.date-picker__day--disabled):not(.date-picker__day--empty) {
+  background: #f0f2ff;
+  border-color: #4A90E2;
+  color: #4A90E2;
+}
+
+.date-picker__day--selected {
+  background: #4A90E2;
+  color: #fff;
+  border-color: #4A90E2;
+  font-weight: 600;
+}
+
+.date-picker__day--disabled {
+  color: #ccc;
+  cursor: not-allowed;
+  background: #f9f9f9;
+}
+
+.date-picker__day--empty {
+  cursor: default;
+  background: transparent;
+  border: none;
+}

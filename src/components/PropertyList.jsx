@@ -15,7 +15,7 @@ const PropertyList = () => {
     if (price >= 1000000) {
       return `${(price / 1000000).toFixed(1)} млн Р`
     }
-    return `${price.toLocaleString('ru-RU')} Р/мес`
+    return `${price.toLocaleString('ru-RU')} Р`
   }
 
   const filteredProperties = properties.filter(property => {
