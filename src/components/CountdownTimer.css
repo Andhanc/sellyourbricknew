@@ -1,57 +1,120 @@
 .countdown-timer {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 16px;
+  padding: 16px 24px;
+  background: rgba(30, 30, 30, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  width: fit-content;
+  margin: 0 auto;
 }
 
-.timer-circle {
-  position: relative;
-  width: 180px;
-  height: 180px;
-}
-
-.timer-svg {
-  transform: rotate(-90deg);
-}
-
-.timer-progress {
-  transition: stroke-dashoffset 1s linear;
-}
-
-.timer-content {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  width: 140px;
-  padding: 0 10px;
-}
-
-.timer-main {
-  font-size: 18px;
-  font-weight: 700;
-  color: #333;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.5px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.timer-labels {
+.timer-icon-wrapper {
   display: flex;
-  gap: 6px;
-  font-size: 9px;
-  color: #333;
-  margin-top: 6px;
+  align-items: center;
   justify-content: center;
-  font-weight: 400;
+  flex-shrink: 0;
 }
 
-.timer-text {
+.timer-icon {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.95);
+  stroke-width: 2;
+}
+
+.timer-segments {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timer-segment {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: rgba(60, 60, 60, 0.9);
+  padding: 10px 14px;
+  border-radius: 12px;
+  min-width: 60px;
+  justify-content: center;
+}
+
+.timer-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.timer-unit {
   font-size: 14px;
-  color: #666;
-  text-align: center;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1;
+  margin-left: 2px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .countdown-timer {
+    padding: 12px 18px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+
+  .timer-icon {
+    font-size: 20px;
+  }
+
+  .timer-segments {
+    gap: 8px;
+  }
+
+  .timer-segment {
+    padding: 8px 10px;
+    min-width: 50px;
+    border-radius: 10px;
+  }
+
+  .timer-value {
+    font-size: 20px;
+  }
+
+  .timer-unit {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .countdown-timer {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .timer-icon {
+    font-size: 18px;
+  }
+
+  .timer-segments {
+    gap: 6px;
+  }
+
+  .timer-segment {
+    padding: 6px 8px;
+    min-width: 45px;
+  }
+
+  .timer-value {
+    font-size: 18px;
+  }
+
+  .timer-unit {
+    font-size: 11px;
+  }
+}

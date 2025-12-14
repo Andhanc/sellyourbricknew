@@ -8,7 +8,10 @@ import {
   FiEye,
   FiDollarSign,
   FiHome,
-  FiMapPin
+  FiMapPin,
+  FiGlobe,
+  FiLoader,
+  FiChevronDown
 } from 'react-icons/fi'
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
@@ -30,6 +33,9 @@ const AddProperty = () => {
   const [showTestDriveModal, setShowTestDriveModal] = useState(false)
   const [showDocumentsModal, setShowDocumentsModal] = useState(false)
   const [testDriveData, setTestDriveData] = useState(null)
+  const [isTranslating, setIsTranslating] = useState(false)
+  const [translations, setTranslations] = useState(null)
+  const [showTranslations, setShowTranslations] = useState(false)
   
   const [formData, setFormData] = useState({
     propertyType: '', // Сначала выбираем тип
@@ -39,6 +45,7 @@ const AddProperty = () => {
     isAuction: false,
     auctionStartDate: '',
     auctionEndDate: '',
+    auctionStartingPrice: '',
     bidStep: '',
     // Общие поля
     area: '',
@@ -156,6 +163,76 @@ const AddProperty = () => {
     setShowTestDriveModal(false)
     // Открываем третий шаг (модальное окно документов)
     setShowDocumentsModal(true)
+  }
+
+  const translateText = async (text, targetLang) => {
+    try {
+      // Используем MyMemory API - бесплатный сервис перевода
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ru|${targetLang}`
+      )
+      const data = await response.json()
+      if (data.responseData && data.responseData.translatedText) {
+        return data.responseData.translatedText
+      }
+      return text
+    } catch (error) {
+      console.error(`Ошибка перевода на ${targetLang}:`, error)
+      return text
+    }
+  }
+
+  const handleTranslateAll = async () => {
+    if (!formData.title && !formData.description) {
+      alert('Пожалуйста, заполните заголовок или описание перед переводом')
+      return
+    }
+
+    setIsTranslating(true)
+    setShowTranslations(false)
+
+    const textToTranslate = `${formData.title || ''} ${formData.description || ''}`.trim()
+
+    if (!textToTranslate) {
+      alert('Нет текста для перевода')
+      setIsTranslating(false)
+      return
+    }
+
+    try {
+      const languages = {
+        es: 'Испанский',
+        it: 'Итальянский',
+        en: 'Английский',
+        de: 'Немецкий'
+      }
+
+      const translationsResult = {
+        ru: {
+          name: 'Русский (оригинал)',
+          text: textToTranslate
+        }
+      }
+
+      // Переводим на каждый язык
+      for (const [code, name] of Object.entries(languages)) {
+        const translated = await translateText(textToTranslate, code)
+        translationsResult[code] = {
+          name,
+          text: translated
+        }
+        // Небольшая задержка между запросами, чтобы не перегружать API
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+
+      setTranslations(translationsResult)
+      setShowTranslations(true)
+    } catch (error) {
+      console.error('Ошибка перевода:', error)
+      alert('Произошла ошибка при переводе. Попробуйте еще раз.')
+    } finally {
+      setIsTranslating(false)
+    }
   }
 
   const handleDocumentsComplete = (documents) => {
@@ -313,6 +390,64 @@ const AddProperty = () => {
               rows="6"
               required
             />
+          </section>
+
+          {/* Кнопка перевода */}
+          <section className="form-section">
+            <button
+              type="button"
+              className="translate-button"
+              onClick={handleTranslateAll}
+              disabled={isTranslating || (!formData.title && !formData.description)}
+            >
+              {isTranslating ? (
+                <>
+                  <FiLoader className="spinner" size={18} />
+                  Перевод...
+                </>
+              ) : (
+                <>
+                  <FiGlobe size={18} />
+                  Перевести на все языки
+                </>
+              )}
+            </button>
+
+            {/* Выпадающий список с переводами */}
+            {showTranslations && translations && (
+              <div className="translations-dropdown">
+                <div className="translations-dropdown__header">
+                  <h3 className="translations-dropdown__title">Переводы</h3>
+                  <button
+                    type="button"
+                    className="translations-dropdown__toggle"
+                    onClick={() => setShowTranslations(false)}
+                  >
+                    <FiX size={18} />
+                  </button>
+                </div>
+                <div className="translations-dropdown__content">
+                  {Object.entries(translations).map(([code, translation]) => (
+                    <div key={code} className="translation-item">
+                      <div className="translation-item__header">
+                        <span className="translation-item__language">{translation.name}</span>
+                        <button
+                          type="button"
+                          className="translation-item__copy"
+                          onClick={() => {
+                            navigator.clipboard.writeText(translation.text)
+                            alert(`Перевод на ${translation.name} скопирован в буфер обмена`)
+                          }}
+                        >
+                          Копировать
+                        </button>
+                      </div>
+                      <p className="translation-item__text">{translation.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Подробная информация */}
@@ -850,6 +985,23 @@ const AddProperty = () => {
                   onStartDateChange={(date) => setFormData(prev => ({ ...prev, auctionStartDate: date }))}
                   onEndDateChange={(date) => setFormData(prev => ({ ...prev, auctionEndDate: date }))}
                 />
+                
+                <div className="bid-step-group">
+                  <label className="bid-step-label">Начальная сумма аукциона</label>
+                  <div className="bid-step-input-wrapper">
+                    <FiDollarSign className="price-icon" size={18} />
+                    <input
+                      type="number"
+                      name="auctionStartingPrice"
+                      value={formData.auctionStartingPrice}
+                      onChange={handleInputChange}
+                      className="form-input bid-step-input"
+                      placeholder="0"
+                      min="0"
+                      required={formData.isAuction}
+                    />
+                  </div>
+                </div>
                 
                 <div className="bid-step-group">
                   <label className="bid-step-label">Шаг ставки</label>

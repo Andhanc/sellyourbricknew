@@ -8,7 +8,26 @@ const PropertyList = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [propertyType, setPropertyType] = useState('все')
-  const [favorites, setFavorites] = useState(new Set())
+  const [favorites, setFavorites] = useState(() => {
+    // Загружаем из localStorage
+    const savedFavorites = localStorage.getItem('favoriteProperties')
+    if (savedFavorites) {
+      try {
+        const parsed = JSON.parse(savedFavorites)
+        const favoritesMap = new Map(Object.entries(parsed))
+        const favoriteIds = new Set()
+        properties.forEach((property) => {
+          if (favoritesMap.get(`property-${property.id}`)) {
+            favoriteIds.add(property.id)
+          }
+        })
+        return favoriteIds
+      } catch (e) {
+        console.error('Ошибка при загрузке избранного:', e)
+      }
+    }
+    return new Set()
+  })
   const [visibleCount, setVisibleCount] = useState(9)
 
   const formatPrice = (price) => {
@@ -130,12 +149,29 @@ const PropertyList = () => {
                       e.preventDefault()
                       e.stopPropagation()
                       const newFavorites = new Set(favorites)
-                      if (newFavorites.has(property.id)) {
+                      const isFavorite = newFavorites.has(property.id)
+                      
+                      if (isFavorite) {
                         newFavorites.delete(property.id)
                       } else {
                         newFavorites.add(property.id)
                       }
                       setFavorites(newFavorites)
+                      
+                      // Сохраняем в localStorage в формате, совместимом с MainPage
+                      const savedFavorites = localStorage.getItem('favoriteProperties')
+                      let favoritesMap = new Map()
+                      if (savedFavorites) {
+                        try {
+                          const parsed = JSON.parse(savedFavorites)
+                          favoritesMap = new Map(Object.entries(parsed))
+                        } catch (e) {
+                          console.error('Ошибка:', e)
+                        }
+                      }
+                      favoritesMap.set(`property-${property.id}`, !isFavorite)
+                      const obj = Object.fromEntries(favoritesMap)
+                      localStorage.setItem('favoriteProperties', JSON.stringify(obj))
                     }}
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">

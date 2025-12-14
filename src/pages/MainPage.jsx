@@ -47,6 +47,8 @@ import {
   PiBuilding,
   PiWarehouse,
 } from 'react-icons/pi'
+import PropertyTimer from '../components/PropertyTimer'
+import '../components/PropertyList.css'
 
 const resortLocations = [
   'Costa Adeje, Tenerife',
@@ -84,6 +86,8 @@ const recommendedProperties = [
     baths: 2,
     sqft: 2000,
     isAuction: true,
+    currentBid: 750000,
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     description:
       'Роскошная недвижимость в самом сердце Манхэттена. Современная квартира с панорамными видами на город. Рядом находятся лучшие рестораны, магазины и культурные достопримечательности. Идеальное расположение для тех, кто ценит комфорт и престиж.',
     owner: { firstName: 'Джон', lastName: 'Смит' },
@@ -114,7 +118,9 @@ const recommendedProperties = [
     beds: 2,
     baths: 1,
     sqft: 1500,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 1100,
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     description:
       'Прекрасная вилла в элитном районе Коста-Адехе. Современный дизайн, просторные террасы с видом на океан. Рядом находятся лучшие пляжи, гольф-клубы и рестораны. Идеальное место для отдыха и жизни на Тенерифе.',
     owner: { firstName: 'Карлос', lastName: 'Родригес' },
@@ -148,7 +154,9 @@ const nearbyProperties = [
     beds: 2,
     baths: 2,
     sqft: 1800,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 950,
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     description:
       'Уютный дом в Лос-Кристианос, одном из самых популярных курортов Тенерифе. Близость к пляжу, магазинам и ресторанам. Тихое место с прекрасным климатом круглый год. Отличный вариант для постоянного проживания или отдыха.',
     owner: { firstName: 'Мария', lastName: 'Гонсалес' },
@@ -180,6 +188,8 @@ const nearbyProperties = [
     baths: 1,
     sqft: 1200,
     isAuction: true,
+    currentBid: 920,
+    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     description:
       'Светлая квартира в историческом Пуэрто-де-ла-Крус. Уникальное расположение на севере острова с мягким климатом. Рядом ботанический сад, пляжи с черным песком и множество достопримечательностей. Идеально для тех, кто любит спокойствие и природу.',
     owner: { firstName: 'Антонио', lastName: 'Мартинес' },
@@ -211,6 +221,8 @@ const apartmentsData = [
     ],
     hasSamolyot: false,
     isAuction: true,
+    currentBid: 8000000,
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 2,
     baths: 1,
     sqft: 850,
@@ -234,7 +246,9 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 24000000,
+    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 3,
     baths: 2,
     sqft: 1200,
@@ -259,6 +273,8 @@ const apartmentsData = [
     ],
     hasSamolyot: false,
     isAuction: true,
+    currentBid: 26000000,
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 1,
     baths: 1,
     sqft: 650,
@@ -283,7 +299,9 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 4200000,
+    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 2,
     baths: 1,
     sqft: 950,
@@ -307,7 +325,9 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 68000000,
+    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 4,
     baths: 3,
     sqft: 1800,
@@ -331,7 +351,9 @@ const apartmentsData = [
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 38500000,
+    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 3,
     baths: 2,
     sqft: 1400,
@@ -361,6 +383,8 @@ const villasData = [
     ],
     hasSamolyot: false,
     isAuction: true,
+    currentBid: 11000000,
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 4,
     baths: 3,
     sqft: 2500,
@@ -384,7 +408,9 @@ const villasData = [
       'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 17500000,
+    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 13 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 5,
     baths: 4,
     sqft: 3200,
@@ -408,7 +434,9 @@ const villasData = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 21000000,
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 6,
     baths: 5,
     sqft: 4000,
@@ -432,7 +460,9 @@ const villasData = [
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 9000000,
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 3,
     baths: 2,
     sqft: 2000,
@@ -456,7 +486,9 @@ const villasData = [
       'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 33000000,
+    endTime: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000 + 18 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 7,
     baths: 6,
     sqft: 5000,
@@ -480,7 +512,9 @@ const villasData = [
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
     ],
     hasSamolyot: false,
-    isAuction: false,
+    isAuction: true,
+    currentBid: 26500000,
+    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
     beds: 5,
     baths: 4,
     sqft: 3500,
@@ -497,19 +531,41 @@ function MainPage() {
   const [isLocationOpen, setIsLocationOpen] = useState(false)
   const [propertyMode, setPropertyMode] = useState('buy') // 'rent' для аренды, 'buy' для покупки
   const [favoriteProperties, setFavoriteProperties] = useState(() => {
-    const initialFavorites = new Map()
+    // Загружаем из localStorage
+    const savedFavorites = localStorage.getItem('favoriteProperties')
+    let initialFavorites = new Map()
+    
+    if (savedFavorites) {
+      try {
+        const parsed = JSON.parse(savedFavorites)
+        initialFavorites = new Map(Object.entries(parsed))
+      } catch (e) {
+        console.error('Ошибка при загрузке избранного:', e)
+      }
+    }
+    
+    // Инициализируем все свойства, если их еще нет
     recommendedProperties.forEach((property) => {
-      initialFavorites.set(`recommended-${property.id}`, false)
+      if (!initialFavorites.has(`recommended-${property.id}`)) {
+        initialFavorites.set(`recommended-${property.id}`, false)
+      }
     })
     nearbyProperties.forEach((property) => {
-      initialFavorites.set(`nearby-${property.id}`, false)
+      if (!initialFavorites.has(`nearby-${property.id}`)) {
+        initialFavorites.set(`nearby-${property.id}`, false)
+      }
     })
     apartmentsData.forEach((property) => {
-      initialFavorites.set(`apartment-${property.id}`, false)
+      if (!initialFavorites.has(`apartment-${property.id}`)) {
+        initialFavorites.set(`apartment-${property.id}`, false)
+      }
     })
     villasData.forEach((property) => {
-      initialFavorites.set(`villa-${property.id}`, false)
+      if (!initialFavorites.has(`villa-${property.id}`)) {
+        initialFavorites.set(`villa-${property.id}`, false)
+      }
     })
+    
     return initialFavorites
   })
   const [activeNav, setActiveNav] = useState('home')
@@ -570,7 +626,7 @@ function MainPage() {
   // Чтение URL параметров и применение фильтров
   useEffect(() => {
     try {
-      if (!location || !location.search) {
+      if (!location) {
         return
       }
 
@@ -630,12 +686,16 @@ function MainPage() {
         return () => {
           clearTimeout(timeoutId)
         }
+      } else {
+        // Если нет параметров, сбрасываем фильтры
+        setFilteredProperties(null)
+        setActiveCategory(null)
       }
     } catch (error) {
       console.error('Error reading URL parameters:', error)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search])
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -686,6 +746,11 @@ function MainPage() {
     setFavoriteProperties((prev) => {
       const updated = new Map(prev)
       updated.set(key, !prev.get(key))
+      
+      // Сохраняем в localStorage
+      const obj = Object.fromEntries(updated)
+      localStorage.setItem('favoriteProperties', JSON.stringify(obj))
+      
       return updated
     })
   }
@@ -1425,7 +1490,10 @@ function MainPage() {
         <div className="apartments-section__container">
           <div 
             className="apartments-section__header"
-            onClick={() => navigate('/main?category=Apartment&filter=auction')}
+            onClick={() => {
+              // Принудительный переход на страницу с фильтром
+              window.location.href = '/main?category=Apartment&filter=auction'
+            }}
             style={{ cursor: 'pointer' }}
           >
             <h2 className="apartments-section__title">{t('apartmentsSection')}</h2>
@@ -1433,75 +1501,72 @@ function MainPage() {
           </div>
           
           <div className="apartments-section__content">
-            <div className="apartments-section__grid">
-              {apartmentsData.map((apartment) => (
-                <article
-                  key={apartment.id}
-                  className="apartment-card"
-                  onClick={() => {
-                    navigate('/main?category=Apartment&filter=auction')
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="apartment-card__image">
-                    {apartment.hasSamolyot && (
-                      <span className="apartment-card__samolyot">самолет</span>
-                    )}
-                    <img src={apartment.image} alt={apartment.name} />
-                    <button
-                      type="button"
-                      className={`apartment-card__favorite ${
-                        favoriteProperties.get(`apartment-${apartment.id}`)
-                          ? 'apartment-card__favorite--active'
-                          : ''
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleFavorite('apartment', apartment.id)
+            <div className="properties-grid">
+              {apartmentsData.map((apartment) => {
+                const formatPrice = (price) => {
+                  if (price >= 1000000) {
+                    return `${(price / 1000000).toFixed(1)} млн Р`
+                  }
+                  return `${price.toLocaleString('ru-RU')} Р`
+                }
+                
+                return (
+                  <div key={apartment.id} className="property-card">
+                    <div 
+                      className="property-link"
+                      onClick={() => {
+                        // Принудительный переход на страницу с фильтром
+                        window.location.href = '/main?category=Apartment&filter=auction'
                       }}
-                      aria-pressed={favoriteProperties.get(`apartment-${apartment.id}`)}
+                      style={{ cursor: 'pointer' }}
                     >
-                      {favoriteProperties.get(`apartment-${apartment.id}`) ? (
-                        <FaHeartSolid size={16} />
-                      ) : (
-                        <FiHeart size={16} />
-                      )}
-                    </button>
-                  </div>
-                  
-                  <div className="apartment-card__content">
-                    <div className="apartment-card__content-wrapper">
-                      <div className="apartment-card__content-main">
-                        <div className="apartment-card__price">
-                          от {apartment.price.toLocaleString('ru-RU')} $
-                        </div>
-                        <div className="apartment-card__info">
-                          <div className="apartment-card__info-item">
-                            <MdBed size={16} />
-                            <span>{apartment.beds || 0}</span>
-                          </div>
-                          <div className="apartment-card__info-item">
-                            <MdOutlineBathtub size={16} />
-                            <span>{apartment.baths || 0}</span>
-                          </div>
-                          <div className="apartment-card__info-item">
-                            <BiArea size={16} />
-                            <span>{apartment.sqft || 0} м²</span>
-                          </div>
-                        </div>
-                        <p className="apartment-card__location">{apartment.location}</p>
-                      </div>
-                      {apartment.isAuction && (
+                      <div className="property-image-container">
                         <img 
-                          src="https://png.pngtree.com/png-vector/20220525/ourmid/pngtree-test-drive-rubber-stamp-png-image_4726533.png" 
-                          alt="Аукцион" 
-                          className="apartment-card__auction-badge"
+                          src={apartment.image} 
+                          alt={apartment.name}
+                          className="property-image"
                         />
-                      )}
+                        {apartment.endTime && (
+                          <div className="property-timer-overlay">
+                            <PropertyTimer endTime={apartment.endTime} compact={true} />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className={`property-favorite ${
+                            favoriteProperties.get(`apartment-${apartment.id}`) ? 'active' : ''
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleFavorite('apartment', apartment.id)
+                          }}
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path 
+                              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              fill={favoriteProperties.get(`apartment-${apartment.id}`) ? "currentColor" : "none"}
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="property-content">
+                        <h3 className="property-title">{apartment.name}</h3>
+                        <p className="property-location">{apartment.location}</p>
+                        <div className="property-price">{formatPrice(apartment.price)}</div>
+                        {apartment.currentBid && (
+                          <div className="property-bid-info">
+                            <span className="bid-label">Текущая ставка:</span>
+                            <span className="bid-value">{formatPrice(apartment.currentBid)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </article>
-              ))}
+                )
+              })}
             </div>
             
             <div className="apartments-section__personal">
@@ -1557,79 +1622,83 @@ function MainPage() {
       {/* Блок "Виллы" */}
       <section className="apartments-section">
         <div className="apartments-section__container">
-          <div className="apartments-section__header">
+          <div 
+            className="apartments-section__header"
+            onClick={() => {
+              window.location.href = '/main?category=Villa&filter=auction'
+            }}
+            style={{ cursor: 'pointer' }}
+          >
             <h2 className="apartments-section__title">{t('villasSection')}</h2>
             <FiArrowRight size={24} className="apartments-section__arrow" />
           </div>
           
           <div className="apartments-section__content">
-            <div className="apartments-section__grid">
-              {villasData.map((villa) => (
-                <article
-                  key={villa.id}
-                  className="apartment-card"
-                  onClick={() => handlePropertyClick('villa', villa.id)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="apartment-card__image">
-                    {villa.hasSamolyot && (
-                      <span className="apartment-card__samolyot">самолет</span>
-                    )}
-                    <img src={villa.image} alt={villa.name} />
-                    <button
-                      type="button"
-                      className={`apartment-card__favorite ${
-                        favoriteProperties.get(`villa-${villa.id}`)
-                          ? 'apartment-card__favorite--active'
-                          : ''
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleFavorite('villa', villa.id)
+            <div className="properties-grid">
+              {villasData.map((villa) => {
+                const formatPrice = (price) => {
+                  if (price >= 1000000) {
+                    return `${(price / 1000000).toFixed(1)} млн Р`
+                  }
+                  return `${price.toLocaleString('ru-RU')} Р`
+                }
+                
+                return (
+                  <div key={villa.id} className="property-card">
+                    <div 
+                      className="property-link"
+                      onClick={() => {
+                        window.location.href = '/main?category=Villa&filter=auction'
                       }}
-                      aria-pressed={favoriteProperties.get(`villa-${villa.id}`)}
+                      style={{ cursor: 'pointer' }}
                     >
-                      {favoriteProperties.get(`villa-${villa.id}`) ? (
-                        <FaHeartSolid size={16} />
-                      ) : (
-                        <FiHeart size={16} />
-                      )}
-                    </button>
-                  </div>
-                  
-                  <div className="apartment-card__content">
-                    <div className="apartment-card__content-wrapper">
-                      <div className="apartment-card__content-main">
-                        <div className="apartment-card__price">
-                          от {villa.price.toLocaleString('ru-RU')} $
-                        </div>
-                        <div className="apartment-card__info">
-                          <div className="apartment-card__info-item">
-                            <MdBed size={16} />
-                            <span>{villa.beds || 0}</span>
-                          </div>
-                          <div className="apartment-card__info-item">
-                            <MdOutlineBathtub size={16} />
-                            <span>{villa.baths || 0}</span>
-                          </div>
-                          <div className="apartment-card__info-item">
-                            <BiArea size={16} />
-                            <span>{villa.sqft || 0} м²</span>
-                          </div>
-                        </div>
-                        <p className="apartment-card__location">{villa.location}</p>
-                      </div>
-                      {villa.isAuction && (
+                      <div className="property-image-container">
                         <img 
-                          src="https://png.pngtree.com/png-vector/20220525/ourmid/pngtree-test-drive-rubber-stamp-png-image_4726533.png" 
-                          alt="Аукцион" 
-                          className="apartment-card__auction-badge"
+                          src={villa.image} 
+                          alt={villa.name}
+                          className="property-image"
                         />
-                      )}
+                        {villa.endTime && (
+                          <div className="property-timer-overlay">
+                            <PropertyTimer endTime={villa.endTime} compact={true} />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className={`property-favorite ${
+                            favoriteProperties.get(`villa-${villa.id}`) ? 'active' : ''
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleFavorite('villa', villa.id)
+                          }}
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path 
+                              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              fill={favoriteProperties.get(`villa-${villa.id}`) ? "currentColor" : "none"}
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="property-content">
+                        <h3 className="property-title">{villa.name}</h3>
+                        <p className="property-location">{villa.location}</p>
+                        <div className="property-price">{formatPrice(villa.price)}</div>
+                        {villa.currentBid && (
+                          <div className="property-bid-info">
+                            <span className="bid-label">Текущая ставка:</span>
+                            <span className="bid-value">{formatPrice(villa.currentBid)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </article>
-              ))}
+                )
+              })}
             </div>
             
             <div className="apartments-section__personal">
@@ -1800,65 +1869,69 @@ function MainPage() {
           <h2 className="section__title">{t('recommended')} Property</h2>
         </div>
 
-        <div className="property-list property-list--horizontal">
-          {(filteredProperties?.recommended || recommendedProperties).map((property) => (
-            <article
-              className="property-card"
-              key={property.id}
-              onClick={() => handlePropertyClick('recommended', property.id)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="property-card__image">
-                <img src={property.image} alt={property.name} />
-                <button
-                  type="button"
-                  className={`property-card__favorite ${
-                    favoriteProperties.get(`recommended-${property.id}`)
-                      ? 'property-card__favorite--active'
-                      : ''
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleFavorite('recommended', property.id)
-                  }}
-                  aria-pressed={favoriteProperties.get(`recommended-${property.id}`)}
+        <div className="properties-grid">
+          {(filteredProperties?.recommended || recommendedProperties).map((property) => {
+            const formatPrice = (price) => {
+              if (price >= 1000000) {
+                return `${(price / 1000000).toFixed(1)} млн Р`
+              }
+              return `${price.toLocaleString('ru-RU')} Р`
+            }
+            
+            return (
+              <div key={property.id} className="property-card">
+                <div 
+                  className="property-link"
+                  onClick={() => handlePropertyClick('recommended', property.id)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  {favoriteProperties.get(`recommended-${property.id}`) ? (
-                    <FaHeartSolid size={16} />
-                  ) : (
-                    <FiHeart size={16} />
-                  )}
-                </button>
-              </div>
-
-              <div className="property-card__content">
-                <span className="property-card__badge">{property.tag}</span>
-                <div className="property-card__info">
-                  <div className="property-card__info-item">
-                    <MdBed size={16} />
-                    <span>{property.beds || 0}</span>
+                  <div className="property-image-container">
+                    <img 
+                      src={property.image} 
+                      alt={property.name}
+                      className="property-image"
+                    />
+                    {property.endTime && (
+                      <div className="property-timer-overlay">
+                        <PropertyTimer endTime={property.endTime} compact={true} />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className={`property-favorite ${
+                        favoriteProperties.get(`recommended-${property.id}`) ? 'active' : ''
+                      }`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleFavorite('recommended', property.id)
+                      }}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path 
+                          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          fill={favoriteProperties.get(`recommended-${property.id}`) ? "currentColor" : "none"}
+                        />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="property-card__info-item">
-                    <MdOutlineBathtub size={16} />
-                    <span>{property.baths || 0}</span>
-                  </div>
-                  <div className="property-card__info-item">
-                    <BiArea size={16} />
-                    <span>{property.sqft || 0} м²</span>
+                  <div className="property-content">
+                    <h3 className="property-title">{property.name}</h3>
+                    <p className="property-location">{property.location}</p>
+                    <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
+                    {property.currentBid && (
+                      <div className="property-bid-info">
+                        <span className="bid-label">Текущая ставка:</span>
+                        <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <p className="property-card__location">{property.location}</p>
-                <div className="property-card__price">
-                  <span className="property-card__price-amount">
-                    ${propertyMode === 'rent' ? property.price : property.price * 240}
-                  </span>
-                  <span className="property-card__price-period">
-                    {propertyMode === 'rent' ? '/Month' : ''}
-                  </span>
-                </div>
               </div>
-            </article>
-          ))}
+            )
+          })}
         </div>
       </section>
 
@@ -1867,76 +1940,69 @@ function MainPage() {
           <h2 className="section__title">{t('nearby')} Property</h2>
         </div>
 
-        <div className="property-list property-list--vertical">
-          {(filteredProperties?.nearby || nearbyProperties).map((property) => (
-            <article
-              className="property-card property-card--horizontal"
-              key={property.id}
-              onClick={() => handlePropertyClick('nearby', property.id)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="property-card__image property-card__image--small">
-                <img src={property.image} alt={property.name} />
-                <button
-                  type="button"
-                  className={`property-card__favorite ${
-                    favoriteProperties.get(`nearby-${property.id}`)
-                      ? 'property-card__favorite--active'
-                      : ''
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleFavorite('nearby', property.id)
-                  }}
-                  aria-pressed={favoriteProperties.get(`nearby-${property.id}`)}
+        <div className="properties-grid">
+          {(filteredProperties?.nearby || nearbyProperties).map((property) => {
+            const formatPrice = (price) => {
+              if (price >= 1000000) {
+                return `${(price / 1000000).toFixed(1)} млн Р`
+              }
+              return `${price.toLocaleString('ru-RU')} Р`
+            }
+            
+            return (
+              <div key={property.id} className="property-card">
+                <div 
+                  className="property-link"
+                  onClick={() => handlePropertyClick('nearby', property.id)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  {favoriteProperties.get(`nearby-${property.id}`) ? (
-                    <FaHeartSolid size={16} />
-                  ) : (
-                    <FiHeart size={16} />
-                  )}
-                </button>
-              </div>
-
-              <div className="property-card__content">
-                <div className="property-card__content-wrapper">
-                  <div className="property-card__content-main">
-                    <span className="property-card__badge">{property.tag}</span>
-                    <div className="property-card__info">
-                      <div className="property-card__info-item">
-                        <MdBed size={16} />
-                        <span>{property.beds || 0}</span>
-                      </div>
-                      <div className="property-card__info-item">
-                        <MdOutlineBathtub size={16} />
-                        <span>{property.baths || 0}</span>
-                      </div>
-                      <div className="property-card__info-item">
-                        <BiArea size={16} />
-                        <span>{property.sqft || 0} м²</span>
-                      </div>
-                    </div>
-                    <p className="property-card__location">{property.location}</p>
-                    <div className="property-card__price">
-                      <span className="property-card__price-amount">
-                        ${propertyMode === 'rent' ? property.price : property.price * 240}
-                      </span>
-                      <span className="property-card__price-period">
-                        {propertyMode === 'rent' ? '/Month' : ''}
-                      </span>
-                    </div>
-                  </div>
-                  {property.isAuction && (
+                  <div className="property-image-container">
                     <img 
-                      src="https://png.pngtree.com/png-vector/20220525/ourmid/pngtree-test-drive-rubber-stamp-png-image_4726533.png" 
-                      alt="Аукцион" 
-                      className="property-card__auction-badge"
+                      src={property.image} 
+                      alt={property.name}
+                      className="property-image"
                     />
-                  )}
+                    {property.endTime && (
+                      <div className="property-timer-overlay">
+                        <PropertyTimer endTime={property.endTime} compact={true} />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className={`property-favorite ${
+                        favoriteProperties.get(`nearby-${property.id}`) ? 'active' : ''
+                      }`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleFavorite('nearby', property.id)
+                      }}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path 
+                          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          fill={favoriteProperties.get(`nearby-${property.id}`) ? "currentColor" : "none"}
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="property-content">
+                    <h3 className="property-title">{property.name}</h3>
+                    <p className="property-location">{property.location}</p>
+                    <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
+                    {property.currentBid && (
+                      <div className="property-bid-info">
+                        <span className="bid-label">Текущая ставка:</span>
+                        <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </article>
-          ))}
+            )
+          })}
         </div>
       </section>
       </div>

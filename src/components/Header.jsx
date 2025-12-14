@@ -200,8 +200,14 @@ const Header = () => {
                         <button className="menu-dropdown__item">
                           <span>Продажа</span>
                         </button>
-                        <button className="menu-dropdown__item">
-                          <span>Ипотека</span>
+                        <button 
+                          className="menu-dropdown__item"
+                          onClick={() => {
+                            navigate('/profile')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>Профиль</span>
                         </button>
                         <button className="menu-dropdown__item">
                           <span>Карты</span>
@@ -313,8 +319,8 @@ const Header = () => {
             </button>
             <button
               type="button"
-              className={`new-header__filter-btn ${location.pathname === '/history' ? 'new-header__filter-btn--active' : ''}`}
-              onClick={() => navigate('/history')}
+              className={`new-header__filter-btn ${location.pathname === '/favorites' ? 'new-header__filter-btn--active' : ''}`}
+              onClick={() => navigate('/favorites')}
             >
               <span>{t('favorites')}</span>
             </button>

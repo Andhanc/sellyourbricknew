@@ -8,6 +8,7 @@ import Data from './pages/Data'
 import Subscriptions from './pages/Subscriptions'
 import History from './pages/History'
 import Chat from './pages/Chat'
+import Favorites from './pages/Favorites'
 import OwnerDashboard from './pages/OwnerDashboard'
 import AddProperty from './pages/AddProperty'
 import './App.css'
@@ -25,6 +26,7 @@ function App() {
         <Route path="/subscriptions" element={<Subscriptions />} />
         <Route path="/history" element={<History />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/owner" element={<OwnerDashboard />} />
         <Route path="/owner/property/new" element={<AddProperty />} />
       </Routes>

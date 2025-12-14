@@ -12,13 +12,21 @@ import {
   FiLogOut,
   FiUser,
   FiSettings,
-  FiBarChart2
+  FiBarChart2,
+  FiX,
+  FiDownload,
+  FiChevronDown,
+  FiCalendar,
+  FiDollarSign as FiDollar,
+  FiClock
 } from 'react-icons/fi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import WelcomeModal from '../components/WelcomeModal'
 import QuickAddCard from '../components/QuickAddCard'
 import FileUploadModal from '../components/FileUploadModal'
+import PropertyCalculatorModal from '../components/PropertyCalculatorModal'
+import BiddingHistoryModal from '../components/BiddingHistoryModal'
 import './OwnerDashboard.css'
 
 // Демонстрационные данные объявлений владельца
@@ -50,7 +58,13 @@ const mockOwnerProperties = [
     views: 2156,
     inquiries: 45,
     publishedDate: '2023-11-20',
-    soldDate: '2024-02-10'
+    soldDate: '2024-02-10',
+    buyer: {
+      name: 'Мария Иванова',
+      email: 'maria.ivanova@example.com',
+      phone: '+7 (999) 123-45-67',
+      purchasePrice: 1200000
+    }
   },
   {
     id: 3,
@@ -88,6 +102,11 @@ const OwnerDashboard = () => {
   const [activeTab, setActiveTab] = useState('properties') // 'properties' или 'analytics'
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [showFileUploadModal, setShowFileUploadModal] = useState(false)
+  const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false)
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false)
+  const [isSalesExpanded, setIsSalesExpanded] = useState(false)
+  const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false)
+  const [selectedPropertyForHistory, setSelectedPropertyForHistory] = useState(null)
 
   useEffect(() => {
     // Проверяем, авторизован ли владелец
@@ -96,13 +115,22 @@ const OwnerDashboard = () => {
       navigate('/')
     } else {
       // Показываем модальное окно приветствия при первом входе
+      // Для тестирования можно временно убрать проверку hasSeenWelcome
       const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
       if (!hasSeenWelcome) {
-        setShowWelcomeModal(true)
-        localStorage.setItem('hasSeenWelcome', 'true')
+        // Небольшая задержка для корректного рендеринга
+        setTimeout(() => {
+          setShowWelcomeModal(true)
+        }, 100)
       }
     }
   }, [navigate])
+
+  // Сохраняем флаг после закрытия модального окна
+  const handleWelcomeClose = () => {
+    setShowWelcomeModal(false)
+    localStorage.setItem('hasSeenWelcome', 'true')
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('isOwnerLoggedIn')
@@ -144,25 +172,112 @@ const OwnerDashboard = () => {
     return <span className={`status-badge ${config.class}`}>{config.text}</span>
   }
 
+  const handleExportToExcel = () => {
+    // Формируем данные для Excel отчета
+    const analyticsData = []
+    
+    // Заголовки
+    analyticsData.push([
+      'Название', 
+      'Локация', 
+      'Цена', 
+      'Спальни', 
+      'Ванные', 
+      'Площадь (м²)', 
+      'Статус', 
+      'Просмотры', 
+      'Запросы', 
+      'Дата публикации'
+    ])
+    
+    // Данные по объявлениям
+    properties.forEach(property => {
+      const statusText = property.status === 'active' ? 'Активно' : 
+                        property.status === 'sold' ? 'Продано' : 
+                        'На модерации'
+      
+      analyticsData.push([
+        property.title,
+        property.location,
+        property.price,
+        property.beds,
+        property.baths,
+        property.sqft,
+        statusText,
+        property.views,
+        property.inquiries,
+        new Date(property.publishedDate).toLocaleDateString('ru-RU')
+      ])
+    })
+    
+    // Добавляем итоговую статистику
+    analyticsData.push([])
+    analyticsData.push(['ИТОГОВАЯ СТАТИСТИКА'])
+    analyticsData.push(['Всего объявлений', totalProperties])
+    analyticsData.push(['Активных объявлений', activeProperties])
+    analyticsData.push(['Продано объявлений', soldProperties])
+    analyticsData.push(['Всего просмотров', totalViews])
+    analyticsData.push(['Всего запросов', totalInquiries])
+    analyticsData.push(['Общая выручка', properties
+      .filter(p => p.status === 'sold')
+      .reduce((sum, p) => sum + p.price, 0)])
+    analyticsData.push(['Средняя цена', 
+      Math.round(properties.reduce((sum, p) => sum + p.price, 0) / totalProperties)])
+    analyticsData.push(['Конверсия просмотры → запросы', 
+      totalViews > 0 ? ((totalInquiries / totalViews) * 100).toFixed(1) + '%' : '0%'])
+    analyticsData.push(['Конверсия запросы → продажи', 
+      totalInquiries > 0 ? ((soldProperties / totalInquiries) * 100).toFixed(1) + '%' : '0%'])
+    
+    // Преобразуем в CSV формат
+    const csvContent = analyticsData
+      .map(row => row.map(cell => {
+        // Экранируем кавычки и запятые
+        if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
+          return `"${cell.replace(/"/g, '""')}"`
+        }
+        return cell
+      }).join(','))
+      .join('\n')
+    
+    // Добавляем BOM для правильной кодировки в Excel
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `analytics_report_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="owner-dashboard">
       <header className="owner-dashboard__header">
         <div className="owner-dashboard__header-content">
           <div className="owner-dashboard__header-left">
-            <h1 className="owner-dashboard__title">Панель владельца</h1>
+            <h1 className="owner-dashboard__title">Иванов Иван</h1>
             <p className="owner-dashboard__subtitle">Управление вашей недвижимостью</p>
           </div>
           <div className="owner-dashboard__header-right">
             <button 
               className="owner-dashboard__icon-btn"
-              onClick={() => navigate('/profile')}
+              onClick={() => {
+                setIsProfilePanelOpen(true)
+                setIsSettingsPanelOpen(false)
+              }}
               aria-label="Профиль"
             >
               <FiUser size={20} />
             </button>
             <button 
               className="owner-dashboard__icon-btn"
-              onClick={() => navigate('/owner/settings')}
+              onClick={() => {
+                setIsSettingsPanelOpen(true)
+                setIsProfilePanelOpen(false)
+              }}
               aria-label="Настройки"
             >
               <FiSettings size={20} />
@@ -244,6 +359,30 @@ const OwnerDashboard = () => {
           </div>
         </section>
 
+        {/* Блок "Рассчитать стоимость объекта" */}
+        {activeTab === 'properties' && (
+          <div className="property-calculator-card">
+            <div className="property-calculator-card__image">
+              <img 
+                src="https://t4.ftcdn.net/jpg/18/28/02/25/360_F_1828022572_oAUGr6FsgeCSUty8xFbtsj2pOwXdthho.jpg" 
+                alt="Рассчитать стоимость объекта" 
+              />
+            </div>
+            <div className="property-calculator-card__content">
+              <h2 className="property-calculator-card__title">Рассчитать стоимость объекта</h2>
+              <p className="property-calculator-card__description">
+                Узнайте рыночную стоимость вашей недвижимости за несколько минут
+              </p>
+              <button 
+                className="property-calculator-card__button"
+                onClick={() => setIsCalculatorModalOpen(true)}
+              >
+                Начать расчет
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Контент вкладок */}
         {activeTab === 'properties' && (
           <section className="owner-dashboard__properties">
@@ -307,6 +446,15 @@ const OwnerDashboard = () => {
                   </div>
 
                   <div className="property-card-owner__actions">
+                    {property.status === 'active' && (
+                      <button
+                        className="action-btn action-btn--history"
+                        onClick={() => setSelectedPropertyForHistory(property)}
+                      >
+                        <FiClock size={16} />
+                        История
+                      </button>
+                    )}
                     <button
                       className="action-btn action-btn--view"
                       onClick={() => handleViewProperty(property.id)}
@@ -339,7 +487,17 @@ const OwnerDashboard = () => {
         {activeTab === 'analytics' && (
           <section className="owner-dashboard__analytics">
             <div className="analytics-section">
-              <h2 className="analytics-section__title">Аналитика продаж</h2>
+              <div className="analytics-section__header">
+                <h2 className="analytics-section__title">Аналитика продаж</h2>
+                <button 
+                  className="analytics-section__export-btn"
+                  onClick={handleExportToExcel}
+                  aria-label="Получить Excel отчет"
+                >
+                  <FiDownload size={18} />
+                  <span>Получить Excel отчет</span>
+                </button>
+              </div>
               
               <div className="analytics-grid">
                 <div className="analytics-card">
@@ -402,8 +560,11 @@ const OwnerDashboard = () => {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="analytics-card">
+              {/* Блоки "Статистика по статусам" и "Мои продажи" в одной линии */}
+              <div className="analytics-bottom-row">
+                <div className="analytics-card analytics-card--half">
                   <h3 className="analytics-card__title">Статистика по статусам</h3>
                   <div className="status-stats">
                     <div className="status-stat-item">
@@ -431,6 +592,83 @@ const OwnerDashboard = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Блок "Мои продажи" */}
+                <div className="my-sales-card my-sales-card--inline">
+                  <button 
+                  className="my-sales-card__header"
+                  onClick={() => setIsSalesExpanded(!isSalesExpanded)}
+                  aria-expanded={isSalesExpanded}
+                >
+                  <h3 className="my-sales-card__title">Мои продажи</h3>
+                  <FiChevronDown 
+                    size={24} 
+                    className={`my-sales-card__icon ${isSalesExpanded ? 'my-sales-card__icon--expanded' : ''}`}
+                  />
+                  </button>
+                  
+                  {isSalesExpanded && (
+                    <div className="my-sales-card__content">
+                    {properties.filter(p => p.status === 'sold' && p.buyer).length > 0 ? (
+                      <div className="sales-list">
+                        {properties
+                          .filter(p => p.status === 'sold' && p.buyer)
+                          .map((property) => (
+                            <div key={property.id} className="sale-item">
+                              <div className="sale-item__image">
+                                <img src={property.image} alt={property.title} />
+                              </div>
+                              <div className="sale-item__info">
+                                <h4 className="sale-item__property-title">{property.title}</h4>
+                                <p className="sale-item__property-location">{property.location}</p>
+                                
+                                <div className="sale-item__buyer">
+                                  <div className="sale-item__buyer-info">
+                                    <div className="sale-item__buyer-field">
+                                      <FiUser size={16} />
+                                      <span className="sale-item__buyer-label">Покупатель:</span>
+                                      <span className="sale-item__buyer-value">{property.buyer.name}</span>
+                                    </div>
+                                    <div className="sale-item__buyer-field">
+                                      <FiDollar size={16} />
+                                      <span className="sale-item__buyer-label">Цена продажи:</span>
+                                      <span className="sale-item__buyer-value sale-item__buyer-value--price">
+                                        ${property.buyer.purchasePrice.toLocaleString('ru-RU')}
+                                      </span>
+                                    </div>
+                                    <div className="sale-item__buyer-field">
+                                      <FiCalendar size={16} />
+                                      <span className="sale-item__buyer-label">Дата продажи:</span>
+                                      <span className="sale-item__buyer-value">
+                                        {new Date(property.soldDate).toLocaleDateString('ru-RU', {
+                                          day: 'numeric',
+                                          month: 'long',
+                                          year: 'numeric'
+                                        })}
+                                      </span>
+                                    </div>
+                                    <div className="sale-item__buyer-field">
+                                      <span className="sale-item__buyer-label">Email:</span>
+                                      <span className="sale-item__buyer-value">{property.buyer.email}</span>
+                                    </div>
+                                    <div className="sale-item__buyer-field">
+                                      <span className="sale-item__buyer-label">Телефон:</span>
+                                      <span className="sale-item__buyer-value">{property.buyer.phone}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="sales-empty">
+                        <p>У вас пока нет завершенных продаж</p>
+                      </div>
+                    )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -440,7 +678,7 @@ const OwnerDashboard = () => {
       {/* Модальное окно приветствия */}
       <WelcomeModal 
         isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
+        onClose={handleWelcomeClose}
         userName="Иван Иванов"
       />
 
@@ -453,6 +691,142 @@ const OwnerDashboard = () => {
           console.log('Файл успешно загружен!')
         }}
       />
+
+      {/* Модальное окно калькулятора стоимости */}
+      <PropertyCalculatorModal
+        isOpen={isCalculatorModalOpen}
+        onClose={() => setIsCalculatorModalOpen(false)}
+      />
+
+      {/* Модальное окно истории ставок */}
+      <BiddingHistoryModal
+        isOpen={!!selectedPropertyForHistory}
+        onClose={() => setSelectedPropertyForHistory(null)}
+        property={selectedPropertyForHistory}
+      />
+
+      {/* Панель профиля */}
+      {isProfilePanelOpen && (
+        <>
+          <div 
+            className="owner-sidebar-backdrop"
+            onClick={() => setIsProfilePanelOpen(false)}
+          />
+          <div className="owner-sidebar-panel owner-sidebar-panel--profile">
+            <div className="owner-sidebar-panel__content">
+              <div className="owner-sidebar-panel__header">
+                <h3 className="owner-sidebar-panel__title">Профиль</h3>
+                <button 
+                  type="button" 
+                  className="owner-sidebar-panel__close"
+                  onClick={() => setIsProfilePanelOpen(false)}
+                  aria-label="Закрыть профиль"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+              <div className="owner-sidebar-panel__body">
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">ФИО</h4>
+                  <p className="owner-profile-section__value">Иванов Иван Иванович</p>
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Паспортные данные</h4>
+                  <p className="owner-profile-section__value">45 12 123456</p>
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Подписка</h4>
+                  <p className="owner-profile-section__value">Базовая</p>
+                  <button className="owner-profile-section__button">Изменить подписку</button>
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Верификация</h4>
+                  <p className="owner-profile-section__value owner-profile-section__value--warning">Не верифицирован</p>
+                  <button className="owner-profile-section__button owner-profile-section__button--primary">Пройти верификацию</button>
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Паспортные данные</h4>
+                  <p className="owner-profile-section__value">Загружено</p>
+                  <button className="owner-profile-section__button">Изменить</button>
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Почта</h4>
+                  <p className="owner-profile-section__value">ivan@example.com</p>
+                  <button className="owner-profile-section__button">Изменить</button>
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">WhatsApp</h4>
+                  <p className="owner-profile-section__value">+7 (999) 123-45-67</p>
+                  <button className="owner-profile-section__button">Изменить</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Панель настроек */}
+      {isSettingsPanelOpen && (
+        <>
+          <div 
+            className="owner-sidebar-backdrop"
+            onClick={() => setIsSettingsPanelOpen(false)}
+          />
+          <div className="owner-sidebar-panel owner-sidebar-panel--settings">
+            <div className="owner-sidebar-panel__content">
+              <div className="owner-sidebar-panel__header">
+                <h3 className="owner-sidebar-panel__title">Настройки</h3>
+                <button 
+                  type="button" 
+                  className="owner-sidebar-panel__close"
+                  onClick={() => setIsSettingsPanelOpen(false)}
+                  aria-label="Закрыть настройки"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+              <div className="owner-sidebar-panel__body">
+                <div className="owner-settings-section">
+                  <h4 className="owner-settings-section__title">Смена языка</h4>
+                  <select className="owner-settings-section__select">
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                  </select>
+                </div>
+                <div className="owner-settings-section">
+                  <h4 className="owner-settings-section__title">Смена пароля</h4>
+                  <button className="owner-settings-section__button">Изменить пароль</button>
+                </div>
+                <div className="owner-settings-section">
+                  <h4 className="owner-settings-section__title">Уведомления</h4>
+                  <div className="owner-settings-section__toggle">
+                    <label className="owner-toggle-switch">
+                      <input type="checkbox" defaultChecked />
+                      <span className="owner-toggle-slider"></span>
+                    </label>
+                    <span className="owner-toggle-label">Включить уведомления</span>
+                  </div>
+                  <div className="owner-settings-section__toggle">
+                    <label className="owner-toggle-switch">
+                      <input type="checkbox" defaultChecked />
+                      <span className="owner-toggle-slider"></span>
+                    </label>
+                    <span className="owner-toggle-label">Email уведомления</span>
+                  </div>
+                  <div className="owner-settings-section__toggle">
+                    <label className="owner-toggle-switch">
+                      <input type="checkbox" />
+                      <span className="owner-toggle-slider"></span>
+                    </label>
+                    <span className="owner-toggle-label">SMS уведомления</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
