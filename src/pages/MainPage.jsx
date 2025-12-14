@@ -1246,6 +1246,15 @@ function MainPage() {
                 <div className="menu-dropdown__content">
                   <div className="menu-dropdown__columns">
                     <div className="menu-dropdown__column">
+                      <button 
+                        className="menu-dropdown__item"
+                        onClick={() => {
+                          navigate('/admin')
+                          setIsMenuOpen(false)
+                        }}
+                      >
+                        <span>Админ-панель</span>
+                      </button>
                       <button className="menu-dropdown__item">
                         <span>Недвижимость</span>
                       </button>
@@ -1257,9 +1266,6 @@ function MainPage() {
                       </button>
                       <button className="menu-dropdown__item">
                         <span>Продажа</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Ипотека</span>
                       </button>
                       <button className="menu-dropdown__item">
                         <span>Карты</span>

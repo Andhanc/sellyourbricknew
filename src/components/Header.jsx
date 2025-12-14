@@ -188,6 +188,15 @@ const Header = () => {
                   <div className="menu-dropdown__content">
                     <div className="menu-dropdown__columns">
                       <div className="menu-dropdown__column">
+                        <button 
+                          className="menu-dropdown__item"
+                          onClick={() => {
+                            navigate('/admin')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>Админ-панель</span>
+                        </button>
                         <button className="menu-dropdown__item">
                           <span>Недвижимость</span>
                         </button>
@@ -208,18 +217,6 @@ const Header = () => {
                           }}
                         >
                           <span>Профиль</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Карты</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Вклады</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Инвестиции</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Платежи</span>
                         </button>
                       </div>
                       <div className="menu-dropdown__column">

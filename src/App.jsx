@@ -11,6 +11,7 @@ import Chat from './pages/Chat'
 import Favorites from './pages/Favorites'
 import OwnerDashboard from './pages/OwnerDashboard'
 import AddProperty from './pages/AddProperty'
+import AdminPanelPage from './admin/AdminPanelPage'
 import './App.css'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/owner" element={<OwnerDashboard />} />
         <Route path="/owner/property/new" element={<AddProperty />} />
+        <Route path="/admin" element={<AdminPanelPage />} />
       </Routes>
     </Router>
   )
