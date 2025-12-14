@@ -32,6 +32,10 @@ if errorlevel 1 (
 echo.
 echo [4/6] Проверка существующего remote...
 git remote remove origin 2>nul
+if errorlevel 1 (
+    echo Удаление старого remote...
+    git remote remove origin
+)
 echo Добавление remote репозитория...
 git remote add origin https://github.com/Andhanc/sellyourbricknew.git
 if errorlevel 1 (

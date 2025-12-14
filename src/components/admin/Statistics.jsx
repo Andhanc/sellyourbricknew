@@ -81,6 +81,17 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     return newValue >= 0 ? `+${newValue.toFixed(1)}%` : `${newValue.toFixed(1)}%`;
   };
 
+  // Функция для определения типа изменения на основе процента
+  const getChangeType = (changeString) => {
+    // Извлекаем числовое значение из строки (например, "+12.5%" или "-2.5%")
+    const match = changeString.match(/([+-]?\d+\.?\d*)/);
+    if (match) {
+      const value = parseFloat(match[1]);
+      return value >= 0 ? 'positive' : 'negative';
+    }
+    return 'positive'; // По умолчанию положительное
+  };
+
   const multiplier = useMemo(() => {
     if (startDate && endDate) {
       return getTimeMultiplier(null, startDate, endDate);
@@ -327,56 +338,68 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     const buyersCount = Math.round((businessInfo.user_role_stats?.buyers || 55) / 100 * totalUsers);
     const sellersCount = Math.round((businessInfo.user_role_stats?.sellers || 45) / 100 * totalUsers);
     
-    return [
+    const statsData = [
       {
         title: 'Всего пользователей',
         value: totalUsers,
-        change: getChangePercent('12.5', timeFilter) + ' за период',
-        changeType: 'positive',
+        changePercent: '12.5',
         icon: 'fas fa-users',
         iconClass: 'blue'
       },
       {
         title: 'Количество Покупателей',
         value: buyersCount,
-        change: getChangePercent('8.3', timeFilter) + ' за период',
-        changeType: 'positive',
+        changePercent: '8.3',
         icon: 'fas fa-shopping-cart',
         iconClass: 'green'
       },
       {
         title: 'Количество Продавцов',
         value: sellersCount,
-        change: getChangePercent('10.2', timeFilter) + ' за период',
-        changeType: 'positive',
+        changePercent: '10.2',
         icon: 'fas fa-store',
         iconClass: 'purple'
       },
       {
         title: 'Выставленные Объекты',
         value: Math.round((businessInfo.objects_count || 156) * multiplier),
-        change: getChangePercent('15.2', timeFilter) + ' за период',
-        changeType: 'positive',
+        changePercent: '15.2',
         icon: 'fas fa-building',
         iconClass: 'orange'
       },
       {
         title: 'Количество Аукционов',
         value: Math.round((businessInfo.auctions_count || 23) * multiplier),
-        change: getChangePercent('18.4', timeFilter) + ' за период',
-        changeType: 'positive',
+        changePercent: '18.4',
         icon: 'fas fa-gavel',
         iconClass: 'blue'
       },
       {
         title: 'Прибыль',
         value: `$${Math.round(businessInfo.stats.total_profit * multiplier).toLocaleString('ru-RU')}`,
-        change: getChangePercent('22.7', timeFilter) + ' за период',
-        changeType: 'positive',
+        changePercent: '22.7',
         icon: 'fas fa-wallet',
         iconClass: 'green'
       }
     ];
+
+    return statsData.map(stat => {
+      // При фильтре "Все время" не показываем проценты, только абсолютные значения
+      if (timeFilter === 'all') {
+        return {
+          ...stat,
+          change: null, // Не показываем изменение
+          changeType: null
+        };
+      }
+      
+      const changeString = getChangePercent(stat.changePercent, timeFilter);
+      return {
+        ...stat,
+        change: changeString + ' за период',
+        changeType: getChangeType(changeString)
+      };
+    });
   }, [businessInfo, multiplier, timeFilter]);
 
   const timeFilterOptions = [

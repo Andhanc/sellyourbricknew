@@ -53,6 +53,8 @@ git remote remove origin
 git remote add origin https://github.com/Andhanc/sellyourbricknew.git
 ```
 
+Или запустите готовый скрипт: **`fix-remote.bat`**
+
 ### Проблема: "Authentication failed"
 Решение: Вам нужно будет авторизоваться. GitHub может запросить:
 - Personal Access Token (рекомендуется)

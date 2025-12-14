@@ -5,6 +5,7 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
   transition: transform 0.3s, box-shadow 0.3s;
   border: 1px solid rgba(0, 0, 0, 0.03);
+  position: relative;
 }
 
 .stat-card:hover {
@@ -14,9 +15,7 @@
 
 .stat-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
+  flex-direction: column;
 }
 
 .stat-icon {
@@ -27,6 +26,10 @@
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 1;
 }
 
 .stat-icon.blue {
