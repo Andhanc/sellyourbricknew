@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FiHeart } from 'react-icons/fi'
 import { FaHeart as FaHeartSolid } from 'react-icons/fa'
+import { MdBed, MdOutlineBathtub } from 'react-icons/md'
+import { BiArea } from 'react-icons/bi'
 import PropertyTimer from './PropertyTimer'
 import './PropertyList.css'
 
@@ -179,10 +181,33 @@ function ApartmentsSection() {
                   <h3 className="property-title">{apartment.title}</h3>
                   <p className="property-location">{apartment.location}</p>
                   <div className="property-price">{formatPrice(apartment.price)}</div>
-                  {apartment.currentBid && (
-                    <div className="property-bid-info">
-                      <span className="bid-label">Текущая ставка:</span>
-                      <span className="bid-value">{formatPrice(apartment.currentBid)}</span>
+                  {apartment.endTime ? (
+                    apartment.currentBid && (
+                      <div className="property-bid-info">
+                        <span className="bid-label">Текущая ставка:</span>
+                        <span className="bid-value">{formatPrice(apartment.currentBid)}</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="property-specs">
+                      {apartment.beds && (
+                        <div className="spec-item">
+                          <MdBed size={18} />
+                          <span>{apartment.beds}</span>
+                        </div>
+                      )}
+                      {apartment.baths && (
+                        <div className="spec-item">
+                          <MdOutlineBathtub size={18} />
+                          <span>{apartment.baths}</span>
+                        </div>
+                      )}
+                      {apartment.sqft && (
+                        <div className="spec-item">
+                          <BiArea size={18} />
+                          <span>{apartment.sqft} м²</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

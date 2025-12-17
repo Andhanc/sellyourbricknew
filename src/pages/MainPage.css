@@ -7,10 +7,13 @@
   flex-direction: column;
   gap: 0;
   background: #ffffff;
-  min-height: 100vh;
-  overflow-x: hidden;
   width: 100%;
-  max-width: 100%;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.app::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .app__content {
@@ -225,8 +228,10 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: calc(100vh - 20px);
-  overflow-y: auto;
+  /* Даем странице управлять вертикальной прокруткой,
+     чтобы не появлялся второй большой скролл внутри окна */
+  max-height: none;
+  overflow-y: visible;
 }
 
 .notification-panel__header {
@@ -551,6 +556,27 @@
   color: #111827;
   outline: none;
   min-width: 0;
+}
+
+.search__clear {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.search__clear:hover {
+  color: #111827;
+  background: rgba(17, 24, 39, 0.05);
 }
 
 .search__map-btn {
@@ -1021,6 +1047,59 @@
 .property-card__price-period {
   font-size: 13px;
   color: #111827;
+}
+
+.property-bid-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.bid-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.bid-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #4A90E2;
+}
+
+.property-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  align-items: flex-start;
+}
+
+.property-specs .spec-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.property-specs .spec-item svg {
+  color: #666;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.property-specs .spec-item span {
+  color: #333;
+  font-weight: 500;
 }
 
 @media (min-width: 480px) {
@@ -1612,7 +1691,8 @@
 
 .chat-widget__messages {
   flex: 1;
-  overflow-y: auto;
+  /* Прокрутка будет у страницы, а не у отдельного блока */
+  overflow-y: visible;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -2713,6 +2793,29 @@
     border: none !important;
     outline: none !important;
     display: block !important;
+    animation: backdropFadeIn 0.3s ease-out;
+  }
+
+  .menu-backdrop--closing {
+    animation: backdropFadeOut 0.3s ease-out;
+  }
+
+  @keyframes backdropFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes backdropFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
   }
   
   /* Убеждаемся, что backdrop перекрывает все элементы */
@@ -2723,7 +2826,7 @@
 
   .menu-dropdown {
     position: fixed !important;
-    top: 113px !important; /* 40px (margin-top хедера) + ~62px (высота хедера + отступ) - опускаем ниже */
+    top: calc(40px + 63px + 9px) !important; /* 40px (margin-top хедера) + 63px (высота хедера) + 1px отступ */
     left: 50% !important;
     transform: translateX(-50%) !important;
     background: #ffffff !important;
@@ -2731,11 +2834,15 @@
     border-radius: 0 0 16px 16px !important; /* Скругляем только нижние углы */
    
     z-index: 9999 !important;
-    width: calc(100% - 120px) !important;
-    max-width: 1250px !important;
+    width: calc(100% - 120px) !important; /* Ширина равна ширине хедера */
+    max-width: 1249.5px !important; /* Максимальная ширина равна max-width хедера */
     max-height: calc(100vh - 120px) !important;
     animation: menuSlideDown 0.3s ease-out;
     overflow: hidden !important;
+  }
+
+  .menu-dropdown--closing {
+    animation: menuSlideUp 0.3s ease-out;
   }
   
   /* Когда меню открыто, скругляем только верхние углы хедера */
@@ -2755,18 +2862,35 @@
     }
   }
 
+  @keyframes menuSlideUp {
+    from {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+  }
+
   .menu-dropdown__content {
     display: flex;
-    gap: 40px;
-    padding: 32px;
+    gap: 20px;
+    padding: 20px;
     overflow-y: auto;
-    max-height: calc(90vh - 64px);
+    max-height: calc(60vh - 64px);
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .menu-dropdown__content::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
   }
 
   .menu-dropdown__columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0;
+    gap: 16px;
     flex: 1;
   }
 
@@ -2776,18 +2900,38 @@
     gap: 0;
   }
 
+  .menu-dropdown__column-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 8px;
+    align-items: start;
+  }
+
+  .menu-dropdown__column-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px 0;
+    padding: 0 10px;
+    font-family: 'Poppins', sans-serif;
+  }
+
   .menu-dropdown__item {
-    width: 100%;
+    display: inline-block;
+    width: fit-content;
     text-align: left;
-    padding: 12px 16px;
+    padding: 8px 10px;
+    margin: 2px 0;
     border: none;
     background: none;
     color: #111827;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 400;
     font-family: 'Poppins', sans-serif;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: background-color 0.2s ease;
   }
 
@@ -2798,23 +2942,23 @@
   .menu-dropdown__right {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    padding-left: 24px;
+    gap: 16px;
+    padding-left: 16px;
     border-left: 1px solid rgba(17, 24, 39, 0.1);
     min-width: 200px;
   }
 
   .menu-dropdown__icons {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
   .menu-dropdown__icon-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 0;
     border: none;
     background: none;
@@ -2829,8 +2973,8 @@
   }
 
   .menu-dropdown__icon-box {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -2855,18 +2999,18 @@
   }
 
   .menu-dropdown__icon-box--instagram {
-    background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-    color: #ffffff;
+    background: transparent;
+    padding: 0;
   }
 
   .menu-dropdown__icon-box--whatsapp {
-    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
-    color: #ffffff;
+    background: transparent;
+    padding: 0;
   }
 
   .menu-dropdown__icon-box--gmail {
-    background: linear-gradient(135deg, #ea4335 0%, #c5221f 100%);
-    color: #ffffff;
+    background: transparent;
+    padding: 0;
   }
 
   .menu-dropdown__icon-box--phone {
@@ -2874,13 +3018,21 @@
     color: #ffffff;
   }
 
+  .menu-dropdown__icon-box img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 12px;
+  }
+
   .menu-dropdown__icon-label {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 500;
     color: #111827;
     font-family: 'Poppins', sans-serif;
     text-align: center;
   }
+
 
   .menu-dropdown__filter {
     display: flex;
@@ -2934,10 +3086,11 @@
       width: 90%;
     }
 
-    .menu-dropdown__content {
-      gap: 30px;
-      padding: 28px;
-    }
+      .menu-dropdown__content {
+        gap: 20px;
+        padding: 16px;
+        max-height: calc(55vh - 64px);
+      }
   }
 
   .new-header__filters {
@@ -4447,6 +4600,12 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sidebar-panel__body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 /* Стили для профиля */

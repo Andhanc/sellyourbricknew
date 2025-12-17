@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import Footer from '../components/Footer'
 import './Data.css'
 
 const Data = () => {
@@ -332,7 +331,6 @@ const Data = () => {
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   )
 }

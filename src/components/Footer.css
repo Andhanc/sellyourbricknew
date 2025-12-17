@@ -172,6 +172,11 @@
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
+/* Гарантируем белый текст внутри кнопок стора */
+.footer__store-btn span {
+  color: #ffffff;
+}
+
 .footer__store-btn:hover {
   background: #000000;
   transform: translateY(-1px);
@@ -221,12 +226,14 @@
 .footer__store-label {
   font-size: 9px;
   text-transform: uppercase;
-  opacity: 0.8;
+  opacity: 1;
+  color: #ffffff;
 }
 
 .footer__store-name {
   font-size: 12px;
   font-weight: 600;
+  color: #ffffff;
 }
 
 .footer__language-selector {

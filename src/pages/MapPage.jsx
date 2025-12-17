@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { properties } from '../data/properties'
-import Footer from '../components/Footer'
 import './MapPage.css'
 
 const MapPage = () => {
@@ -324,7 +323,6 @@ const MapPage = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   )
 }

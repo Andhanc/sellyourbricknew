@@ -2,24 +2,93 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { properties } from '../data/properties'
 import CountdownTimer from '../components/CountdownTimer'
-import Footer from '../components/Footer'
 import { FiX } from 'react-icons/fi'
 import './PropertyDetail.css'
 
 const PropertyDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const property = properties.find(p => p.id === parseInt(id))
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [bidAmount, setBidAmount] = useState('')
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
   const historyPanelRef = useRef(null)
 
+  // Ищем объект по ID
+  const property = properties.find(p => {
+    // Пробуем разные варианты сравнения
+    const propertyId = p.id
+    const paramId = parseInt(id, 10)
+    const isMatch = propertyId === paramId || propertyId.toString() === id || propertyId === Number(id)
+    
+    if (!isMatch && id) {
+      console.log('Checking property:', propertyId, 'against param:', id, 'parsed:', paramId, 'match:', isMatch)
+    }
+    
+    return isMatch
+  })
+
+  useEffect(() => {
+    // Небольшая задержка для имитации загрузки
+    setIsLoading(true)
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [id])
+  
+  // Логируем для отладки
+  useEffect(() => {
+    if (property) {
+      console.log('Property found:', property.id, property.title)
+    } else if (id) {
+      console.error('Property not found for ID:', id, 'Type:', typeof id)
+      console.log('Available properties:', properties.map(p => ({ id: p.id, title: p.title })))
+    }
+  }, [id, property])
+
+  // Закрытие панели истории при клике вне её
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (historyPanelRef.current && !historyPanelRef.current.contains(event.target)) {
+        // Проверяем, что клик не по кнопке открытия
+        if (!event.target.closest('.btn-bid-history')) {
+          setIsBidHistoryOpen(false)
+        }
+      }
+    }
+
+    if (isBidHistoryOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [isBidHistoryOpen])
+
+  if (isLoading) {
+    return (
+      <div className="property-detail">
+        <div className="loading" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '50vh',
+          fontSize: '18px'
+        }}>
+          Загрузка...
+        </div>
+      </div>
+    )
+  }
+
   if (!property) {
+    console.error('Property not found. ID:', id, 'Available IDs:', properties.map(p => p.id))
     return (
       <div className="property-detail">
         <div className="not-found">
           <h2>Объект не найден</h2>
+          <p>ID: {id}</p>
           <Link to="/" className="btn btn-primary">Вернуться на главную</Link>
         </div>
       </div>
@@ -49,6 +118,7 @@ const PropertyDetail = () => {
     const now = new Date()
     const startPrice = property.currentBid * 0.7 // Начальная цена (70% от текущей)
     const priceStep = (property.currentBid - startPrice) / 10
+    const countries = ['Россия', 'Германия', 'Франция', 'Великобритания', 'США', 'Канада', 'Испания', 'Италия', 'Швейцария', 'ОАЭ']
     
     for (let i = 10; i >= 1; i--) {
       const price = Math.round(startPrice + priceStep * i)
@@ -57,7 +127,8 @@ const PropertyDetail = () => {
         id: i,
         amount: price,
         time: time,
-        bidder: `Участник ${String.fromCharCode(65 + (i % 5))}` // A, B, C, D, E
+        userId: `ID-${1000 + i * 100}`,
+        country: countries[i % countries.length]
       })
     }
     return history.reverse() // От старых к новым
@@ -65,25 +136,6 @@ const PropertyDetail = () => {
 
   const bidHistory = property ? generateBidHistory() : []
   const lastFiveBids = bidHistory.slice(-5).reverse() // Последние 5, от новых к старым
-
-  // Закрытие панели при клике вне её
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (historyPanelRef.current && !historyPanelRef.current.contains(event.target)) {
-        // Проверяем, что клик не по кнопке открытия
-        if (!event.target.closest('.btn-bid-history')) {
-          setIsBidHistoryOpen(false)
-        }
-      }
-    }
-
-    if (isBidHistoryOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-      }
-    }
-  }, [isBidHistoryOpen])
 
   // Форматирование времени для истории
   const formatTime = (date) => {
@@ -96,6 +148,23 @@ const PropertyDetail = () => {
       return `${hours} ч ${minutes} мин назад`
     }
     return `${minutes} мин назад`
+  }
+
+  // Получение кода страны для флага
+  const getCountryCode = (country) => {
+    const countryCodes = {
+      'Россия': 'ru',
+      'Германия': 'de',
+      'Франция': 'fr',
+      'Великобритания': 'gb',
+      'Испания': 'es',
+      'Италия': 'it',
+      'Швейцария': 'ch',
+      'США': 'us',
+      'Канада': 'ca',
+      'ОАЭ': 'ae'
+    }
+    return countryCodes[country] || 'xx'
   }
 
   // Данные для графика
@@ -294,7 +363,17 @@ const PropertyDetail = () => {
                       <div className="bid-history-item-info">
                         <div className="bid-history-item-amount">{formatPrice(bid.amount)}</div>
                         <div className="bid-history-item-details">
-                          <span className="bid-history-item-bidder">{bid.bidder}</span>
+                          <span className="bid-history-item-bidder">
+                            {bid.userId} • {bid.country}
+                            <img 
+                              src={`https://flagcdn.com/w20/${getCountryCode(bid.country)}.png`}
+                              alt={bid.country}
+                              className="bid-history-item-flag"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                            />
+                          </span>
                           <span className="bid-history-item-time">{formatTime(bid.time)}</span>
                         </div>
                       </div>
@@ -417,8 +496,6 @@ const PropertyDetail = () => {
           </div>
         </>
       )}
-
-      <Footer />
     </div>
   )
 }

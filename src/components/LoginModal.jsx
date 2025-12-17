@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiX, FiMail, FiLock, FiUser } from 'react-icons/fi'
-import { FaGoogle, FaWhatsapp } from 'react-icons/fa'
+import { FaGoogle, FaWhatsapp, FaFacebook } from 'react-icons/fa'
 import './LoginModal.css'
 
 const LoginModal = ({ isOpen, onClose }) => {
@@ -57,6 +57,85 @@ const LoginModal = ({ isOpen, onClose }) => {
     window.open('https://accounts.google.com/o/oauth2/v2/auth', '_blank')
   }
 
+  const handleFacebookLogin = () => {
+    // Здесь будет логика входа через Facebook
+    console.log('Вход через Facebook')
+    
+    // Функция для выполнения входа через Facebook
+    const performFacebookLogin = () => {
+      if (!window.FB) {
+        // Если SDK не загружен, открываем страницу входа Facebook
+        window.open('https://www.facebook.com/login', '_blank')
+        console.log('Facebook SDK не загружен. Открыта страница входа Facebook.')
+        return
+      }
+      
+      // Проверяем, инициализирован ли SDK
+      try {
+        window.FB.getLoginStatus(function(response) {
+          // SDK работает, выполняем вход
+          window.FB.login(
+            function(loginResponse) {
+              if (loginResponse.authResponse) {
+                // Пользователь успешно авторизован
+                console.log('Успешная авторизация через Facebook', loginResponse)
+                
+                // Получаем информацию о пользователе
+                window.FB.api('/me', { fields: 'name,email' }, function(userInfo) {
+                  console.log('Информация о пользователе:', userInfo)
+                  
+                  // Сохраняем информацию о входе
+                  localStorage.setItem('isLoggedIn', 'true')
+                  localStorage.setItem('loginMethod', 'facebook')
+                  localStorage.setItem('userName', userInfo.name || 'Пользователь')
+                  if (userInfo.email) {
+                    localStorage.setItem('userEmail', userInfo.email)
+                  }
+                  
+                  // Закрываем модальное окно
+                  onClose()
+                  
+                  // Показываем уведомление об успешном входе
+                  alert(`Добро пожаловать, ${userInfo.name || 'Пользователь'}!`)
+                })
+              } else {
+                console.log('Пользователь отменил авторизацию')
+              }
+            },
+            { scope: 'email,public_profile' }
+          )
+        })
+      } catch (error) {
+        console.error('Ошибка при работе с Facebook SDK:', error)
+        // Fallback: открываем страницу входа
+        window.open('https://www.facebook.com/login', '_blank')
+      }
+    }
+    
+    // Проверяем, загружен ли SDK
+    if (window.FB) {
+      // SDK уже загружен, выполняем вход
+      performFacebookLogin()
+    } else {
+      // Ждем загрузки SDK
+      const checkSDK = setInterval(() => {
+        if (window.FB) {
+          clearInterval(checkSDK)
+          performFacebookLogin()
+        }
+      }, 100)
+      
+      // Таймаут на случай, если SDK не загрузится
+      setTimeout(() => {
+        clearInterval(checkSDK)
+        if (!window.FB) {
+          window.open('https://www.facebook.com/login', '_blank')
+          console.log('Facebook SDK не загружен в течение 3 секунд. Открыта страница входа Facebook.')
+        }
+      }, 3000)
+    }
+  }
+
   const handleWhatsAppLogin = () => {
     // Здесь будет логика входа через WhatsApp
     console.log('Вход через WhatsApp')
@@ -97,6 +176,15 @@ const LoginModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className="login-modal__social">
+          <button 
+            type="button"
+            className="login-modal__social-btn login-modal__social-btn--facebook"
+            onClick={handleFacebookLogin}
+          >
+            <FaFacebook size={20} />
+            <span>{isLogin ? 'Войти через Facebook' : 'Зарегистрироваться через Facebook'}</span>
+          </button>
+          
           <button 
             type="button"
             className="login-modal__social-btn login-modal__social-btn--google"

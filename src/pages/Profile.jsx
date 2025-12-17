@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import Footer from '../components/Footer'
 import './Profile.css'
 
 const Profile = () => {
@@ -276,7 +275,7 @@ const Profile = () => {
                   <div className="card-content">
                     <h3>Премиум</h3>
                     <p>Полный доступ ко всем функциям</p>
-                    <div className="subscription-price">999 ₽/мес</div>
+                    <div className="subscription-price">$999 / month</div>
                   </div>
                 </div>
                 <div className="section-card subscription-card subscription-inactive">
@@ -295,7 +294,7 @@ const Profile = () => {
                   <div className="card-content">
                     <h3>Базовый</h3>
                     <p>Основные возможности</p>
-                    <div className="subscription-price">499 ₽/мес</div>
+                    <div className="subscription-price">$499 / month</div>
                   </div>
                 </div>
                 <div className="section-card subscription-card subscription-inactive">
@@ -314,7 +313,7 @@ const Profile = () => {
                   <div className="card-content">
                     <h3>Стандарт</h3>
                     <p>Расширенные функции</p>
-                    <div className="subscription-price">749 ₽/мес</div>
+                    <div className="subscription-price">$749 / month</div>
                   </div>
                 </div>
               </div>
@@ -446,7 +445,6 @@ const Profile = () => {
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   )
 }

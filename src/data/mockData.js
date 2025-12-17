@@ -128,3 +128,4 @@ export const mockBusinessInfo = {
   auctions_count: 23
 };
 
+

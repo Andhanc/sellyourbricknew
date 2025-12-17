@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { MdBed } from 'react-icons/md'
+import { BiArea } from 'react-icons/bi'
 import { properties } from '../data/properties'
 import PropertyTimer from './PropertyTimer'
 import './PropertyList.css'
 
 const PropertyList = () => {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [propertyType, setPropertyType] = useState('все')
@@ -132,17 +135,31 @@ const PropertyList = () => {
           <>
             <div className="properties-grid">
               {filteredProperties.slice(0, visibleCount).map((property) => (
-            <div key={property.id} className="property-card">
-              <Link to={`/property/${property.id}`} className="property-link">
+            <div 
+              key={property.id} 
+              className="property-card"
+              onClick={(e) => {
+                // Проверяем, что клик не по кнопке или ссылке
+                if (e.target.closest('button') || e.target.closest('a')) {
+                  return
+                }
+                console.log('Navigating to property:', property.id)
+                navigate(`/property/${property.id}`)
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="property-link">
                 <div className="property-image-container">
                   <img 
                     src={property.images[0]} 
                     alt={property.title}
                     className="property-image"
                   />
-                  <div className="property-timer-overlay">
-                    <PropertyTimer endTime={property.endTime} compact={true} />
-                  </div>
+                  {property.endTime && (
+                    <div className="property-timer-overlay">
+                      <PropertyTimer endTime={property.endTime} compact={true} />
+                    </div>
+                  )}
                   <button 
                     className={`property-favorite ${favorites.has(property.id) ? 'active' : ''}`}
                     onClick={(e) => {
@@ -188,31 +205,54 @@ const PropertyList = () => {
                   <h3 className="property-title">{property.title}</h3>
                   <p className="property-location">{property.location}</p>
                   <div className="property-price">{formatPrice(property.price)}</div>
-                  <div className="property-bid-info">
-                    <span className="bid-label">Текущая ставка:</span>
-                    <span className="bid-value">{formatPrice(property.currentBid)}</span>
-                  </div>
-                  <div className="property-actions">
-                    <Link 
-                      to={`/property/${property.id}`}
+                  {property.endTime ? (
+                    <div className="property-bid-info">
+                      <span className="bid-label">Текущая ставка:</span>
+                      <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                    </div>
+                  ) : (
+                    <div className="property-specs">
+                      {property.rooms && (
+                        <div className="spec-item">
+                          <MdBed size={18} />
+                          <span>{property.rooms}</span>
+                        </div>
+                      )}
+                      {property.area && (
+                        <div className="spec-item">
+                          <BiArea size={18} />
+                          <span>{property.area} м²</span>
+                        </div>
+                      )}
+                      {property.floor && (
+                        <span className="spec-item">{property.floor} этаж</span>
+                      )}
+                    </div>
+                  )}
+                  <div className="property-actions" onClick={(e) => e.stopPropagation()}>
+                    <button 
                       className="btn btn-secondary"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        navigate(`/property/${property.id}`)
+                      }}
                     >
                       Открыть
-                    </Link>
+                    </button>
                     <button 
                       className="btn btn-primary"
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        window.location.href = `/property/${property.id}`
+                        navigate(`/property/${property.id}`)
                       }}
                     >
                       Сделать ставку
                     </button>
                   </div>
                 </div>
-              </Link>
+              </div>
             </div>
               ))}
             </div>

@@ -211,3 +211,4 @@ const Promotions = ({ businessInfo }) => {
 
 export default Promotions;
 
+

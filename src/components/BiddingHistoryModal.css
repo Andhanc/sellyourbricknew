@@ -214,6 +214,18 @@
   font-size: 14px;
   font-weight: 600;
   color: #333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bid-item__flag {
+  width: 20px;
+  height: 15px;
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 .bid-item__time {

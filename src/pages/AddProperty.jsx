@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   FiUpload, 
@@ -36,6 +36,15 @@ const AddProperty = () => {
   const [isTranslating, setIsTranslating] = useState(false)
   const [translations, setTranslations] = useState(null)
   const [showTranslations, setShowTranslations] = useState(false)
+  const [currency, setCurrency] = useState('USD')
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(null) // 'price' или 'auction' или null
+  
+  const currencies = [
+    { code: 'USD', symbol: '$', name: 'Доллар США' },
+    { code: 'EUR', symbol: '€', name: 'Евро' },
+    { code: 'RUB', symbol: '₽', name: 'Российский рубль' },
+    { code: 'GBP', symbol: '£', name: 'Фунт стерлингов' }
+  ]
   
   const [formData, setFormData] = useState({
     propertyType: '', // Сначала выбираем тип
@@ -46,7 +55,6 @@ const AddProperty = () => {
     auctionStartDate: '',
     auctionEndDate: '',
     auctionStartingPrice: '',
-    bidStep: '',
     // Общие поля
     area: '',
     rooms: '',
@@ -92,6 +100,20 @@ const AddProperty = () => {
     feature11: false,
     feature12: false
   })
+
+  // Закрытие выпадающего списка валют при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showCurrencyDropdown && !event.target.closest('.currency-selector')) {
+        setShowCurrencyDropdown(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCurrencyDropdown])
 
   const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files)
@@ -944,9 +966,37 @@ const AddProperty = () => {
 
           {/* Цена */}
           <section className="form-section">
-            <h2 className="section-title">Цена для покупки</h2>
+            <h2 className="section-title">Минимальная цена продажи</h2>
             <div className="price-input-wrapper">
-              <FiDollarSign className="price-icon" size={20} />
+              <div className="currency-selector">
+                <button
+                  type="button"
+                  className="currency-button"
+                  onClick={() => setShowCurrencyDropdown(showCurrencyDropdown === 'price' ? null : 'price')}
+                >
+                  <span className="currency-symbol">{currencies.find(c => c.code === currency)?.symbol || '$'}</span>
+                  <FiChevronDown className="currency-chevron" size={14} />
+                </button>
+                {showCurrencyDropdown === 'price' && (
+                  <div className="currency-dropdown">
+                    {currencies.map((curr) => (
+                      <button
+                        key={curr.code}
+                        type="button"
+                        className={`currency-option ${currency === curr.code ? 'active' : ''}`}
+                        onClick={() => {
+                          setCurrency(curr.code)
+                          setShowCurrencyDropdown(null)
+                        }}
+                      >
+                        <span className="currency-option-symbol">{curr.symbol}</span>
+                        <span className="currency-option-name">{curr.name}</span>
+                        <span className="currency-option-code">({curr.code})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input
                 type="number"
                 name="price"
@@ -987,9 +1037,37 @@ const AddProperty = () => {
                 />
                 
                 <div className="bid-step-group">
-                  <label className="bid-step-label">Начальная сумма аукциона</label>
+                  <label className="bid-step-label">Стартовая цена продажи</label>
                   <div className="bid-step-input-wrapper">
-                    <FiDollarSign className="price-icon" size={18} />
+                    <div className="currency-selector">
+                      <button
+                        type="button"
+                        className="currency-button"
+                        onClick={() => setShowCurrencyDropdown(showCurrencyDropdown === 'auction' ? null : 'auction')}
+                      >
+                        <span className="currency-symbol">{currencies.find(c => c.code === currency)?.symbol || '$'}</span>
+                        <FiChevronDown className="currency-chevron" size={14} />
+                      </button>
+                      {showCurrencyDropdown === 'auction' && (
+                        <div className="currency-dropdown">
+                          {currencies.map((curr) => (
+                            <button
+                              key={curr.code}
+                              type="button"
+                              className={`currency-option ${currency === curr.code ? 'active' : ''}`}
+                              onClick={() => {
+                                setCurrency(curr.code)
+                                setShowCurrencyDropdown(null)
+                              }}
+                            >
+                              <span className="currency-option-symbol">{curr.symbol}</span>
+                              <span className="currency-option-name">{curr.name}</span>
+                              <span className="currency-option-code">({curr.code})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <input
                       type="number"
                       name="auctionStartingPrice"
@@ -997,23 +1075,6 @@ const AddProperty = () => {
                       onChange={handleInputChange}
                       className="form-input bid-step-input"
                       placeholder="0"
-                      min="0"
-                      required={formData.isAuction}
-                    />
-                  </div>
-                </div>
-                
-                <div className="bid-step-group">
-                  <label className="bid-step-label">Шаг ставки</label>
-                  <div className="bid-step-input-wrapper">
-                    <FiDollarSign className="price-icon" size={18} />
-                    <input
-                      type="number"
-                      name="bidStep"
-                      value={formData.bidStep}
-                      onChange={handleInputChange}
-                      className="form-input bid-step-input"
-                      placeholder="1000"
                       min="0"
                       required={formData.isAuction}
                     />

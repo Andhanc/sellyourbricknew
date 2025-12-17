@@ -11,7 +11,7 @@ import {
   FiPhone,
   FiMail,
 } from 'react-icons/fi'
-import { FaInstagram, FaWhatsapp } from 'react-icons/fa'
+import { FaPhone } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
 import { properties } from '../data/properties'
 import LoginModal from './LoginModal'
@@ -38,6 +38,7 @@ const Header = () => {
   const [isLocationOpen, setIsLocationOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMenuClosing, setIsMenuClosing] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
@@ -151,7 +152,15 @@ const Header = () => {
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
-                  setIsMenuOpen((prev) => !prev)
+                  if (isMenuOpen) {
+                    setIsMenuClosing(true)
+                    setTimeout(() => {
+                      setIsMenuOpen(false)
+                      setIsMenuClosing(false)
+                    }, 300)
+                  } else {
+                    setIsMenuOpen(true)
+                  }
                 }}
                 aria-label="Меню"
                 aria-expanded={isMenuOpen}
@@ -162,10 +171,10 @@ const Header = () => {
             </div>
             
             {/* Модальное окно меню */}
-            {isMenuOpen && (
+            {(isMenuOpen || isMenuClosing) && (
               <>
                 <div 
-                  className="menu-backdrop"
+                  className={`menu-backdrop ${isMenuClosing ? 'menu-backdrop--closing' : ''}`}
                   onClick={(e) => {
                     const menuBtn = menuRef.current?.querySelector('.new-header__menu-btn')
                     const menuDropdown = document.querySelector('.menu-dropdown')
@@ -178,75 +187,72 @@ const Header = () => {
                       return
                     }
                     
-                    setIsMenuOpen(false)
+                    setIsMenuClosing(true)
+                    setTimeout(() => {
+                      setIsMenuOpen(false)
+                      setIsMenuClosing(false)
+                    }, 300)
                   }}
                 />
                 <div 
-                  className="menu-dropdown" 
+                  className={`menu-dropdown ${isMenuClosing ? 'menu-dropdown--closing' : ''}`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="menu-dropdown__content">
                     <div className="menu-dropdown__columns">
                       <div className="menu-dropdown__column">
-                        <button 
-                          className="menu-dropdown__item"
-                          onClick={() => {
-                            navigate('/admin')
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>Админ-панель</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Недвижимость</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Покупка</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Аренда</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Продажа</span>
-                        </button>
-                        <button 
-                          className="menu-dropdown__item"
-                          onClick={() => {
-                            navigate('/profile')
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>Профиль</span>
-                        </button>
+                        <h3 className="menu-dropdown__column-title">Навигация по сайту</h3>
+                        <div className="menu-dropdown__column-items">
+                          <button 
+                            className="menu-dropdown__item"
+                            onClick={() => {
+                              navigate('/admin')
+                              setIsMenuOpen(false)
+                            }}
+                          >
+                            <span>Админ-панель</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Недвижимость</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Покупка</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Аренда</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Недвижимость</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Покупка</span>
+                          </button>
+              
+                          
+                        </div>
                       </div>
                       <div className="menu-dropdown__column">
-                        <button className="menu-dropdown__item">
-                          <span>Премиум</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Бонусы</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Поддержка</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Приложения</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Автолюбителям</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Страхование</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Курсы валют</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Офисы и банкоматы</span>
-                        </button>
-                        <button className="menu-dropdown__item">
-                          <span>Переводы</span>
-                        </button>
+                        <h3 className="menu-dropdown__column-title">Дополнительно</h3>
+                        <div className="menu-dropdown__column-items">
+                          <button className="menu-dropdown__item">
+                            <span>Премиум</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Бонусы</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Поддержка</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Приложения</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Автолюбителям</span>
+                          </button>
+                          <button className="menu-dropdown__item">
+                            <span>Переводы</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div className="menu-dropdown__right">
@@ -258,7 +264,10 @@ const Header = () => {
                           className="menu-dropdown__icon-item"
                         >
                           <div className="menu-dropdown__icon-box menu-dropdown__icon-box--instagram">
-                            <FaInstagram size={24} />
+                            <img 
+                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1200px-Instagram_logo_2022.svg.png" 
+                              alt="Instagram"
+                            />
                           </div>
                           <span className="menu-dropdown__icon-label">Instagram</span>
                         </a>
@@ -269,7 +278,10 @@ const Header = () => {
                           className="menu-dropdown__icon-item"
                         >
                           <div className="menu-dropdown__icon-box menu-dropdown__icon-box--whatsapp">
-                            <FaWhatsapp size={24} />
+                            <img 
+                              src="https://play-lh.googleusercontent.com/bYtqbOcTYOlgc6gqZ2rwb8lptHuwlNE75zYJu6Bn076-hTmvd96HH-6v7S0YUAAJXoJN" 
+                              alt="WhatsApp"
+                            />
                           </div>
                           <span className="menu-dropdown__icon-label">WhatsApp</span>
                         </a>
@@ -278,16 +290,19 @@ const Header = () => {
                           className="menu-dropdown__icon-item"
                         >
                           <div className="menu-dropdown__icon-box menu-dropdown__icon-box--gmail">
-                            <FiMail size={24} />
+                            <img 
+                              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4vtphMtxRWfK6nO2CIbGfSETyEs79Dr6oPw&s" 
+                              alt="Gmail"
+                            />
                           </div>
-                          <span className="menu-dropdown__icon-label">Email</span>
+                          <span className="menu-dropdown__icon-label">Gmail</span>
                         </a>
                         <a 
                           href="tel:+1234567890" 
                           className="menu-dropdown__icon-item"
                         >
                           <div className="menu-dropdown__icon-box menu-dropdown__icon-box--phone">
-                            <FiPhone size={24} />
+                            <FaPhone size={24} />
                           </div>
                           <span className="menu-dropdown__icon-label">Позвонить</span>
                         </a>

@@ -85,3 +85,4 @@ const UsersModal = ({ isOpen, onClose, businessInfo }) => {
 
 export default UsersModal;
 
+

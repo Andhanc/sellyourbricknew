@@ -175,11 +175,12 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     return false;
   };
 
+  // Пример: страны и их доля регистраций в процентах
   const weekdayData = useMemo(() => ({
-    labels: businessInfo.registrations_by_weekday.map(item => item.day),
+    labels: ['Россия', 'Испания', 'Германия', 'Франция', 'Италия', 'США', 'Остальные'],
     datasets: [{
-      label: 'Количество регистраций',
-      data: businessInfo.registrations_by_weekday.map(item => Math.round(item.count * multiplier)),
+      label: 'Доля регистраций, %',
+      data: [35, 20, 15, 10, 8, 7, 5],
       backgroundColor: [
         '#4361ee',
         '#4895ef',
@@ -192,7 +193,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       borderRadius: 6,
       borderWidth: 0
     }]
-  }), [businessInfo.registrations_by_weekday, multiplier]);
+  }), []);
 
   const propertyCategoriesData = useMemo(() => ({
     labels: ['Виллы', 'Дома', 'Квартиры', 'Апартаменты', 'Земля'],
@@ -234,9 +235,9 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
-            const value = context.parsed.y;
-            return `Регистраций: ${value}`;
+          label: function (context) {
+            const value = context.parsed.y ?? 0;
+            return `${value.toFixed(1)}%`;
           }
         }
       }
@@ -245,7 +246,10 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       y: {
         beginAtZero: true,
         ticks: {
-          stepSize: 50
+          stepSize: 10,
+          callback: function (value) {
+            return value + '%';
+          }
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.05)'
@@ -533,7 +537,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       <div className="charts-row">
         <div className="chart-container">
           <div className="chart-header">
-            <h3 className="chart-title">Регистрации по дням недели</h3>
+            <h3 className="chart-title">Национальность пользователей</h3>
             <div className="chart-actions">
               <button className="chart-btn active">Все дни</button>
             </div>

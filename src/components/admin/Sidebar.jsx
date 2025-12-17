@@ -37,3 +37,4 @@ const Sidebar = ({ activeSection, onSectionChange }) => {
 
 export default Sidebar;
 
+

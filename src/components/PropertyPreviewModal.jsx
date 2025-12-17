@@ -175,11 +175,6 @@ const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
                     </span>
                   </div>
                 )}
-                {propertyData.bidStep && (
-                  <div className="auction-bid-step">
-                    <strong>Шаг ставки:</strong> {parseInt(propertyData.bidStep).toLocaleString('ru-RU')} $
-                  </div>
-                )}
               </div>
             )}
           </div>

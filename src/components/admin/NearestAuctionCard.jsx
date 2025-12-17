@@ -92,3 +92,4 @@ const NearestAuctionCard = ({ auction }) => {
 
 export default NearestAuctionCard;
 
+

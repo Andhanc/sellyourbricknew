@@ -31,10 +31,9 @@ import {
   FaUser,
   FaAndroid,
   FaApple,
-  FaWhatsapp,
-  FaInstagram,
   FaYoutube,
   FaCar,
+  FaPhone,
 } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
 import { IoLocationOutline } from 'react-icons/io5'
@@ -48,6 +47,7 @@ import {
   PiWarehouse,
 } from 'react-icons/pi'
 import PropertyTimer from '../components/PropertyTimer'
+import LoginModal from '../components/LoginModal'
 import '../components/PropertyList.css'
 
 const resortLocations = [
@@ -608,8 +608,13 @@ function MainPage() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
   const [activeFilter, setActiveFilter] = useState(t('forAll'))
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMenuClosing, setIsMenuClosing] = useState(false)
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const locationRef = useRef(null)
+  const searchInputRef = useRef(null)
   const chatMessagesRef = useRef(null)
   const notificationRef = useRef(null)
   const menuRef = useRef(null)
@@ -622,6 +627,21 @@ function MainPage() {
   
   const heroImage = heroImages[propertyMode]
   
+  // Функция фильтрации по поисковому запросу
+  const filterBySearch = (properties) => {
+    if (!searchQuery) return properties
+    const query = searchQuery.toLowerCase()
+    return properties.filter(property => 
+      (property.name && property.name.toLowerCase().includes(query)) ||
+      (property.location && property.location.toLowerCase().includes(query))
+    )
+  }
+
+  // Фильтрованные данные
+  const filteredApartments = useMemo(() => filterBySearch(apartmentsData), [searchQuery])
+  const filteredVillas = useMemo(() => filterBySearch(villasData), [searchQuery])
+  const filteredRecommended = useMemo(() => filterBySearch(recommendedProperties), [searchQuery])
+  const filteredNearby = useMemo(() => filterBySearch(nearbyProperties), [searchQuery])
 
   // Чтение URL параметров и применение фильтров
   useEffect(() => {
@@ -696,6 +716,12 @@ function MainPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isSearchOpen])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -969,8 +995,9 @@ function MainPage() {
     window.location.href = 'tel:+79991234567'
   }
 
-  const handlePropertyClick = (category, propertyId) => {
-    navigate(`/property/${propertyId}`)
+  const handlePropertyClick = (category, propertyId, isClassic = false) => {
+    const search = isClassic ? '?classic=1' : ''
+    navigate(`/property/${propertyId}${search}`)
   }
 
   const handleBackClick = () => {
@@ -1204,7 +1231,15 @@ function MainPage() {
               onClick={(e) => {
                 e.stopPropagation() // Останавливаем всплытие события
                 e.preventDefault() // Предотвращаем стандартное поведение
-                setIsMenuOpen((prev) => !prev)
+                if (isMenuOpen) {
+                  setIsMenuClosing(true)
+                  setTimeout(() => {
+                    setIsMenuOpen(false)
+                    setIsMenuClosing(false)
+                  }, 300)
+                } else {
+                  setIsMenuOpen(true)
+                }
               }}
               aria-label="Меню"
               aria-expanded={isMenuOpen}
@@ -1215,10 +1250,10 @@ function MainPage() {
           </div>
           
           {/* Модальное окно меню рендерится вне menu-wrapper */}
-          {isMenuOpen && (
+          {(isMenuOpen || isMenuClosing) && (
             <>
               <div 
-                className="menu-backdrop"
+                className={`menu-backdrop ${isMenuClosing ? 'menu-backdrop--closing' : ''}`}
                 onClick={(e) => {
                   // Закрываем меню при клике на backdrop
                   // Проверяем, что клик не по кнопке меню или самому меню
@@ -1235,79 +1270,77 @@ function MainPage() {
                     return
                   }
                   
-                  // Клик по backdrop - закрываем меню
-                  setIsMenuOpen(false)
+                  // Клик по backdrop - закрываем меню с анимацией
+                  setIsMenuClosing(true)
+                  setTimeout(() => {
+                    setIsMenuOpen(false)
+                    setIsMenuClosing(false)
+                  }, 300)
                 }}
               />
               <div 
-                className="menu-dropdown" 
+                className={`menu-dropdown ${isMenuClosing ? 'menu-dropdown--closing' : ''}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="menu-dropdown__content">
                   <div className="menu-dropdown__columns">
                     <div className="menu-dropdown__column">
-                      <button 
-                        className="menu-dropdown__item"
-                        onClick={() => {
-                          navigate('/admin')
-                          setIsMenuOpen(false)
-                        }}
-                      >
-                        <span>Админ-панель</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Недвижимость</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Покупка</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Аренда</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Продажа</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Карты</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Вклады</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Инвестиции</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Платежи</span>
-                      </button>
+                      <h3 className="menu-dropdown__column-title">Навигация по сайту</h3>
+                      <div className="menu-dropdown__column-items">
+                        <button 
+                          className="menu-dropdown__item"
+                          onClick={() => {
+                            navigate('/admin')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>Админ-панель</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Недвижимость</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Покупка</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Аренда</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Продажа</span>
+                        </button>
+                        <button 
+                          className="menu-dropdown__item"
+                          onClick={() => {
+                            navigate('/profile')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>Профиль</span>
+                        </button>
+                      </div>
                     </div>
                     <div className="menu-dropdown__column">
-                      <button className="menu-dropdown__item">
-                        <span>Премиум</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Бонусы</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Поддержка</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Приложения</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Автолюбителям</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Страхование</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Курсы валют</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Офисы и банкоматы</span>
-                      </button>
-                      <button className="menu-dropdown__item">
-                        <span>Переводы</span>
-                      </button>
+                      <h3 className="menu-dropdown__column-title">Дополнительно</h3>
+                      <div className="menu-dropdown__column-items">
+                        <button className="menu-dropdown__item">
+                          <span>Премиум</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Бонусы</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Поддержка</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Приложения</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Автолюбителям</span>
+                        </button>
+                        <button className="menu-dropdown__item">
+                          <span>Переводы</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="menu-dropdown__right">
@@ -1319,7 +1352,10 @@ function MainPage() {
                         className="menu-dropdown__icon-item"
                       >
                         <div className="menu-dropdown__icon-box menu-dropdown__icon-box--instagram">
-                          <FaInstagram size={24} />
+                          <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1200px-Instagram_logo_2022.svg.png" 
+                            alt="Instagram"
+                          />
                         </div>
                         <span className="menu-dropdown__icon-label">Instagram</span>
                       </a>
@@ -1330,7 +1366,10 @@ function MainPage() {
                         className="menu-dropdown__icon-item"
                       >
                         <div className="menu-dropdown__icon-box menu-dropdown__icon-box--whatsapp">
-                          <FaWhatsapp size={24} />
+                          <img 
+                            src="https://play-lh.googleusercontent.com/bYtqbOcTYOlgc6gqZ2rwb8lptHuwlNE75zYJu6Bn076-hTmvd96HH-6v7S0YUAAJXoJN" 
+                            alt="WhatsApp"
+                          />
                         </div>
                         <span className="menu-dropdown__icon-label">WhatsApp</span>
                       </a>
@@ -1339,16 +1378,19 @@ function MainPage() {
                         className="menu-dropdown__icon-item"
                       >
                         <div className="menu-dropdown__icon-box menu-dropdown__icon-box--gmail">
-                          <FiMail size={24} />
+                          <img 
+                            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4vtphMtxRWfK6nO2CIbGfSETyEs79Dr6oPw&s" 
+                            alt="Gmail"
+                          />
                         </div>
-                        <span className="menu-dropdown__icon-label">Email</span>
+                        <span className="menu-dropdown__icon-label">Gmail</span>
                       </a>
                       <a 
                         href="tel:+1234567890" 
                         className="menu-dropdown__icon-item"
                       >
                         <div className="menu-dropdown__icon-box menu-dropdown__icon-box--phone">
-                          <FiPhone size={24} />
+                          <FaPhone size={24} />
                         </div>
                         <span className="menu-dropdown__icon-label">Позвонить</span>
                       </a>
@@ -1391,10 +1433,45 @@ function MainPage() {
               </button>
             </div>
 
-        <div className="new-header__right">
-          <button className="new-header__search-btn">
-            <FiSearch size={20} />
-          </button>
+        <div className="new-header__right" ref={notificationRef}>
+          {isSearchOpen ? (
+            <div className="new-header__search-field">
+              <FiSearch size={18} className="new-header__search-icon" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={t('search') || 'Поиск...'}
+                className="new-header__search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsSearchOpen(false)
+                    setSearchQuery('')
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="new-header__search-close"
+                onClick={() => {
+                  setIsSearchOpen(false)
+                  setSearchQuery('')
+                }}
+                aria-label="Закрыть поиск"
+              >
+                <FiX size={18} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <button 
+                className="new-header__search-btn"
+                onClick={() => setIsSearchOpen(true)}
+                aria-label="Открыть поиск"
+              >
+                <FiSearch size={20} />
+              </button>
           <button 
             type="button"
             className="new-header__auction-btn"
@@ -1402,7 +1479,11 @@ function MainPage() {
           >
             {t('auction')}
           </button>
-          <button className="new-header__user-btn">
+          <button 
+            className="new-header__user-btn"
+            onClick={() => setIsLoginModalOpen(true)}
+            aria-label={t('profile')}
+          >
             <FiUser size={20} />
           </button>
           <button 
@@ -1455,7 +1536,7 @@ function MainPage() {
                             className="notification-item__button"
                             onClick={() => {
                               setIsNotificationOpen(false)
-                              handlePropertyClick('recommended', recommendedProperties[0].id)
+                              handlePropertyClick('recommended', recommendedProperties[0].id, false)
                             }}
                           >
                             Перейти
@@ -1470,6 +1551,8 @@ function MainPage() {
             </div>
             </>
           )}
+            </>
+          )}
         </div>
         </div>
       </header>
@@ -1480,9 +1563,21 @@ function MainPage() {
           <FiSearch size={18} className="search__icon" />
           <input
             type="text"
-            placeholder={t('search')}
+            placeholder={t('search') || 'Поиск по названию или адресу...'}
             className="search__input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button 
+              type="button"
+              className="search__clear"
+              onClick={() => setSearchQuery('')}
+              aria-label="Очистить поиск"
+            >
+              <FiX size={18} />
+            </button>
+          )}
           <button type="button" className="search__filter">
             <FiSliders size={18} />
           </button>
@@ -1508,7 +1603,7 @@ function MainPage() {
           
           <div className="apartments-section__content">
             <div className="properties-grid">
-              {apartmentsData.map((apartment) => {
+              {filteredApartments.map((apartment, index) => {
                 const formatPrice = (price) => {
                   if (price >= 1000000) {
                     return `${(price / 1000000).toFixed(1)} млн Р`
@@ -1521,8 +1616,8 @@ function MainPage() {
                     <div 
                       className="property-link"
                       onClick={() => {
-                        // Принудительный переход на страницу с фильтром
-                        window.location.href = '/main?category=Apartment&filter=auction'
+                        const showTimer = index % 2 === 1 && apartment.isAuction && apartment.endTime
+                        handlePropertyClick('apartment', apartment.id, !showTimer)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -1532,7 +1627,7 @@ function MainPage() {
                           alt={apartment.name}
                           className="property-image"
                         />
-                        {apartment.endTime && (
+                        {index % 2 === 1 && apartment.isAuction && apartment.endTime && (
                           <div className="property-timer-overlay">
                             <PropertyTimer endTime={apartment.endTime} compact={true} />
                           </div>
@@ -1562,10 +1657,33 @@ function MainPage() {
                         <h3 className="property-title">{apartment.name}</h3>
                         <p className="property-location">{apartment.location}</p>
                         <div className="property-price">{formatPrice(apartment.price)}</div>
-                        {apartment.currentBid && (
-                          <div className="property-bid-info">
-                            <span className="bid-label">Текущая ставка:</span>
-                            <span className="bid-value">{formatPrice(apartment.currentBid)}</span>
+                        {index % 2 === 1 && apartment.isAuction && apartment.endTime ? (
+                          apartment.currentBid && (
+                            <div className="property-bid-info">
+                              <span className="bid-label">Текущая ставка:</span>
+                              <span className="bid-value">{formatPrice(apartment.currentBid)}</span>
+                            </div>
+                          )
+                        ) : (
+                          <div className="property-specs">
+                            {apartment.beds && (
+                              <div className="spec-item">
+                                <MdBed size={18} />
+                                <span>{apartment.beds}</span>
+                              </div>
+                            )}
+                            {apartment.baths && (
+                              <div className="spec-item">
+                                <MdOutlineBathtub size={18} />
+                                <span>{apartment.baths}</span>
+                              </div>
+                            )}
+                            {apartment.sqft && (
+                              <div className="spec-item">
+                                <BiArea size={18} />
+                                <span>{apartment.sqft} м²</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1641,7 +1759,7 @@ function MainPage() {
           
           <div className="apartments-section__content">
             <div className="properties-grid">
-              {villasData.map((villa) => {
+              {filteredVillas.map((villa, index) => {
                 const formatPrice = (price) => {
                   if (price >= 1000000) {
                     return `${(price / 1000000).toFixed(1)} млн Р`
@@ -1654,7 +1772,8 @@ function MainPage() {
                     <div 
                       className="property-link"
                       onClick={() => {
-                        window.location.href = '/main?category=Villa&filter=auction'
+                        const showTimer = index % 2 === 1 && villa.isAuction && villa.endTime
+                        handlePropertyClick('villa', villa.id, !showTimer)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -1664,7 +1783,7 @@ function MainPage() {
                           alt={villa.name}
                           className="property-image"
                         />
-                        {villa.endTime && (
+                        {index % 2 === 1 && villa.isAuction && villa.endTime && (
                           <div className="property-timer-overlay">
                             <PropertyTimer endTime={villa.endTime} compact={true} />
                           </div>
@@ -1694,10 +1813,33 @@ function MainPage() {
                         <h3 className="property-title">{villa.name}</h3>
                         <p className="property-location">{villa.location}</p>
                         <div className="property-price">{formatPrice(villa.price)}</div>
-                        {villa.currentBid && (
-                          <div className="property-bid-info">
-                            <span className="bid-label">Текущая ставка:</span>
-                            <span className="bid-value">{formatPrice(villa.currentBid)}</span>
+                        {index % 2 === 1 && villa.isAuction && villa.endTime ? (
+                          villa.currentBid && (
+                            <div className="property-bid-info">
+                              <span className="bid-label">Текущая ставка:</span>
+                              <span className="bid-value">{formatPrice(villa.currentBid)}</span>
+                            </div>
+                          )
+                        ) : (
+                          <div className="property-specs">
+                            {villa.beds && (
+                              <div className="spec-item">
+                                <MdBed size={18} />
+                                <span>{villa.beds}</span>
+                              </div>
+                            )}
+                            {villa.baths && (
+                              <div className="spec-item">
+                                <MdOutlineBathtub size={18} />
+                                <span>{villa.baths}</span>
+                              </div>
+                            )}
+                            {villa.sqft && (
+                              <div className="spec-item">
+                                <BiArea size={18} />
+                                <span>{villa.sqft} м²</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1876,7 +2018,7 @@ function MainPage() {
         </div>
 
         <div className="properties-grid">
-          {(filteredProperties?.recommended || recommendedProperties).map((property) => {
+          {(filteredProperties?.recommended || filteredRecommended).map((property, index) => {
             const formatPrice = (price) => {
               if (price >= 1000000) {
                 return `${(price / 1000000).toFixed(1)} млн Р`
@@ -1888,7 +2030,10 @@ function MainPage() {
               <div key={property.id} className="property-card">
                 <div 
                   className="property-link"
-                  onClick={() => handlePropertyClick('recommended', property.id)}
+                  onClick={() => {
+                    const showTimer = index % 2 === 1 && property.isAuction && property.endTime
+                    handlePropertyClick('recommended', property.id, !showTimer)
+                  }}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="property-image-container">
@@ -1897,7 +2042,7 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
-                    {property.endTime && (
+                    {index % 2 === 1 && property.isAuction && property.endTime && (
                       <div className="property-timer-overlay">
                         <PropertyTimer endTime={property.endTime} compact={true} />
                       </div>
@@ -1927,10 +2072,33 @@ function MainPage() {
                     <h3 className="property-title">{property.name}</h3>
                     <p className="property-location">{property.location}</p>
                     <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
-                    {property.currentBid && (
-                      <div className="property-bid-info">
-                        <span className="bid-label">Текущая ставка:</span>
-                        <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                    {index % 2 === 1 && property.isAuction && property.endTime ? (
+                      property.currentBid && (
+                        <div className="property-bid-info">
+                          <span className="bid-label">Текущая ставка:</span>
+                          <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="property-specs">
+                        {property.beds && (
+                          <div className="spec-item">
+                            <MdBed size={18} />
+                            <span>{property.beds}</span>
+                          </div>
+                        )}
+                        {property.baths && (
+                          <div className="spec-item">
+                            <MdOutlineBathtub size={18} />
+                            <span>{property.baths}</span>
+                          </div>
+                        )}
+                        {property.sqft && (
+                          <div className="spec-item">
+                            <BiArea size={18} />
+                            <span>{property.sqft} м²</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1947,7 +2115,7 @@ function MainPage() {
         </div>
 
         <div className="properties-grid">
-          {(filteredProperties?.nearby || nearbyProperties).map((property) => {
+          {(filteredProperties?.nearby || filteredNearby).map((property, index) => {
             const formatPrice = (price) => {
               if (price >= 1000000) {
                 return `${(price / 1000000).toFixed(1)} млн Р`
@@ -1959,7 +2127,10 @@ function MainPage() {
               <div key={property.id} className="property-card">
                 <div 
                   className="property-link"
-                  onClick={() => handlePropertyClick('nearby', property.id)}
+                  onClick={() => {
+                    const showTimer = index % 2 === 1 && property.isAuction && property.endTime
+                    handlePropertyClick('nearby', property.id, !showTimer)
+                  }}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="property-image-container">
@@ -1968,7 +2139,7 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
-                    {property.endTime && (
+                    {index % 2 === 1 && property.isAuction && property.endTime && (
                       <div className="property-timer-overlay">
                         <PropertyTimer endTime={property.endTime} compact={true} />
                       </div>
@@ -1998,10 +2169,33 @@ function MainPage() {
                     <h3 className="property-title">{property.name}</h3>
                     <p className="property-location">{property.location}</p>
                     <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
-                    {property.currentBid && (
-                      <div className="property-bid-info">
-                        <span className="bid-label">Текущая ставка:</span>
-                        <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                    {index % 2 === 1 && property.isAuction && property.endTime ? (
+                      property.currentBid && (
+                        <div className="property-bid-info">
+                          <span className="bid-label">Текущая ставка:</span>
+                          <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="property-specs">
+                        {property.beds && (
+                          <div className="spec-item">
+                            <MdBed size={18} />
+                            <span>{property.beds}</span>
+                          </div>
+                        )}
+                        {property.baths && (
+                          <div className="spec-item">
+                            <MdOutlineBathtub size={18} />
+                            <span>{property.baths}</span>
+                          </div>
+                        )}
+                        {property.sqft && (
+                          <div className="spec-item">
+                            <BiArea size={18} />
+                            <span>{property.sqft} м²</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2129,168 +2323,11 @@ function MainPage() {
         </div>
       )}
 
-      <footer className="footer">
-        <div className="footer__container">
-          {/* Верхний блок ссылок, как на ЦИАН — по колонкам */}
-          <div className="footer__menu">
-            <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link" onClick={() => navigate('/map')}>{t('mapLink')}</button>
-              <button type="button" className="footer__menu-link" onClick={() => navigate('/subscriptions')}>{t('tariffs')}</button>
-              <button type="button" className="footer__menu-link" onClick={() => navigate('/')}>{t('auction')}</button>
-            </div>
-            <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link" onClick={() => navigate('/data')}>{t('legalDocs')}</button>
-              <button type="button" className="footer__menu-link">{t('advertising')}</button>
-              <button type="button" className="footer__menu-link">{t('career')}</button>
-            </div>
-            <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">{t('mapSearch')}</button>
-              <button type="button" className="footer__menu-link">{t('promotion')}</button>
-              <button type="button" className="footer__menu-link">{t('investors')}</button>
-            </div>
-            <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link" onClick={() => navigate('/')}>{t('auction')}</button>
-              <button type="button" className="footer__menu-link">{t('vacancies')}</button>
-            </div>
-            <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">{t('tvAdvertising')}</button>
-              <button type="button" className="footer__menu-link" onClick={() => navigate('/chat')}>{t('help')}</button>
-            </div>
-            <div className="footer__menu-column">
-              <button type="button" className="footer__menu-link">{t('superAgents')}</button>
-              <button type="button" className="footer__menu-link">{t('mortgage')}</button>
-            </div>
-          </div>
-
-          {/* Текстовый блок описания сервиса */}
-          <div className="footer__description">
-            <p className="footer__description-text">
-              {t('footerDescription')}{' '}
-              <button type="button" className="footer__description-link">{t('userAgreementLink')}</button>{' '}
-              {t('and')}{' '}
-              <button type="button" className="footer__description-link">{t('privacyPolicyLink')}</button>{' '}
-              Sellyourbrick. {t('payingForServices')}{' '}
-              <button type="button" className="footer__description-link">{t('licenseAgreement')}</button>.
-            </p>
-            <p className="footer__description-text">
-              {t('recommendationTechDescription')}{' '}
-              <button type="button" className="footer__description-link">{t('recommendationTech')}</button>.
-            </p>
-          </div>
-
-          {/* Нижняя полоса с логотипом и кнопками, как на скрине */}
-          <div className="footer__bottom">
-            <div className="footer__brand">
-              <div className="footer__brand-icon">
-                <span className="footer__brand-house" />
-              </div>
-              <span className="footer__brand-text">Sellyourbrick</span>
-            </div>
-
-            <div className="footer__bottom-links">
-              <button type="button" className="footer__bottom-link">Мобильная версия сайта</button>
-              <button type="button" className="footer__bottom-link">О приложении</button>
-            </div>
-
-            <div className="footer__store-buttons">
-              <button
-                type="button"
-                className="footer__store-btn"
-                onClick={() => handleDownloadApp('android')}
-                aria-label="Скачать из Google Play"
-              >
-                <div className="footer__store-icon footer__store-icon--google">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5Z" fill="#4285F4"/>
-                    <path d="M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12Z" fill="#EA4335"/>
-                    <path d="M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z" fill="#FBBC04"/>
-                    <path d="M16.81 8.88L20.16 6.51C20.66 6.26 21 5.75 21 5.16V18.84C21 18.25 20.66 17.74 20.16 17.49L16.81 15.12L14.54 12.85L16.81 8.88Z" fill="#34A853"/>
-                  </svg>
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">Скачать из</span>
-                  <span className="footer__store-name">Google Play</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="footer__store-btn"
-                onClick={() => handleDownloadApp('ios')}
-                aria-label={`${t('downloadIn')} App Store`}
-              >
-                <div className="footer__store-icon">
-                  <FaApple size={18} />
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">{t('downloadIn')}</span>
-                  <span className="footer__store-name">App Store</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="footer__store-btn"
-                aria-label={`${t('downloadIn')} RuStore`}
-              >
-                <div className="footer__store-icon footer__store-icon--rustore">
-                  <span className="footer__store-icon-text">Ru</span>
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">{t('downloadIn')}</span>
-                  <span className="footer__store-name">RuStore</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="footer__store-btn"
-                aria-label={`${t('downloadIn')} AppGallery`}
-              >
-                <div className="footer__store-icon footer__store-icon--appgallery">
-                  <span className="footer__store-icon-text">AG</span>
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">{t('downloadIn')}</span>
-                  <span className="footer__store-name">AppGallery</span>
-                </div>
-              </button>
-            </div>
-
-            <div className="footer__language-selector" ref={languageDropdownRef}>
-              <button
-                type="button"
-                className="footer__language-selector-btn"
-                onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                aria-label="Выбрать язык"
-              >
-                <span className={`footer__language-flag ${currentLanguage.flagClass}`}></span>
-                <span className="footer__language-name">{currentLanguage.name}</span>
-                <FiChevronDown 
-                  size={16} 
-                  className={`footer__language-chevron ${isLanguageDropdownOpen ? 'footer__language-chevron--open' : ''}`}
-                />
-              </button>
-              {isLanguageDropdownOpen && (
-                <div className="footer__language-dropdown">
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      className={`footer__language-option ${i18n.language === lang.code ? 'footer__language-option--active' : ''}`}
-                      onClick={() => handleLanguageChange(lang.code)}
-                    >
-                      <span className={`footer__language-flag ${lang.flagClass}`}></span>
-                      <span className="footer__language-name">{lang.name}</span>
-                      {i18n.language === lang.code && <FiCheck size={16} className="footer__language-check" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Модальное окно входа/регистрации */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+      />
     </div>
   )
 }

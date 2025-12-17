@@ -2,7 +2,6 @@ import Header from '../components/Header'
 import Hero from '../components/Hero'
 import PropertyList from '../components/PropertyList'
 import FAQ from '../components/FAQ'
-import Footer from '../components/Footer'
 import './Home.css'
 
 function Home() {
@@ -12,7 +11,6 @@ function Home() {
       <Hero />
       <PropertyList />
       <FAQ />
-      <Footer />
     </div>
   )
 }

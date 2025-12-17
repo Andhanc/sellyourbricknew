@@ -115,6 +115,15 @@
   background-color: #fafafa;
 }
 
+.login-modal__social-btn--facebook {
+  color: #1877f2;
+}
+
+.login-modal__social-btn--facebook:hover {
+  border-color: #1877f2;
+  background-color: #f0f4ff;
+}
+
 .login-modal__social-btn--google {
   color: #4285f4;
 }

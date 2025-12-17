@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Header from '../components/Header'
 import PropertyTimer from '../components/PropertyTimer'
-import Footer from '../components/Footer'
 import { properties } from '../data/properties'
 import { FiHeart, FiMapPin, FiArrowRight } from 'react-icons/fi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
@@ -407,7 +406,6 @@ const Favorites = () => {
           </div>
         )}
       </div>
-      <Footer />
     </div>
   )
 }

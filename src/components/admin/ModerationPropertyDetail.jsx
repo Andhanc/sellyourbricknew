@@ -253,3 +253,4 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
 
 export default ModerationPropertyDetail;
 
+

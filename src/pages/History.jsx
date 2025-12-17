@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import Footer from '../components/Footer'
 import './History.css'
 
 const History = () => {
@@ -294,7 +293,6 @@ const History = () => {
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   )
 }

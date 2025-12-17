@@ -271,3 +271,4 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
 
 export default ModerationUserDetail;
 
+

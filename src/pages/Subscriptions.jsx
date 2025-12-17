@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import Footer from '../components/Footer'
 import premiumImage from '../img/premium.png'
 import standardImage from '../img/standart.png'
 import basicImage from '../img/basicc.png'
@@ -33,8 +32,8 @@ const Subscriptions = () => {
 
   const handleActivate = (subscription) => {
     // Открываем внешний платежный сервис (Stripe или аналогичный)
-    // В реальном приложении здесь будет URL вашего платежного сервиса
-    const paymentUrl = `https://checkout.stripe.com/pay?amount=${subscription.price * 100}&currency=rub&description=${encodeURIComponent(`Подписка ${subscription.title}`)}`
+    // Валюта оплаты — доллары США (USD)
+    const paymentUrl = `https://checkout.stripe.com/pay?amount=${subscription.price * 100}&currency=usd&description=${encodeURIComponent(`Подписка ${subscription.title}`)}`
     
     // Открываем в новом окне
     window.open(paymentUrl, '_blank', 'width=600,height=800')
@@ -117,8 +116,8 @@ const Subscriptions = () => {
                   <h2 className="card-title">{subscription.title}</h2>
                   <p className="card-description">{subscription.description}</p>
                   <div className="card-price">
-                    <span className="price-value">{subscription.price} ₽</span>
-                    <span className="price-period">/месяц</span>
+                    <span className="price-value">${subscription.price}</span>
+                    <span className="price-period">/month</span>
                   </div>
                   <button 
                     className="card-button"
@@ -157,7 +156,6 @@ const Subscriptions = () => {
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   )
 }

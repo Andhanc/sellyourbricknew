@@ -5,16 +5,16 @@ import './BiddingHistoryModal.css'
 const BiddingHistoryModal = ({ isOpen, onClose, property }) => {
   // Демо-данные ставок (хронологический порядок - только восходящий тренд)
   const bidsChronological = [
-    { id: 10, user: 'Ольга Смирнова', amount: 750000, timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    { id: 9, user: 'Иван Козлов', amount: 765000, timestamp: new Date(Date.now() - 20 * 60 * 60 * 1000) },
-    { id: 8, user: 'Анна Петрова', amount: 780000, timestamp: new Date(Date.now() - 16 * 60 * 60 * 1000) },
-    { id: 7, user: 'Сергей Волков', amount: 795000, timestamp: new Date(Date.now() - 14 * 60 * 60 * 1000) },
-    { id: 6, user: 'Елена Соколова', amount: 810000, timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000) },
-    { id: 5, user: 'Дмитрий Лебедев', amount: 825000, timestamp: new Date(Date.now() - 10 * 60 * 60 * 1000) },
-    { id: 4, user: 'Мария Новикова', amount: 840000, timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000) },
-    { id: 3, user: 'Алексей Морозов', amount: 855000, timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000) },
-    { id: 2, user: 'Петр Сидоров', amount: 870000, timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000) },
-    { id: 1, user: 'Мария Иванова', amount: 885000, timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+    { id: 10, userId: 'ID-1024', country: 'Россия', amount: 750000, timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    { id: 9, userId: 'ID-2048', country: 'Германия', amount: 765000, timestamp: new Date(Date.now() - 20 * 60 * 60 * 1000) },
+    { id: 8, userId: 'ID-3072', country: 'Франция', amount: 780000, timestamp: new Date(Date.now() - 16 * 60 * 60 * 1000) },
+    { id: 7, userId: 'ID-4096', country: 'Великобритания', amount: 795000, timestamp: new Date(Date.now() - 14 * 60 * 60 * 1000) },
+    { id: 6, userId: 'ID-5120', country: 'Испания', amount: 810000, timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000) },
+    { id: 5, userId: 'ID-6144', country: 'Италия', amount: 825000, timestamp: new Date(Date.now() - 10 * 60 * 60 * 1000) },
+    { id: 4, userId: 'ID-7168', country: 'Швейцария', amount: 840000, timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000) },
+    { id: 3, userId: 'ID-8192', country: 'США', amount: 855000, timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000) },
+    { id: 2, userId: 'ID-9216', country: 'Канада', amount: 870000, timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000) },
+    { id: 1, userId: 'ID-10240', country: 'ОАЭ', amount: 885000, timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) },
   ]
   
   // Для списка сортируем по сумме (от большей к меньшей)
@@ -57,6 +57,23 @@ const BiddingHistoryModal = ({ isOpen, onClose, property }) => {
       return `${hours} ч ${minutes} мин назад`
     }
     return `${minutes} мин назад`
+  }
+
+  // Получение кода страны для флага
+  const getCountryCode = (country) => {
+    const countryCodes = {
+      'Россия': 'ru',
+      'Германия': 'de',
+      'Франция': 'fr',
+      'Великобритания': 'gb',
+      'Испания': 'es',
+      'Италия': 'it',
+      'Швейцария': 'ch',
+      'США': 'us',
+      'Канада': 'ca',
+      'ОАЭ': 'ae'
+    }
+    return countryCodes[country] || 'xx'
   }
 
   return (
@@ -259,7 +276,17 @@ const BiddingHistoryModal = ({ isOpen, onClose, property }) => {
                   <div className="bid-item__info">
                     <div className="bid-item__amount">{formatPrice(bid.amount)}</div>
                     <div className="bid-item__details">
-                      <span className="bid-item__user">{bid.user}</span>
+                      <span className="bid-item__user">
+                        {bid.userId} • {bid.country}
+                        <img 
+                          src={`https://flagcdn.com/w20/${getCountryCode(bid.country)}.png`}
+                          alt={bid.country}
+                          className="bid-item__flag"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                          }}
+                        />
+                      </span>
                       <span className="bid-item__time">{formatTime(bid.timestamp)}</span>
                     </div>
                   </div>
