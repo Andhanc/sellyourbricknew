@@ -55,6 +55,10 @@
   position: relative;
 }
 
+.weekday-calendar-wrapper {
+  position: relative;
+}
+
 .calendar-icon-btn {
   display: flex;
   align-items: center;
@@ -277,6 +281,14 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--dark);
+}
+
+.chart-title-small {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--dark);
+  display: flex;
+  align-items: center;
 }
 
 .chart-actions {

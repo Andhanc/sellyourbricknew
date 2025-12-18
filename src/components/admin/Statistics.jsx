@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Bar, Pie } from 'react-chartjs-2';
+import { Bar, Pie, Line } from 'react-chartjs-2';
 import { FiCalendar } from 'react-icons/fi';
 import {
   Chart as ChartJS,
@@ -7,19 +7,23 @@ import {
   LinearScale,
   BarElement,
   ArcElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
 import './Statistics.css';
 import StatCard from './StatCard';
-import NearestAuctionCard from './NearestAuctionCard';
+import NearestAuctionsSlider from './NearestAuctionsSlider';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
   ArcElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend
@@ -175,6 +179,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     return false;
   };
 
+
   // Пример: страны и их доля регистраций в процентах
   const weekdayData = useMemo(() => ({
     labels: ['Россия', 'Испания', 'Германия', 'Франция', 'Италия', 'США', 'Остальные'],
@@ -194,6 +199,25 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       borderWidth: 0
     }]
   }), []);
+
+  // Данные для диаграммы пользователей по дням недели
+  const usersByWeekdayData = useMemo(() => {
+    // Дефолтные значения для Пн-Вс
+    const baseData = [120, 145, 135, 160, 180, 200, 150];
+    const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    
+    return {
+      labels: dayNames,
+      datasets: [{
+        label: 'Количество пользователей',
+        data: baseData,
+        borderColor: '#4361ee',
+        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    };
+  }, []);
 
   const propertyCategoriesData = useMemo(() => ({
     labels: ['Виллы', 'Дома', 'Квартиры', 'Апартаменты', 'Земля'],
@@ -249,6 +273,58 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
           stepSize: 10,
           callback: function (value) {
             return value + '%';
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)'
+        }
+      },
+      x: {
+        grid: {
+          display: false
+        }
+      }
+    }
+  };
+
+  const usersByWeekdayChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            const value = context.parsed.y ?? 0;
+            return `${value} пользователей`;
+          }
+        }
+      }
+    },
+    elements: {
+      line: {
+        tension: 0.4, // Плавность линии
+        borderWidth: 3,
+        borderColor: '#4361ee'
+      },
+      point: {
+        radius: 6,
+        hoverRadius: 8,
+        backgroundColor: '#4361ee',
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        hoverBorderWidth: 3
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 50,
+          callback: function (value) {
+            return value;
           }
         },
         grid: {
@@ -327,14 +403,14 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     }
   };
 
-  const nearestAuction = useMemo(() => {
-    if (!businessInfo.auctions || businessInfo.auctions.length === 0) return null;
+
+  const activeAuctions = useMemo(() => {
+    if (!businessInfo.auctions || businessInfo.auctions.length === 0) return [];
     const now = new Date();
-    const activeAuctions = businessInfo.auctions.filter(auction => new Date(auction.end_date) > now);
-    if (activeAuctions.length === 0) return null;
-    return activeAuctions.reduce((nearest, current) => {
-      return new Date(current.end_date) < new Date(nearest.end_date) ? current : nearest;
-    });
+    return businessInfo.auctions
+      .filter(auction => new Date(auction.end_date) > now)
+      .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))
+      .slice(0, 10); // Берем первые 10 ближайших
   }, [businessInfo.auctions]);
 
   const stats = useMemo(() => {
@@ -384,6 +460,20 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
         changePercent: '22.7',
         icon: 'fas fa-wallet',
         iconClass: 'green'
+      },
+      {
+        title: 'Текущий онлайн',
+        value: Math.round((businessInfo.stats.online_users || 42) * multiplier),
+        changePercent: '5.3',
+        icon: 'fas fa-circle',
+        iconClass: 'red'
+      },
+      {
+        title: 'Оборот',
+        value: `$${Math.round((businessInfo.stats.turnover || 2500000) * multiplier).toLocaleString('ru-RU')}`,
+        changePercent: '18.9',
+        icon: 'fas fa-exchange-alt',
+        iconClass: 'orange'
       }
     ];
 
@@ -529,10 +619,11 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
         {stats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
-        {nearestAuction && (
-          <NearestAuctionCard auction={nearestAuction} />
-        )}
       </div>
+
+      {activeAuctions.length > 0 && (
+        <NearestAuctionsSlider auctions={activeAuctions} />
+      )}
 
       <div className="charts-row">
         <div className="chart-container">
@@ -549,19 +640,13 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
 
         <div className="chart-container">
           <div className="chart-header">
-            <h3 className="chart-title">Пользователи по дням недели</h3>
-            <div className="chart-actions" id="weekdayButtons">
-              {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, idx) => (
-                <button key={idx} className="chart-btn">
-                  {day}
-                </button>
-              ))}
-            </div>
+            <h3 className="chart-title-small">Пользователей по дням</h3>
           </div>
-          <div id="weekdayUsersList" style={{ padding: '1rem', maxHeight: '300px', overflowY: 'auto' }}>
-            <p style={{ color: 'var(--gray-dark)', textAlign: 'center' }}>
-              Выберите день недели для просмотра пользователей
-            </p>
+          <div className="chart-wrapper">
+            <Line 
+              data={usersByWeekdayData} 
+              options={usersByWeekdayChartOptions} 
+            />
           </div>
         </div>
       </div>

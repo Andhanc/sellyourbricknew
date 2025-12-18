@@ -3,6 +3,8 @@ import CountdownTimer from './CountdownTimer'
 import './BiddingHistoryModal.css'
 
 const BiddingHistoryModal = ({ isOpen, onClose, property }) => {
+  if (!isOpen) return null;
+
   // Демо-данные ставок (хронологический порядок - только восходящий тренд)
   const bidsChronological = [
     { id: 10, userId: 'ID-1024', country: 'Россия', amount: 750000, timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000) },

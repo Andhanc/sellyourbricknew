@@ -4,6 +4,7 @@ import { FaHeart as FaHeartSolid } from 'react-icons/fa';
 import { IoLocationOutline } from 'react-icons/io5';
 import { MdBed, MdOutlineBathtub } from 'react-icons/md';
 import { BiArea } from 'react-icons/bi';
+import CountdownTimer from '../CountdownTimer';
 import './ObjectsList.css';
 
 // Моковые данные объектов недвижимости
@@ -54,7 +55,8 @@ const mockProperties = [
     beds: 3,
     baths: 2,
     sqft: 2200,
-    isAuction: true
+    isAuction: true,
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() // 5 дней от текущего момента
   },
   {
     id: 5,
@@ -150,7 +152,8 @@ const mockProperties = [
     beds: 5,
     baths: 4,
     sqft: 4500,
-    isAuction: true
+    isAuction: true,
+    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 дней от текущего момента
   },
   {
     id: 13,
@@ -230,6 +233,7 @@ const ObjectsList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
+  const [saleTypeFilter, setSaleTypeFilter] = useState('all');
   const [displayedCount, setDisplayedCount] = useState(9);
   const [favorites, setFavorites] = useState(new Set());
 
@@ -252,9 +256,16 @@ const ObjectsList = () => {
         matchesPrice = property.price >= 1000000;
       }
 
-      return matchesSearch && matchesType && matchesPrice;
+      let matchesSaleType = true;
+      if (saleTypeFilter === 'auction') {
+        matchesSaleType = property.isAuction === true;
+      } else if (saleTypeFilter === 'sale') {
+        matchesSaleType = property.isAuction === false;
+      }
+
+      return matchesSearch && matchesType && matchesPrice && matchesSaleType;
     });
-  }, [searchQuery, typeFilter, priceRange]);
+  }, [searchQuery, typeFilter, priceRange, saleTypeFilter]);
 
   const displayedProperties = filteredProperties.slice(0, displayedCount);
   const hasMore = displayedCount < filteredProperties.length;
@@ -309,6 +320,15 @@ const ObjectsList = () => {
               <option value="high">От 1 000 000 $</option>
             </select>
           </div>
+
+          <div className="objects-list__filter">
+            <label>Тип продажи:</label>
+            <select value={saleTypeFilter} onChange={(e) => setSaleTypeFilter(e.target.value)}>
+              <option value="all">Все</option>
+              <option value="auction">Аукционные</option>
+              <option value="sale">Продажа</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -321,6 +341,11 @@ const ObjectsList = () => {
           >
             <div className="property-card__image">
               <img src={property.image} alt={property.name} />
+              {property.isAuction && property.endTime && (
+                <div className="property-card__timer">
+                  <CountdownTimer endTime={property.endTime} />
+                </div>
+              )}
               <button
                 type="button"
                 className={`property-card__favorite ${

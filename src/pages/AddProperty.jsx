@@ -301,7 +301,7 @@ const AddProperty = () => {
               className={`property-type-card ${formData.propertyType === 'apartment' ? 'property-type-card--active' : ''}`}
               onClick={() => setFormData(prev => ({ ...prev, propertyType: 'apartment' }))}
             >
-              <PiBuildingApartment size={48} />
+              <PiBuildingApartment size={32} />
               <span>Квартира</span>
             </button>
             <button
@@ -309,7 +309,7 @@ const AddProperty = () => {
               className={`property-type-card ${formData.propertyType === 'house' ? 'property-type-card--active' : ''}`}
               onClick={() => setFormData(prev => ({ ...prev, propertyType: 'house' }))}
             >
-              <FiHome size={48} />
+              <FiHome size={32} />
               <span>Дом</span>
             </button>
             <button
@@ -317,7 +317,7 @@ const AddProperty = () => {
               className={`property-type-card ${formData.propertyType === 'villa' ? 'property-type-card--active' : ''}`}
               onClick={() => setFormData(prev => ({ ...prev, propertyType: 'villa' }))}
             >
-              <PiBuildings size={48} />
+              <PiBuildings size={32} />
               <span>Вилла</span>
             </button>
             <button
@@ -325,7 +325,7 @@ const AddProperty = () => {
               className={`property-type-card ${formData.propertyType === 'commercial' ? 'property-type-card--active' : ''}`}
               onClick={() => setFormData(prev => ({ ...prev, propertyType: 'commercial' }))}
             >
-              <PiWarehouse size={48} />
+              <PiWarehouse size={32} />
               <span>Коммерческая</span>
             </button>
           </div>
@@ -342,7 +342,7 @@ const AddProperty = () => {
                   className="photo-upload-box"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <FiUpload size={32} />
+                  <FiUpload size={20} />
                   <p>Добавить фото</p>
                   <span>{photos.length}/10</span>
                 </div>
@@ -375,14 +375,14 @@ const AddProperty = () => {
             </div>
             
             {photos.length > 0 && (
-              <button
-                type="button"
-                className="view-carousel-btn"
-                onClick={() => setShowCarousel(true)}
-              >
-                <FiEye size={18} />
-                Просмотреть карусель
-              </button>
+            <button
+              type="button"
+              className="view-carousel-btn"
+              onClick={() => setShowCarousel(true)}
+            >
+              <FiEye size={16} />
+              Просмотреть карусель
+            </button>
             )}
           </section>
 
@@ -424,12 +424,12 @@ const AddProperty = () => {
             >
               {isTranslating ? (
                 <>
-                  <FiLoader className="spinner" size={18} />
+                  <FiLoader className="spinner" size={16} />
                   Перевод...
                 </>
               ) : (
                 <>
-                  <FiGlobe size={18} />
+                  <FiGlobe size={16} />
                   Перевести на все языки
                 </>
               )}
@@ -1091,7 +1091,7 @@ const AddProperty = () => {
               className="btn-preview"
               onClick={handlePreview}
             >
-              <FiEye size={18} />
+              <FiEye size={16} />
               Предпросмотр
             </button>
             <button

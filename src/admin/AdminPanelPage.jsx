@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/admin/Sidebar';
 import Header from '../components/admin/Header';
@@ -18,6 +18,13 @@ const AdminPanelPage = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('statistics');
   const [showUsersModal, setShowUsersModal] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add('admin-panel-active');
+    return () => {
+      document.body.classList.remove('admin-panel-active');
+    };
+  }, []);
 
   const sectionTitles = {
     statistics: 'Статистика',

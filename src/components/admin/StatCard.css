@@ -52,6 +52,11 @@
   color: var(--warning);
 }
 
+.stat-icon.red {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
 .stat-title {
   font-size: 0.875rem;
   color: var(--gray-dark);

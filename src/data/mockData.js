@@ -99,7 +99,11 @@ export const mockBusinessInfo = {
       object_price: 2500000,
       current_bid: 2300000,
       end_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000), // через 2 дня 5 часов
-      image_url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80'
+      image_url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80',
+      bedrooms: 4,
+      bathrooms: 3,
+      area: 250,
+      description: 'Роскошная вилла с видом на океан, современной отделкой и всеми удобствами'
     },
     {
       id: 2,
@@ -110,7 +114,11 @@ export const mockBusinessInfo = {
       object_price: 850000,
       current_bid: 820000,
       end_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000), // через 5 дней 12 часов
-      image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
+      image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+      bedrooms: 2,
+      bathrooms: 2,
+      area: 85,
+      description: 'Современная квартира в центре города с панорамными окнами и стильной отделкой'
     },
     {
       id: 3,
@@ -121,7 +129,88 @@ export const mockBusinessInfo = {
       object_price: 1200000,
       current_bid: 1150000,
       end_date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // через 1 день 3 часа
-      image_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80'
+      image_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80',
+      bedrooms: 3,
+      bathrooms: 2,
+      area: 150,
+      description: 'Уютный дом в тихом районе с садом, террасой и современной планировкой'
+    },
+    {
+      id: 4,
+      object_id: 4,
+      object_title: 'Пентхаус с видом на океан',
+      object_type: 'apartment',
+      object_location: 'Puerto de la Cruz, Tenerife',
+      object_price: 3200000,
+      current_bid: 3000000,
+      end_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 5,
+      object_id: 5,
+      object_title: 'Современная вилла с бассейном',
+      object_type: 'villa',
+      object_location: 'Adeje, Tenerife',
+      object_price: 1800000,
+      current_bid: 1700000,
+      end_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 6,
+      object_id: 6,
+      object_title: 'Квартира-студия у пляжа',
+      object_type: 'apartment',
+      object_location: 'Las Caletillas, Tenerife',
+      object_price: 450000,
+      current_bid: 420000,
+      end_date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1522771731714-5e783c937ce0?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 7,
+      object_id: 7,
+      object_title: 'Загородный дом с садом',
+      object_type: 'house',
+      object_location: 'La Laguna, Tenerife',
+      object_price: 950000,
+      current_bid: 900000,
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 8,
+      object_id: 8,
+      object_title: 'Элитная вилла на холме',
+      object_type: 'villa',
+      object_location: 'Guía de Isora, Tenerife',
+      object_price: 4200000,
+      current_bid: 4000000,
+      end_date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 9,
+      object_id: 9,
+      object_title: 'Дом с террасой и видом',
+      object_type: 'house',
+      object_location: 'Santa Cruz, Tenerife',
+      object_price: 1100000,
+      current_bid: 1050000,
+      end_date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 10,
+      object_id: 10,
+      object_title: 'Апартаменты премиум класса',
+      object_type: 'apartment',
+      object_location: 'Costa del Silencio, Tenerife',
+      object_price: 680000,
+      current_bid: 650000,
+      end_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000),
+      image_url: 'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=400&q=80'
     }
   ],
   objects_count: 156,

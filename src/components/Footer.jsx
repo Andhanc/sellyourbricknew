@@ -72,27 +72,24 @@ const Footer = () => {
             <Link to="/main" onClick={scrollToTop} className="footer__menu-link">{t('home') || 'Главная'}</Link>
             <Link to="/map" onClick={scrollToTop} className="footer__menu-link">{t('mapLink')}</Link>
             <Link to="/subscriptions" onClick={scrollToTop} className="footer__menu-link">{t('tariffs')}</Link>
-            <Link to="/" onClick={scrollToTop} className="footer__menu-link">{t('auction')}</Link>
           </div>
           <div className="footer__menu-column">
+            <Link to="/" onClick={scrollToTop} className="footer__menu-link">{t('auction')}</Link>
             <Link to="/data" onClick={scrollToTop} className="footer__menu-link">{t('legalDocs')}</Link>
             <button type="button" className="footer__menu-link">{t('advertising')}</button>
-            <button type="button" className="footer__menu-link">{t('career')}</button>
           </div>
           <div className="footer__menu-column">
+            <button type="button" className="footer__menu-link">{t('career')}</button>
             <Link to="/map" onClick={scrollToTop} className="footer__menu-link">{t('mapSearch')}</Link>
             <button type="button" className="footer__menu-link">{t('promotion')}</button>
+          </div>
+          <div className="footer__menu-column">
             <button type="button" className="footer__menu-link">{t('investors')}</button>
-          </div>
-          <div className="footer__menu-column">
-            <Link to="/" onClick={scrollToTop} className="footer__menu-link">{t('auction')}</Link>
             <button type="button" className="footer__menu-link">{t('vacancies')}</button>
-          </div>
-          <div className="footer__menu-column">
             <button type="button" className="footer__menu-link">{t('tvAdvertising')}</button>
-            <Link to="/chat" onClick={scrollToTop} className="footer__menu-link">{t('help')}</Link>
           </div>
           <div className="footer__menu-column">
+            <Link to="/chat" onClick={scrollToTop} className="footer__menu-link">{t('help')}</Link>
             <button type="button" className="footer__menu-link">{t('superAgents')}</button>
             <button type="button" className="footer__menu-link">{t('mortgage')}</button>
           </div>
