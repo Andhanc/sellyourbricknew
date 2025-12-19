@@ -7,6 +7,8 @@
   font-family: 'Poppins', sans-serif;
   border-top: 1px solid #e5e7eb;
   text-align: left;
+  position: relative;
+  z-index: 10;
 }
 
 .footer__container {
@@ -32,6 +34,7 @@
   min-width: 160px;
   align-items: flex-start;
   text-align: left;
+  
 }
 
 .footer__menu-link {
@@ -61,17 +64,18 @@
   overflow: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  text-align: center;
+  margin-left: 80px;
 }
 
 .footer__description-text {
   font-size: 13px;
   line-height: 1.6;
   color: #9ca3af;
+  margin-left: 15%;
   margin: 4px 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  text-align: center;
+ 
 }
 
 .footer__description-link {
@@ -140,6 +144,15 @@
   letter-spacing: 0.02em;
   text-transform: lowercase;
   color: #111827;
+}
+
+body.admin-panel-active .footer .footer__brand-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: #111827;
+ margin-left: 0.25rem;
 }
 
 .footer__bottom-links {
@@ -408,7 +421,8 @@ body.admin-panel-active .footer .footer__description {
   overflow: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  text-align: center;
+  text-align: left;
+  margin-left: 80px;
 }
 
 body.admin-panel-active .footer .footer__description-text {
@@ -419,22 +433,38 @@ body.admin-panel-active .footer .footer__description-text {
   max-width: 100%;
   padding-left: 0;
   padding-right: 0;
-  text-align: center;
+  
+  margin-left: 15%;
 }
 
 body.admin-panel-active .footer .footer__bottom {
   gap: 16px;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
 }
 
 body.admin-panel-active .footer .footer__brand {
   flex-shrink: 0;
-  order: -1;
+  order: 1;
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: 80px;
+}
+
+body.admin-panel-active .footer .footer__brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #0ea5e9;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 6px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  margin-left: 13.5rem;
 }
 
 body.admin-panel-active .footer .footer__brand-text {
@@ -444,7 +474,8 @@ body.admin-panel-active .footer .footer__brand-text {
 body.admin-panel-active .footer .footer__bottom-links {
   gap: 12px;
   flex-shrink: 0;
-  margin-left: auto;
+  order: 2;
+  margin-left: 10%;
 }
 
 body.admin-panel-active .footer .footer__bottom-link {
@@ -454,7 +485,8 @@ body.admin-panel-active .footer .footer__bottom-link {
 body.admin-panel-active .footer .footer__store-buttons {
   gap: 6px;
   flex-shrink: 0;
-  margin-left: 20;
+  order: 3;
+  margin-left: auto;
 }
 
 body.admin-panel-active .footer .footer__store-btn {
@@ -482,7 +514,8 @@ body.admin-panel-active .footer .footer__store-name {
 
 body.admin-panel-active .footer .footer__language-selector {
   flex-shrink: 0;
-  margin-left: 20;
+  order: 4;
+  margin-left: 16px;
 }
 
 body.admin-panel-active .footer .footer__language-selector-btn {

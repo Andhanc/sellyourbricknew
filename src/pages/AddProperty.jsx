@@ -403,37 +403,35 @@ const AddProperty = () => {
           {/* Описание */}
           <section className="form-section">
             <h2 className="section-title">Описание</h2>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              className="form-textarea"
-              placeholder="Опишите объект недвижимости"
-              rows="6"
-              required
-            />
-          </section>
-
-          {/* Кнопка перевода */}
-          <section className="form-section">
-            <button
-              type="button"
-              className="translate-button"
-              onClick={handleTranslateAll}
-              disabled={isTranslating || (!formData.title && !formData.description)}
-            >
-              {isTranslating ? (
-                <>
-                  <FiLoader className="spinner" size={16} />
-                  Перевод...
-                </>
-              ) : (
-                <>
-                  <FiGlobe size={16} />
-                  Перевести на все языки
-                </>
-              )}
-            </button>
+            <div className="description-wrapper">
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                className="form-textarea"
+                placeholder="Опишите объект недвижимости"
+                rows="6"
+                required
+              />
+              <button
+                type="button"
+                className="translate-button"
+                onClick={handleTranslateAll}
+                disabled={isTranslating || (!formData.title && !formData.description)}
+              >
+                {isTranslating ? (
+                  <>
+                    <FiLoader className="spinner" size={16} />
+                    Перевод...
+                  </>
+                ) : (
+                  <>
+                    <FiGlobe size={16} />
+                    Перевести на все языки
+                  </>
+                )}
+              </button>
+            </div>
 
             {/* Выпадающий список с переводами */}
             {showTranslations && translations && (
@@ -964,69 +962,76 @@ const AddProperty = () => {
             </div>
           </section>
 
-          {/* Цена */}
+          {/* Цена и Аукцион */}
           <section className="form-section">
-            <h2 className="section-title">Минимальная цена продажи</h2>
-            <div className="price-input-wrapper">
-              <div className="currency-selector">
-                <button
-                  type="button"
-                  className="currency-button"
-                  onClick={() => setShowCurrencyDropdown(showCurrencyDropdown === 'price' ? null : 'price')}
-                >
-                  <span className="currency-symbol">{currencies.find(c => c.code === currency)?.symbol || '$'}</span>
-                  <FiChevronDown className="currency-chevron" size={14} />
-                </button>
-                {showCurrencyDropdown === 'price' && (
-                  <div className="currency-dropdown">
-                    {currencies.map((curr) => (
-                      <button
-                        key={curr.code}
-                        type="button"
-                        className={`currency-option ${currency === curr.code ? 'active' : ''}`}
-                        onClick={() => {
-                          setCurrency(curr.code)
-                          setShowCurrencyDropdown(null)
-                        }}
-                      >
-                        <span className="currency-option-symbol">{curr.symbol}</span>
-                        <span className="currency-option-name">{curr.name}</span>
-                        <span className="currency-option-code">({curr.code})</span>
-                      </button>
-                    ))}
+            <div className="price-auction-wrapper">
+              <div className="price-section">
+                <h2 className="section-title">Минимальная цена продажи</h2>
+                <div className="price-input-wrapper">
+                  <div className="currency-selector">
+                    <button
+                      type="button"
+                      className="currency-button"
+                      onClick={() => setShowCurrencyDropdown(showCurrencyDropdown === 'price' ? null : 'price')}
+                    >
+                      <span className="currency-symbol">{currencies.find(c => c.code === currency)?.symbol || '$'}</span>
+                      <FiChevronDown className="currency-chevron" size={14} />
+                    </button>
+                    {showCurrencyDropdown === 'price' && (
+                      <div className="currency-dropdown">
+                        {currencies.map((curr) => (
+                          <button
+                            key={curr.code}
+                            type="button"
+                            className={`currency-option ${currency === curr.code ? 'active' : ''}`}
+                            onClick={() => {
+                              setCurrency(curr.code)
+                              setShowCurrencyDropdown(null)
+                            }}
+                          >
+                            <span className="currency-option-symbol">{curr.symbol}</span>
+                            <span className="currency-option-name">{curr.name}</span>
+                            <span className="currency-option-code">({curr.code})</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    className="form-input price-input"
+                    placeholder="0"
+                    min="0"
+                    required
+                  />
+                </div>
               </div>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                className="form-input price-input"
-                placeholder="0"
-                min="0"
-                required
-              />
+              
+              <div className="auction-section">
+                <h2 className="section-title">Аукцион</h2>
+                <div className="auction-checkbox-wrapper">
+                  <input
+                    type="checkbox"
+                    id="isAuction"
+                    name="isAuction"
+                    checked={formData.isAuction}
+                    onChange={handleInputChange}
+                    className="auction-checkbox"
+                  />
+                  <label htmlFor="isAuction" className="auction-label">
+                    Выставить объект на аукцион
+                  </label>
+                </div>
+              </div>
             </div>
           </section>
 
-          {/* Аукцион */}
-          <section className="form-section">
-            <div className="auction-checkbox-wrapper">
-              <input
-                type="checkbox"
-                id="isAuction"
-                name="isAuction"
-                checked={formData.isAuction}
-                onChange={handleInputChange}
-                className="auction-checkbox"
-              />
-              <label htmlFor="isAuction" className="auction-label">
-                Выставить объект на аукцион
-              </label>
-            </div>
-
-            {formData.isAuction && (
+          {/* Поля аукциона */}
+          {formData.isAuction && (
+            <section className="form-section">
               <div className="auction-fields">
                 <DateRangePicker
                   label="Период проведения аукциона"
@@ -1081,8 +1086,8 @@ const AddProperty = () => {
                   </div>
                 </div>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           {/* Кнопки */}
           <div className="form-actions">

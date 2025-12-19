@@ -38,6 +38,16 @@ const LoginModal = ({ isOpen, onClose }) => {
         return
       }
       
+      // Проверка для клиента
+      if (formData.email.toLowerCase() === 'client' && formData.password === '1234') {
+        // Сохраняем информацию о входе клиента
+        localStorage.setItem('userRole', 'client')
+        localStorage.setItem('isLoggedIn', 'true')
+        onClose()
+        navigate('/profile')
+        return
+      }
+      
       // Здесь будет логика обычного входа
       console.log('Вход', formData)
       // После успешного входа можно закрыть модальное окно
@@ -240,7 +250,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               value={formData.email}
               onChange={handleInputChange}
               className="login-modal__input"
-              placeholder={isLogin ? "Введите email или логин (для владельца: owner)" : "Введите ваш email"}
+              placeholder={isLogin ? "Введите email или логин (owner/client)" : "Введите ваш email"}
               required
             />
           </div>
