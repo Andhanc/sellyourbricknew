@@ -5,21 +5,41 @@ import { BiArea } from 'react-icons/bi'
 import './PropertyPreviewModal.css'
 
 const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
 
   if (!isOpen || !propertyData) return null
 
   const images = propertyData.photos || []
   const videos = propertyData.videos || []
-  const hasImages = images.length > 0
-  const hasVideos = videos.length > 0
+  
+  // Создаем объединенный массив медиа: сначала фото, потом видео
+  const mediaItems = [
+    ...images.map((img, index) => ({ type: 'image', content: img, index })),
+    ...videos.map((video, index) => ({ type: 'video', content: video, index }))
+  ]
+  
+  const hasMedia = mediaItems.length > 0
+  const currentMedia = mediaItems[currentMediaIndex]
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length)
+  const nextMedia = () => {
+    setCurrentMediaIndex((prev) => (prev + 1) % mediaItems.length)
   }
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
+  const prevMedia = () => {
+    setCurrentMediaIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length)
+  }
+
+  const getMediaThumbnail = (item) => {
+    if (item.type === 'image') {
+      return item.content
+    } else {
+      // Для видео используем thumbnail если есть (для YouTube)
+      if (item.content.thumbnail) {
+        return item.content.thumbnail
+      }
+      // Для файлов видео можем использовать первый кадр, но пока возвращаем null
+      return null
+    }
   }
 
   return (
@@ -36,96 +56,95 @@ const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
         <div className="preview-modal__content">
           <h2 className="preview-modal__title">Предпросмотр объявления</h2>
 
-          {/* Изображения */}
-          {hasImages && (
+          {/* Медиа (фото и видео) */}
+          {hasMedia && (
             <div className="preview-images">
               <div className="preview-main-image">
-                {images.length > 1 && (
+                {mediaItems.length > 1 && (
                   <>
                     <button 
                       className="preview-nav preview-nav--prev"
-                      onClick={prevImage}
+                      onClick={prevMedia}
                     >
                       <FiChevronLeft size={20} />
                     </button>
                     <button 
                       className="preview-nav preview-nav--next"
-                      onClick={nextImage}
+                      onClick={nextMedia}
                     >
                       <FiChevronRight size={20} />
                     </button>
                   </>
                 )}
-                <img 
-                  src={images[currentImageIndex]} 
-                  alt={`Фото ${currentImageIndex + 1}`}
-                />
-                {images.length > 1 && (
+                {currentMedia && (
+                  <>
+                    {currentMedia.type === 'image' ? (
+                      <img 
+                        src={currentMedia.content} 
+                        alt={`Фото ${currentMedia.index + 1}`}
+                      />
+                    ) : (
+                      <div className="preview-media-video">
+                        {currentMedia.content.type === 'youtube' && currentMedia.content.videoId ? (
+                          <iframe
+                            src={`https://www.youtube.com/embed/${currentMedia.content.videoId}`}
+                            title={`YouTube видео ${currentMedia.index + 1}`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : currentMedia.content.type === 'googledrive' && currentMedia.content.videoId ? (
+                          <iframe
+                            src={`https://drive.google.com/file/d/${currentMedia.content.videoId}/preview`}
+                            title={`Google Drive видео ${currentMedia.index + 1}`}
+                            frameBorder="0"
+                            allowFullScreen
+                          />
+                        ) : currentMedia.content.type === 'file' && currentMedia.content.url ? (
+                          <video
+                            src={currentMedia.content.url}
+                            controls
+                            className="preview-video-file"
+                          >
+                            Ваш браузер не поддерживает воспроизведение видео.
+                          </video>
+                        ) : null}
+                      </div>
+                    )}
+                  </>
+                )}
+                {mediaItems.length > 1 && (
                   <div className="preview-image-counter">
-                    {currentImageIndex + 1} / {images.length}
+                    {currentMediaIndex + 1} / {mediaItems.length}
                   </div>
                 )}
               </div>
               
-              {images.length > 1 && (
+              {mediaItems.length > 1 && (
                 <div className="preview-thumbnails">
-                  {images.map((img, index) => (
-                    <img
-                      key={index}
-                      src={img}
-                      alt={`Миниатюра ${index + 1}`}
-                      className={index === currentImageIndex ? 'active' : ''}
-                      onClick={() => setCurrentImageIndex(index)}
-                    />
-                  ))}
+                  {mediaItems.map((item, index) => {
+                    const thumbnail = getMediaThumbnail(item)
+                    return (
+                      <div
+                        key={`${item.type}-${item.index}`}
+                        className={`preview-thumbnail ${index === currentMediaIndex ? 'active' : ''}`}
+                        onClick={() => setCurrentMediaIndex(index)}
+                      >
+                        {thumbnail ? (
+                          <img
+                            src={thumbnail}
+                            alt={`Миниатюра ${index + 1}`}
+                          />
+                        ) : (
+                          <div className="preview-thumbnail-video-placeholder">
+                            <FiVideo size={20} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Видео */}
-          {hasVideos && (
-            <div className="preview-videos">
-              <h3 className="preview-section-title">
-                <FiVideo size={20} />
-                Видео ({videos.length})
-              </h3>
-              <div className="preview-videos-list">
-                {videos.map((video, index) => (
-                  <div key={video.id || index} className="preview-video-item">
-                    {video.type === 'youtube' && video.videoId ? (
-                      <div className="preview-video-container">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${video.videoId}`}
-                          title={`YouTube видео ${index + 1}`}
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      </div>
-                    ) : video.type === 'googledrive' && video.videoId ? (
-                      <div className="preview-video-container">
-                        <iframe
-                          src={`https://drive.google.com/file/d/${video.videoId}/preview`}
-                          title={`Google Drive видео ${index + 1}`}
-                          frameBorder="0"
-                          allowFullScreen
-                        />
-                      </div>
-                    ) : video.type === 'file' && video.url ? (
-                      <div className="preview-video-container">
-                        <video
-                          src={video.url}
-                          controls
-                          className="preview-video-file"
-                        >
-                          Ваш браузер не поддерживает воспроизведение видео.
-                        </video>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

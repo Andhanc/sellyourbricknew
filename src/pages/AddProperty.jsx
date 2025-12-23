@@ -576,11 +576,6 @@ const AddProperty = () => {
                         muted
                       />
                     )}
-                    <div className="video-play-overlay">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 5V19L19 12L8 5Z" fill="currentColor"/>
-                      </svg>
-                    </div>
                     <button
                       type="button"
                       className="photo-remove"
@@ -588,7 +583,6 @@ const AddProperty = () => {
                     >
                       <FiX size={16} />
                     </button>
-                    <div className="photo-number">{index + 1}</div>
                   </div>
                 ))}
               </div>

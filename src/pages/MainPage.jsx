@@ -2223,7 +2223,7 @@ function MainPage() {
           const getRoute = (id) => {
             if (id === 'home') return '/'
             if (id === 'favourite') return '/history'
-            if (id === 'auction') return '/'
+            if (id === 'auction') return '/main'
             if (id === 'chat') return '/chat'
             if (id === 'profile') return '/profile'
             return '/'

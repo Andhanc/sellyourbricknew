@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import MainPage from './pages/MainPage'
 import PropertyDetailPage from './pages/PropertyDetailPage'
@@ -21,7 +21,10 @@ function App() {
       <div className="app-layout">
         <div className="app-layout__content">
           <Routes>
+            {/* Главная страница - открывается по умолчанию */}
             <Route path="/" element={<Home />} />
+            
+            {/* Страница аукциона */}
             <Route path="/main" element={<MainPage />} />
             <Route path="/property/:id" element={<PropertyDetailPage />} />
             <Route path="/map" element={<MapPage />} />
@@ -31,9 +34,16 @@ function App() {
             <Route path="/history" element={<History />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/favorites" element={<Favorites />} />
+            
+            {/* Страницы для владельцев */}
             <Route path="/owner" element={<OwnerDashboard />} />
             <Route path="/owner/property/new" element={<AddProperty />} />
+            
+            {/* Админ-панель */}
             <Route path="/admin" element={<AdminPanelPage />} />
+            
+            {/* Редирект для несуществующих маршрутов на главную страницу */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
         <Footer />
