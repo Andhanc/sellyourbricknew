@@ -11,7 +11,9 @@ import {
   FiMapPin,
   FiGlobe,
   FiLoader,
-  FiChevronDown
+  FiChevronDown,
+  FiLink,
+  FiVideo
 } from 'react-icons/fi'
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
@@ -25,14 +27,20 @@ import './AddProperty.css'
 const AddProperty = () => {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
+  const videoInputRef = useRef(null)
   
   const [photos, setPhotos] = useState([])
+  const [videos, setVideos] = useState([])
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [showCarousel, setShowCarousel] = useState(false)
+  const [showVideoCarousel, setShowVideoCarousel] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showTestDriveModal, setShowTestDriveModal] = useState(false)
   const [showDocumentsModal, setShowDocumentsModal] = useState(false)
   const [testDriveData, setTestDriveData] = useState(null)
+  const [showVideoLinkModal, setShowVideoLinkModal] = useState(false)
+  const [videoLink, setVideoLink] = useState('')
   const [isTranslating, setIsTranslating] = useState(false)
   const [translations, setTranslations] = useState(null)
   const [showTranslations, setShowTranslations] = useState(false)
@@ -144,6 +152,133 @@ const AddProperty = () => {
     if (currentPhotoIndex >= photos.length - 1) {
       setCurrentPhotoIndex(Math.max(0, photos.length - 2))
     }
+  }
+
+  // Функция для получения YouTube ID из URL
+  const getYouTubeVideoId = (url) => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match) return match[1]
+    }
+    return null
+  }
+
+  // Функция для получения Google Drive ID из URL
+  const getGoogleDriveVideoId = (url) => {
+    const patterns = [
+      /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
+      /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match) return match[1]
+    }
+    return null
+  }
+
+  // Функция для проверки и обработки ссылки на видео
+  const handleVideoLinkSubmit = () => {
+    if (!videoLink.trim()) {
+      alert('Пожалуйста, введите ссылку')
+      return
+    }
+
+    const youtubeId = getYouTubeVideoId(videoLink)
+    const googleDriveId = getGoogleDriveVideoId(videoLink)
+
+    if (youtubeId) {
+      const newVideo = {
+        id: Date.now() + Math.random(),
+        type: 'youtube',
+        url: videoLink,
+        videoId: youtubeId,
+        thumbnail: `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`
+      }
+      setVideos(prev => [...prev, newVideo])
+      setVideoLink('')
+      setShowVideoLinkModal(false)
+    } else if (googleDriveId) {
+      const newVideo = {
+        id: Date.now() + Math.random(),
+        type: 'googledrive',
+        url: videoLink,
+        videoId: googleDriveId,
+        embedUrl: `https://drive.google.com/file/d/${googleDriveId}/preview`
+      }
+      setVideos(prev => [...prev, newVideo])
+      setVideoLink('')
+      setShowVideoLinkModal(false)
+    } else {
+      alert('Пожалуйста, введите корректную ссылку на YouTube или Google Drive')
+    }
+  }
+
+  // Обработчик загрузки видео с компьютера
+  const handleVideoUpload = (e) => {
+    const files = Array.from(e.target.files)
+    const remainingSlots = 3 - videos.length
+    
+    if (files.length > remainingSlots) {
+      alert(`Можно загрузить максимум ${remainingSlots} видео`)
+      e.target.value = ''
+      return
+    }
+
+    files.forEach((file) => {
+      if (!file.type.startsWith('video/')) {
+        alert(`Файл ${file.name} не является видео`)
+        return
+      }
+
+      // Проверка длительности видео (максимум 1 минута = 60 секунд)
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      const objectUrl = URL.createObjectURL(file)
+      
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(objectUrl)
+        const duration = video.duration
+        
+        if (duration > 60) {
+          alert(`Видео "${file.name}" превышает максимальную длительность (1 минута). Текущая длительность: ${Math.round(duration)} секунд`)
+          return
+        }
+
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setVideos(prev => [...prev, {
+            id: Date.now() + Math.random(),
+            type: 'file',
+            url: reader.result,
+            file: file,
+            duration: duration
+          }])
+        }
+        reader.onerror = () => {
+          alert(`Ошибка при чтении файла "${file.name}"`)
+        }
+        reader.readAsDataURL(file)
+      }
+
+      video.onerror = () => {
+        window.URL.revokeObjectURL(objectUrl)
+        alert(`Ошибка при чтении видео "${file.name}"`)
+      }
+
+      video.src = objectUrl
+    })
+    
+    e.target.value = ''
+  }
+
+  const handleRemoveVideo = (id) => {
+    setVideos(videos.filter(video => video.id !== id))
   }
 
   const handleInputChange = (e) => {
@@ -278,6 +413,14 @@ const AddProperty = () => {
     setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
   }
 
+  const nextVideo = () => {
+    setCurrentVideoIndex((prev) => (prev + 1) % videos.length)
+  }
+
+  const prevVideo = () => {
+    setCurrentVideoIndex((prev) => (prev - 1 + videos.length) % videos.length)
+  }
+
   return (
     <div className="add-property-page">
       <div className="add-property-container">
@@ -383,6 +526,92 @@ const AddProperty = () => {
               <FiEye size={16} />
               Просмотреть карусель
             </button>
+            )}
+          </section>
+
+          {/* Загрузка видео */}
+          <section className="form-section">
+            <h2 className="section-title">Видео (до 3 шт.)</h2>
+            <div className="photos-upload-area">
+              {videos.length < 3 && (
+                <>
+                  <div 
+                    className="photo-upload-box"
+                    onClick={() => videoInputRef.current?.click()}
+                  >
+                    <FiUpload size={20} />
+                    <p>Загрузить видео</p>
+                    <span className="upload-hint">до 1 минуты</span>
+                    <span>{videos.length}/3</span>
+                  </div>
+                  <div 
+                    className="photo-upload-box photo-upload-box--link"
+                    onClick={() => setShowVideoLinkModal(true)}
+                  >
+                    <FiLink size={20} />
+                    <p>Добавить ссылку</p>
+                    <span className="upload-hint">YouTube / Google Drive</span>
+                  </div>
+                </>
+              )}
+              
+              <div className="photos-grid">
+                {videos.map((video, index) => (
+                  <div key={video.id} className="photo-item">
+                    {video.type === 'youtube' && video.thumbnail ? (
+                      <img 
+                        src={video.thumbnail} 
+                        alt="YouTube видео"
+                        className="video-thumbnail"
+                      />
+                    ) : video.type === 'googledrive' ? (
+                      <div className="video-preview">
+                        <FiVideo size={32} />
+                        <span className="video-type-badge">Google Drive</span>
+                      </div>
+                    ) : (
+                      <video 
+                        src={video.url} 
+                        className="video-preview-element"
+                        muted
+                      />
+                    )}
+                    <div className="video-play-overlay">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5V19L19 12L8 5Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                    <button
+                      type="button"
+                      className="photo-remove"
+                      onClick={() => handleRemoveVideo(video.id)}
+                    >
+                      <FiX size={16} />
+                    </button>
+                    <div className="photo-number">{index + 1}</div>
+                  </div>
+                ))}
+              </div>
+              
+              <input
+                ref={videoInputRef}
+                type="file"
+                multiple
+                accept="video/*"
+                onChange={handleVideoUpload}
+                style={{ display: 'none' }}
+              />
+            </div>
+            
+            {videos.length > 0 && (
+              <button
+                type="button"
+                className="view-carousel-btn"
+                onClick={() => setShowVideoCarousel(true)}
+              >
+                <FiEye size={16} />
+                Просмотреть карусель
+              </button>
             )}
           </section>
 
@@ -1146,12 +1375,119 @@ const AddProperty = () => {
         </div>
       )}
 
+      {/* Карусель видео */}
+      {showVideoCarousel && videos.length > 0 && (
+        <div className="carousel-overlay" onClick={() => setShowVideoCarousel(false)}>
+          <div className="carousel-container" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="carousel-close"
+              onClick={() => setShowVideoCarousel(false)}
+            >
+              <FiX size={24} />
+            </button>
+            {videos.length > 1 && (
+              <>
+                <button 
+                  className="carousel-nav carousel-nav--prev"
+                  onClick={prevVideo}
+                >
+                  <FiChevronLeft size={24} />
+                </button>
+                <button 
+                  className="carousel-nav carousel-nav--next"
+                  onClick={nextVideo}
+                >
+                  <FiChevronRight size={24} />
+                </button>
+              </>
+            )}
+            <div className="carousel-video-wrapper">
+              {videos[currentVideoIndex].type === 'youtube' && videos[currentVideoIndex].videoId ? (
+                <iframe
+                  src={`https://www.youtube.com/embed/${videos[currentVideoIndex].videoId}`}
+                  title={`YouTube видео ${currentVideoIndex + 1}`}
+                  className="carousel-video"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : videos[currentVideoIndex].type === 'googledrive' && videos[currentVideoIndex].videoId ? (
+                <iframe
+                  src={`https://drive.google.com/file/d/${videos[currentVideoIndex].videoId}/preview`}
+                  title={`Google Drive видео ${currentVideoIndex + 1}`}
+                  className="carousel-video"
+                  frameBorder="0"
+                  allowFullScreen
+                />
+              ) : videos[currentVideoIndex].type === 'file' && videos[currentVideoIndex].url ? (
+                <video
+                  src={videos[currentVideoIndex].url}
+                  controls
+                  className="carousel-video-file"
+                  autoPlay
+                >
+                  Ваш браузер не поддерживает воспроизведение видео.
+                </video>
+              ) : null}
+              <div className="carousel-counter">
+                {currentVideoIndex + 1} / {videos.length}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Модальное окно предпросмотра */}
       <PropertyPreviewModal
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
-        propertyData={{ ...formData, photos: photos.map(p => p.url) }}
+        propertyData={{ ...formData, photos: photos.map(p => p.url), videos: videos }}
       />
+
+      {/* Модальное окно для добавления ссылки на видео */}
+      {showVideoLinkModal && (
+        <div className="video-link-modal-overlay" onClick={() => setShowVideoLinkModal(false)}>
+          <div className="video-link-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="video-link-modal-close"
+              onClick={() => setShowVideoLinkModal(false)}
+            >
+              <FiX size={20} />
+            </button>
+            <h3 className="video-link-modal-title">Добавить ссылку на видео</h3>
+            <p className="video-link-modal-subtitle">
+              Вставьте ссылку на YouTube или Google Drive
+            </p>
+            <input
+              type="text"
+              className="video-link-input"
+              placeholder="https://youtube.com/watch?v=... или https://drive.google.com/file/d/..."
+              value={videoLink}
+              onChange={(e) => setVideoLink(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleVideoLinkSubmit()}
+            />
+            <div className="video-link-modal-actions">
+              <button
+                type="button"
+                className="video-link-modal-cancel"
+                onClick={() => {
+                  setShowVideoLinkModal(false)
+                  setVideoLink('')
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="video-link-modal-submit"
+                onClick={handleVideoLinkSubmit}
+              >
+                Добавить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <TestDriveModal
         isOpen={showTestDriveModal}

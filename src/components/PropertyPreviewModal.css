@@ -276,6 +276,60 @@
   margin-right: 8px;
 }
 
+/* Видео */
+.preview-videos {
+  margin-bottom: 32px;
+}
+
+.preview-section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-videos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.preview-video-item {
+  width: 100%;
+}
+
+.preview-video-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #000;
+}
+
+.preview-video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.preview-video-file {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  object-fit: contain;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
   .preview-modal {

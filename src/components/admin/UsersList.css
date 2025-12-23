@@ -36,9 +36,9 @@
 
 .filter-input:focus {
   outline: none;
-  border-color: #4361ee;
+  border-color: #0ABAB5;
   background: white;
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+  box-shadow: 0 0 0 3px rgba(10, 186, 181, 0.15);
 }
 
 .clear-search {
@@ -98,13 +98,13 @@
 }
 
 .filter-btn:hover {
-  border-color: #4361ee;
-  color: #4361ee;
+  border-color: #0ABAB5;
+  color: #0ABAB5;
 }
 
 .filter-btn.active {
-  background: #4361ee;
-  border-color: #4361ee;
+  background: #0ABAB5;
+  border-color: #0ABAB5;
   color: white;
 }
 
@@ -141,14 +141,19 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4361ee, #7209b7);
-  color: white;
+  background: #e5e7eb;
+  overflow: hidden;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 0.875rem;
-  flex-shrink: 0;
+}
+
+.user-card__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .user-card__info {
@@ -219,8 +224,8 @@
 }
 
 .meta-value--buyer {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #e0f7f7;
+  color: #0ABAB5;
 }
 
 .meta-value--seller {
@@ -230,7 +235,7 @@
 
 .meta-value--objects {
   font-weight: 600;
-  color: #4361ee;
+  color: #0ABAB5;
 }
 
 .status-badge {

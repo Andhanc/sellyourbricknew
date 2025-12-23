@@ -35,9 +35,9 @@ const PropertyList = () => {
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
-      return `${(price / 1000000).toFixed(1)} млн Р`
+      return `$${(price / 1000000).toFixed(1)}M`
     }
-    return `${price.toLocaleString('ru-RU')} Р`
+    return `$${price.toLocaleString('en-US')}`
   }
 
   const filteredProperties = properties.filter(property => {
@@ -155,11 +155,6 @@ const PropertyList = () => {
                     alt={property.title}
                     className="property-image"
                   />
-                  {property.endTime && (
-                    <div className="property-timer-overlay">
-                      <PropertyTimer endTime={property.endTime} compact={true} />
-                    </div>
-                  )}
                   <button 
                     className={`property-favorite ${favorites.has(property.id) ? 'active' : ''}`}
                     onClick={(e) => {
@@ -202,16 +197,23 @@ const PropertyList = () => {
                   </button>
                 </div>
                 <div className="property-content">
+                  {property.endTime && (
+                    <PropertyTimer endTime={property.endTime} compact={true} />
+                  )}
                   <h3 className="property-title">{property.title}</h3>
+                  {!property.endTime && property.description && (
+                    <p className="property-description">{property.description}</p>
+                  )}
                   <p className="property-location">{property.location}</p>
-                  <div className="property-price">{formatPrice(property.price)}</div>
                   {property.endTime ? (
                     <div className="property-bid-info">
                       <span className="bid-label">Текущая ставка:</span>
                       <span className="bid-value">{formatPrice(property.currentBid)}</span>
                     </div>
                   ) : (
-                    <div className="property-specs">
+                    <>
+                      <div className="property-price">{formatPrice(property.price)}</div>
+                      <div className="property-specs">
                       {property.rooms && (
                         <div className="spec-item">
                           <MdBed size={18} />
@@ -227,7 +229,8 @@ const PropertyList = () => {
                       {property.floor && (
                         <span className="spec-item">{property.floor} этаж</span>
                       )}
-                    </div>
+                      </div>
+                    </>
                   )}
                   <div className="property-actions" onClick={(e) => e.stopPropagation()}>
                     <button 

@@ -128,6 +128,14 @@
   display: none;
 }
 
+.property-card__timer .timer-value {
+  color: #111827 !important; /* темный цвет для цифр таймера в админке */
+}
+
+.property-card__timer .timer-unit {
+  color: #4b5563 !important; /* темный серый для подписей */
+}
+
 
 
 .property-card__favorite {

@@ -19,7 +19,7 @@
 .back-button {
   background: none;
   border: none;
-  color: #4A90E2;
+  color: #0ABAB5;
   font-size: 16px;
   cursor: pointer;
   margin-bottom: 12px;
@@ -36,7 +36,7 @@
 }
 
 .detail-nav a {
-  color: #4A90E2;
+  color: #0ABAB5;
 }
 
 .detail-nav a:hover {
@@ -123,7 +123,7 @@
 }
 
 .image-thumbnails img.active {
-  border-color: #4A90E2;
+  border-color: #0ABAB5;
 }
 
 .detail-info {
@@ -220,8 +220,8 @@
 }
 
 .auction-status.active {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #0ABAB5;
+  color: #ffffff;
 }
 
 .current-bid {
@@ -240,7 +240,7 @@
 .bid-amount {
   font-size: 32px;
   font-weight: 700;
-  color: #4A90E2;
+  color: #333;
 }
 
 .bid-form {
@@ -271,13 +271,13 @@
 
 .bid-input-group input:focus {
   outline: none;
-  border-color: #4A90E2;
+  border-color: #0ABAB5;
 }
 
 .btn-bid {
   width: 100%;
   padding: 16px;
-  background: #4A90E2;
+  background: #0ABAB5;
   color: white;
   border: none;
   border-radius: 8px;
@@ -288,7 +288,7 @@
 }
 
 .btn-bid:hover {
-  background: #357abd;
+  background: #089a95;
 }
 
 .bid-warning {
@@ -315,8 +315,8 @@
 
 .btn-bid-history:hover {
   background: #e8e8e8;
-  border-color: #4A90E2;
-  color: #4A90E2;
+  border-color: #0ABAB5;
+  color: #0ABAB5;
 }
 
 .bid-history-backdrop {
@@ -432,7 +432,7 @@
 
 .bid-history-item:hover {
   background: #f0f0f0;
-  border-color: #4A90E2;
+  border-color: #0ABAB5;
 }
 
 .bid-history-item-info {
@@ -444,7 +444,7 @@
 .bid-history-item-amount {
   font-size: 20px;
   font-weight: 700;
-  color: #4A90E2;
+  color: #0ABAB5;
 }
 
 .bid-history-item-details {
@@ -538,7 +538,7 @@
 }
 
 .status-value.link {
-  color: #4A90E2;
+  color: #0ABAB5;
   cursor: pointer;
 }
 
@@ -555,6 +555,22 @@
   font-size: 32px;
   margin-bottom: 24px;
   color: #333;
+}
+
+.not-found .btn-primary {
+  background: #0ABAB5;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  transition: background 0.2s;
+}
+
+.not-found .btn-primary:hover {
+  background: #089a95;
 }
 
 @media (max-width: 1024px) {

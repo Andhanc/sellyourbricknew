@@ -120,7 +120,7 @@
 .timer-value {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #111827; /* темные цифры таймера только в админ-слайдере */
   line-height: 1.2;
 }
 
@@ -134,7 +134,7 @@
 .timer-separator {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #111827;
   margin: 0 0.2rem;
 }
 

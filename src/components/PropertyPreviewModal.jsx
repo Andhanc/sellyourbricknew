@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FiX, FiChevronLeft, FiChevronRight, FiMapPin, FiDollarSign, FiCalendar } from 'react-icons/fi'
+import { FiX, FiChevronLeft, FiChevronRight, FiMapPin, FiDollarSign, FiCalendar, FiVideo } from 'react-icons/fi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import './PropertyPreviewModal.css'
@@ -10,7 +10,9 @@ const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
   if (!isOpen || !propertyData) return null
 
   const images = propertyData.photos || []
+  const videos = propertyData.videos || []
   const hasImages = images.length > 0
+  const hasVideos = videos.length > 0
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length)
@@ -78,6 +80,52 @@ const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Видео */}
+          {hasVideos && (
+            <div className="preview-videos">
+              <h3 className="preview-section-title">
+                <FiVideo size={20} />
+                Видео ({videos.length})
+              </h3>
+              <div className="preview-videos-list">
+                {videos.map((video, index) => (
+                  <div key={video.id || index} className="preview-video-item">
+                    {video.type === 'youtube' && video.videoId ? (
+                      <div className="preview-video-container">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${video.videoId}`}
+                          title={`YouTube видео ${index + 1}`}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : video.type === 'googledrive' && video.videoId ? (
+                      <div className="preview-video-container">
+                        <iframe
+                          src={`https://drive.google.com/file/d/${video.videoId}/preview`}
+                          title={`Google Drive видео ${index + 1}`}
+                          frameBorder="0"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : video.type === 'file' && video.url ? (
+                      <div className="preview-video-container">
+                        <video
+                          src={video.url}
+                          controls
+                          className="preview-video-file"
+                        >
+                          Ваш браузер не поддерживает воспроизведение видео.
+                        </video>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

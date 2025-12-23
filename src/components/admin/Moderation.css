@@ -45,11 +45,11 @@
   transform: translateX(calc(-50% - (150px + 2rem + 2rem) / 2));
   width: calc(150px + 2.8rem);
   height: calc(100% - 1rem);
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: linear-gradient(135deg, #0ABAB5, #089a95);
   border-radius: 8px;
   z-index: 0;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 12px rgba(10, 186, 181, 0.3);
   pointer-events: none;
 }
 
@@ -99,9 +99,9 @@
 
 .moderation-search-input:focus {
   outline: none;
-  border-color: #4361ee;
+  border-color: #0ABAB5;
   background: white;
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+  box-shadow: 0 0 0 3px rgba(10, 186, 181, 0.15);
 }
 
 .moderation-search .clear-search {
@@ -156,7 +156,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4361ee, #7209b7);
+  background: #e5e7eb;
   color: white;
   display: flex;
   align-items: center;
@@ -164,13 +164,21 @@
   font-weight: 600;
   font-size: 1rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.moderation-card__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .moderation-card__image {
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #4361ee, #7209b7);
+  background: linear-gradient(135deg, #0ABAB5, #089a95);
   color: white;
   display: flex;
   align-items: center;
@@ -249,8 +257,8 @@
 .moderation-value--buyer {
   padding: 0.25rem 0.75rem;
   border-radius: 6px;
-  background: #dbeafe;
-  color: #1e40af;
+  background: #e0f7f7;
+  color: #0ABAB5;
 }
 
 .moderation-value--seller {

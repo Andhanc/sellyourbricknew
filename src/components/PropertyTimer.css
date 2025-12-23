@@ -9,13 +9,13 @@
 }
 
 .property-timer.compact {
-  margin-top: 12px;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding: 0 12px 8px 0;
+  background: transparent;
+  border: none;
   border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
+  box-shadow: none;
 }
 
 .property-timer-overlay .property-timer.compact {
@@ -27,19 +27,25 @@
 .timer-compact-content {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
 .timer-icon-svg {
-  color: rgba(255, 255, 255, 0.9);
+  color: #333;
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.property-timer-overlay .timer-icon-svg {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .timer-compact-time {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
 }
 
@@ -47,28 +53,41 @@
   display: flex;
   align-items: baseline;
   gap: 2px;
+  background: #333;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: none;
+}
+
+.property-timer-overlay .time-unit {
   background: rgba(255, 255, 255, 0.15);
-  padding: 4px 6px;
-  border-radius: 6px;
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .time-value {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   color: white;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
+.property-timer-overlay .time-value {
+  color: white;
+}
+
 .time-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  color: white;
   font-weight: 500;
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.property-timer-overlay .time-label {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .timer-icon {

@@ -1606,9 +1606,9 @@ function MainPage() {
               {filteredApartments.map((apartment, index) => {
                 const formatPrice = (price) => {
                   if (price >= 1000000) {
-                    return `${(price / 1000000).toFixed(1)} млн Р`
+                    return `$${(price / 1000000).toFixed(1)}M`
                   }
-                  return `${price.toLocaleString('ru-RU')} Р`
+                  return `$${price.toLocaleString('en-US')}`
                 }
                 
                 return (
@@ -1627,11 +1627,6 @@ function MainPage() {
                           alt={apartment.name}
                           className="property-image"
                         />
-                        {index % 2 === 1 && apartment.isAuction && apartment.endTime && (
-                          <div className="property-timer-overlay">
-                            <PropertyTimer endTime={apartment.endTime} compact={true} />
-                          </div>
-                        )}
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -1654,9 +1649,14 @@ function MainPage() {
                         </button>
                       </div>
                       <div className="property-content">
+                        {index % 2 === 1 && apartment.isAuction && apartment.endTime && (
+                          <PropertyTimer endTime={apartment.endTime} compact={true} />
+                        )}
                         <h3 className="property-title">{apartment.name}</h3>
+                        {!(index % 2 === 1 && apartment.isAuction && apartment.endTime) && apartment.description && (
+                          <p className="property-description">{apartment.description}</p>
+                        )}
                         <p className="property-location">{apartment.location}</p>
-                        <div className="property-price">{formatPrice(apartment.price)}</div>
                         {index % 2 === 1 && apartment.isAuction && apartment.endTime ? (
                           apartment.currentBid && (
                             <div className="property-bid-info">
@@ -1665,7 +1665,9 @@ function MainPage() {
                             </div>
                           )
                         ) : (
-                          <div className="property-specs">
+                          <>
+                            <div className="property-price">{formatPrice(apartment.price)}</div>
+                            <div className="property-specs">
                             {apartment.beds && (
                               <div className="spec-item">
                                 <MdBed size={18} />
@@ -1684,7 +1686,8 @@ function MainPage() {
                                 <span>{apartment.sqft} м²</span>
                               </div>
                             )}
-                          </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -1762,9 +1765,9 @@ function MainPage() {
               {filteredVillas.map((villa, index) => {
                 const formatPrice = (price) => {
                   if (price >= 1000000) {
-                    return `${(price / 1000000).toFixed(1)} млн Р`
+                    return `$${(price / 1000000).toFixed(1)}M`
                   }
-                  return `${price.toLocaleString('ru-RU')} Р`
+                  return `$${price.toLocaleString('en-US')}`
                 }
                 
                 return (
@@ -1783,11 +1786,6 @@ function MainPage() {
                           alt={villa.name}
                           className="property-image"
                         />
-                        {index % 2 === 1 && villa.isAuction && villa.endTime && (
-                          <div className="property-timer-overlay">
-                            <PropertyTimer endTime={villa.endTime} compact={true} />
-                          </div>
-                        )}
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -1810,9 +1808,14 @@ function MainPage() {
                         </button>
                       </div>
                       <div className="property-content">
+                        {index % 2 === 1 && villa.isAuction && villa.endTime && (
+                          <PropertyTimer endTime={villa.endTime} compact={true} />
+                        )}
                         <h3 className="property-title">{villa.name}</h3>
+                        {!(index % 2 === 1 && villa.isAuction && villa.endTime) && villa.description && (
+                          <p className="property-description">{villa.description}</p>
+                        )}
                         <p className="property-location">{villa.location}</p>
-                        <div className="property-price">{formatPrice(villa.price)}</div>
                         {index % 2 === 1 && villa.isAuction && villa.endTime ? (
                           villa.currentBid && (
                             <div className="property-bid-info">
@@ -1821,7 +1824,9 @@ function MainPage() {
                             </div>
                           )
                         ) : (
-                          <div className="property-specs">
+                          <>
+                            <div className="property-price">{formatPrice(villa.price)}</div>
+                            <div className="property-specs">
                             {villa.beds && (
                               <div className="spec-item">
                                 <MdBed size={18} />
@@ -1840,7 +1845,8 @@ function MainPage() {
                                 <span>{villa.sqft} м²</span>
                               </div>
                             )}
-                          </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -2021,9 +2027,9 @@ function MainPage() {
           {(filteredProperties?.recommended || filteredRecommended).map((property, index) => {
             const formatPrice = (price) => {
               if (price >= 1000000) {
-                return `${(price / 1000000).toFixed(1)} млн Р`
+                return `$${(price / 1000000).toFixed(1)}M`
               }
-              return `${price.toLocaleString('ru-RU')} Р`
+              return `$${price.toLocaleString('en-US')}`
             }
             
             return (
@@ -2042,11 +2048,6 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
-                    {index % 2 === 1 && property.isAuction && property.endTime && (
-                      <div className="property-timer-overlay">
-                        <PropertyTimer endTime={property.endTime} compact={true} />
-                      </div>
-                    )}
                     <button
                       type="button"
                       className={`property-favorite ${
@@ -2069,9 +2070,11 @@ function MainPage() {
                     </button>
                   </div>
                   <div className="property-content">
+                    {index % 2 === 1 && property.isAuction && property.endTime && (
+                      <PropertyTimer endTime={property.endTime} compact={true} />
+                    )}
                     <h3 className="property-title">{property.name}</h3>
                     <p className="property-location">{property.location}</p>
-                    <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
                     {index % 2 === 1 && property.isAuction && property.endTime ? (
                       property.currentBid && (
                         <div className="property-bid-info">
@@ -2080,26 +2083,29 @@ function MainPage() {
                         </div>
                       )
                     ) : (
-                      <div className="property-specs">
-                        {property.beds && (
-                          <div className="spec-item">
-                            <MdBed size={18} />
-                            <span>{property.beds}</span>
-                          </div>
-                        )}
-                        {property.baths && (
-                          <div className="spec-item">
-                            <MdOutlineBathtub size={18} />
-                            <span>{property.baths}</span>
-                          </div>
-                        )}
-                        {property.sqft && (
-                          <div className="spec-item">
-                            <BiArea size={18} />
-                            <span>{property.sqft} м²</span>
-                          </div>
-                        )}
-                      </div>
+                      <>
+                        <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
+                        <div className="property-specs">
+                          {property.beds && (
+                            <div className="spec-item">
+                              <MdBed size={18} />
+                              <span>{property.beds}</span>
+                            </div>
+                          )}
+                          {property.baths && (
+                            <div className="spec-item">
+                              <MdOutlineBathtub size={18} />
+                              <span>{property.baths}</span>
+                            </div>
+                          )}
+                          {property.sqft && (
+                            <div className="spec-item">
+                              <BiArea size={18} />
+                              <span>{property.sqft} м²</span>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -2118,9 +2124,9 @@ function MainPage() {
           {(filteredProperties?.nearby || filteredNearby).map((property, index) => {
             const formatPrice = (price) => {
               if (price >= 1000000) {
-                return `${(price / 1000000).toFixed(1)} млн Р`
+                return `$${(price / 1000000).toFixed(1)}M`
               }
-              return `${price.toLocaleString('ru-RU')} Р`
+              return `$${price.toLocaleString('en-US')}`
             }
             
             return (
@@ -2139,11 +2145,6 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
-                    {index % 2 === 1 && property.isAuction && property.endTime && (
-                      <div className="property-timer-overlay">
-                        <PropertyTimer endTime={property.endTime} compact={true} />
-                      </div>
-                    )}
                     <button
                       type="button"
                       className={`property-favorite ${
@@ -2166,9 +2167,14 @@ function MainPage() {
                     </button>
                   </div>
                   <div className="property-content">
+                    {index % 2 === 1 && property.isAuction && property.endTime && (
+                      <PropertyTimer endTime={property.endTime} compact={true} />
+                    )}
                     <h3 className="property-title">{property.name}</h3>
+                    {!(index % 2 === 1 && property.isAuction && property.endTime) && property.description && (
+                      <p className="property-description">{property.description}</p>
+                    )}
                     <p className="property-location">{property.location}</p>
-                    <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
                     {index % 2 === 1 && property.isAuction && property.endTime ? (
                       property.currentBid && (
                         <div className="property-bid-info">
@@ -2177,26 +2183,29 @@ function MainPage() {
                         </div>
                       )
                     ) : (
-                      <div className="property-specs">
-                        {property.beds && (
-                          <div className="spec-item">
-                            <MdBed size={18} />
-                            <span>{property.beds}</span>
-                          </div>
-                        )}
-                        {property.baths && (
-                          <div className="spec-item">
-                            <MdOutlineBathtub size={18} />
-                            <span>{property.baths}</span>
-                          </div>
-                        )}
-                        {property.sqft && (
-                          <div className="spec-item">
-                            <BiArea size={18} />
-                            <span>{property.sqft} м²</span>
-                          </div>
-                        )}
-                      </div>
+                      <>
+                        <div className="property-price">{formatPrice(propertyMode === 'rent' ? property.price : property.price * 240)}</div>
+                        <div className="property-specs">
+                          {property.beds && (
+                            <div className="spec-item">
+                              <MdBed size={18} />
+                              <span>{property.beds}</span>
+                            </div>
+                          )}
+                          {property.baths && (
+                            <div className="spec-item">
+                              <MdOutlineBathtub size={18} />
+                              <span>{property.baths}</span>
+                            </div>
+                          )}
+                          {property.sqft && (
+                            <div className="spec-item">
+                              <BiArea size={18} />
+                              <span>{property.sqft} м²</span>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

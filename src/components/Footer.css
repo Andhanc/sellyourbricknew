@@ -4,7 +4,7 @@
   color: #6b7280;
   padding: 40px 0 32px;
   margin-top: 40px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   border-top: 1px solid #e5e7eb;
   text-align: left;
   position: relative;
@@ -52,7 +52,7 @@
 
 .footer__menu-link:hover {
   text-decoration: underline;
-  color: #2563eb;
+  color: #0ABAB5;
 }
 
 /* Описание сервиса */
@@ -84,7 +84,7 @@
   padding: 0;
   margin: 0;
   font-size: inherit;
-  color: #2563eb;
+  color: #0ABAB5;
   cursor: pointer;
 }
 
@@ -111,7 +111,7 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #0ea5e9;
+  background: #0ABAB5;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -165,7 +165,7 @@ body.admin-panel-active .footer .footer__brand-text {
   background: none;
   padding: 0;
   font-size: 13px;
-  color: #2563eb;
+  color: #0ABAB5;
   cursor: pointer;
 }
 
@@ -274,7 +274,7 @@ body.admin-panel-active .footer .footer__brand-text {
   font-size: 14px;
   font-weight: 500;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   min-width: 120px;
   justify-content: space-between;
 }
@@ -338,7 +338,7 @@ body.admin-panel-active .footer .footer__brand-text {
   font-size: 14px;
   font-weight: 400;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   text-align: left;
   position: relative;
 }
@@ -358,7 +358,7 @@ body.admin-panel-active .footer .footer__brand-text {
 
 .footer__language-check {
   margin-left: auto;
-  color: #2563eb;
+  color: #0ABAB5;
   flex-shrink: 0;
 }
 
@@ -457,7 +457,7 @@ body.admin-panel-active .footer .footer__brand-icon {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #0ea5e9;
+  background: #0ABAB5;
   display: flex;
   align-items: flex-end;
   justify-content: center;

@@ -70,9 +70,9 @@ const History = () => {
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
-      return `${(price / 1000000).toFixed(1)} млн Р`
+      return `$${(price / 1000000).toFixed(1)}M`
     }
-    return `${price.toLocaleString('ru-RU')} Р`
+    return `$${price.toLocaleString('en-US')}`
   }
 
   const formatDate = (dateString) => {
@@ -128,8 +128,8 @@ const History = () => {
                 <path d="M2 12L12 17L22 12" stroke="url(#gradient1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <defs>
                   <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#4A90E2" />
-                    <stop offset="100%" stopColor="#357ABD" />
+                    <stop offset="0%" stopColor="#0ABAB5" />
+                    <stop offset="100%" stopColor="#089a95" />
                   </linearGradient>
                 </defs>
               </svg>

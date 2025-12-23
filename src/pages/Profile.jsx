@@ -64,8 +64,8 @@ const Profile = () => {
                 <path d="M2 12L12 17L22 12" stroke="url(#gradient1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <defs>
                   <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#4A90E2" />
-                    <stop offset="100%" stopColor="#357ABD" />
+                    <stop offset="0%" stopColor="#0ABAB5" />
+                    <stop offset="100%" stopColor="#089a95" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -154,8 +154,8 @@ const Profile = () => {
                   <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
                     <defs>
                       <linearGradient id="avatarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#4A90E2" />
-                        <stop offset="100%" stopColor="#357abd" />
+                        <stop offset="0%" stopColor="#0ABAB5" />
+                        <stop offset="100%" stopColor="#089a95" />
                       </linearGradient>
                     </defs>
                     <circle cx="60" cy="60" r="60" fill="url(#avatarGradient)"/>
@@ -266,8 +266,8 @@ const Profile = () => {
                       <path d="M20 5L25 15H35L27 22L30 32L20 26L10 32L13 22L5 15H15L20 5Z" fill="url(#subscriptionActiveGrad)"/>
                       <defs>
                         <linearGradient id="subscriptionActiveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -332,8 +332,8 @@ const Profile = () => {
                       <path d="M14 14H26M14 18H26M14 22H22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
                         <linearGradient id="docAllGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -351,8 +351,8 @@ const Profile = () => {
                       <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
                         <linearGradient id="passportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -370,8 +370,8 @@ const Profile = () => {
                       <path d="M12 12H28M12 16H28M12 20H24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
                         <linearGradient id="foreignGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -390,8 +390,8 @@ const Profile = () => {
                       <path d="M16 24H24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
                         <linearGradient id="licenseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -409,8 +409,8 @@ const Profile = () => {
                       <path d="M20 12V20M16 16L24 24" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                       <defs>
                         <linearGradient id="omsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -428,8 +428,8 @@ const Profile = () => {
                       <path d="M14 16H26M14 20H26M14 24H22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
                         <linearGradient id="snilsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4A90E2" />
-                          <stop offset="100%" stopColor="#357abd" />
+                          <stop offset="0%" stopColor="#0ABAB5" />
+                          <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
                       </defs>
                     </svg>

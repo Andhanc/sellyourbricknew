@@ -7,6 +7,7 @@ const mockUsers = [
     id: 1,
     firstName: 'Иван',
     lastName: 'Иванов',
+    avatar: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&q=80',
     role: 'buyer',
     moderationStatus: 'approved',
     isBlocked: false,
@@ -18,6 +19,7 @@ const mockUsers = [
     id: 2,
     firstName: 'Петр',
     lastName: 'Петров',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
     role: 'seller',
     moderationStatus: 'pending',
     isBlocked: false,
@@ -29,6 +31,7 @@ const mockUsers = [
     id: 3,
     firstName: 'Анна',
     lastName: 'Сидорова',
+    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
     role: 'buyer',
     moderationStatus: 'approved',
     isBlocked: false,
@@ -40,6 +43,7 @@ const mockUsers = [
     id: 4,
     firstName: 'Алексей',
     lastName: 'Кузнецов',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
     role: 'seller',
     moderationStatus: 'approved',
     isBlocked: true,
@@ -51,6 +55,7 @@ const mockUsers = [
     id: 5,
     firstName: 'Мария',
     lastName: 'Иванова',
+    avatar: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=200&q=80',
     role: 'buyer',
     moderationStatus: 'pending',
     isBlocked: false,
@@ -62,6 +67,7 @@ const mockUsers = [
     id: 6,
     firstName: 'Дмитрий',
     lastName: 'Смирнов',
+    avatar: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=200&q=80',
     role: 'seller',
     moderationStatus: 'approved',
     isBlocked: false,
@@ -73,6 +79,7 @@ const mockUsers = [
     id: 7,
     firstName: 'Елена',
     lastName: 'Петрова',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
     role: 'buyer',
     moderationStatus: 'approved',
     isBlocked: false,
@@ -84,6 +91,7 @@ const mockUsers = [
     id: 8,
     firstName: 'Сергей',
     lastName: 'Волков',
+    avatar: 'https://images.unsplash.com/photo-1544723795-3fb0b90c07c1?auto=format&fit=crop&w=200&q=80',
     role: 'seller',
     moderationStatus: 'pending',
     isBlocked: false,
@@ -236,7 +244,18 @@ const UsersList = () => {
               className={`user-card ${user.isBlocked ? 'user-card--blocked' : ''}`}
             >
               <div className="user-card__avatar">
-                {user.firstName[0]}{user.lastName[0]}
+                {user.avatar ? (
+                  <img 
+                    src={user.avatar} 
+                    alt={`${user.firstName} ${user.lastName}`} 
+                    className="user-card__avatar-image"
+                  />
+                ) : (
+                  <span>
+                    {user.firstName[0]}
+                    {user.lastName[0]}
+                  </span>
+                )}
               </div>
               
               <div className="user-card__info">
@@ -254,18 +273,6 @@ const UsersList = () => {
                     <span className={`meta-value meta-value--role meta-value--${user.role}`}>
                       {getRoleIcon(user.role)}
                       {getRoleLabel(user.role)}
-                    </span>
-                  </div>
-                  
-                  <div className="user-meta-item">
-                    <span className="meta-label">Статус:</span>
-                    <span className={`status-badge ${getStatusBadgeClass(user.moderationStatus)}`}>
-                      {user.moderationStatus === 'approved' ? (
-                        <FiShield size={14} />
-                      ) : (
-                        <FiShieldOff size={14} />
-                      )}
-                      {getStatusLabel(user.moderationStatus)}
                     </span>
                   </div>
                   

@@ -12,6 +12,7 @@ const mockUsersForModeration = [
     firstName: 'Петр',
     lastName: 'Петров',
     middleName: 'Иванович',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
     email: 'petr@example.com',
     phone: '+7 (912) 345-67-89',
     passportNumber: '4512 345678',
@@ -33,6 +34,7 @@ const mockUsersForModeration = [
     firstName: 'Мария',
     lastName: 'Иванова',
     middleName: 'Сергеевна',
+    avatar: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=200&q=80',
     email: 'maria@example.com',
     phone: '+7 (923) 456-78-90',
     passportNumber: '4513 456789',
@@ -53,6 +55,7 @@ const mockUsersForModeration = [
     firstName: 'Сергей',
     lastName: 'Волков',
     middleName: 'Александрович',
+    avatar: 'https://images.unsplash.com/photo-1544723795-3fb0b90c07c1?auto=format&fit=crop&w=200&q=80',
     email: 'sergey@example.com',
     phone: '+7 (934) 567-89-01',
     passportNumber: '4514 567890',
@@ -316,20 +319,22 @@ const Moderation = () => {
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="moderation-card__avatar">
-                    {user.firstName[0]}{user.lastName[0]}
+                    {user.avatar ? (
+                      <img 
+                        src={user.avatar} 
+                        alt={`${user.firstName} ${user.lastName}`} 
+                        className="moderation-card__avatar-image"
+                      />
+                    ) : (
+                      <span>
+                        {user.firstName[0]}{user.lastName[0]}
+                      </span>
+                    )}
                   </div>
 
                   <div className="moderation-card__info">
                     <div className="moderation-card__header">
                       <h3>{user.firstName} {user.lastName}</h3>
-                      <span className={`moderation-badge moderation-badge--${user.moderationStatus}`}>
-                        {user.moderationStatus === 'pending' ? (
-                          <FiShieldOff size={14} />
-                        ) : (
-                          <FiShield size={14} />
-                        )}
-                        На модерации
-                      </span>
                     </div>
                     <p className="moderation-card__email">{user.email}</p>
 
@@ -381,10 +386,6 @@ const Moderation = () => {
                   <div className="moderation-card__info">
                     <div className="moderation-card__header">
                       <h3>{property.title}</h3>
-                      <span className={`moderation-badge moderation-badge--${property.moderationStatus}`}>
-                        <FiShieldOff size={14} />
-                        На модерации
-                      </span>
                     </div>
                     <p className="moderation-card__location">{property.location}</p>
 

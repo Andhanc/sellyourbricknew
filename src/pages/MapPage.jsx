@@ -14,9 +14,9 @@ const MapPage = () => {
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
-      return `${(price / 1000000).toFixed(1)} млн Р`
+      return `$${(price / 1000000).toFixed(1)}M`
     }
-    return `${price.toLocaleString('ru-RU')} Р`
+    return `$${price.toLocaleString('en-US')}`
   }
 
   const filteredProperties = properties.filter(property => {

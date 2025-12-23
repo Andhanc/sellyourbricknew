@@ -97,9 +97,9 @@ const PropertyDetail = () => {
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
-      return `${(price / 1000000).toFixed(1)} млн Р`
+      return `$${(price / 1000000).toFixed(1)}M`
     }
-    return `${price.toLocaleString('ru-RU')} Р`
+    return `$${price.toLocaleString('en-US')}`
   }
 
   const handleBid = (e) => {
@@ -394,8 +394,8 @@ const PropertyDetail = () => {
                     {/* Сетка */}
                     <defs>
                       <linearGradient id="priceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#4A90E2" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#4A90E2" stopOpacity="0.05" />
+                        <stop offset="0%" stopColor="#0ABAB5" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#0ABAB5" stopOpacity="0.05" />
                       </linearGradient>
                     </defs>
                     
@@ -447,7 +447,7 @@ const PropertyDetail = () => {
                         return `${x},${y}`
                       }).join(' ')}
                       fill="none"
-                      stroke="#4A90E2"
+                      stroke="#0ABAB5"
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -463,7 +463,7 @@ const PropertyDetail = () => {
                           cx={x}
                           cy={y}
                           r="4"
-                          fill="#4A90E2"
+                          fill="#0ABAB5"
                           stroke="#fff"
                           strokeWidth="2"
                         />

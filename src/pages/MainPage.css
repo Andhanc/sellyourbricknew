@@ -1,7 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&family=Poppins:wght@400;500;600&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
 
 .app {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -247,7 +248,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.4;
 }
 
@@ -302,7 +303,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .notification-item__property {
@@ -342,14 +343,14 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .notification-item__property-location {
   font-size: 13px;
   color: #6b7280;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .notification-item__button {
@@ -361,7 +362,7 @@
   color: #ffffff;
   background: #111827;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -697,7 +698,7 @@
 
 .categories__label {
   font-size: 12px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 500;
   color: #111827;
   transition: color 0.3s ease;
@@ -896,11 +897,129 @@
 }
 
 .property-card {
-  background: #ffffff;
-  border-radius: 24px;
+  background: #fff;
+  border-radius: 12px;
   overflow: hidden;
   min-width: 220px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.property-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.property-link {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+  height: 100%;
+  flex: 1;
+}
+
+.property-image-container {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  overflow: hidden;
+}
+
+.property-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.property-card:hover .property-image {
+  transform: scale(1.05);
+}
+
+.property-favorite {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  z-index: 3;
+}
+
+.property-favorite:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+.property-favorite svg {
+  color: #666;
+  transition: all 0.2s;
+}
+
+.property-favorite:hover svg {
+  color: #ff4444;
+}
+
+.property-favorite.active svg {
+  color: #ff4444;
+  fill: #ff4444;
+}
+
+.property-favorite.active:hover svg {
+  color: #ff2222;
+  fill: #ff2222;
+}
+
+.property-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.property-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.property-description {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 8px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.property-location {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.property-price {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12px;
 }
 
 .property-card--horizontal {
@@ -1056,36 +1175,39 @@
   padding: 12px;
   background: #f9f9f9;
   border-radius: 8px;
-  margin-top: 8px;
+  margin-top: auto;
+  border: 1px solid #f0f0f0;
 }
 
 .bid-label {
   font-size: 14px;
   color: #666;
+  font-weight: 500;
 }
 
 .bid-value {
   font-size: 18px;
   font-weight: 600;
-  color: #4A90E2;
+  color: #0ABAB5;
 }
 
 .property-specs {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  gap: 16px;
   margin-top: 8px;
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .property-specs .spec-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  font-size: 15px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: #666;
   padding: 0;
   white-space: nowrap;
 }
@@ -1098,7 +1220,7 @@
 }
 
 .property-specs .spec-item span {
-  color: #333;
+  color: #666;
   font-weight: 500;
 }
 
@@ -1162,7 +1284,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0 0 -150px 475px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.3;
 }
 
@@ -1231,7 +1353,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   text-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
   letter-spacing: -0.3px;
 }
@@ -1275,7 +1397,7 @@
   font-size: 14px;
   font-weight: 600;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   letter-spacing: 0.2px;
   text-shadow: 0 1px 1px rgba(17, 24, 39, 0.03);
   margin-bottom: 2px;
@@ -1290,7 +1412,7 @@
   font-size: 15px;
   color: #111827;
   background: #ffffff;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   outline: none;
   transition: all 0.3s ease;
   line-height: 1.5;
@@ -1326,7 +1448,7 @@
 .contact-form__textarea {
   resize: vertical;
   min-height: 130px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.6;
 }
 
@@ -1340,7 +1462,7 @@
   color: #ffffff;
   background: #111827;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: all 0.3s ease;
   margin-top: 4px;
   display: inline-flex;
@@ -1524,7 +1646,7 @@
   color: #ffffff;
   font-size: 16px;
   font-weight: 700;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1632,7 +1754,7 @@
   justify-content: center;
   font-size: 16px;
   font-weight: 700;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   flex-shrink: 0;
 }
 
@@ -1647,14 +1769,14 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .chat-widget__status {
   font-size: 12px;
   color: #10b981;
   font-weight: 500;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1749,7 +1871,7 @@
   border-radius: 18px;
   font-size: 14px;
   line-height: 1.5;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   word-wrap: break-word;
 }
 
@@ -1772,7 +1894,7 @@
   font-size: 11px;
   color: #9ca3af;
   padding: 0 4px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .chat-widget__message--user .chat-widget__message-time {
@@ -1797,7 +1919,7 @@
   font-size: 14px;
   color: #111827;
   background: #f9fafb;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   outline: none;
   transition: all 0.2s ease;
 }
@@ -1859,7 +1981,7 @@
   color: #6b7280;
   padding: 40px 0 32px;
   margin-top: 40px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   border-top: 1px solid #e5e7eb;
   text-align: left;
 }
@@ -2096,7 +2218,7 @@
   font-size: 14px;
   font-weight: 500;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   min-width: 120px;
   justify-content: space-between;
 }
@@ -2160,7 +2282,7 @@
   font-size: 14px;
   font-weight: 400;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   text-align: left;
   position: relative;
 }
@@ -2207,7 +2329,7 @@
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   cursor: pointer;
   padding: 10px 0;
   transition: all 0.3s ease;
@@ -2342,7 +2464,7 @@
   font-size: 10px;
   color: rgba(249, 250, 251, 0.7);
   font-weight: 400;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.3;
 }
 
@@ -2350,7 +2472,7 @@
   font-size: 13px;
   color: #ffffff;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.3;
 }
 
@@ -2402,7 +2524,7 @@
   color: rgba(249, 250, 251, 0.9);
   font-size: 14px;
   font-weight: 400;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 4px 8px;
@@ -2622,14 +2744,14 @@
   .new-header__container {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     padding: 8px 0px;
     background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     width: calc(100% - 120px);
     max-width: 1250px;
-    gap: 4px;
+    gap: 8px;
     transition: border-radius 0.3s ease, box-shadow 0.3s ease;
   }
 
@@ -2637,11 +2759,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-right: 4px;
+    margin-right: 8px;
+    flex-shrink: 0;
   }
 
   .new-header__location {
-    margin-right: 12px;
+    margin-right: 24px;
   }
 
   .new-header__location {
@@ -2915,7 +3038,7 @@
     letter-spacing: 0.5px;
     margin: 0 0 8px 0;
     padding: 0 10px;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Montserrat', sans-serif;
   }
 
   .menu-dropdown__item {
@@ -2929,7 +3052,7 @@
     color: #111827;
     font-size: 14px;
     font-weight: 400;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     cursor: pointer;
     border-radius: 6px;
     transition: background-color 0.2s ease;
@@ -3029,7 +3152,7 @@
     font-size: 11px;
     font-weight: 500;
     color: #111827;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     text-align: center;
   }
 
@@ -3051,7 +3174,7 @@
     color: #111827;
     font-size: 14px;
     font-weight: 500;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     cursor: pointer;
     transition: all 0.2s ease;
   }
@@ -3094,15 +3217,15 @@
   }
 
   .new-header__filters {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     --filter-gap: 32px;
     --filter-padding-y: 12px;
     --filter-padding-x: 18px;
     background: transparent;
-    padding: 8px 20px;
+    padding: 8px 12px;
     border-radius: 12px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -3112,6 +3235,8 @@
     min-height: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    justify-content: center;
+    min-width: 0;
   }
 
   .new-header__filters::-webkit-scrollbar {
@@ -3147,8 +3272,9 @@
   .new-header__right {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: 4px;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 0;
   }
 
   .new-header__search-btn {
@@ -3299,6 +3425,7 @@
     cursor: pointer;
     position: relative;
     flex-shrink: 0;
+    margin-right: 8px;
   }
 
   .new-header__notification-indicator {
@@ -3370,7 +3497,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0 0 20px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-section__cards {
@@ -3466,7 +3593,7 @@
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card__badge-icon {
@@ -3500,7 +3627,7 @@
   color: #111827;
   margin: 0;
   line-height: 1.3;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card--left .info-card__title {
@@ -3515,7 +3642,7 @@
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card--left .info-card__description {
@@ -3612,7 +3739,7 @@
   font-size: 12px;
   color: #6b7280;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.4;
 }
 
@@ -3639,7 +3766,7 @@
   font-size: 20px;
   font-weight: 700;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   white-space: nowrap;
 }
 
@@ -3654,7 +3781,7 @@
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card--left .info-card__value-tag {
@@ -3698,7 +3825,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card__chart-value-header {
@@ -3736,7 +3863,7 @@
   font-size: 11px;
   font-weight: 600;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   white-space: nowrap;
 }
 
@@ -3795,7 +3922,7 @@
   font-weight: 500;
   color: #6b7280;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card__rental-value,
@@ -3859,14 +3986,14 @@
   font-weight: 500;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card__slider-location {
   font-size: 13px;
   color: #6b7280;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card__slider-price {
@@ -3874,7 +4001,7 @@
   font-weight: 600;
   color: #111827;
   margin: 4px 0 0 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card__slider-description {
@@ -3882,7 +4009,7 @@
   color: #6b7280;
   line-height: 1.5;
   margin: 6px 0 0 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -3974,7 +4101,7 @@
   color: #111827;
   margin: 0;
   font-weight: 500;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.4;
 }
 
@@ -3987,7 +4114,7 @@
   font-size: 12px;
   color: #6b7280;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.4;
 }
 
@@ -4001,7 +4128,7 @@
   font-weight: 700;
   color: #111827;
   margin: 4px 0 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .info-card--right .info-card__property-price {
@@ -4063,7 +4190,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .apartments-section__arrow {
@@ -4123,7 +4250,7 @@
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   z-index: 2;
 }
 
@@ -4186,7 +4313,7 @@
   font-size: 16px;
   font-weight: 700;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .apartment-card__name {
@@ -4194,7 +4321,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.3;
 }
 
@@ -4212,7 +4339,7 @@
   color: #111827;
   font-size: 13px;
   font-weight: 500;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .apartment-card__info-item svg {
@@ -4224,20 +4351,21 @@
   font-size: 12px;
   color: #6b7280;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .apartment-card__owner {
   font-size: 12px;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 500;
 }
 
 .apartments-section__personal {
   display: flex;
-  align-items: stretch;
+  align-items: start;
+  margin-top: 280px;
 }
 
 .personal-selection {
@@ -4247,8 +4375,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 585px;
+  height: auto;
+  min-height: 420px;
   position: relative;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -4262,10 +4390,10 @@
 .personal-selection__banner {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   color: #000000;
-  padding: 10px 16px;
+  padding: 8px 16px;
   font-size: 12px;
   font-weight: 700;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   text-align: center;
   letter-spacing: 0.5px;
   display: flex;
@@ -4313,10 +4441,10 @@
 }
 
 .personal-selection__content {
-  padding: 28px 24px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   flex: 1;
   position: relative;
 }
@@ -4360,11 +4488,11 @@
 }
 
 .personal-selection__title {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 700;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.2;
   position: relative;
   z-index: 1;
@@ -4389,7 +4517,7 @@
   gap: 10px;
   font-size: 13px;
   color: #374151;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 500;
 }
 
@@ -4409,7 +4537,7 @@
   font-size: 14px;
   color: #4b5563;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.5;
   position: relative;
   z-index: 1;
@@ -4424,7 +4552,7 @@
   border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
@@ -4569,7 +4697,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   line-height: 1.4;
 }
 
@@ -4628,7 +4756,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .profile-section__value {
@@ -4636,7 +4764,7 @@
   font-weight: 500;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .profile-section__value--warning {
@@ -4652,7 +4780,7 @@
   color: #111827;
   background: transparent;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: all 0.2s ease;
   align-self: flex-start;
   margin-top: 4px;
@@ -4692,7 +4820,7 @@
   font-weight: 600;
   color: #111827;
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .settings-section__select {
@@ -4704,7 +4832,7 @@
   color: #111827;
   background: #ffffff;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: all 0.2s ease;
   outline: none;
 }
@@ -4727,7 +4855,7 @@
   color: #111827;
   background: transparent;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: all 0.2s ease;
   align-self: flex-start;
 }
@@ -4794,7 +4922,7 @@
   font-size: 14px;
   font-weight: 500;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 /* Кнопка настроек */

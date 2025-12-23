@@ -1,8 +1,8 @@
 /* Глобальные стили для админ-панели */
 :root {
-  --primary: #4361ee;
-  --primary-light: #4895ef;
-  --secondary: #3f37c9;
+  --primary: #0ABAB5;
+  --primary-light: #089a95;
+  --secondary: #089a95;
   --dark: #1b263b;
   --dark-light: #415a77;
   --light: #f8f9fa;
