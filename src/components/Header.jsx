@@ -8,10 +8,7 @@ import {
   FiX,
   FiMenu,
   FiUser,
-  FiPhone,
-  FiMail,
 } from 'react-icons/fi'
-import { FaPhone } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
 import { properties } from '../data/properties'
 import LoginModal from './LoginModal'
@@ -253,59 +250,6 @@ const Header = () => {
                             <span>Переводы</span>
                           </button>
                         </div>
-                      </div>
-                    </div>
-                    <div className="menu-dropdown__right">
-                      <div className="menu-dropdown__icons">
-                        <a 
-                          href="https://instagram.com" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="menu-dropdown__icon-item"
-                        >
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--instagram">
-                            <img 
-                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1200px-Instagram_logo_2022.svg.png" 
-                              alt="Instagram"
-                            />
-                          </div>
-                          <span className="menu-dropdown__icon-label">Instagram</span>
-                        </a>
-                        <a 
-                          href="https://wa.me" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="menu-dropdown__icon-item"
-                        >
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--whatsapp">
-                            <img 
-                              src="https://play-lh.googleusercontent.com/bYtqbOcTYOlgc6gqZ2rwb8lptHuwlNE75zYJu6Bn076-hTmvd96HH-6v7S0YUAAJXoJN" 
-                              alt="WhatsApp"
-                            />
-                          </div>
-                          <span className="menu-dropdown__icon-label">WhatsApp</span>
-                        </a>
-                        <a 
-                          href="mailto:info@example.com" 
-                          className="menu-dropdown__icon-item"
-                        >
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--gmail">
-                            <img 
-                              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4vtphMtxRWfK6nO2CIbGfSETyEs79Dr6oPw&s" 
-                              alt="Gmail"
-                            />
-                          </div>
-                          <span className="menu-dropdown__icon-label">Gmail</span>
-                        </a>
-                        <a 
-                          href="tel:+1234567890" 
-                          className="menu-dropdown__icon-item"
-                        >
-                          <div className="menu-dropdown__icon-box menu-dropdown__icon-box--phone">
-                            <FaPhone size={24} />
-                          </div>
-                          <span className="menu-dropdown__icon-label">Позвонить</span>
-                        </a>
                       </div>
                     </div>
                   </div>

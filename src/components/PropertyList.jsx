@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { MdBed } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import { properties } from '../data/properties'
@@ -8,9 +8,39 @@ import './PropertyList.css'
 
 const PropertyList = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [propertyType, setPropertyType] = useState('все')
+  
+  // Маппинг категорий из URL (английские) в русские названия для фильтра
+  const categoryMap = {
+    'Apartment': 'апартаменты',
+    'Villa': 'вилла',
+    'Flat': 'квартира',
+    'Townhouse': 'таунхаус',
+    'House': 'все' // для домов пока используем "все"
+  }
+  
+  // Читаем параметры из URL при загрузке и прокручиваем к объектам
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const category = searchParams.get('category')
+    
+    if (category && categoryMap[category]) {
+      setPropertyType(categoryMap[category])
+    }
+    
+    // Прокрутка к блоку объектов при наличии параметров в URL
+    if (location.search.includes('category=')) {
+      setTimeout(() => {
+        const element = document.getElementById('properties-grid')
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 300) // Небольшая задержка для применения фильтров
+    }
+  }, [location.search])
   const [favorites, setFavorites] = useState(() => {
     // Загружаем из localStorage
     const savedFavorites = localStorage.getItem('favoriteProperties')
@@ -41,12 +71,31 @@ const PropertyList = () => {
   }
 
   const filteredProperties = properties.filter(property => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      property.title.toLowerCase().includes(query) ||
-      property.location.toLowerCase().includes(query)
-    )
+    // Фильтрация по типу недвижимости
+    if (propertyType !== 'все') {
+      const titleLower = property.title.toLowerCase()
+      const typeMatch = {
+        'квартира': titleLower.includes('квартир') || titleLower.includes('студи'),
+        'апартаменты': titleLower.includes('апартамент'),
+        'вилла': titleLower.includes('вилл'),
+        'таунхаус': titleLower.includes('таунхаус')
+      }
+      
+      if (!typeMatch[propertyType]) {
+        return false
+      }
+    }
+    
+    // Фильтрация по поисковому запросу
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      return (
+        property.title.toLowerCase().includes(query) ||
+        property.location.toLowerCase().includes(query)
+      )
+    }
+    
+    return true
   })
 
   useEffect(() => {
@@ -133,7 +182,7 @@ const PropertyList = () => {
           </div>
         ) : (
           <>
-            <div className="properties-grid">
+            <div id="properties-grid" className="properties-grid">
               {filteredProperties.slice(0, visibleCount).map((property) => (
             <div 
               key={property.id} 

@@ -11,11 +11,16 @@ const PropertyDetailPage = () => {
   const location = useLocation()
   const numericId = parseInt(id, 10)
 
-  const property = properties.find((p) => p.id === numericId)
+  // Получаем объект из state (если передан из MainPage) или ищем в properties
+  const propertyFromState = location.state?.property
+  const propertyFromData = properties.find((p) => p.id === numericId)
+  const property = propertyFromState || propertyFromData
+  
   const searchParams = new URLSearchParams(location.search)
   const isClassicFromQuery = searchParams.get('classic') === '1'
 
-  if (property && (property.isAuction === false || isClassicFromQuery)) {
+  // Если объект передан из state или найден в properties и он неаукционный
+  if (property && (property.isAuction === false || isClassicFromQuery || !property.endTime)) {
     return <PropertyDetailClassic property={property} />
   }
 

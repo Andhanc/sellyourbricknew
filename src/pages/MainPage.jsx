@@ -33,7 +33,6 @@ import {
   FaApple,
   FaYoutube,
   FaCar,
-  FaPhone,
 } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
 import { IoLocationOutline } from 'react-icons/io5'
@@ -1325,9 +1324,47 @@ function MainPage() {
     window.location.href = 'tel:+79991234567'
   }
 
-  const handlePropertyClick = (category, propertyId, isClassic = false) => {
+  const handlePropertyClick = (category, propertyId, isClassic = false, hasTimer = false, property = null) => {
+    // Дополнительная проверка: если передан объект, проверяем его напрямую
+    // Это гарантирует правильное определение наличия таймера
+    const actuallyHasTimer = property 
+      ? (property.isAuction === true && property.endTime != null && property.endTime !== '')
+      : hasTimer
+    
+    // Если у объекта есть таймер (endTime), перенаправляем на страницу аукциона с фильтром категории
+    if (actuallyHasTimer === true) {
+      const categoryMap = {
+        'apartment': 'Apartment',
+        'villa': 'Villa',
+        'flat': 'Flat',
+        'townhouse': 'Townhouse',
+        'recommended': null, // для recommended и nearby используем tag из объекта
+        'nearby': null
+      }
+      
+      const mappedCategory = categoryMap[category]
+      if (mappedCategory) {
+        window.location.href = `/auction?category=${mappedCategory}&filter=auction#properties-grid`
+        return
+      }
+      
+      // Для recommended и nearby нужно найти объект и использовать его tag
+      const allProperties = [...recommendedProperties, ...nearbyProperties]
+      const foundProperty = allProperties.find(p => p.id === propertyId)
+      if (foundProperty && foundProperty.tag) {
+        window.location.href = `/auction?category=${foundProperty.tag}&filter=auction#properties-grid`
+        return
+      }
+    }
+    
+    // Для объектов без таймера переходим на страницу объекта
+    // Передаем объект через state, если он передан
     const search = isClassic ? '?classic=1' : ''
-    navigate(`/property/${propertyId}${search}`)
+    if (property) {
+      navigate(`/property/${propertyId}${search}`, { state: { property } })
+    } else {
+      navigate(`/property/${propertyId}${search}`)
+    }
   }
 
   const handleBackClick = () => {
@@ -1650,47 +1687,6 @@ function MainPage() {
                       </div>
                     </div>
                     <div className="menu-dropdown__column">
-                      <h3 className="menu-dropdown__column-title">Быстрые ссылки</h3>
-                      <div className="menu-dropdown__column-items">
-                        <button 
-                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--chat"
-                          onClick={() => {
-                            navigate('/chat')
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>{t('chat')}</span>
-                        </button>
-                        <button 
-                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--favorites"
-                          onClick={() => {
-                            navigate('/history')
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>{t('favorites')}</span>
-                        </button>
-                        <button 
-                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--assistant"
-                          onClick={() => {
-                            toggleChat()
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>{t('aiAssistant') || 'Умный помощник'}</span>
-                        </button>
-                        <button 
-                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--map"
-                          onClick={() => {
-                            navigate('/map')
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>{t('map')}</span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="menu-dropdown__column">
                       <h3 className="menu-dropdown__column-title">Дополнительно</h3>
                       <div className="menu-dropdown__column-items">
                         <button className="menu-dropdown__item">
@@ -1712,59 +1708,6 @@ function MainPage() {
                           <span>Переводы</span>
                         </button>
                       </div>
-                    </div>
-                  </div>
-                  <div className="menu-dropdown__right">
-                    <div className="menu-dropdown__icons">
-                      <a 
-                        href="https://instagram.com" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="menu-dropdown__icon-item"
-                      >
-                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--instagram">
-                          <img 
-                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1200px-Instagram_logo_2022.svg.png" 
-                            alt="Instagram"
-                          />
-                        </div>
-                        <span className="menu-dropdown__icon-label">Instagram</span>
-                      </a>
-                      <a 
-                        href="https://wa.me" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="menu-dropdown__icon-item"
-                      >
-                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--whatsapp">
-                          <img 
-                            src="https://play-lh.googleusercontent.com/bYtqbOcTYOlgc6gqZ2rwb8lptHuwlNE75zYJu6Bn076-hTmvd96HH-6v7S0YUAAJXoJN" 
-                            alt="WhatsApp"
-                          />
-                        </div>
-                        <span className="menu-dropdown__icon-label">WhatsApp</span>
-                      </a>
-                      <a 
-                        href="mailto:info@example.com" 
-                        className="menu-dropdown__icon-item"
-                      >
-                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--gmail">
-                          <img 
-                            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4vtphMtxRWfK6nO2CIbGfSETyEs79Dr6oPw&s" 
-                            alt="Gmail"
-                          />
-                        </div>
-                        <span className="menu-dropdown__icon-label">Gmail</span>
-                      </a>
-                      <a 
-                        href="tel:+1234567890" 
-                        className="menu-dropdown__icon-item"
-                      >
-                        <div className="menu-dropdown__icon-box menu-dropdown__icon-box--phone">
-                          <FaPhone size={24} />
-                        </div>
-                        <span className="menu-dropdown__icon-label">Позвонить</span>
-                      </a>
                     </div>
                   </div>
                 </div>
@@ -1987,8 +1930,11 @@ function MainPage() {
                     <div 
                       className="property-link"
                       onClick={() => {
-                        const showTimer = index % 2 === 1 && apartment.isAuction && apartment.endTime
-                        handlePropertyClick('apartment', apartment.id, !showTimer)
+                        // hasTimer определяется только по данным объекта, не зависит от индекса
+                        const hasTimer = apartment.isAuction === true && apartment.endTime != null && apartment.endTime !== ''
+                        // showTimer используется только для визуального отображения таймера
+                        const showTimer = index % 2 === 1 && hasTimer
+                        handlePropertyClick('apartment', apartment.id, !showTimer, hasTimer, apartment)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -2146,8 +2092,11 @@ function MainPage() {
                     <div 
                       className="property-link"
                       onClick={() => {
-                        const showTimer = index % 2 === 1 && villa.isAuction && villa.endTime
-                        handlePropertyClick('villa', villa.id, !showTimer)
+                        // hasTimer определяется только по данным объекта, не зависит от индекса
+                        const hasTimer = villa.isAuction === true && villa.endTime != null && villa.endTime !== ''
+                        // showTimer используется только для визуального отображения таймера
+                        const showTimer = index % 2 === 1 && hasTimer
+                        handlePropertyClick('villa', villa.id, !showTimer, hasTimer, villa)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -2305,8 +2254,11 @@ function MainPage() {
                     <div 
                       className="property-link"
                       onClick={() => {
-                        const showTimer = index % 2 === 1 && flat.isAuction && flat.endTime
-                        handlePropertyClick('flat', flat.id, !showTimer)
+                        // hasTimer определяется только по данным объекта, не зависит от индекса
+                        const hasTimer = flat.isAuction === true && flat.endTime != null && flat.endTime !== ''
+                        // showTimer используется только для визуального отображения таймера
+                        const showTimer = index % 2 === 1 && hasTimer
+                        handlePropertyClick('flat', flat.id, !showTimer, hasTimer, flat)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -2464,8 +2416,11 @@ function MainPage() {
                     <div 
                       className="property-link"
                       onClick={() => {
-                        const showTimer = index % 2 === 1 && townhouse.isAuction && townhouse.endTime
-                        handlePropertyClick('townhouse', townhouse.id, !showTimer)
+                        // hasTimer определяется только по данным объекта, не зависит от индекса
+                        const hasTimer = townhouse.isAuction === true && townhouse.endTime != null && townhouse.endTime !== ''
+                        // showTimer используется только для визуального отображения таймера
+                        const showTimer = index % 2 === 1 && hasTimer
+                        handlePropertyClick('townhouse', townhouse.id, !showTimer, hasTimer, townhouse)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -2726,8 +2681,11 @@ function MainPage() {
                 <div 
                   className="property-link"
                   onClick={() => {
-                    const showTimer = index % 2 === 1 && property.isAuction && property.endTime
-                    handlePropertyClick('recommended', property.id, !showTimer)
+                    // hasTimer определяется только по данным объекта, не зависит от индекса
+                    const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                    // showTimer используется только для визуального отображения таймера
+                    const showTimer = index % 2 === 1 && hasTimer
+                    handlePropertyClick('recommended', property.id, !showTimer, hasTimer, property)
                   }}
                   style={{ cursor: 'pointer' }}
                 >
@@ -2823,8 +2781,11 @@ function MainPage() {
                 <div 
                   className="property-link"
                   onClick={() => {
-                    const showTimer = index % 2 === 1 && property.isAuction && property.endTime
-                    handlePropertyClick('nearby', property.id, !showTimer)
+                    // hasTimer определяется только по данным объекта, не зависит от индекса
+                    const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                    // showTimer используется только для визуального отображения таймера
+                    const showTimer = index % 2 === 1 && hasTimer
+                    handlePropertyClick('nearby', property.id, !showTimer, hasTimer, property)
                   }}
                   style={{ cursor: 'pointer' }}
                 >

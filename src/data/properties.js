@@ -237,6 +237,206 @@ export const properties = [
     seller: "СОБСТВЕННИК",
     sellerId: "ID 012345678",
     isAuction: true
+  },
+  {
+    id: 13,
+    title: "Таунхаус, 160 м², 2 этажа",
+    location: "Московская область, Химки, ул. Лесная, 5",
+    price: 19500000,
+    currentBid: 18500000,
+    images: [
+      "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800",
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800"
+    ],
+    area: 160,
+    rooms: 4,
+    floor: "2/2",
+    description: "Уютный таунхаус в тихом месте у леса. Два этажа, просторная кухня-гостиная, терраса. Участок 6 соток, парковка. Рядом лес, река, тишина и покой.",
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000), // 3 дня 14 часов
+    seller: "РИЕЛТОР",
+    sellerId: "ID 112233445",
+    isAuction: true
+  },
+  {
+    id: 14,
+    title: "Таунхаус премиум, 200 м², 3 этажа",
+    location: "Московская область, Мытищи, ул. Мира, 12",
+    price: 28000000,
+    currentBid: 26500000,
+    images: [
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800",
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800"
+    ],
+    area: 200,
+    rooms: 5,
+    floor: "3/3",
+    description: "Роскошный таунхаус премиум класса. Три этажа, просторные комнаты, камин, терраса. Участок 8 соток, бассейн, сауна. Охраняемая территория, развитая инфраструктура.",
+    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000), // 4 дня 11 часов
+    seller: "РИЕЛТОР",
+    sellerId: "ID 223344556",
+    isAuction: true
+  },
+  {
+    id: 15,
+    title: "Таунхаус с садом, 170 м², 2 этажа",
+    location: "Ленинградская область, Всеволожск, ул. Центральная, 20",
+    price: 18500000,
+    currentBid: 17500000,
+    images: [
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800",
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800"
+    ],
+    area: 170,
+    rooms: 4,
+    floor: "2/2",
+    description: "Уютный таунхаус с собственным садом. Два этажа, просторные комнаты, кухня-гостиная. Участок 5 соток, парковка. Рядом лес, тихое место для семейной жизни.",
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000), // 2 дня 9 часов
+    seller: "СОБСТВЕННИК",
+    sellerId: "ID 334455667",
+    isAuction: true
+  },
+  {
+    id: 16,
+    title: "Вилла на берегу, 280 м², 3 этажа",
+    location: "Краснодарский край, Анапа, ул. Набережная, 45",
+    price: 52000000,
+    currentBid: 49000000,
+    images: [
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800",
+      "https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800",
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800"
+    ],
+    area: 280,
+    rooms: 6,
+    floor: "3/3",
+    description: "Эксклюзивная вилла на берегу моря. Три этажа, панорамные окна с видом на море, бассейн, сауна. Участок 12 соток, частный пляж. Элитная отделка, дизайнерская мебель.",
+    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000), // 6 дней 8 часов
+    seller: "РИЕЛТОР",
+    sellerId: "ID 445566778",
+    isAuction: true
+  },
+  {
+    id: 17,
+    title: "Вилла в горах, 220 м², 2 этажа",
+    location: "Краснодарский край, Сочи, ул. Горная, 88",
+    price: 38000000,
+    currentBid: 36000000,
+    images: [
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800",
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800"
+    ],
+    area: 220,
+    rooms: 5,
+    floor: "2/2",
+    description: "Современная вилла в горах с видом на море. Два этажа, большие террасы, камин. Участок 10 соток, бассейн. Тишина и покой, близость к природе. Идеально для отдыха.",
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000), // 5 дней 15 часов
+    seller: "СОБСТВЕННИК",
+    sellerId: "ID 556677889",
+    isAuction: true
+  },
+  {
+    id: 18,
+    title: "Вилла элитная, 300 м², 3 этажа",
+    location: "Краснодарский край, Геленджик, ул. Приморская, 200",
+    price: 48000000,
+    currentBid: 45000000,
+    images: [
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800"
+    ],
+    area: 300,
+    rooms: 7,
+    floor: "3/3",
+    description: "Роскошная элитная вилла с видом на море. Три этажа, просторные комнаты, домашний кинотеатр, винный погреб. Участок 18 соток, бассейн, теннисный корт. Премиум локация.",
+    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), // 7 дней 6 часов
+    seller: "РИЕЛТОР",
+    sellerId: "ID 667788990",
+    isAuction: true
+  },
+  {
+    id: 19,
+    title: "Апартаменты премиум, 95 м², 15/20 этаж",
+    location: "Москва, ул. Тверская, 10",
+    price: 18500000,
+    currentBid: 17500000,
+    images: [
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
+      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800",
+      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800"
+    ],
+    area: 95,
+    rooms: 2,
+    floor: "15/20",
+    description: "Элитные апартаменты в центре Москвы. Панорамные окна с видом на город, современная отделка. Полностью меблированы, вся техника премиум класса. Охраняемая территория, подземный паркинг.",
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000), // 3 дня 10 часов
+    seller: "РИЕЛТОР",
+    sellerId: "ID 778899001",
+    isAuction: true
+  },
+  {
+    id: 20,
+    title: "Апартаменты у моря, 75 м², 8/12 этаж",
+    location: "Краснодарский край, Сочи, ул. Морская, 25",
+    price: 12500000,
+    currentBid: 11800000,
+    images: [
+      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800",
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800"
+    ],
+    area: 75,
+    rooms: 2,
+    floor: "8/12",
+    description: "Современные апартаменты с видом на море. Балкон с панорамным видом, качественная отделка. Рядом пляж, рестораны, развлечения. Идеально для отдыха и инвестиций.",
+    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000), // 4 дня 12 часов
+    seller: "СОБСТВЕННИК",
+    sellerId: "ID 889900112",
+    isAuction: true
+  },
+  {
+    id: 21,
+    title: "Апартаменты бизнес-класс, 110 м², 10/15 этаж",
+    location: "Санкт-Петербург, Невский проспект, 100",
+    price: 22000000,
+    currentBid: 21000000,
+    images: [
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800"
+    ],
+    area: 110,
+    rooms: 3,
+    floor: "10/15",
+    description: "Просторные апартаменты бизнес-класса в историческом центре. Высокие потолки, большие окна, вид на Неву. Современная планировка, качественная отделка. Рядом метро, деловой центр.",
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000), // 5 дней 7 часов
+    seller: "РИЕЛТОР",
+    sellerId: "ID 990011223",
+    isAuction: true
+  },
+  {
+    id: 22,
+    title: "Апартаменты студия, 45 м², 5/10 этаж",
+    location: "Москва, ул. Арбат, 15",
+    price: 8500000,
+    currentBid: 8000000,
+    images: [
+      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
+      "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800",
+      "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800"
+    ],
+    area: 45,
+    rooms: 0,
+    floor: "5/10",
+    description: "Стильные апартаменты-студия в самом центре Москвы. Современный дизайн, функциональная планировка. Идеально для одного человека или пары. Рядом все необходимое для жизни.",
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000), // 2 дня 8 часов
+    seller: "СОБСТВЕННИК",
+    sellerId: "ID 001122334",
+    isAuction: true
   }
 ]
 
