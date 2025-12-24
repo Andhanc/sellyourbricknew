@@ -317,8 +317,8 @@ const Header = () => {
           <div className="new-header__filters">
             <button
               type="button"
-              className={`new-header__filter-btn ${location.pathname === '/main' ? 'new-header__filter-btn--active' : ''}`}
-              onClick={() => navigate('/main')}
+              className={`new-header__filter-btn ${location.pathname === '/' ? 'new-header__filter-btn--active' : ''}`}
+              onClick={() => navigate('/')}
             >
               <span>Главная</span>
             </button>

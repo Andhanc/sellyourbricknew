@@ -12,10 +12,11 @@
 }
 
 .footer__container {
-  max-width: 1440px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 80px;
+  padding: 0 30px;
   box-sizing: border-box;
+  width: 100%;
 }
 
 /* Верхнее меню */
@@ -23,8 +24,9 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  gap: 80px;
+  gap: 40px;
   margin-bottom: 32px;
+  flex-wrap: wrap;
 }
 
 .footer__menu-column {
@@ -64,18 +66,18 @@
   overflow: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  margin-left: 80px;
+  margin-left: 0;
+  max-width: 100%;
 }
 
 .footer__description-text {
   font-size: 13px;
   line-height: 1.6;
   color: #9ca3af;
-  margin-left: 15%;
   margin: 4px 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
- 
+  max-width: 100%;
 }
 
 .footer__description-link {
@@ -98,6 +100,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+  flex-wrap: wrap;
 }
 
 .footer__brand {
@@ -537,6 +540,18 @@ body.admin-panel-active .footer .footer__language-flag {
 
   .footer__menu {
     gap: 40px;
+  }
+}
+
+/* Для очень широких экранов - ограничиваем ширину */
+@media (min-width: 1400px) {
+  .footer__container {
+    max-width: 1400px;
+    padding: 0 40px;
+  }
+  
+  .footer__menu {
+    gap: 50px;
   }
 }
 

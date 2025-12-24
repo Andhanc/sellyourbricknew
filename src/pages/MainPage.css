@@ -428,7 +428,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  border-radius: 0 0 32px 32px;
+  border-radius: 0;
   overflow: visible;
 }
 
@@ -441,7 +441,7 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  border-radius: 0 0 32px 32px;
+  border-radius: 0;
   opacity: 0;
   transition: opacity 0.6s ease-in-out;
   z-index: 0;
@@ -466,7 +466,7 @@
     transparent 100%
   );
   z-index: 2;
-  border-radius: 0 0 32px 32px;
+  border-radius: 0;
   pointer-events: none;
 }
 
@@ -484,11 +484,11 @@
     min-height: 360px;
     padding: 28px 24px 0;
     padding-bottom: 0;
-    border-radius: 0 0 40px 40px;
+    border-radius: 0;
   }
 
   .hero-section__image {
-    border-radius: 0 0 40px 40px;
+    border-radius: 0;
   }
   
   .search {
@@ -2667,12 +2667,13 @@
     content: '';
     position: absolute;
     top: 0;
+    left: 0;
     right: 0;
-    width: 60%;
+    bottom: 0;
     height: 90vh;
     background-image: url('https://static.cdn-cian.ru/frontend/valuation-my-home-page-frontend/my-home-bg.44b774c17192a1e1.png');
     background-size: cover;
-    background-position: top center;
+    background-position: top right;
     background-repeat: no-repeat;
     z-index: 1;
     clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%);
@@ -2695,10 +2696,14 @@
   }
 
   .hero-section {
+    width: 100%;
     min-height: 90vh;
     padding: 0;
     margin: 0;
     position: relative;
+    left: 0;
+    right: 0;
+    overflow: hidden;
   }
 
   .hero-section__content {
@@ -3269,12 +3274,159 @@
     font-weight: 500;
   }
 
+  /* Адаптивное скрытие фильтров с плавным переходом справа налево */
+  .new-header__filter-btn {
+    transition: opacity 0.3s ease, transform 0.3s ease, display 0.3s ease;
+  }
+
+  /* Скрываем элементы по порядку справа налево */
+  /* 1. Карта - скрывается первой при 1400px */
+  @media (max-width: 1400px) {
+    .new-header__filter-btn--hide-1 {
+      display: none;
+      opacity: 0;
+      transform: scale(0.9);
+      pointer-events: none;
+    }
+  }
+
+  /* 2. Умный помощник - скрывается второй при 1300px */
+  @media (max-width: 1300px) {
+    .new-header__filter-btn--hide-2 {
+      display: none;
+      opacity: 0;
+      transform: scale(0.9);
+      pointer-events: none;
+    }
+  }
+
+  /* 3. Понравились - скрывается третьей при 1200px */
+  @media (max-width: 1200px) {
+    .new-header__filter-btn--hide-3 {
+      display: none;
+      opacity: 0;
+      transform: scale(0.9);
+      pointer-events: none;
+    }
+  }
+
+  /* 4. Чат - скрывается последним при 1100px */
+  @media (max-width: 1100px) {
+    .new-header__filter-btn--hide-4 {
+      display: none;
+      opacity: 0;
+      transform: scale(0.9);
+      pointer-events: none;
+    }
+  }
+
+  /* Показываем скрытые фильтры в меню по мере их скрытия */
+  .menu-dropdown__item--mobile-only {
+    display: none;
+  }
+
+  /* Показываем Карту в меню при 1400px (когда она скрывается из хедера) */
+  @media (max-width: 1400px) {
+    .menu-dropdown__item--map {
+      display: inline-block;
+      width: 100%;
+      text-align: left;
+    }
+  }
+
+  /* Показываем Умный помощник в меню при 1300px */
+  @media (max-width: 1300px) {
+    .menu-dropdown__item--assistant {
+      display: inline-block;
+      width: 100%;
+      text-align: left;
+    }
+  }
+
+  /* Показываем Понравились в меню при 1200px */
+  @media (max-width: 1200px) {
+    .menu-dropdown__item--favorites {
+      display: inline-block;
+      width: 100%;
+      text-align: left;
+    }
+  }
+
+  /* Показываем Чат в меню при 1100px */
+  @media (max-width: 1100px) {
+    .menu-dropdown__item--chat {
+      display: inline-block;
+      width: 100%;
+      text-align: left;
+    }
+  }
+
+  /* Улучшаем расположение фильтров при уменьшении ширины */
+  @media (max-width: 1200px) {
+    .new-header__filters {
+      gap: 6px;
+      padding: 8px 8px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .new-header__filter-btn {
+      padding: 10px 14px;
+      font-size: 16px;
+    }
+
+    .new-header__container {
+      gap: 6px;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .new-header__filters {
+      gap: 4px;
+      padding: 8px 6px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .new-header__filter-btn {
+      padding: 10px 12px;
+      font-size: 15px;
+    }
+
+    .new-header__container {
+      gap: 4px;
+    }
+  }
+
+  /* Фиксируем расположение элементов при очень узких экранах */
+  @media (max-width: 1024px) {
+    .new-header__container {
+      width: calc(100% - 60px);
+      max-width: 100%;
+    }
+
+    .new-header__left {
+      flex-shrink: 1;
+      min-width: 0;
+    }
+
+    .new-header__filters {
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    .new-header__right {
+      flex-shrink: 0;
+    }
+  }
+
   .new-header__right {
     display: flex;
     align-items: center;
     gap: 4px;
     margin-left: 8px;
     flex-shrink: 0;
+    min-width: fit-content;
   }
 
   .new-header__search-btn {

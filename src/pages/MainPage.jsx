@@ -523,6 +523,324 @@ const villasData = [
   },
 ]
 
+const flatsData = [
+  {
+    id: 1,
+    name: 'Современная квартира в центре',
+    location: 'Москва, ул. Тверская, 15',
+    price: 12500000,
+    coordinates: [55.7558, 37.6173],
+    owner: { firstName: 'Александр', lastName: 'Иванов' },
+    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 11800000,
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 2,
+    baths: 1,
+    sqft: 65,
+    description:
+      'Просторная двухкомнатная квартира в самом центре Москвы. Евроремонт, панорамные окна, вид на парк. Большая гостиная, современная кухня. Вся мебель и техника в отличном состоянии. Парковка во дворе.',
+  },
+  {
+    id: 2,
+    name: 'Квартира с видом на Неву',
+    location: 'Санкт-Петербург, Невский проспект, 45',
+    price: 8500000,
+    coordinates: [59.9343, 30.3351],
+    owner: { firstName: 'Мария', lastName: 'Петрова' },
+    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 8000000,
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 1,
+    baths: 1,
+    sqft: 42,
+    description:
+      'Однокомнатная квартира в историческом центре Санкт-Петербурга. Высокие потолки, большие окна, вид на Неву. Квартира полностью отремонтирована, готова к проживанию. Рядом метро, магазины, кафе.',
+  },
+  {
+    id: 3,
+    name: 'Студия в центре Казани',
+    location: 'Казань, ул. Баумана, 12',
+    price: 3200000,
+    coordinates: [55.7986, 49.1064],
+    owner: { firstName: 'Дмитрий', lastName: 'Смирнов' },
+    image: 'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1556912173-67134a4c0d8a?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: false,
+    currentBid: null,
+    endTime: null,
+    beds: 0,
+    baths: 1,
+    sqft: 28,
+    description:
+      'Уютная студия в центре Казани. Идеально подходит для одного человека или пары. Современный ремонт, вся необходимая мебель. Рядом университет, кафе, магазины.',
+  },
+  {
+    id: 4,
+    name: 'Трехкомнатная квартира',
+    location: 'Екатеринбург, ул. Ленина, 50',
+    price: 6800000,
+    coordinates: [56.8431, 60.6454],
+    owner: { firstName: 'Анна', lastName: 'Кузнецова' },
+    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 6500000,
+    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 3,
+    baths: 2,
+    sqft: 95,
+    description:
+      'Трехкомнатная квартира в центре Екатеринбурга. Просторная гостиная, две спальни, современная кухня. Качественный ремонт, вся мебель и техника. Рядом центр, парк, школы.',
+  },
+  {
+    id: 5,
+    name: 'Квартира в новостройке',
+    location: 'Москва, ул. Ленинградский проспект, 45',
+    price: 15200000,
+    coordinates: [55.7934, 37.5364],
+    owner: { firstName: 'Сергей', lastName: 'Волков' },
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 14500000,
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 2,
+    baths: 2,
+    sqft: 75,
+    description:
+      'Двухкомнатная квартира в новостройке. Панорамные окна, вид на парк. Современная планировка, качественный ремонт. Рядом метро, торговый центр, парк.',
+  },
+  {
+    id: 6,
+    name: 'Четырехкомнатная квартира',
+    location: 'Москва, ул. Тверская, 25',
+    price: 18500000,
+    coordinates: [55.7558, 37.6173],
+    owner: { firstName: 'Елена', lastName: 'Соколова' },
+    image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 17500000,
+    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 4,
+    baths: 2,
+    sqft: 120,
+    description:
+      'Просторная четырехкомнатная квартира в престижном районе Москвы. Панорамные окна, вид на центр города. Евроремонт, дизайнерская мебель. Два санузла, большая кухня-гостиная.',
+  },
+]
+
+const townhousesData = [
+  {
+    id: 1,
+    name: 'Таунхаус в элитном поселке',
+    location: 'Московская область, Одинцово, ул. Садовая, 15',
+    price: 24500000,
+    coordinates: [55.6759, 37.2784],
+    owner: { firstName: 'Владимир', lastName: 'Новиков' },
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 23500000,
+    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 5,
+    baths: 3,
+    sqft: 180,
+    description:
+      'Современный таунхаус в элитном поселке. Два этажа, гараж, участок 6 соток. Камин, терраса, современная техника. Охраняемая территория, детская площадка.',
+  },
+  {
+    id: 2,
+    name: 'Таунхаус с садом',
+    location: 'Ленинградская область, Всеволожск, ул. Центральная, 20',
+    price: 18500000,
+    coordinates: [60.0208, 30.6500],
+    owner: { firstName: 'Ольга', lastName: 'Морозова' },
+    image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 17500000,
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 4,
+    baths: 2,
+    sqft: 150,
+    description:
+      'Уютный таунхаус с собственным садом. Два этажа, просторные комнаты, кухня-гостиная. Участок 5 соток, парковка. Рядом лес, тихое место для семейной жизни.',
+  },
+  {
+    id: 3,
+    name: 'Современный таунхаус',
+    location: 'Московская область, Красногорск, ул. Ленина, 8',
+    price: 22000000,
+    coordinates: [55.8314, 37.3115],
+    owner: { firstName: 'Игорь', lastName: 'Лебедев' },
+    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: false,
+    currentBid: null,
+    endTime: null,
+    beds: 3,
+    baths: 2,
+    sqft: 140,
+    description:
+      'Современный таунхаус в новом жилом комплексе. Качественная отделка, современная техника. Два этажа, гараж, небольшой участок. Рядом школа, детский сад, магазины.',
+  },
+  {
+    id: 4,
+    name: 'Таунхаус премиум класса',
+    location: 'Московская область, Мытищи, ул. Мира, 12',
+    price: 28000000,
+    coordinates: [55.9105, 37.7364],
+    owner: { firstName: 'Наталья', lastName: 'Федорова' },
+    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 26500000,
+    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 5,
+    baths: 3,
+    sqft: 200,
+    description:
+      'Роскошный таунхаус премиум класса. Три этажа, просторные комнаты, камин, терраса. Участок 8 соток, бассейн, сауна. Охраняемая территория, развитая инфраструктура.',
+  },
+  {
+    id: 5,
+    name: 'Таунхаус у леса',
+    location: 'Московская область, Химки, ул. Лесная, 5',
+    price: 19500000,
+    coordinates: [55.8970, 37.4299],
+    owner: { firstName: 'Андрей', lastName: 'Петров' },
+    image: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 18500000,
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 4,
+    baths: 2,
+    sqft: 160,
+    description:
+      'Уютный таунхаус в тихом месте у леса. Два этажа, просторная кухня-гостиная, терраса. Участок 6 соток, парковка. Рядом лес, река, тишина и покой.',
+  },
+  {
+    id: 6,
+    name: 'Элитный таунхаус',
+    location: 'Московская область, Балашиха, ул. Парковая, 10',
+    price: 32000000,
+    coordinates: [55.8094, 37.9581],
+    owner: { firstName: 'Татьяна', lastName: 'Семенова' },
+    image: 'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+    ],
+    hasSamolyot: false,
+    isAuction: true,
+    currentBid: 30000000,
+    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    beds: 6,
+    baths: 4,
+    sqft: 250,
+    description:
+      'Эксклюзивный таунхаус в престижном районе. Три этажа, роскошная отделка, дизайнерская мебель. Участок 10 соток, бассейн, баня, гараж на 2 машины. Охраняемая территория, элитная инфраструктура.',
+  },
+]
+
 function MainPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -563,6 +881,16 @@ function MainPage() {
     villasData.forEach((property) => {
       if (!initialFavorites.has(`villa-${property.id}`)) {
         initialFavorites.set(`villa-${property.id}`, false)
+      }
+    })
+    flatsData.forEach((property) => {
+      if (!initialFavorites.has(`flat-${property.id}`)) {
+        initialFavorites.set(`flat-${property.id}`, false)
+      }
+    })
+    townhousesData.forEach((property) => {
+      if (!initialFavorites.has(`townhouse-${property.id}`)) {
+        initialFavorites.set(`townhouse-${property.id}`, false)
       }
     })
     
@@ -640,6 +968,8 @@ function MainPage() {
   // Фильтрованные данные
   const filteredApartments = useMemo(() => filterBySearch(apartmentsData), [searchQuery])
   const filteredVillas = useMemo(() => filterBySearch(villasData), [searchQuery])
+  const filteredFlats = useMemo(() => filterBySearch(flatsData), [searchQuery])
+  const filteredTownhouses = useMemo(() => filterBySearch(townhousesData), [searchQuery])
   const filteredRecommended = useMemo(() => filterBySearch(recommendedProperties), [searchQuery])
   const filteredNearby = useMemo(() => filterBySearch(nearbyProperties), [searchQuery])
 
@@ -928,7 +1258,7 @@ function MainPage() {
     setActiveCategory(categoryLabel)
     
     // Обновляем URL с параметрами фильтра
-    navigate(`/main?category=${categoryLabel}`, { replace: true })
+    navigate(`/auction?category=${categoryLabel}`, { replace: true })
 
     setTimeout(() => {
       // Фильтруем объявления по типу
@@ -1320,6 +1650,47 @@ function MainPage() {
                       </div>
                     </div>
                     <div className="menu-dropdown__column">
+                      <h3 className="menu-dropdown__column-title">Быстрые ссылки</h3>
+                      <div className="menu-dropdown__column-items">
+                        <button 
+                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--chat"
+                          onClick={() => {
+                            navigate('/chat')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>{t('chat')}</span>
+                        </button>
+                        <button 
+                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--favorites"
+                          onClick={() => {
+                            navigate('/history')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>{t('favorites')}</span>
+                        </button>
+                        <button 
+                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--assistant"
+                          onClick={() => {
+                            toggleChat()
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>{t('aiAssistant') || 'Умный помощник'}</span>
+                        </button>
+                        <button 
+                          className="menu-dropdown__item menu-dropdown__item--mobile-only menu-dropdown__item--map"
+                          onClick={() => {
+                            navigate('/map')
+                            setIsMenuOpen(false)
+                          }}
+                        >
+                          <span>{t('map')}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="menu-dropdown__column">
                       <h3 className="menu-dropdown__column-title">Дополнительно</h3>
                       <div className="menu-dropdown__column-items">
                         <button className="menu-dropdown__item">
@@ -1405,28 +1776,28 @@ function MainPage() {
             <div className="new-header__filters">
               <button
                 type="button"
-                className={`new-header__filter-btn ${location.pathname === '/chat' ? 'new-header__filter-btn--active' : ''}`}
+                className={`new-header__filter-btn new-header__filter-btn--hide-4 ${location.pathname === '/chat' ? 'new-header__filter-btn--active' : ''}`}
                 onClick={() => navigate('/chat')}
               >
                 <span>{t('chat')}</span>
               </button>
               <button
                 type="button"
-                className={`new-header__filter-btn ${location.pathname === '/history' ? 'new-header__filter-btn--active' : ''}`}
+                className={`new-header__filter-btn new-header__filter-btn--hide-3 ${location.pathname === '/history' ? 'new-header__filter-btn--active' : ''}`}
                 onClick={() => navigate('/history')}
               >
                 <span>{t('favorites')}</span>
               </button>
               <button
                 type="button"
-                className={`new-header__filter-btn ${isChatOpen ? 'new-header__filter-btn--active' : ''}`}
+                className={`new-header__filter-btn new-header__filter-btn--hide-2 ${isChatOpen ? 'new-header__filter-btn--active' : ''}`}
                 onClick={toggleChat}
               >
                 <span>{t('aiAssistant') || 'Умный помощник'}</span>
               </button>
               <button
                 type="button"
-                className={`new-header__filter-btn ${location.pathname === '/map' ? 'new-header__filter-btn--active' : ''}`}
+                className={`new-header__filter-btn new-header__filter-btn--hide-1 ${location.pathname === '/map' ? 'new-header__filter-btn--active' : ''}`}
                 onClick={() => navigate('/map')}
               >
                 <span>{t('map')}</span>
@@ -1475,7 +1846,7 @@ function MainPage() {
           <button 
             type="button"
             className="new-header__auction-btn"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/auction')}
           >
             {t('auction')}
           </button>
@@ -1593,7 +1964,7 @@ function MainPage() {
             className="apartments-section__header"
             onClick={() => {
               // Принудительный переход на страницу с фильтром
-              window.location.href = '/main?category=Apartment&filter=auction'
+              window.location.href = '/auction?category=Apartment&filter=auction'
             }}
             style={{ cursor: 'pointer' }}
           >
@@ -1752,7 +2123,7 @@ function MainPage() {
           <div 
             className="apartments-section__header"
             onClick={() => {
-              window.location.href = '/main?category=Villa&filter=auction'
+              window.location.href = '/auction?category=Villa&filter=auction'
             }}
             style={{ cursor: 'pointer' }}
           >
@@ -1875,6 +2246,324 @@ function MainPage() {
                   </div>
                   <h3 className="personal-selection__title">ПОДБОРКА</h3>
                   <h3 className="personal-selection__title">ВИЛЛ</h3>
+                  <div className="personal-selection__features">
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Индивидуальный подход</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>{t('quickSelection')}</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>{t('bestOptions')}</span>
+                    </div>
+                  </div>
+                  <p className="personal-selection__text">{t('fromYou')}</p>
+                  <p className="personal-selection__text">{t('fromUs')}</p>
+                  <button 
+                    className="personal-selection__button"
+                    onClick={() => setIsChatOpen(true)}
+                  >
+                    <span>{t('learnMore')}</span>
+                    <FiArrowRight className="personal-selection__button-icon" size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Блок "Квартиры" */}
+      <section className="apartments-section">
+        <div className="apartments-section__container">
+          <div 
+            className="apartments-section__header"
+            onClick={() => {
+              window.location.href = '/auction?category=Flat&filter=auction'
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <h2 className="apartments-section__title">Квартиры</h2>
+            <FiArrowRight size={24} className="apartments-section__arrow" />
+          </div>
+          
+          <div className="apartments-section__content">
+            <div className="properties-grid">
+              {filteredFlats.map((flat, index) => {
+                const formatPrice = (price) => {
+                  if (price >= 1000000) {
+                    return `$${(price / 1000000).toFixed(1)}M`
+                  }
+                  return `$${price.toLocaleString('en-US')}`
+                }
+                
+                return (
+                  <div key={flat.id} className="property-card">
+                    <div 
+                      className="property-link"
+                      onClick={() => {
+                        const showTimer = index % 2 === 1 && flat.isAuction && flat.endTime
+                        handlePropertyClick('flat', flat.id, !showTimer)
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="property-image-container">
+                        <img 
+                          src={flat.image} 
+                          alt={flat.name}
+                          className="property-image"
+                        />
+                        <button
+                          type="button"
+                          className={`property-favorite ${
+                            favoriteProperties.get(`flat-${flat.id}`) ? 'active' : ''
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleFavorite('flat', flat.id)
+                          }}
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path 
+                              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              fill={favoriteProperties.get(`flat-${flat.id}`) ? "currentColor" : "none"}
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="property-content">
+                        {index % 2 === 1 && flat.isAuction && flat.endTime && (
+                          <PropertyTimer endTime={flat.endTime} compact={true} />
+                        )}
+                        <h3 className="property-title">{flat.name}</h3>
+                        {!(index % 2 === 1 && flat.isAuction && flat.endTime) && flat.description && (
+                          <p className="property-description">{flat.description}</p>
+                        )}
+                        <p className="property-location">{flat.location}</p>
+                        {index % 2 === 1 && flat.isAuction && flat.endTime ? (
+                          flat.currentBid && (
+                            <div className="property-bid-info">
+                              <span className="bid-label">Текущая ставка:</span>
+                              <span className="bid-value">{formatPrice(flat.currentBid)}</span>
+                            </div>
+                          )
+                        ) : (
+                          <>
+                            <div className="property-price">{formatPrice(flat.price)}</div>
+                            <div className="property-specs">
+                            {flat.beds && (
+                              <div className="spec-item">
+                                <MdBed size={18} />
+                                <span>{flat.beds}</span>
+                              </div>
+                            )}
+                            {flat.baths && (
+                              <div className="spec-item">
+                                <MdOutlineBathtub size={18} />
+                                <span>{flat.baths}</span>
+                              </div>
+                            )}
+                            {flat.sqft && (
+                              <div className="spec-item">
+                                <BiArea size={18} />
+                                <span>{flat.sqft} м²</span>
+                              </div>
+                            )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            <div className="apartments-section__personal">
+              <div className="personal-selection">
+                <div className="personal-selection__banner">
+                  <FiStar className="personal-selection__banner-icon" size={14} />
+                  ПЕРСОНАЛЬНАЯ
+                </div>
+                <div className="personal-selection__content">
+                  <div className="personal-selection__decorative">
+                    <div className="personal-selection__icon personal-selection__icon--1">
+                      <PiBuildingApartment size={32} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--2">
+                      <FiHeart size={24} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--3">
+                      <FiCheck size={20} />
+                    </div>
+                  </div>
+                  <h3 className="personal-selection__title">ПОДБОРКА</h3>
+                  <h3 className="personal-selection__title">КВАРТИР</h3>
+                  <div className="personal-selection__features">
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>Индивидуальный подход</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>{t('quickSelection')}</span>
+                    </div>
+                    <div className="personal-selection__feature">
+                      <FiCheck className="personal-selection__feature-icon" size={18} />
+                      <span>{t('bestOptions')}</span>
+                    </div>
+                  </div>
+                  <p className="personal-selection__text">{t('fromYou')}</p>
+                  <p className="personal-selection__text">{t('fromUs')}</p>
+                  <button 
+                    className="personal-selection__button"
+                    onClick={() => setIsChatOpen(true)}
+                  >
+                    <span>{t('learnMore')}</span>
+                    <FiArrowRight className="personal-selection__button-icon" size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Блок "Таунхаусы" */}
+      <section className="apartments-section">
+        <div className="apartments-section__container">
+          <div 
+            className="apartments-section__header"
+            onClick={() => {
+              window.location.href = '/auction?category=Townhouse&filter=auction'
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <h2 className="apartments-section__title">Таунхаусы</h2>
+            <FiArrowRight size={24} className="apartments-section__arrow" />
+          </div>
+          
+          <div className="apartments-section__content">
+            <div className="properties-grid">
+              {filteredTownhouses.map((townhouse, index) => {
+                const formatPrice = (price) => {
+                  if (price >= 1000000) {
+                    return `$${(price / 1000000).toFixed(1)}M`
+                  }
+                  return `$${price.toLocaleString('en-US')}`
+                }
+                
+                return (
+                  <div key={townhouse.id} className="property-card">
+                    <div 
+                      className="property-link"
+                      onClick={() => {
+                        const showTimer = index % 2 === 1 && townhouse.isAuction && townhouse.endTime
+                        handlePropertyClick('townhouse', townhouse.id, !showTimer)
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="property-image-container">
+                        <img 
+                          src={townhouse.image} 
+                          alt={townhouse.name}
+                          className="property-image"
+                        />
+                        <button
+                          type="button"
+                          className={`property-favorite ${
+                            favoriteProperties.get(`townhouse-${townhouse.id}`) ? 'active' : ''
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleFavorite('townhouse', townhouse.id)
+                          }}
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path 
+                              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              fill={favoriteProperties.get(`townhouse-${townhouse.id}`) ? "currentColor" : "none"}
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="property-content">
+                        {index % 2 === 1 && townhouse.isAuction && townhouse.endTime && (
+                          <PropertyTimer endTime={townhouse.endTime} compact={true} />
+                        )}
+                        <h3 className="property-title">{townhouse.name}</h3>
+                        {!(index % 2 === 1 && townhouse.isAuction && townhouse.endTime) && townhouse.description && (
+                          <p className="property-description">{townhouse.description}</p>
+                        )}
+                        <p className="property-location">{townhouse.location}</p>
+                        {index % 2 === 1 && townhouse.isAuction && townhouse.endTime ? (
+                          townhouse.currentBid && (
+                            <div className="property-bid-info">
+                              <span className="bid-label">Текущая ставка:</span>
+                              <span className="bid-value">{formatPrice(townhouse.currentBid)}</span>
+                            </div>
+                          )
+                        ) : (
+                          <>
+                            <div className="property-price">{formatPrice(townhouse.price)}</div>
+                            <div className="property-specs">
+                            {townhouse.beds && (
+                              <div className="spec-item">
+                                <MdBed size={18} />
+                                <span>{townhouse.beds}</span>
+                              </div>
+                            )}
+                            {townhouse.baths && (
+                              <div className="spec-item">
+                                <MdOutlineBathtub size={18} />
+                                <span>{townhouse.baths}</span>
+                              </div>
+                            )}
+                            {townhouse.sqft && (
+                              <div className="spec-item">
+                                <BiArea size={18} />
+                                <span>{townhouse.sqft} м²</span>
+                              </div>
+                            )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            <div className="apartments-section__personal">
+              <div className="personal-selection">
+                <div className="personal-selection__banner">
+                  <FiStar className="personal-selection__banner-icon" size={14} />
+                  ПЕРСОНАЛЬНАЯ
+                </div>
+                <div className="personal-selection__content">
+                  <div className="personal-selection__decorative">
+                    <div className="personal-selection__icon personal-selection__icon--1">
+                      <PiHouseLine size={32} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--2">
+                      <FiHeart size={24} />
+                    </div>
+                    <div className="personal-selection__icon personal-selection__icon--3">
+                      <FiCheck size={20} />
+                    </div>
+                  </div>
+                  <h3 className="personal-selection__title">ПОДБОРКА</h3>
+                  <h3 className="personal-selection__title">ТАУНХАУСОВ</h3>
                   <div className="personal-selection__features">
                     <div className="personal-selection__feature">
                       <FiCheck className="personal-selection__feature-icon" size={18} />
@@ -2223,7 +2912,7 @@ function MainPage() {
           const getRoute = (id) => {
             if (id === 'home') return '/'
             if (id === 'favourite') return '/history'
-            if (id === 'auction') return '/main'
+            if (id === 'auction') return '/auction'
             if (id === 'chat') return '/chat'
             if (id === 'profile') return '/profile'
             return '/'

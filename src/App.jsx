@@ -22,10 +22,11 @@ function App() {
         <div className="app-layout__content">
           <Routes>
             {/* Главная страница - открывается по умолчанию */}
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<MainPage />} />
             
             {/* Страница аукциона */}
-            <Route path="/main" element={<MainPage />} />
+            <Route path="/auction" element={<Home />} />
+            <Route path="/main" element={<Home />} />
             <Route path="/property/:id" element={<PropertyDetailPage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/profile" element={<Profile />} />

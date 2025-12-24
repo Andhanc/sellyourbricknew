@@ -398,7 +398,7 @@ const Favorites = () => {
             </p>
             <button 
               className="favorites-empty-button"
-              onClick={() => navigate('/main')}
+              onClick={() => navigate('/auction')}
             >
               Перейти к аукционам
               <FiArrowRight size={18} />

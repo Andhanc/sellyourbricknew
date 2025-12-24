@@ -116,11 +116,11 @@ function ApartmentsSection() {
   }
 
   const handleHeaderClick = () => {
-    window.location.href = '/main?category=Apartment&filter=auction'
+    window.location.href = '/auction?category=Apartment&filter=auction'
   }
 
   const handlePropertyClick = (propertyId) => {
-    window.location.href = '/main?category=Apartment&filter=auction'
+    window.location.href = '/auction?category=Apartment&filter=auction'
   }
 
   return (

@@ -69,12 +69,12 @@ const Footer = () => {
         {/* Верхний блок ссылок, как на ЦИАН — по колонкам */}
         <div className="footer__menu">
           <div className="footer__menu-column">
-            <Link to="/main" onClick={scrollToTop} className="footer__menu-link">{t('home') || 'Главная'}</Link>
+            <Link to="/" onClick={scrollToTop} className="footer__menu-link">{t('home') || 'Главная'}</Link>
             <Link to="/map" onClick={scrollToTop} className="footer__menu-link">{t('mapLink')}</Link>
             <Link to="/subscriptions" onClick={scrollToTop} className="footer__menu-link">{t('tariffs')}</Link>
           </div>
           <div className="footer__menu-column">
-            <Link to="/" onClick={scrollToTop} className="footer__menu-link">{t('auction')}</Link>
+            <Link to="/auction" onClick={scrollToTop} className="footer__menu-link">{t('auction')}</Link>
             <Link to="/data" onClick={scrollToTop} className="footer__menu-link">{t('legalDocs')}</Link>
             <button type="button" className="footer__menu-link">{t('advertising')}</button>
           </div>
