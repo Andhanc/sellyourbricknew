@@ -11,7 +11,7 @@
 .property-timer.compact {
   margin-top: 0;
   margin-bottom: 12px;
-  padding: 0 12px 8px 0;
+  padding: 0;
   background: transparent;
   border: none;
   border-radius: 10px;
@@ -32,37 +32,55 @@
 }
 
 .timer-icon-svg {
-  color: #333;
+  color: #ffffff;
   flex-shrink: 0;
   width: 18px;
   height: 18px;
+  margin-right: 5px;
 }
 
 .property-timer-overlay .timer-icon-svg {
-  color: rgba(255, 255, 255, 0.9);
+  color: #ffffff;
 }
 
 .timer-compact-time {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1;
+  gap: 4px;
+  background: rgba(40, 40, 40, 0.95);
+  padding: 8px 14px;
+  border-radius: 8px;
+  width: fit-content;
+  min-width: fit-content;
 }
 
 .time-unit {
   display: flex;
   align-items: baseline;
   gap: 2px;
-  background: #333;
-  padding: 5px 8px;
-  border-radius: 7px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
   border: none;
 }
 
-.property-timer-overlay .time-unit {
-  background: rgba(255, 255, 255, 0.15);
+.timer-separator {
+  color: #ffffff !important;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+
+.property-timer-overlay .timer-compact-time {
+  background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.property-timer-overlay .time-unit {
+  background: transparent;
+  border: none;
 }
 
 .time-value {

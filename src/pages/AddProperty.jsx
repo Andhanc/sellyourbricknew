@@ -13,7 +13,8 @@ import {
   FiLoader,
   FiChevronDown,
   FiLink,
-  FiVideo
+  FiVideo,
+  FiFileText
 } from 'react-icons/fi'
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
@@ -28,9 +29,11 @@ const AddProperty = () => {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
   const videoInputRef = useRef(null)
+  const documentInputRef = useRef(null)
   
   const [photos, setPhotos] = useState([])
   const [videos, setVideos] = useState([])
+  const [additionalDocuments, setAdditionalDocuments] = useState([])
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [showCarousel, setShowCarousel] = useState(false)
@@ -281,6 +284,43 @@ const AddProperty = () => {
     setVideos(videos.filter(video => video.id !== id))
   }
 
+  // Обработчик загрузки дополнительных документов
+  const handleDocumentUpload = (e) => {
+    const files = Array.from(e.target.files)
+    
+    files.forEach((file) => {
+      // Проверяем, что файл - это PDF или изображение
+      const isPDF = file.type === 'application/pdf'
+      const isImage = file.type.startsWith('image/')
+      
+      if (!isPDF && !isImage) {
+        alert(`Файл ${file.name} не поддерживается. Разрешены только PDF и изображения.`)
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAdditionalDocuments(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          name: file.name,
+          url: reader.result,
+          file: file,
+          type: isPDF ? 'pdf' : 'image'
+        }])
+      }
+      reader.onerror = () => {
+        alert(`Ошибка при чтении файла "${file.name}"`)
+      }
+      reader.readAsDataURL(file)
+    })
+    
+    e.target.value = ''
+  }
+
+  const handleRemoveDocument = (id) => {
+    setAdditionalDocuments(additionalDocuments.filter(doc => doc.id !== id))
+  }
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData(prev => ({
@@ -397,6 +437,8 @@ const AddProperty = () => {
     console.log('Объявление сохранено:', { 
       ...formData, 
       photos,
+      videos,
+      additionalDocuments,
       testDrive: testDriveData,
       documents
     })
@@ -1312,6 +1354,53 @@ const AddProperty = () => {
             </section>
           )}
 
+          {/* Дополнительные документы */}
+          <section className="form-section">
+            <h2 className="section-title">Дополнительные документы</h2>
+            <div className="photos-upload-area">
+              <div 
+                className="photo-upload-box"
+                onClick={() => documentInputRef.current?.click()}
+              >
+                <FiFileText size={20} />
+                <p>Загрузить документы</p>
+                <span className="upload-hint">PDF или фото</span>
+              </div>
+              
+              <div className="photos-grid">
+                {additionalDocuments.map((doc) => (
+                  <div key={doc.id} className="photo-item">
+                    {doc.type === 'pdf' ? (
+                      <div className="document-preview">
+                        <FiFileText size={32} />
+                        <span className="document-type-badge">PDF</span>
+                      </div>
+                    ) : (
+                      <img src={doc.url} alt={doc.name} />
+                    )}
+                    <button
+                      type="button"
+                      className="photo-remove"
+                      onClick={() => handleRemoveDocument(doc.id)}
+                    >
+                      <FiX size={16} />
+                    </button>
+                    <div className="document-name">{doc.name}</div>
+                  </div>
+                ))}
+              </div>
+              
+              <input
+                ref={documentInputRef}
+                type="file"
+                multiple
+                accept="application/pdf,image/*"
+                onChange={handleDocumentUpload}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </section>
+
           {/* Кнопки */}
           <div className="form-actions">
             <button
@@ -1435,7 +1524,12 @@ const AddProperty = () => {
       <PropertyPreviewModal
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
-        propertyData={{ ...formData, photos: photos.map(p => p.url), videos: videos }}
+        propertyData={{ 
+          ...formData, 
+          photos: photos.map(p => p.url), 
+          videos: videos,
+          additionalDocuments: additionalDocuments
+        }}
       />
 
       {/* Модальное окно для добавления ссылки на видео */}

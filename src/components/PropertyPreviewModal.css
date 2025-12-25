@@ -383,6 +383,142 @@
   object-fit: contain;
 }
 
+/* Дополнительные документы */
+.preview-documents {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.preview-documents-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-documents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.preview-document-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.preview-document-card:hover {
+  background: #f3f4f6;
+  border-color: #4361ee;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.preview-document-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #4361ee, #7209b7);
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.preview-document-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-document-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+  word-wrap: break-word;
+}
+
+.preview-document-type {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+/* Модальное окно для просмотра документа */
+.preview-document-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10002;
+  padding: 2rem;
+  cursor: pointer;
+}
+
+.preview-document-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.preview-document-modal-content img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.preview-document-pdf {
+  width: 90vw;
+  max-width: 1200px;
+  height: 90vh;
+  border: none;
+  border-radius: 8px;
+  background: white;
+}
+
+.preview-document-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  z-index: 1;
+  transition: background 0.2s;
+}
+
+.preview-document-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
   .preview-modal {
@@ -409,5 +545,9 @@
 
   .price-amount {
     font-size: 24px;
+  }
+
+  .preview-documents-grid {
+    grid-template-columns: 1fr;
   }
 }

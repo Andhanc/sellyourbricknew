@@ -35,19 +35,31 @@ const PropertyTimer = ({ endTime, compact = false }) => {
   }, [endTime])
 
   if (compact) {
+    const hasDays = timeLeft.days > 0
+    const hasHours = timeLeft.hours > 0
+    
     return (
       <div className="property-timer compact">
-        <div className="timer-compact-content">
+        <div className="timer-compact-time">
           <svg className="timer-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
             <polyline points="12 6 12 12 16 14"/>
           </svg>
-          <div className="timer-compact-time">
-            {timeLeft.days > 0 && <span className="time-unit"><span className="time-value">{String(timeLeft.days).padStart(2, '0')}</span><span className="time-label">д</span></span>}
-            {timeLeft.hours > 0 && <span className="time-unit"><span className="time-value">{String(timeLeft.hours).padStart(2, '0')}</span><span className="time-label">ч</span></span>}
-            <span className="time-unit"><span className="time-value">{String(timeLeft.minutes).padStart(2, '0')}</span><span className="time-label">м</span></span>
-            <span className="time-unit"><span className="time-value">{String(timeLeft.seconds).padStart(2, '0')}</span><span className="time-label">с</span></span>
-          </div>
+          {hasDays && (
+            <>
+              <span className="time-unit"><span className="time-value">{String(timeLeft.days).padStart(2, '0')}</span><span className="time-label">д</span></span>
+              <span className="timer-separator">:</span>
+            </>
+          )}
+          {hasHours && (
+            <>
+              <span className="time-unit"><span className="time-value">{String(timeLeft.hours).padStart(2, '0')}</span><span className="time-label">ч</span></span>
+              <span className="timer-separator">:</span>
+            </>
+          )}
+          <span className="time-unit"><span className="time-value">{String(timeLeft.minutes).padStart(2, '0')}</span><span className="time-label">м</span></span>
+          <span className="timer-separator">:</span>
+          <span className="time-unit"><span className="time-value">{String(timeLeft.seconds).padStart(2, '0')}</span><span className="time-label">с</span></span>
         </div>
       </div>
     )

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { FiX, FiChevronLeft, FiChevronRight, FiMapPin, FiDollarSign, FiCalendar, FiVideo } from 'react-icons/fi'
+import { FiX, FiChevronLeft, FiChevronRight, FiMapPin, FiDollarSign, FiCalendar, FiVideo, FiFileText, FiXCircle } from 'react-icons/fi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import './PropertyPreviewModal.css'
 
 const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
+  const [selectedDocument, setSelectedDocument] = useState(null)
 
   if (!isOpen || !propertyData) return null
 
@@ -244,9 +245,67 @@ const PropertyPreviewModal = ({ isOpen, onClose, propertyData }) => {
                 )}
               </div>
             )}
+
+            {/* Дополнительные документы */}
+            {propertyData.additionalDocuments && propertyData.additionalDocuments.length > 0 && (
+              <div className="preview-documents">
+                <h3 className="preview-documents-title">
+                  <FiFileText size={20} />
+                  Дополнительные документы
+                </h3>
+                <div className="preview-documents-grid">
+                  {propertyData.additionalDocuments.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="preview-document-card"
+                      onClick={() => setSelectedDocument(doc)}
+                    >
+                      <div className="preview-document-icon">
+                        <FiFileText size={24} />
+                      </div>
+                      <div className="preview-document-info">
+                        <h4 className="preview-document-name">{doc.name}</h4>
+                        <span className="preview-document-type">
+                          {doc.type === 'pdf' ? 'PDF документ' : 'Изображение'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Модальное окно для просмотра документа */}
+      {selectedDocument && (
+        <div
+          className="preview-document-modal"
+          onClick={() => setSelectedDocument(null)}
+        >
+          <div className="preview-document-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="preview-document-modal-close"
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedDocument(null)
+              }}
+            >
+              <FiXCircle size={32} strokeWidth={2} />
+            </button>
+            {selectedDocument.type === 'pdf' ? (
+              <iframe
+                src={`${selectedDocument.url}#toolbar=0`}
+                className="preview-document-pdf"
+                title={selectedDocument.name}
+              />
+            ) : (
+              <img src={selectedDocument.url} alt={selectedDocument.name} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
