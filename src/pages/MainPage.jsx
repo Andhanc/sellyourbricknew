@@ -48,6 +48,7 @@ import {
 import PropertyTimer from '../components/PropertyTimer'
 import LoginModal from '../components/LoginModal'
 import '../components/PropertyList.css'
+import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
 
 const resortLocations = [
   'Costa Adeje, Tenerife',
@@ -904,15 +905,40 @@ function MainPage() {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
+  const [isLoadingAI, setIsLoadingAI] = useState(false)
+  const [userPreferences, setUserPreferences] = useState({
+    purpose: null, // 'для себя', 'под сдачу', 'инвестиции'
+    budget: null,
+    location: null, // 'Испания', 'Дубай'
+    propertyType: null, // 'квартира', 'вилла', 'апартаменты', 'таунхаус'
+    rooms: null,
+    area: null,
+    other: null
+  })
+  
+  // Объединяем все данные недвижимости
+  const allProperties = useMemo(() => {
+    const combined = [
+      ...recommendedProperties.map(p => ({ ...p, source: 'recommended' })),
+      ...nearbyProperties.map(p => ({ ...p, source: 'nearby' })),
+      ...apartmentsData.map(p => ({ ...p, source: 'apartment' })),
+      ...villasData.map(p => ({ ...p, source: 'villa' })),
+      ...flatsData.map(p => ({ ...p, source: 'flat' })),
+      ...townhousesData.map(p => ({ ...p, source: 'townhouse' }))
+    ]
+    // Фильтруем по Испании и Дубаю
+    return filterPropertiesByLocation(combined)
+  }, [])
   
   // Инициализируем первое сообщение бота при загрузке
   useEffect(() => {
     if (chatMessages.length === 0) {
       setChatMessages([{
         id: 1,
-        text: t('aiGreeting'),
+        text: 'Здравствуйте! Я ваш AI-консультант по недвижимости. Помогу подобрать идеальный вариант в Испании или Дубае. Для начала, скажите, для какой цели вы ищете недвижимость?',
         sender: 'bot',
         timestamp: new Date(),
+        buttons: ['Для себя', 'Под сдачу', 'Инвестиции'],
       }])
     }
   }, [i18n.language, t, chatMessages.length])
@@ -1137,36 +1163,126 @@ function MainPage() {
     setChatInput(e.target.value)
   }
 
-  const handleChatSubmit = (e) => {
-    e.preventDefault()
-    if (!chatInput.trim()) return
+  const handleButtonClick = async (buttonText) => {
+    // Отправляем текст кнопки как сообщение пользователя
+    await handleChatSubmit(null, buttonText)
+  }
 
-    const userMessage = chatInput.trim()
-    setChatInput('')
+  const handleChatSubmit = async (e, buttonText = null) => {
+    if (e) e.preventDefault()
+    
+    const userMessage = buttonText || chatInput.trim()
+    if (!userMessage) return
 
-    setChatMessages((prev) => {
-      const newMessage = {
-        id: prev.length + 1,
-        text: userMessage,
-        sender: 'user',
+    if (!buttonText) {
+      setChatInput('')
+    }
+
+    // Добавляем сообщение пользователя
+    const userMessageObj = {
+      id: Date.now(),
+      text: userMessage,
+      sender: 'user',
+      timestamp: new Date(),
+    }
+
+    setChatMessages((prev) => [...prev, userMessageObj])
+
+    // Обновляем предпочтения на основе сообщения
+    const lowerMessage = userMessage.toLowerCase()
+    
+    // Определяем цель
+    if (lowerMessage.includes('для себя') || lowerMessage === 'для себя' || lowerMessage.includes('сам') || lowerMessage.includes('личн')) {
+      setUserPreferences(prev => ({ ...prev, purpose: 'для себя' }))
+    } else if (lowerMessage.includes('под сдачу') || lowerMessage === 'под сдачу' || lowerMessage.includes('сдачу') || lowerMessage.includes('аренд')) {
+      setUserPreferences(prev => ({ ...prev, purpose: 'под сдачу' }))
+    } else if (lowerMessage.includes('инвестиц') || lowerMessage === 'инвестиции' || lowerMessage.includes('инвест')) {
+      setUserPreferences(prev => ({ ...prev, purpose: 'инвестиции' }))
+    }
+    
+    // Определяем локацию
+    if (lowerMessage.includes('испания') || lowerMessage.includes('spain') || lowerMessage.includes('españa') || 
+        lowerMessage.includes('tenerife') || lowerMessage.includes('тенерифе') || lowerMessage.includes('коста') ||
+        lowerMessage.includes('barcelona') || lowerMessage.includes('madrid')) {
+      setUserPreferences(prev => ({ ...prev, location: 'Испания' }))
+    } else if (lowerMessage.includes('дубай') || lowerMessage.includes('dubai') || lowerMessage.includes('uae') || 
+               lowerMessage.includes('оаэ') || lowerMessage.includes('emirates')) {
+      setUserPreferences(prev => ({ ...prev, location: 'Дубай' }))
+    }
+
+    // Извлекаем бюджет из сообщения (конвертируем рубли в евро, если указаны)
+    const budgetMatch = userMessage.match(/(\d+[\s,.]?\d*)\s*(тыс|млн|k|m|€|\$|eur|usd|евро|доллар|рубл|₽|rub)/i)
+    if (budgetMatch) {
+      let budget = parseFloat(budgetMatch[1].replace(/\s/g, '').replace(',', '.'))
+      const unit = budgetMatch[2].toLowerCase()
+      
+      // Конвертируем в евро (примерный курс: 1 EUR = 100 RUB)
+      const eurToRubRate = 100
+      
+      if (unit.includes('млн') || unit === 'm') {
+        budget = budget * 1000000
+      } else if (unit.includes('тыс') || unit === 'k') {
+        budget = budget * 1000
+      }
+      
+      // Если указаны рубли, конвертируем в евро
+      if (unit.includes('рубл') || unit.includes('₽') || unit.includes('rub')) {
+        budget = budget / eurToRubRate
+      }
+      
+      setUserPreferences(prev => ({ ...prev, budget }))
+    }
+    
+    // Определяем тип недвижимости
+    if (lowerMessage.includes('квартир') || lowerMessage.includes('апартамент') || lowerMessage.includes('apartment')) {
+      setUserPreferences(prev => ({ ...prev, propertyType: 'квартира' }))
+    } else if (lowerMessage.includes('вилл') || lowerMessage.includes('villa')) {
+      setUserPreferences(prev => ({ ...prev, propertyType: 'вилла' }))
+    } else if (lowerMessage.includes('таунхаус') || lowerMessage.includes('townhouse')) {
+      setUserPreferences(prev => ({ ...prev, propertyType: 'таунхаус' }))
+    }
+    
+    // Извлекаем количество комнат
+    const roomsMatch = userMessage.match(/(\d+)\s*(комнат|room|bed)/i)
+    if (roomsMatch) {
+      setUserPreferences(prev => ({ ...prev, rooms: parseInt(roomsMatch[1]) }))
+    }
+
+    setIsLoadingAI(true)
+
+    try {
+      // Получаем ответ от AI
+      const response = await askPropertyAssistant(
+        [...chatMessages, userMessageObj],
+        userPreferences,
+        allProperties
+      )
+
+      // Добавляем ответ бота
+      const botMessage = {
+        id: Date.now() + 1,
+        text: response.text,
+        sender: 'bot',
         timestamp: new Date(),
+        buttons: response.buttons,
+        recommendations: response.recommendations
       }
 
-      // Имитация ответа бота
-      setTimeout(() => {
-        setChatMessages((current) => {
-          const botResponse = {
-            id: current.length + 1,
-            text: i18n.t('aiResponse'),
-            sender: 'bot',
-            timestamp: new Date(),
-          }
-          return [...current, botResponse]
-        })
-      }, 1000)
-
-      return [...prev, newMessage]
-    })
+      setChatMessages((prev) => [...prev, botMessage])
+    } catch (error) {
+      console.error('Ошибка при обращении к AI:', error)
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: 'Извините, произошла ошибка. Попробуйте еще раз.',
+        sender: 'bot',
+        timestamp: new Date(),
+        buttons: null,
+        recommendations: null
+      }
+      setChatMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoadingAI(false)
+    }
   }
 
   useEffect(() => {
@@ -2951,7 +3067,59 @@ function MainPage() {
               >
                 <div className="chat-widget__message-content">
                   {message.text}
+                  {message.recommendations && message.recommendations.length > 0 && (
+                    <div className="chat-widget__recommendations">
+                      <div className="chat-widget__recommendations-title">Рекомендуемые объявления:</div>
+                      {message.recommendations.map((recId) => {
+                        const property = allProperties.find(p => p.id === recId)
+                        if (!property) return null
+                        const propertyName = property.name || property.title || 'Объявление'
+                        const propertyPrice = property.price ? `${property.price.toLocaleString('ru-RU')} €` : 'Цена не указана'
+                        const propertyArea = property.area || property.sqft
+                        const propertyRooms = property.rooms || property.beds
+                        
+                        return (
+                          <a
+                            key={recId}
+                            href={`/property/${recId}`}
+                            className="chat-widget__recommendation-link"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              navigate(`/property/${recId}`, { 
+                                state: { property: property }
+                              })
+                              setIsChatOpen(false)
+                            }}
+                          >
+                            <div className="chat-widget__recommendation-item">
+                              <div className="chat-widget__recommendation-title">{propertyName}</div>
+                              <div className="chat-widget__recommendation-location">{property.location}</div>
+                              <div className="chat-widget__recommendation-details">
+                                {propertyRooms && <span>{propertyRooms} {propertyRooms === 1 ? 'комната' : propertyRooms < 5 ? 'комнаты' : 'комнат'}</span>}
+                                {propertyArea && <span>{propertyArea} м²</span>}
+                              </div>
+                              <div className="chat-widget__recommendation-price">{propertyPrice}</div>
+                            </div>
+                          </a>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
+                {message.buttons && message.buttons.length > 0 && (
+                  <div className="chat-widget__buttons">
+                    {message.buttons.map((button, index) => (
+                      <button
+                        key={index}
+                        className="chat-widget__button"
+                        onClick={() => !isLoadingAI && handleButtonClick(button)}
+                        disabled={isLoadingAI}
+                      >
+                        {button}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="chat-widget__message-time">
                   {message.timestamp.toLocaleTimeString('ru-RU', {
                     hour: '2-digit',
@@ -2960,21 +3128,34 @@ function MainPage() {
                 </div>
               </div>
             ))}
+            {isLoadingAI && (
+              <div className="chat-widget__message chat-widget__message--bot">
+                <div className="chat-widget__message-content">
+                  <div className="chat-widget__typing">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <form className="chat-widget__input-form" onSubmit={handleChatSubmit}>
             <input
               type="text"
               className="chat-widget__input"
-              placeholder="Введите ваше сообщение..."
+              placeholder={isLoadingAI ? "AI думает..." : "Введите ваше сообщение..."}
               value={chatInput}
               onChange={handleChatInputChange}
+              disabled={isLoadingAI}
               autoFocus
             />
             <button
               type="submit"
               className="chat-widget__send"
               aria-label={t('sendMessage')}
+              disabled={isLoadingAI}
             >
               <FiSend size={18} />
             </button>
