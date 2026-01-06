@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useUser } from '@clerk/clerk-react'
 import './MainPage.css'
 import {
   FiBell,
@@ -49,6 +50,7 @@ import PropertyTimer from '../components/PropertyTimer'
 import LoginModal from '../components/LoginModal'
 import '../components/PropertyList.css'
 import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
+import { getUserData } from '../services/authService'
 
 const resortLocations = [
   'Costa Adeje, Tenerife',
@@ -845,6 +847,7 @@ function MainPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t, i18n } = useTranslation()
+  const { user, isLoaded: userLoaded } = useUser()
   const [selectedLocation, setSelectedLocation] = useState(resortLocations[0])
   const [isLocationOpen, setIsLocationOpen] = useState(false)
   const [propertyMode, setPropertyMode] = useState('buy') // 'rent' для аренды, 'buy' для покупки
@@ -1657,7 +1660,20 @@ function MainPage() {
               <button 
                 type="button" 
                 className="header__action-btn"
-                onClick={() => navigate('/profile')}
+                onClick={() => {
+                  // Проверяем авторизацию через Clerk
+                  if (userLoaded && user) {
+                    navigate('/profile')
+                  } else {
+                    // Проверяем старую систему авторизации
+                    const userData = getUserData()
+                    if (userData.isLoggedIn) {
+                      navigate('/profile')
+                    } else {
+                      setIsLoginModalOpen(true)
+                    }
+                  }
+                }}
                 aria-label={t('profile')}
               >
                 <FiUser size={18} />
@@ -1911,7 +1927,20 @@ function MainPage() {
           </button>
           <button 
             className="new-header__user-btn"
-            onClick={() => setIsLoginModalOpen(true)}
+            onClick={() => {
+              // Проверяем авторизацию через Clerk
+              if (userLoaded && user) {
+                navigate('/profile')
+              } else {
+                // Проверяем старую систему авторизации
+                const userData = getUserData()
+                if (userData.isLoggedIn) {
+                  navigate('/profile')
+                } else {
+                  setIsLoginModalOpen(true)
+                }
+              }
+            }}
             aria-label={t('profile')}
           >
             <FiUser size={20} />

@@ -13,11 +13,17 @@ import OwnerDashboard from './pages/OwnerDashboard'
 import AddProperty from './pages/AddProperty'
 import AdminPanelPage from './admin/AdminPanelPage'
 import Footer from './components/Footer'
+import ClerkAuthSync from './components/ClerkAuthSync'
+import ClerkAuthHandler from './components/ClerkAuthHandler'
+import ClerkDebug from './components/ClerkDebug'
 import './App.css'
 
 function App() {
   return (
     <Router>
+      <ClerkDebug />
+      <ClerkAuthSync />
+      <ClerkAuthHandler />
       <div className="app-layout">
         <div className="app-layout__content">
           <Routes>

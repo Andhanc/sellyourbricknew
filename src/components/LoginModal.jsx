@@ -2,10 +2,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiX, FiMail, FiLock, FiUser } from 'react-icons/fi'
 import { FaGoogle, FaWhatsapp, FaFacebook } from 'react-icons/fa'
+import { useSignIn, useSignUp } from '@clerk/clerk-react'
+import WhatsAppVerificationModal from './WhatsAppVerificationModal'
+import EmailVerificationModal from './EmailVerificationModal'
+import { registerWithEmail, loginWithEmail } from '../services/authService'
 import './LoginModal.css'
 
 const LoginModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate()
+  const { signIn, isLoaded: signInLoaded } = useSignIn()
+  const { signUp, isLoaded: signUpLoaded } = useSignUp()
   const [isLogin, setIsLogin] = useState(true) // true для входа, false для регистрации
   const [formData, setFormData] = useState({
     email: '',
@@ -13,7 +19,13 @@ const LoginModal = ({ isOpen, onClose }) => {
     name: '',
     confirmPassword: ''
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
+  const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false)
 
+  // Не скрываем LoginModal полностью, чтобы EmailVerificationModal мог рендериться
+  // Вместо этого скрываем только содержимое LoginModal
   if (!isOpen) return null
 
   const handleInputChange = (e) => {
@@ -24,8 +36,10 @@ const LoginModal = ({ isOpen, onClose }) => {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
+    setIsLoading(true)
     
     if (isLogin) {
       // Проверка для владельца недвижимости
@@ -33,6 +47,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         // Сохраняем информацию о входе владельца
         localStorage.setItem('userRole', 'owner')
         localStorage.setItem('isOwnerLoggedIn', 'true')
+        setIsLoading(false)
         onClose()
         navigate('/owner')
         return
@@ -43,114 +58,188 @@ const LoginModal = ({ isOpen, onClose }) => {
         // Сохраняем информацию о входе клиента
         localStorage.setItem('userRole', 'client')
         localStorage.setItem('isLoggedIn', 'true')
+        setIsLoading(false)
         onClose()
         navigate('/profile')
         return
       }
       
-      // Здесь будет логика обычного входа
-      console.log('Вход', formData)
-      // После успешного входа можно закрыть модальное окно
-      // onClose()
+      // Обычный вход с email и паролем
+      try {
+        const result = await loginWithEmail(formData.email, formData.password)
+        
+        if (result.success) {
+          setIsLoading(false)
+          onClose()
+          navigate('/profile')
+        } else {
+          setError(result.error || 'Неверный email или пароль')
+          setIsLoading(false)
+        }
+      } catch (error) {
+        console.error('Ошибка входа:', error)
+        setError('Произошла ошибка при входе. Попробуйте позже.')
+        setIsLoading(false)
+      }
     } else {
-      // Логика регистрации
-      console.log('Регистрация', formData)
-      // После успешной регистрации можно закрыть модальное окно
-      // onClose()
-    }
-  }
-
-  const handleGoogleLogin = () => {
-    // Здесь будет логика входа через Google
-    console.log('Вход через Google')
-    // В реальном приложении здесь будет OAuth авторизация
-    window.open('https://accounts.google.com/o/oauth2/v2/auth', '_blank')
-  }
-
-  const handleFacebookLogin = () => {
-    // Здесь будет логика входа через Facebook
-    console.log('Вход через Facebook')
-    
-    // Функция для выполнения входа через Facebook
-    const performFacebookLogin = () => {
-      if (!window.FB) {
-        // Если SDK не загружен, открываем страницу входа Facebook
-        window.open('https://www.facebook.com/login', '_blank')
-        console.log('Facebook SDK не загружен. Открыта страница входа Facebook.')
+      // Регистрация с email и паролем
+      // Проверка паролей
+      if (formData.password !== formData.confirmPassword) {
+        setError('Пароли не совпадают')
+        setIsLoading(false)
         return
       }
       
-      // Проверяем, инициализирован ли SDK
+      if (formData.password.length < 6) {
+        setError('Пароль должен содержать минимум 6 символов')
+        setIsLoading(false)
+        return
+      }
+      
+      if (!formData.name || formData.name.trim().length < 2) {
+        setError('Имя должно содержать минимум 2 символа')
+        setIsLoading(false)
+        return
+      }
+      
       try {
-        window.FB.getLoginStatus(function(response) {
-          // SDK работает, выполняем вход
-          window.FB.login(
-            function(loginResponse) {
-              if (loginResponse.authResponse) {
-                // Пользователь успешно авторизован
-                console.log('Успешная авторизация через Facebook', loginResponse)
-                
-                // Получаем информацию о пользователе
-                window.FB.api('/me', { fields: 'name,email' }, function(userInfo) {
-                  console.log('Информация о пользователе:', userInfo)
-                  
-                  // Сохраняем информацию о входе
-                  localStorage.setItem('isLoggedIn', 'true')
-                  localStorage.setItem('loginMethod', 'facebook')
-                  localStorage.setItem('userName', userInfo.name || 'Пользователь')
-                  if (userInfo.email) {
-                    localStorage.setItem('userEmail', userInfo.email)
-                  }
-                  
-                  // Закрываем модальное окно
-                  onClose()
-                  
-                  // Показываем уведомление об успешном входе
-                  alert(`Добро пожаловать, ${userInfo.name || 'Пользователь'}!`)
-                })
-              } else {
-                console.log('Пользователь отменил авторизацию')
-              }
-            },
-            { scope: 'email,public_profile' }
-          )
-        })
+        const result = await registerWithEmail(formData.email, formData.password, formData.name)
+        
+        if (result.success) {
+          // Открываем модальное окно для ввода кода подтверждения
+          console.log('✅ Код отправлен, открываем модальное окно для ввода кода', {
+            email: formData.email,
+            showModal: true
+          })
+          setIsLoading(false)
+          // Закрываем LoginModal и открываем EmailVerificationModal
+          setShowEmailVerificationModal(true)
+          console.log('📧 showEmailVerificationModal установлен в true')
+        } else {
+          setError(result.error || 'Не удалось зарегистрироваться')
+          setIsLoading(false)
+        }
       } catch (error) {
-        console.error('Ошибка при работе с Facebook SDK:', error)
-        // Fallback: открываем страницу входа
-        window.open('https://www.facebook.com/login', '_blank')
+        console.error('Ошибка регистрации:', error)
+        setError('Произошла ошибка при регистрации. Попробуйте позже.')
+        setIsLoading(false)
       }
     }
-    
-    // Проверяем, загружен ли SDK
-    if (window.FB) {
-      // SDK уже загружен, выполняем вход
-      performFacebookLogin()
-    } else {
-      // Ждем загрузки SDK
-      const checkSDK = setInterval(() => {
-        if (window.FB) {
-          clearInterval(checkSDK)
-          performFacebookLogin()
-        }
-      }, 100)
+  }
+
+  const handleGoogleAuth = async () => {
+    try {
+      setIsLoading(true)
+      setError('')
       
-      // Таймаут на случай, если SDK не загрузится
-      setTimeout(() => {
-        clearInterval(checkSDK)
-        if (!window.FB) {
-          window.open('https://www.facebook.com/login', '_blank')
-          console.log('Facebook SDK не загружен в течение 3 секунд. Открыта страница входа Facebook.')
+      console.log('LoginModal: Starting Google auth', { signInLoaded, signUpLoaded, isLogin })
+      
+      if (isLogin) {
+        if (signInLoaded && signIn) {
+          console.log('LoginModal: Redirecting to Google OAuth via Clerk')
+          // Устанавливаем флаг, что начался OAuth редирект
+          sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
+          // Используем redirectUrl и redirectUrlComplete для правильного редиректа
+          await signIn.authenticateWithRedirect({
+            strategy: 'oauth_google',
+            redirectUrl: `${window.location.origin}/profile`,
+            redirectUrlComplete: `${window.location.origin}/profile`,
+          })
+        } else {
+          setError('Система авторизации не готова. Попробуйте обновить страницу.')
+          setIsLoading(false)
         }
-      }, 3000)
+      } else {
+        if (signUpLoaded && signUp) {
+          console.log('LoginModal: Redirecting to Google OAuth via Clerk')
+          // Устанавливаем флаг, что начался OAuth редирект
+          sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
+          await signUp.authenticateWithRedirect({
+            strategy: 'oauth_google',
+            redirectUrl: `${window.location.origin}/profile`,
+            redirectUrlComplete: `${window.location.origin}/profile`,
+          })
+        } else {
+          setError('Система регистрации не готова. Попробуйте обновить страницу.')
+          setIsLoading(false)
+        }
+      }
+    } catch (error) {
+      console.error('LoginModal: Ошибка авторизации через Google:', error)
+      setError(`Не удалось войти через Google: ${error.message || 'Проверьте настройки'}`)
+      setIsLoading(false)
+    }
+  }
+
+  const handleFacebookAuth = async () => {
+    try {
+      setIsLoading(true)
+      setError('')
+      
+      console.log('LoginModal: Starting Facebook auth', { signInLoaded, signUpLoaded, isLogin })
+      
+      if (isLogin) {
+        if (signInLoaded && signIn) {
+          console.log('LoginModal: Redirecting to Facebook OAuth via Clerk')
+          // Устанавливаем флаг, что начался OAuth редирект
+          sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
+          await signIn.authenticateWithRedirect({
+            strategy: 'oauth_facebook',
+            redirectUrl: `${window.location.origin}/profile`,
+            redirectUrlComplete: `${window.location.origin}/profile`,
+          })
+        } else {
+          setError('Система авторизации не готова. Попробуйте обновить страницу.')
+          setIsLoading(false)
+        }
+      } else {
+        if (signUpLoaded && signUp) {
+          console.log('LoginModal: Redirecting to Facebook OAuth via Clerk')
+          // Устанавливаем флаг, что начался OAuth редирект
+          sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
+          await signUp.authenticateWithRedirect({
+            strategy: 'oauth_facebook',
+            redirectUrl: `${window.location.origin}/profile`,
+            redirectUrlComplete: `${window.location.origin}/profile`,
+          })
+        } else {
+          setError('Система регистрации не готова. Попробуйте обновить страницу.')
+          setIsLoading(false)
+        }
+      }
+    } catch (error) {
+      console.error('LoginModal: Ошибка авторизации через Facebook:', error)
+      setError(`Не удалось войти через Facebook: ${error.message || 'Проверьте настройки'}`)
+      setIsLoading(false)
     }
   }
 
   const handleWhatsAppLogin = () => {
-    // Здесь будет логика входа через WhatsApp
-    console.log('Вход через WhatsApp')
-    // В реальном приложении здесь будет авторизация через WhatsApp API
-    window.open('https://wa.me/79991234567', '_blank')
+    setError('')
+    // Открываем модальное окно для ввода номера телефона и кода
+    setShowWhatsAppModal(true)
+  }
+
+  const handleWhatsAppSuccess = (user) => {
+    // Успешная авторизация через WhatsApp
+    onClose()
+    
+    // Показываем уведомление
+    alert(`Добро пожаловать, ${user.name || 'Пользователь'}!`)
+    
+    // Перенаправляем на страницу профиля
+    navigate('/profile')
+  }
+
+  const handleEmailVerificationSuccess = (user) => {
+    // Успешная регистрация через email
+    onClose()
+    
+    // Показываем уведомление
+    alert(`Добро пожаловать, ${user.name || 'Пользователь'}! Регистрация завершена.`)
+    
+    // Перенаправляем на страницу профиля
+    navigate('/profile')
   }
 
   const toggleMode = () => {
@@ -164,8 +253,11 @@ const LoginModal = ({ isOpen, onClose }) => {
   }
 
   return (
-    <div className="login-modal-overlay" onClick={onClose}>
-      <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+    <>
+      {/* Скрываем LoginModal когда открыт EmailVerificationModal */}
+      {!showEmailVerificationModal && (
+        <div className="login-modal-overlay" onClick={onClose}>
+          <div className="login-modal" onClick={(e) => e.stopPropagation()}>
         <button 
           className="login-modal__close" 
           onClick={onClose}
@@ -185,29 +277,67 @@ const LoginModal = ({ isOpen, onClose }) => {
           </p>
         </div>
 
+        {error && (
+          <div className="login-modal__error" style={{
+            padding: '12px',
+            margin: '16px 32px',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '8px',
+            color: '#c33',
+            fontSize: '14px',
+            textAlign: 'center'
+          }}>
+            {error}
+          </div>
+        )}
+
         <div className="login-modal__social">
           <button 
             type="button"
             className="login-modal__social-btn login-modal__social-btn--facebook"
-            onClick={handleFacebookLogin}
+            onClick={handleFacebookAuth}
+            disabled={isLoading || !signInLoaded || !signUpLoaded}
+            style={{ 
+              opacity: (isLoading || !signInLoaded || !signUpLoaded) ? 0.6 : 1, 
+              cursor: (isLoading || !signInLoaded || !signUpLoaded) ? 'not-allowed' : 'pointer' 
+            }}
           >
             <FaFacebook size={20} />
-            <span>{isLogin ? 'Войти через Facebook' : 'Зарегистрироваться через Facebook'}</span>
+            <span>
+              {isLoading 
+                ? 'Подключение...' 
+                : (isLogin ? 'Войти через Facebook' : 'Зарегистрироваться через Facebook')}
+            </span>
           </button>
           
           <button 
             type="button"
             className="login-modal__social-btn login-modal__social-btn--google"
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleAuth}
+            disabled={isLoading || !signInLoaded || !signUpLoaded}
+            style={{ 
+              opacity: (isLoading || !signInLoaded || !signUpLoaded) ? 0.6 : 1, 
+              cursor: (isLoading || !signInLoaded || !signUpLoaded) ? 'not-allowed' : 'pointer' 
+            }}
           >
             <FaGoogle size={20} />
-            <span>{isLogin ? 'Войти через Google' : 'Зарегистрироваться через Google'}</span>
+            <span>
+              {isLoading 
+                ? 'Подключение...' 
+                : (isLogin ? 'Войти через Google' : 'Зарегистрироваться через Google')}
+            </span>
           </button>
           
           <button 
             type="button"
             className="login-modal__social-btn login-modal__social-btn--whatsapp"
             onClick={handleWhatsAppLogin}
+            disabled={isLoading}
+            style={{ 
+              opacity: isLoading ? 0.6 : 1, 
+              cursor: isLoading ? 'not-allowed' : 'pointer' 
+            }}
           >
             <FaWhatsapp size={20} />
             <span>{isLogin ? 'Войти через WhatsApp' : 'Зарегистрироваться через WhatsApp'}</span>
@@ -299,8 +429,8 @@ const LoginModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          <button type="submit" className="login-modal__submit">
-            {isLogin ? 'Войти' : 'Зарегистрироваться'}
+          <button type="submit" className="login-modal__submit" disabled={isLoading}>
+            {isLoading ? (isLogin ? 'Вход...' : 'Регистрация...') : (isLogin ? 'Войти' : 'Зарегистрироваться')}
           </button>
         </form>
 
@@ -317,7 +447,28 @@ const LoginModal = ({ isOpen, onClose }) => {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+      )}
+      
+      <WhatsAppVerificationModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        onSuccess={handleWhatsAppSuccess}
+      />
+      
+      <EmailVerificationModal
+        isOpen={showEmailVerificationModal}
+        onClose={() => {
+          console.log('📧 Закрываем EmailVerificationModal')
+          setShowEmailVerificationModal(false)
+          onClose() // Также закрываем LoginModal
+        }}
+        onSuccess={handleEmailVerificationSuccess}
+        email={formData.email}
+        password={formData.password}
+        name={formData.name}
+      />
+    </>
   )
 }
 

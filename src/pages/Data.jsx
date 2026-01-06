@@ -1,20 +1,65 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { getUserData, logout } from '../services/authService'
 import './Data.css'
 
 const Data = () => {
+  const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
   const [userData, setUserData] = useState({
-    firstName: 'Vlad',
-    lastName: 'Tichonenko',
+    firstName: '',
+    lastName: '',
     middleName: '',
-    email: 'vladtichonenko@gmail.com',
-    phone: '+375 33 686-79-11',
-    address: 'г. Минск, ул. Примерная, д. 1, кв. 10',
-    passportSeries: 'AB',
-    passportNumber: '1234567',
-    identificationNumber: '1234567A001PB1'
+    email: '',
+    phone: '',
+    country: '',
+    countryFlag: '',
+    address: '',
+    passportSeries: '',
+    passportNumber: '',
+    identificationNumber: ''
   })
+
+  // Загружаем данные пользователя при монтировании компонента
+  useEffect(() => {
+    const savedUserData = getUserData()
+    
+    if (savedUserData.isLoggedIn) {
+      // Разбиваем имя на имя и фамилию (если есть пробел)
+      const nameParts = (savedUserData.name || '').split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+      
+      setUserData({
+        firstName: firstName,
+        lastName: lastName,
+        middleName: '',
+        email: savedUserData.email || '',
+        phone: savedUserData.phoneFormatted || savedUserData.phone || '',
+        country: savedUserData.country || '',
+        countryFlag: savedUserData.countryFlag || '',
+        address: '',
+        passportSeries: '',
+        passportNumber: '',
+        identificationNumber: ''
+      })
+    } else {
+      // Дефолтные данные, если не авторизован
+      setUserData({
+        firstName: 'Vlad',
+        lastName: 'Tichonenko',
+        middleName: '',
+        email: 'vladtichonenko@gmail.com',
+        phone: '+375 33 686-79-11',
+        country: '',
+        countryFlag: '',
+        address: 'г. Минск, ул. Примерная, д. 1, кв. 10',
+        passportSeries: 'AB',
+        passportNumber: '1234567',
+        identificationNumber: '1234567A001PB1'
+      })
+    }
+  }, [])
 
   const [connectedAccounts, setConnectedAccounts] = useState({
     google: true
@@ -51,6 +96,14 @@ const Data = () => {
     if (window.confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо.')) {
       // Здесь можно добавить логику удаления аккаунта
       alert('Аккаунт будет удален')
+    }
+  }
+
+  const handleLogout = () => {
+    if (window.confirm('Вы уверены, что хотите выйти?')) {
+      logout()
+      navigate('/')
+      window.location.reload() // Перезагружаем страницу для обновления состояния
     }
   }
 
@@ -116,6 +169,41 @@ const Data = () => {
               <span>Фаворит</span>
             </a>
           </nav>
+
+          <button 
+            className="logout-button" 
+            onClick={handleLogout}
+            style={{
+              width: 'calc(100% - 32px)',
+              margin: '16px',
+              padding: '12px 16px',
+              backgroundColor: 'transparent',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              color: '#ff4444',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#fff5f5'
+              e.target.style.borderColor = '#ff4444'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent'
+              e.target.style.borderColor = '#e0e0e0'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M7 2H3C2.44772 2 2 2.44772 2 3V15C2 15.5523 2.44772 16 3 16H7M12 13L15 10M15 10L12 7M15 10H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Выйти</span>
+          </button>
         </aside>
 
         <main className="data-main">
@@ -217,9 +305,19 @@ const Data = () => {
                       className="data-input"
                     />
                   ) : (
-                    <div className="data-value">{userData.phone}</div>
+                    <div className="data-value">{userData.phone || 'Не указан'}</div>
                   )}
                 </div>
+
+                {userData.country && (
+                  <div className="data-field">
+                    <label>Страна</label>
+                    <div className="data-value">
+                      {userData.countryFlag && <span style={{ marginRight: '6px' }}>{userData.countryFlag}</span>}
+                      {userData.country}
+                    </div>
+                  </div>
+                )}
 
                 <div className="data-field data-field-full">
                   <label>Адрес проживания</label>
@@ -229,9 +327,10 @@ const Data = () => {
                       value={userData.address}
                       onChange={(e) => handleChange('address', e.target.value)}
                       className="data-input"
+                      placeholder="Введите адрес"
                     />
                   ) : (
-                    <div className="data-value">{userData.address}</div>
+                    <div className="data-value">{userData.address || 'Не указан'}</div>
                   )}
                 </div>
               </div>

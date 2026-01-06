@@ -2,6 +2,14 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useSignIn,
+} from '@clerk/clerk-react'
+import {
   FiBell,
   FiSearch,
   FiChevronDown,
@@ -10,8 +18,10 @@ import {
   FiUser,
 } from 'react-icons/fi'
 import { IoLocationOutline } from 'react-icons/io5'
+import { FaGoogle, FaFacebook } from 'react-icons/fa'
 import { properties } from '../data/properties'
 import LoginModal from './LoginModal'
+import { getUserData } from '../services/authService'
 import '../pages/MainPage.css'
 
 const resortLocations = [
@@ -31,6 +41,7 @@ const Header = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
+  const { signIn } = useSignIn()
   const [selectedLocation, setSelectedLocation] = useState(resortLocations[0])
   const [isLocationOpen, setIsLocationOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
@@ -82,12 +93,36 @@ const Header = () => {
   }
 
   const handleProfileClick = () => {
-    // Если мы на главной странице, открываем модальное окно входа
-    if (location.pathname === '/') {
-      setIsLoginModalOpen(true)
-    } else {
-      // Иначе переходим на страницу профиля
-      navigate('/profile')
+    // С Clerk используем UserButton для управления профилем
+    // Если нужно, можно добавить дополнительную логику
+    navigate('/profile')
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      if (signIn) {
+        await signIn.authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: `${window.location.origin}/profile`,
+          redirectUrlComplete: `${window.location.origin}/profile`,
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка входа через Google:', error)
+    }
+  }
+
+  const handleFacebookSignIn = async () => {
+    try {
+      if (signIn) {
+        await signIn.authenticateWithRedirect({
+          strategy: 'oauth_facebook',
+          redirectUrl: `${window.location.origin}/profile`,
+          redirectUrlComplete: `${window.location.origin}/profile`,
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка входа через Facebook:', error)
     }
   }
 
@@ -335,12 +370,39 @@ const Header = () => {
                 >
                   {t('auction')}
                 </button>
-                <button 
-                  className="new-header__user-btn"
-                  onClick={handleProfileClick}
-                >
-                  <FiUser size={20} />
-                </button>
+                <SignedIn>
+                  <div className="new-header__user-section">
+                    <UserButton afterSignOutUrl="/" />
+                  </div>
+                </SignedIn>
+                <SignedOut>
+                  <div className="new-header__auth-buttons">
+                    <SignInButton mode="modal">
+                      <button className="new-header__signin-btn">
+                        Войти
+                      </button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <button className="new-header__signup-btn">
+                        Регистрация
+                      </button>
+                    </SignUpButton>
+                    <button 
+                      className="new-header__oauth-btn new-header__oauth-btn--google"
+                      onClick={handleGoogleSignIn}
+                      title="Войти через Google"
+                    >
+                      <FaGoogle size={16} />
+                    </button>
+                    <button 
+                      className="new-header__oauth-btn new-header__oauth-btn--facebook"
+                      onClick={handleFacebookSignIn}
+                      title="Войти через Facebook"
+                    >
+                      <FaFacebook size={16} />
+                    </button>
+                  </div>
+                </SignedOut>
                 <button 
                   type="button" 
                   className="new-header__notification-btn"

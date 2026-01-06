@@ -1,16 +1,160 @@
-import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useUser, useClerk, useAuth } from '@clerk/clerk-react'
+import { getUserData, saveUserData, logout } from '../services/authService'
 import './Profile.css'
 
 const Profile = () => {
+  const navigate = useNavigate()
+  const { user, isLoaded: userLoaded } = useUser()
+  const { isSignedIn, isLoaded: authLoaded } = useAuth()
+  const { signOut } = useClerk()
   const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [profileData, setProfileData] = useState({
-    name: 'Vlad Tichonenko',
-    phone: '+375 33 686-79-11',
-    email: 'vladtichonenko',
-    avatar: null
+    name: '',
+    phone: '',
+    email: '',
+    avatar: null,
+    country: '',
+    countryFlag: ''
   })
   const fileInputRef = useRef(null)
+
+  // Синхронизируем данные Clerk с localStorage и загружаем данные пользователя
+  useEffect(() => {
+    // Ждем загрузки данных Clerk
+    if (!userLoaded || !authLoaded) {
+      setIsLoading(true)
+      return
+    }
+
+    setIsLoading(false)
+
+    console.log('Profile: Auth state', { isSignedIn, userLoaded, authLoaded, hasUser: !!user })
+
+    // Если пользователь авторизован через Clerk, но user еще не загружен, ждем
+    if (isSignedIn && !user) {
+      console.log('Profile: User is signed in but user data not loaded yet, waiting...')
+      setIsLoading(true)
+      return
+    }
+
+    if (isSignedIn && user) {
+      // Пользователь авторизован через Clerk
+      console.log('Profile: Clerk user object', user)
+      console.log('Profile: Clerk user data loaded', {
+        fullName: user.fullName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        primaryEmailAddress: user.primaryEmailAddress,
+        emailAddresses: user.emailAddresses,
+        imageUrl: user.imageUrl,
+        profileImageUrl: user.profileImageUrl,
+        primaryPhoneNumber: user.primaryPhoneNumber,
+        phoneNumbers: user.phoneNumbers
+      })
+      
+      // Формируем имя пользователя
+      let userName = 'Пользователь'
+      if (user.fullName) {
+        userName = user.fullName
+      } else if (user.firstName || user.lastName) {
+        userName = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+      } else if (user.username) {
+        userName = user.username
+      }
+      
+      // Получаем email
+      let userEmail = ''
+      if (user.primaryEmailAddress?.emailAddress) {
+        userEmail = user.primaryEmailAddress.emailAddress
+      } else if (user.emailAddresses && user.emailAddresses.length > 0) {
+        userEmail = user.emailAddresses[0].emailAddress || ''
+      }
+      
+      // Получаем изображение
+      let userImage = ''
+      if (user.imageUrl) {
+        userImage = user.imageUrl
+      } else if (user.profileImageUrl) {
+        userImage = user.profileImageUrl
+      }
+      
+      // Получаем телефон
+      let userPhone = ''
+      if (user.primaryPhoneNumber?.phoneNumber) {
+        userPhone = user.primaryPhoneNumber.phoneNumber
+      } else if (user.phoneNumbers && user.phoneNumbers.length > 0) {
+        userPhone = user.phoneNumbers[0].phoneNumber || ''
+      }
+      
+      const clerkUserData = {
+        name: userName,
+        email: userEmail,
+        picture: userImage,
+        id: user.id || '',
+        phone: userPhone,
+        phoneFormatted: userPhone,
+      }
+      
+      console.log('Profile: Processed Clerk user data', clerkUserData)
+      
+      // Сохраняем данные Clerk в localStorage для совместимости со старой системой
+      saveUserData(clerkUserData, 'clerk')
+      
+      const newProfileData = {
+        name: clerkUserData.name || 'Пользователь',
+        phone: clerkUserData.phoneFormatted || clerkUserData.phone || '',
+        email: clerkUserData.email || '',
+        avatar: clerkUserData.picture || null,
+        country: '',
+        countryFlag: ''
+      }
+      
+      console.log('Profile: Setting profile data', newProfileData)
+      console.log('Profile: Current profileData before update', profileData)
+      
+      setProfileData(newProfileData)
+      
+      // Проверяем, что данные действительно обновились
+      setTimeout(() => {
+        console.log('Profile: Profile data after update should be', newProfileData)
+      }, 100)
+    } else {
+      // Проверяем старую систему авторизации
+      const userData = getUserData()
+      
+      console.log('Profile: Checking localStorage data', userData)
+      
+      if (userData.isLoggedIn) {
+        setProfileData({
+          name: userData.name || 'Пользователь',
+          phone: userData.phoneFormatted || userData.phone || '',
+          email: userData.email || '',
+          avatar: userData.picture || null,
+          country: userData.country || '',
+          countryFlag: userData.countryFlag || ''
+        })
+      } else {
+        // Если не авторизован, используем дефолтные данные
+        setProfileData({
+          name: 'Vlad Tichonenko',
+          phone: '+375 33 686-79-11',
+          email: 'vladtichonenko',
+          avatar: null,
+          country: '',
+          countryFlag: ''
+        })
+      }
+    }
+  }, [user, userLoaded, isSignedIn, authLoaded])
+
+  // Отслеживаем изменения profileData для отладки
+  useEffect(() => {
+    console.log('Profile: profileData changed', profileData)
+  }, [profileData])
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -20,9 +164,50 @@ const Profile = () => {
     setIsEditing(false)
   }
 
-  const handleSave = () => {
-    // Здесь можно добавить логику сохранения данных
-    setIsEditing(false)
+  const handleSave = async () => {
+    try {
+      // Если пользователь авторизован через Clerk, обновляем данные в Clerk
+      if (user) {
+        // Обновляем данные пользователя в Clerk
+        await user.update({
+          firstName: profileData.name.split(' ')[0] || profileData.name,
+          lastName: profileData.name.split(' ').slice(1).join(' ') || '',
+        })
+        
+        // Обновляем email если изменился
+        if (profileData.email && profileData.email !== user.primaryEmailAddress?.emailAddress) {
+          // Email обновляется через отдельный метод в Clerk
+          // Здесь можно добавить логику обновления email
+        }
+      }
+      
+      // Сохраняем данные в localStorage для совместимости
+      const userData = getUserData()
+      const updatedUserData = {
+        ...userData,
+        email: profileData.email,
+        phoneFormatted: profileData.phone,
+        picture: profileData.avatar,
+        country: profileData.country,
+        countryFlag: profileData.countryFlag
+      }
+      saveUserData(updatedUserData, userData.loginMethod || 'clerk')
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Ошибка при сохранении данных:', error)
+      // В случае ошибки все равно сохраняем в localStorage
+      const userData = getUserData()
+      const updatedUserData = {
+        ...userData,
+        email: profileData.email,
+        phoneFormatted: profileData.phone,
+        picture: profileData.avatar,
+        country: profileData.country,
+        countryFlag: profileData.countryFlag
+      }
+      saveUserData(updatedUserData, userData.loginMethod || 'clerk')
+      setIsEditing(false)
+    }
   }
 
   const handleChange = (field, value) => {
@@ -30,6 +215,22 @@ const Profile = () => {
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleLogout = async () => {
+    if (window.confirm('Вы уверены, что хотите выйти?')) {
+      // Если пользователь авторизован через Clerk, используем Clerk для выхода
+      if (user) {
+        await signOut()
+        navigate('/')
+        window.location.reload()
+      } else {
+        // Используем старую систему выхода
+        logout()
+        navigate('/')
+        window.location.reload()
+      }
+    }
   }
 
   const handleAvatarClick = () => {
@@ -50,6 +251,17 @@ const Profile = () => {
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  // Показываем индикатор загрузки, пока данные не загружены
+  if (isLoading || !userLoaded) {
+    return (
+      <div className="profile-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', color: '#666', marginBottom: '16px' }}>Загрузка данных профиля...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -114,6 +326,41 @@ const Profile = () => {
               <span>Фаворит</span>
             </a>
           </nav>
+
+          <button 
+            className="logout-button" 
+            onClick={handleLogout}
+            style={{
+              width: 'calc(100% - 32px)',
+              margin: '16px',
+              padding: '12px 16px',
+              backgroundColor: 'transparent',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              color: '#ff4444',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#fff5f5'
+              e.target.style.borderColor = '#ff4444'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent'
+              e.target.style.borderColor = '#e0e0e0'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M7 2H3C2.44772 2 2 2.44772 2 3V15C2 15.5523 2.44772 16 3 16H7M12 13L15 10M15 10L12 7M15 10H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Выйти</span>
+          </button>
 
           <div className="sidebar-footer">
             <div className="language-selector">
@@ -182,17 +429,7 @@ const Profile = () => {
             </div>
             <div className="profile-info">
               <div className="profile-name">
-                {isEditing ? (
-                  <input
-                    type="text"
-                    className="profile-name-input"
-                    value={profileData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    autoFocus
-                  />
-                ) : (
-                  <h1>{profileData.name}</h1>
-                )}
+                <h1>{profileData.name || 'Загрузка...'}</h1>
                 {!isEditing ? (
                   <button className="edit-button" onClick={handleEdit} aria-label="Редактировать">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -215,39 +452,25 @@ const Profile = () => {
                 )}
               </div>
               <div className="profile-contacts">
-                <div className="contact-item">
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M3.75 3.75L8.25 8.25M14.25 14.25L9.75 9.75M9.75 9.75L14.25 3.75M9.75 9.75L3.75 14.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {isEditing ? (
-                    <input
-                      type="tel"
-                      className="contact-input"
-                      value={profileData.phone}
-                      onChange={(e) => handleChange('phone', e.target.value)}
-                      placeholder="+375 33 686-79-11"
-                    />
-                  ) : (
-                    <span>{profileData.phone}</span>
-                  )}
-                </div>
-                <div className="contact-item">
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M2 6L9 10L16 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      className="contact-input"
-                      value={profileData.email}
-                      onChange={(e) => handleChange('email', e.target.value)}
-                      placeholder="vladtichonenko"
-                    />
-                  ) : (
-                    <span>{profileData.email}</span>
-                  )}
-                </div>
+                {profileData.email && (
+                  <div className="contact-item">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                      <path d="M2 6L9 10L16 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    {isEditing ? (
+                      <input
+                        type="email"
+                        className="contact-input"
+                        value={profileData.email}
+                        onChange={(e) => handleChange('email', e.target.value)}
+                        placeholder="email@example.com"
+                      />
+                    ) : (
+                      <span>{profileData.email}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
