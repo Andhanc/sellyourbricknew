@@ -19,12 +19,23 @@ const AdminPanelPage = () => {
   const [activeSection, setActiveSection] = useState('statistics');
   const [showUsersModal, setShowUsersModal] = useState(false);
 
+  // Проверка авторизации администратора
   useEffect(() => {
+    const userRole = localStorage.getItem('userRole');
+    const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+    
+    // Если пользователь не авторизован как администратор, перенаправляем на главную
+    if (!isAdminLoggedIn || userRole !== 'admin') {
+      console.warn('⚠️ Доступ к админ-панели запрещен. Необходима авторизация администратора.')
+      navigate('/', { replace: true });
+      return;
+    }
+    
     document.body.classList.add('admin-panel-active');
     return () => {
       document.body.classList.remove('admin-panel-active');
     };
-  }, []);
+  }, [navigate]);
 
   const sectionTitles = {
     statistics: 'Статистика',
@@ -34,14 +45,25 @@ const AdminPanelPage = () => {
     objects: 'Объекты'
   };
 
+  // Функция для очистки сессии администратора
+  const clearAdminSession = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('isAdminLoggedIn');
+    localStorage.removeItem('isLoggedIn');
+  };
+
   const handleLogout = () => {
     if (window.confirm('Вы уверены, что хотите выйти?')) {
+      // Очищаем данные администратора
+      clearAdminSession();
       navigate('/');
       alert('Выход выполнен');
     }
   };
 
   const handleBack = () => {
+    // При переходе на главную автоматически завершаем сессию администратора
+    clearAdminSession();
     navigate('/');
   };
 
@@ -65,7 +87,11 @@ const AdminPanelPage = () => {
   return (
     <div className="admin-panel-app">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <Sidebar 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection}
+        onLogout={handleLogout}
+      />
       <div className="main-content">
         <Header 
           title={sectionTitles[activeSection] || 'Статистика'} 

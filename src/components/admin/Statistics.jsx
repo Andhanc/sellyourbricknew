@@ -37,6 +37,8 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
   const [tempStartDate, setTempStartDate] = useState(null);
   const [tempEndDate, setTempEndDate] = useState(null);
   const calendarRef = useRef(null);
+  const [usersCount, setUsersCount] = useState(null); // Реальное количество пользователей из БД
+  const [isLoadingUsersCount, setIsLoadingUsersCount] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,6 +55,40 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isCalendarOpen]);
+
+  // Загружаем реальное количество пользователей из БД
+  useEffect(() => {
+    const fetchUsersCount = async () => {
+      try {
+        setIsLoadingUsersCount(true);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${API_BASE_URL}/admin/users/count`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setUsersCount(data.count);
+          } else {
+            console.warn('⚠️ Не удалось получить количество пользователей:', data.error);
+            // Используем значение по умолчанию из businessInfo
+            setUsersCount(businessInfo.stats.clients_count);
+          }
+        } else {
+          console.warn('⚠️ Ошибка при получении количества пользователей:', response.status);
+          // Используем значение по умолчанию из businessInfo
+          setUsersCount(businessInfo.stats.clients_count);
+        }
+      } catch (error) {
+        console.error('❌ Ошибка при загрузке количества пользователей:', error);
+        // Используем значение по умолчанию из businessInfo
+        setUsersCount(businessInfo.stats.clients_count);
+      } finally {
+        setIsLoadingUsersCount(false);
+      }
+    };
+
+    fetchUsersCount();
+  }, [businessInfo.stats.clients_count]);
 
   const getTimeMultiplier = (period, customStartDate = null, customEndDate = null) => {
     if (customStartDate && customEndDate) {
@@ -414,14 +450,17 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
   }, [businessInfo.auctions]);
 
   const stats = useMemo(() => {
-    const totalUsers = Math.round(businessInfo.stats.clients_count * multiplier);
+    // Используем реальное количество пользователей из БД, если оно загружено
+    // Для реального количества не применяем multiplier, так как это реальные данные из БД
+    const baseUsersCount = usersCount !== null ? usersCount : businessInfo.stats.clients_count;
+    const totalUsers = usersCount !== null ? usersCount : Math.round(baseUsersCount * multiplier);
     const buyersCount = Math.round((businessInfo.user_role_stats?.buyers || 55) / 100 * totalUsers);
     const sellersCount = Math.round((businessInfo.user_role_stats?.sellers || 45) / 100 * totalUsers);
     
     const statsData = [
       {
         title: 'Всего пользователей',
-        value: totalUsers,
+        value: isLoadingUsersCount ? '...' : totalUsers,
         changePercent: '12.5',
         icon: 'fas fa-users',
         iconClass: 'blue'
@@ -494,7 +533,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
         changeType: getChangeType(changeString)
       };
     });
-  }, [businessInfo, multiplier, timeFilter]);
+  }, [businessInfo, multiplier, timeFilter, usersCount, isLoadingUsersCount]);
 
   const timeFilterOptions = [
     { value: 'all', label: 'Все время' },

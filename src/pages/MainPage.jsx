@@ -52,6 +52,8 @@ import '../components/PropertyList.css'
 import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
 import { getUserData } from '../services/authService'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+
 const resortLocations = [
   'Costa Adeje, Tenerife',
   'Playa de las Américas, Tenerife',
@@ -909,6 +911,8 @@ function MainPage() {
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
+  const [userPhoto, setUserPhoto] = useState(null) // Фотография пользователя
+  const [isLoggedIn, setIsLoggedIn] = useState(false) // Статус авторизации
   const [userPreferences, setUserPreferences] = useState({
     purpose: null, // 'для себя', 'под сдачу', 'инвестиции'
     budget: null,
@@ -953,6 +957,72 @@ function MainPage() {
     console.log('🌐 Available languages:', i18n.languages)
     console.log('🌐 Test translation (home):', t('home'))
   }, [i18n.language, i18n.isInitialized, t])
+
+  // Загружаем фотографию пользователя при изменении авторизации
+  useEffect(() => {
+    const loadUserPhoto = async () => {
+      // Проверяем авторизацию через Clerk
+      if (userLoaded && user) {
+        // Пользователь авторизован через Clerk
+        const clerkPhoto = user.imageUrl || user.profileImageUrl || null
+        setUserPhoto(clerkPhoto)
+        setIsLoggedIn(true)
+      } else {
+        // Проверяем старую систему авторизации
+        const userData = getUserData()
+        if (userData.isLoggedIn) {
+          setIsLoggedIn(true)
+          
+          // Сначала пытаемся получить фотографию из localStorage
+          let photo = userData.picture || null
+          
+          // Если фотографии нет в localStorage, пытаемся загрузить из БД
+          if (!photo && userData.id) {
+            try {
+              const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+              if (response.ok) {
+                const result = await response.json()
+                if (result.success && result.data && result.data.user_photo) {
+                  // Если user_photo начинается с /uploads, добавляем базовый URL
+                  const photoPath = result.data.user_photo
+                  photo = photoPath.startsWith('http') 
+                    ? photoPath 
+                    : `${API_BASE_URL.replace('/api', '')}${photoPath}`
+                  
+                  // Обновляем localStorage с фотографией
+                  const updatedUserData = {
+                    ...userData,
+                    picture: photo
+                  }
+                  localStorage.setItem('userData', JSON.stringify(updatedUserData))
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ Не удалось загрузить фотографию из БД:', error)
+            }
+          }
+          
+          setUserPhoto(photo)
+        } else {
+          setIsLoggedIn(false)
+          setUserPhoto(null)
+        }
+      }
+    }
+    
+    loadUserPhoto()
+    
+    // Обновляем фотографию при фокусе окна (когда пользователь возвращается на страницу)
+    const handleFocus = () => {
+      loadUserPhoto()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user, userLoaded, location.pathname]) // Обновляем при изменении маршрута
   
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [showMap, setShowMap] = useState(false)
@@ -1659,7 +1729,7 @@ function MainPage() {
               )}
               <button 
                 type="button" 
-                className="header__action-btn"
+                className={`header__action-btn ${isLoggedIn ? 'header__action-btn--avatar' : ''}`}
                 onClick={() => {
                   // Проверяем авторизацию через Clerk
                   if (userLoaded && user) {
@@ -1676,7 +1746,25 @@ function MainPage() {
                 }}
                 aria-label={t('profile')}
               >
-                <FiUser size={18} />
+                {isLoggedIn ? (
+                  userPhoto ? (
+                    <img 
+                      src={userPhoto} 
+                      alt="Profile" 
+                      className="header__avatar-img"
+                      onError={(e) => {
+                        // Если фото не загрузилось, показываем placeholder
+                        setUserPhoto(null)
+                      }}
+                    />
+                  ) : (
+                    <div className="header__avatar-placeholder">
+                      <FiUser size={18} />
+                    </div>
+                  )
+                ) : (
+                  <FiUser size={18} />
+                )}
               </button>
             </div>
           </header>
@@ -1786,15 +1874,6 @@ function MainPage() {
                     <div className="menu-dropdown__column">
                       <h3 className="menu-dropdown__column-title">Навигация по сайту</h3>
                       <div className="menu-dropdown__column-items">
-                        <button 
-                          className="menu-dropdown__item"
-                          onClick={() => {
-                            navigate('/admin')
-                            setIsMenuOpen(false)
-                          }}
-                        >
-                          <span>Админ-панель</span>
-                        </button>
                         <button className="menu-dropdown__item">
                           <span>Недвижимость</span>
                         </button>
@@ -1926,7 +2005,7 @@ function MainPage() {
             {t('auction')}
           </button>
           <button 
-            className="new-header__user-btn"
+            className={`new-header__user-btn ${isLoggedIn ? 'new-header__user-btn--avatar' : ''}`}
             onClick={() => {
               // Проверяем авторизацию через Clerk
               if (userLoaded && user) {
@@ -1943,7 +2022,25 @@ function MainPage() {
             }}
             aria-label={t('profile')}
           >
-            <FiUser size={20} />
+            {isLoggedIn ? (
+              userPhoto ? (
+                <img 
+                  src={userPhoto} 
+                  alt="Profile" 
+                  className="new-header__avatar-img"
+                  onError={(e) => {
+                    // Если фото не загрузилось, показываем placeholder
+                    setUserPhoto(null)
+                  }}
+                />
+              ) : (
+                <div className="new-header__avatar-placeholder">
+                  <FiUser size={20} />
+                </div>
+              )
+            ) : (
+              <FiUser size={20} />
+            )}
           </button>
           <button 
             type="button" 

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { FiX, FiMail } from 'react-icons/fi'
-import { sendEmailVerificationCode, verifyEmailCode, validateEmail } from '../services/authService'
+import { sendEmailVerificationCode, verifyEmailCode, verifyEmailForProfileUpdate, validateEmail } from '../services/authService'
 import './EmailVerificationModal.css'
 
-const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmail, password, name }) => {
+const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmail, password, name, isProfileUpdate = false, userId = null }) => {
   const [email, setEmail] = useState(initialEmail || '')
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [isLoading, setIsLoading] = useState(false)
@@ -11,6 +11,8 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
   const [step, setStep] = useState('email') // 'email' или 'code'
   const [countdown, setCountdown] = useState(0)
   const [isValidatingEmail, setIsValidatingEmail] = useState(false)
+  const [devCode, setDevCode] = useState(null) // Код для режима разработки
+  const [devWarning, setDevWarning] = useState(null) // Предупреждение о dev режиме
   const inputRefs = useRef([])
 
   const handleSendCode = useCallback(async () => {
@@ -31,6 +33,23 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
       const result = await sendEmailVerificationCode(email)
 
       if (result.success) {
+        // Сохраняем код для режима разработки, если он был возвращен
+        // Это происходит только если EmailJS не настроен или произошла ошибка
+        if (result.code && (result.devMode || result.warning)) {
+          setDevCode(result.code)
+          console.log('🔐 Код для ввода (режим разработки):', result.code)
+        } else {
+          // Если код успешно отправлен через EmailJS, не показываем devCode
+          setDevCode(null)
+        }
+        
+        // Сохраняем предупреждение, если есть
+        if (result.warning || result.devMode) {
+          setDevWarning(result.warning || result.message || 'EmailJS не настроен, используется режим разработки')
+        } else {
+          setDevWarning(null)
+        }
+        
         setStep('code')
         setCountdown(60) // 60 секунд до возможности повторной отправки
         // Фокусируемся на первом поле ввода кода
@@ -41,10 +60,14 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
         }, 100)
       } else {
         setError(result.error || 'Не удалось отправить код')
+        setDevCode(null)
+        setDevWarning(null)
       }
     } catch (error) {
       console.error('Ошибка отправки кода:', error)
       setError('Произошла ошибка. Попробуйте позже.')
+      setDevCode(null)
+      setDevWarning(null)
     } finally {
       setIsLoading(false)
     }
@@ -71,6 +94,8 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
         setEmail('')
         setCode(['', '', '', '', '', ''])
         setError('')
+        setDevCode(null)
+        setDevWarning(null)
       }
     } else {
       // Когда модальное окно закрывается, сбрасываем состояние
@@ -78,6 +103,8 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
       setCode(['', '', '', '', '', ''])
       setError('')
       setCountdown(0)
+      setDevCode(null)
+      setDevWarning(null)
     }
   }, [initialEmail, isOpen])
 
@@ -159,19 +186,42 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
     setError('')
 
     try {
-      const result = await verifyEmailCode(email, codeString, password, name)
-
-      if (result.success) {
-        // Успешная регистрация
-        if (onSuccess) {
-          onSuccess(result.user)
+      let result
+      
+      if (isProfileUpdate && userId) {
+        // Обновление профиля
+        result = await verifyEmailForProfileUpdate(userId, email, codeString)
+        
+        if (result.success) {
+          // Для обновления профиля передаем данные пользователя в onSuccess
+          // onSuccess должен сам закрыть модальное окно после обработки
+          if (onSuccess) {
+            await onSuccess(result.user || codeString) // Передаем данные пользователя или код
+          } else {
+            onClose()
+          }
+        } else {
+          setError(result.error || 'Неверный код. Попробуйте еще раз.')
+          // Очищаем поля ввода
+          setCode(['', '', '', '', '', ''])
+          inputRefs.current[0]?.focus()
         }
-        onClose()
       } else {
-        setError(result.error || 'Неверный код. Попробуйте еще раз.')
-        // Очищаем поля ввода
-        setCode(['', '', '', '', '', ''])
-        inputRefs.current[0]?.focus()
+        // Регистрация
+        result = await verifyEmailCode(email, codeString, password, name)
+
+        if (result.success) {
+          // Успешная регистрация
+          if (onSuccess) {
+            onSuccess(result.user)
+          }
+          onClose()
+        } else {
+          setError(result.error || 'Неверный код. Попробуйте еще раз.')
+          // Очищаем поля ввода
+          setCode(['', '', '', '', '', ''])
+          inputRefs.current[0]?.focus()
+        }
       }
     } catch (error) {
       console.error('Ошибка верификации кода:', error)
@@ -272,6 +322,23 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
           </div>
         ) : (
           <div className="email-verification-modal__form">
+            {/* Показываем код в режиме разработки, если EmailJS не настроен */}
+            {devCode && (
+              <div className="email-verification-modal__dev-code">
+                <div className="email-verification-modal__dev-code-label">
+                  ⚠️ Режим разработки: код не отправлен на email
+                </div>
+                <div className="email-verification-modal__dev-code-value">
+                  Ваш код: <strong>{devCode}</strong>
+                </div>
+                {devWarning && (
+                  <div className="email-verification-modal__dev-warning">
+                    {devWarning}
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="email-verification-modal__code-container">
               {code.map((digit, index) => (
                 <input

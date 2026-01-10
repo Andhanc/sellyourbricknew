@@ -1,14 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-  useSignIn,
-} from '@clerk/clerk-react'
+import { useUser } from '@clerk/clerk-react'
 import {
   FiBell,
   FiSearch,
@@ -18,11 +11,12 @@ import {
   FiUser,
 } from 'react-icons/fi'
 import { IoLocationOutline } from 'react-icons/io5'
-import { FaGoogle, FaFacebook } from 'react-icons/fa'
 import { properties } from '../data/properties'
 import LoginModal from './LoginModal'
 import { getUserData } from '../services/authService'
 import '../pages/MainPage.css'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 const resortLocations = [
   'Costa Adeje, Tenerife',
@@ -41,7 +35,7 @@ const Header = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
-  const { signIn } = useSignIn()
+  const { user, isLoaded: userLoaded } = useUser()
   const [selectedLocation, setSelectedLocation] = useState(resortLocations[0])
   const [isLocationOpen, setIsLocationOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
@@ -50,6 +44,8 @@ const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [userPhoto, setUserPhoto] = useState(null) // Фотография пользователя
+  const [isLoggedIn, setIsLoggedIn] = useState(false) // Статус авторизации
   const locationRef = useRef(null)
   const notificationRef = useRef(null)
   const menuRef = useRef(null)
@@ -87,43 +83,75 @@ const Header = () => {
     }
   }, [isSearchOpen])
 
+  // Загружаем фотографию пользователя при изменении авторизации
+  useEffect(() => {
+    const loadUserPhoto = async () => {
+      // Проверяем авторизацию через Clerk
+      if (userLoaded && user) {
+        // Пользователь авторизован через Clerk
+        const clerkPhoto = user.imageUrl || user.profileImageUrl || null
+        setUserPhoto(clerkPhoto)
+        setIsLoggedIn(true)
+      } else {
+        // Проверяем старую систему авторизации
+        const userData = getUserData()
+        if (userData.isLoggedIn) {
+          setIsLoggedIn(true)
+          
+          // Сначала пытаемся получить фотографию из localStorage
+          let photo = userData.picture || null
+          
+          // Если фотографии нет в localStorage, пытаемся загрузить из БД
+          if (!photo && userData.id) {
+            try {
+              const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+              if (response.ok) {
+                const result = await response.json()
+                if (result.success && result.data && result.data.user_photo) {
+                  // Если user_photo начинается с /uploads, добавляем базовый URL
+                  const photoPath = result.data.user_photo
+                  photo = photoPath.startsWith('http') 
+                    ? photoPath 
+                    : `${API_BASE_URL.replace('/api', '')}${photoPath}`
+                  
+                  // Обновляем localStorage с фотографией
+                  const updatedUserData = {
+                    ...userData,
+                    picture: photo
+                  }
+                  localStorage.setItem('userData', JSON.stringify(updatedUserData))
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ Не удалось загрузить фотографию из БД:', error)
+            }
+          }
+          
+          setUserPhoto(photo)
+        } else {
+          setIsLoggedIn(false)
+          setUserPhoto(null)
+        }
+      }
+    }
+    
+    loadUserPhoto()
+    
+    // Обновляем фотографию при фокусе окна (когда пользователь возвращается на страницу)
+    const handleFocus = () => {
+      loadUserPhoto()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user, userLoaded, location.pathname]) // Обновляем при изменении маршрута
+
   const handleLocationSelect = (location) => {
     setSelectedLocation(location)
     setIsLocationOpen(false)
-  }
-
-  const handleProfileClick = () => {
-    // С Clerk используем UserButton для управления профилем
-    // Если нужно, можно добавить дополнительную логику
-    navigate('/profile')
-  }
-
-  const handleGoogleSignIn = async () => {
-    try {
-      if (signIn) {
-        await signIn.authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl: `${window.location.origin}/profile`,
-          redirectUrlComplete: `${window.location.origin}/profile`,
-        })
-      }
-    } catch (error) {
-      console.error('Ошибка входа через Google:', error)
-    }
-  }
-
-  const handleFacebookSignIn = async () => {
-    try {
-      if (signIn) {
-        await signIn.authenticateWithRedirect({
-          strategy: 'oauth_facebook',
-          redirectUrl: `${window.location.origin}/profile`,
-          redirectUrlComplete: `${window.location.origin}/profile`,
-        })
-      }
-    } catch (error) {
-      console.error('Ошибка входа через Facebook:', error)
-    }
   }
 
   const firstProperty = properties[0] || {
@@ -235,15 +263,6 @@ const Header = () => {
                       <div className="menu-dropdown__column">
                         <h3 className="menu-dropdown__column-title">Навигация по сайту</h3>
                         <div className="menu-dropdown__column-items">
-                          <button 
-                            className="menu-dropdown__item"
-                            onClick={() => {
-                              navigate('/admin')
-                              setIsMenuOpen(false)
-                            }}
-                          >
-                            <span>Админ-панель</span>
-                          </button>
                           <button className="menu-dropdown__item">
                             <span>Недвижимость</span>
                           </button>
@@ -370,39 +389,44 @@ const Header = () => {
                 >
                   {t('auction')}
                 </button>
-                <SignedIn>
-                  <div className="new-header__user-section">
-                    <UserButton afterSignOutUrl="/" />
-                  </div>
-                </SignedIn>
-                <SignedOut>
-                  <div className="new-header__auth-buttons">
-                    <SignInButton mode="modal">
-                      <button className="new-header__signin-btn">
-                        Войти
-                      </button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <button className="new-header__signup-btn">
-                        Регистрация
-                      </button>
-                    </SignUpButton>
-                    <button 
-                      className="new-header__oauth-btn new-header__oauth-btn--google"
-                      onClick={handleGoogleSignIn}
-                      title="Войти через Google"
-                    >
-                      <FaGoogle size={16} />
-                    </button>
-                    <button 
-                      className="new-header__oauth-btn new-header__oauth-btn--facebook"
-                      onClick={handleFacebookSignIn}
-                      title="Войти через Facebook"
-                    >
-                      <FaFacebook size={16} />
-                    </button>
-                  </div>
-                </SignedOut>
+                <button 
+                  className={`new-header__user-btn ${isLoggedIn ? 'new-header__user-btn--avatar' : ''}`}
+                  onClick={() => {
+                    // Проверяем авторизацию через Clerk
+                    if (userLoaded && user) {
+                      navigate('/profile')
+                    } else {
+                      // Проверяем старую систему авторизации
+                      const userData = getUserData()
+                      if (userData.isLoggedIn) {
+                        navigate('/profile')
+                      } else {
+                        setIsLoginModalOpen(true)
+                      }
+                    }
+                  }}
+                  aria-label={t('profile')}
+                >
+                  {isLoggedIn ? (
+                    userPhoto ? (
+                      <img 
+                        src={userPhoto} 
+                        alt="Profile" 
+                        className="new-header__avatar-img"
+                        onError={(e) => {
+                          // Если фото не загрузилось, показываем placeholder
+                          setUserPhoto(null)
+                        }}
+                      />
+                    ) : (
+                      <div className="new-header__avatar-placeholder">
+                        <FiUser size={20} />
+                      </div>
+                    )
+                  ) : (
+                    <FiUser size={20} />
+                  )}
+                </button>
                 <button 
                   type="button" 
                   className="new-header__notification-btn"

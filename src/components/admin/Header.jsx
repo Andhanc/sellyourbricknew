@@ -29,9 +29,6 @@ const Header = ({ title, onLogout, onBack }) => {
         <button className="btn btn-outline">
           <i className="fas fa-download"></i> Экспорт в excel
         </button>
-        <button className="btn btn-primary" onClick={onLogout}>
-          <i className="fas fa-sign-out-alt"></i> Выйти
-        </button>
         <div className="user-avatar">AD</div>
       </div>
     </div>

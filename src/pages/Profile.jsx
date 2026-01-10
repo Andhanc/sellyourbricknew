@@ -138,15 +138,9 @@ const Profile = () => {
           countryFlag: userData.countryFlag || ''
         })
       } else {
-        // Если не авторизован, используем дефолтные данные
-        setProfileData({
-          name: 'Vlad Tichonenko',
-          phone: '+375 33 686-79-11',
-          email: 'vladtichonenko',
-          avatar: null,
-          country: '',
-          countryFlag: ''
-        })
+        // Если не авторизован, перенаправляем на главную страницу
+        console.warn('⚠️ Пользователь не авторизован, перенаправление на главную')
+        navigate('/', { replace: true })
       }
     }
   }, [user, userLoaded, isSignedIn, authLoaded])
@@ -226,9 +220,12 @@ const Profile = () => {
         window.location.reload()
       } else {
         // Используем старую систему выхода
-        logout()
+        await logout()
         navigate('/')
-        window.location.reload()
+        // Небольшая задержка перед перезагрузкой, чтобы данные успели очиститься
+        setTimeout(() => {
+          window.location.reload()
+        }, 100)
       }
     }
   }

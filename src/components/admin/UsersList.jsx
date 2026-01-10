@@ -1,120 +1,90 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiUser, FiUserCheck, FiShield, FiShieldOff, FiX } from 'react-icons/fi';
 import './UsersList.css';
-
-const mockUsers = [
-  {
-    id: 1,
-    firstName: 'Иван',
-    lastName: 'Иванов',
-    avatar: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&q=80',
-    role: 'buyer',
-    moderationStatus: 'approved',
-    isBlocked: false,
-    email: 'ivan@example.com',
-    registrationDate: '2024-01-15',
-    objectsCount: 5
-  },
-  {
-    id: 2,
-    firstName: 'Петр',
-    lastName: 'Петров',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
-    role: 'seller',
-    moderationStatus: 'pending',
-    isBlocked: false,
-    email: 'petr@example.com',
-    registrationDate: '2024-02-20',
-    objectsCount: 12
-  },
-  {
-    id: 3,
-    firstName: 'Анна',
-    lastName: 'Сидорова',
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
-    role: 'buyer',
-    moderationStatus: 'approved',
-    isBlocked: false,
-    email: 'anna@example.com',
-    registrationDate: '2024-03-10',
-    objectsCount: 3
-  },
-  {
-    id: 4,
-    firstName: 'Алексей',
-    lastName: 'Кузнецов',
-    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
-    role: 'seller',
-    moderationStatus: 'approved',
-    isBlocked: true,
-    email: 'alex@example.com',
-    registrationDate: '2024-04-05',
-    objectsCount: 8
-  },
-  {
-    id: 5,
-    firstName: 'Мария',
-    lastName: 'Иванова',
-    avatar: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=200&q=80',
-    role: 'buyer',
-    moderationStatus: 'pending',
-    isBlocked: false,
-    email: 'maria@example.com',
-    registrationDate: '2024-05-12',
-    objectsCount: 0
-  },
-  {
-    id: 6,
-    firstName: 'Дмитрий',
-    lastName: 'Смирнов',
-    avatar: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=200&q=80',
-    role: 'seller',
-    moderationStatus: 'approved',
-    isBlocked: false,
-    email: 'dmitry@example.com',
-    registrationDate: '2024-06-18',
-    objectsCount: 25
-  },
-  {
-    id: 7,
-    firstName: 'Елена',
-    lastName: 'Петрова',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
-    role: 'buyer',
-    moderationStatus: 'approved',
-    isBlocked: false,
-    email: 'elena@example.com',
-    registrationDate: '2024-07-22',
-    objectsCount: 7
-  },
-  {
-    id: 8,
-    firstName: 'Сергей',
-    lastName: 'Волков',
-    avatar: 'https://images.unsplash.com/photo-1544723795-3fb0b90c07c1?auto=format&fit=crop&w=200&q=80',
-    role: 'seller',
-    moderationStatus: 'pending',
-    isBlocked: false,
-    email: 'sergey@example.com',
-    registrationDate: '2024-08-30',
-    objectsCount: 3
-  }
-];
 
 const UsersList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Загружаем реальных пользователей из БД
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${API_BASE_URL}/users?limit=1000`);
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            // Преобразуем данные из БД в формат, который ожидает компонент
+            const transformedUsers = result.data.map(user => {
+              // Формируем URL для аватара, если есть user_photo
+              let avatarUrl = null;
+              if (user.user_photo) {
+                if (user.user_photo.startsWith('http')) {
+                  avatarUrl = user.user_photo;
+                } else {
+                  avatarUrl = `${API_BASE_URL.replace('/api', '')}${user.user_photo}`;
+                }
+              }
+              
+              return {
+                id: user.id,
+                firstName: user.first_name || '',
+                lastName: user.last_name || '',
+                avatar: avatarUrl,
+                role: user.role || 'buyer', // 'buyer' или 'seller'
+                moderationStatus: user.is_verified ? 'approved' : 'pending',
+                isBlocked: false, // Пока нет поля isBlocked в БД, используем false
+                email: user.email || '',
+                phone: user.phone_number || '',
+                registrationDate: user.created_at || new Date().toISOString(),
+                objectsCount: 0 // Пока нет связи с объектами, используем 0
+              };
+            });
+            
+            setUsers(transformedUsers);
+          } else {
+            setError('Не удалось загрузить пользователей');
+          }
+        } else {
+          setError('Ошибка при загрузке пользователей');
+        }
+      } catch (err) {
+        console.error('❌ Ошибка при загрузке пользователей:', err);
+        setError('Произошла ошибка при загрузке пользователей');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
+    if (!searchQuery && roleFilter === 'all' && statusFilter === 'all') {
+      return users;
+    }
+    
     return users.filter(user => {
-      const matchesSearch = 
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      // Поиск по имени, фамилии или email
+      const matchesSearch = !searchQuery || (() => {
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().trim();
+        const email = (user.email || '').toLowerCase();
+        const searchLower = searchQuery.toLowerCase();
+        return fullName.includes(searchLower) || email.includes(searchLower);
+      })();
       
+      // Фильтр по роли
       const matchesRole = roleFilter === 'all' || user.role === roleFilter;
       
+      // Фильтр по статусу
       let matchesStatus = true;
       if (statusFilter === 'blocked') {
         matchesStatus = user.isBlocked === true;
@@ -129,7 +99,10 @@ const UsersList = () => {
   }, [searchQuery, roleFilter, statusFilter, users]);
 
   const handleBlock = (userId) => {
-    if (window.confirm('Вы уверены, что хотите заблокировать этого пользователя?')) {
+    const user = users.find(u => u.id === userId);
+    const action = user?.isBlocked ? 'разблокировать' : 'заблокировать';
+    
+    if (window.confirm(`Вы уверены, что хотите ${action} этого пользователя?`)) {
       setUsers(users.map(user => 
         user.id === userId ? { ...user, isBlocked: !user.isBlocked } : user
       ));
@@ -232,13 +205,23 @@ const UsersList = () => {
         </div>
       </div>
 
-      <div className="users-list">
-        {filteredUsers.length === 0 ? (
-          <div className="users-empty">
-            <p>Пользователи не найдены</p>
-          </div>
-        ) : (
-          filteredUsers.map(user => (
+      {isLoading ? (
+        <div className="users-loading">
+          <p>Загрузка пользователей...</p>
+        </div>
+      ) : error ? (
+        <div className="users-error">
+          <p>Ошибка: {error}</p>
+          <button onClick={() => window.location.reload()}>Попробовать снова</button>
+        </div>
+      ) : (
+        <div className="users-list">
+          {filteredUsers.length === 0 ? (
+            <div className="users-empty">
+              <p>Пользователи не найдены</p>
+            </div>
+          ) : (
+            filteredUsers.map(user => (
             <div 
               key={user.id} 
               className={`user-card ${user.isBlocked ? 'user-card--blocked' : ''}`}
@@ -247,25 +230,36 @@ const UsersList = () => {
                 {user.avatar ? (
                   <img 
                     src={user.avatar} 
-                    alt={`${user.firstName} ${user.lastName}`} 
+                    alt={`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User'} 
                     className="user-card__avatar-image"
+                    onError={(e) => {
+                      // Если фото не загрузилось, показываем стандартный аватар
+                      e.target.style.display = 'none';
+                      const placeholder = e.target.nextSibling;
+                      if (placeholder) {
+                        placeholder.style.display = 'flex';
+                      }
+                    }}
                   />
-                ) : (
-                  <span>
-                    {user.firstName[0]}
-                    {user.lastName[0]}
-                  </span>
-                )}
+                ) : null}
+                <div 
+                  className="user-card__avatar-placeholder"
+                  style={{ display: user.avatar ? 'none' : 'flex' }}
+                >
+                  <FiUser size={20} />
+                </div>
               </div>
               
               <div className="user-card__info">
                 <div className="user-card__name">
-                  <h3>{user.firstName} {user.lastName}</h3>
+                  <h3>
+                    {`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Без имени'}
+                  </h3>
                   {user.isBlocked && (
                     <span className="blocked-badge">Заблокирован</span>
                   )}
                 </div>
-                <p className="user-card__email">{user.email}</p>
+                <p className="user-card__email">{user.email || user.phone || 'Нет контактов'}</p>
                 
                 <div className="user-card__meta">
                   <div className="user-meta-item">
@@ -278,7 +272,17 @@ const UsersList = () => {
                   
                   <div className="user-meta-item">
                     <span className="meta-label">Регистрация:</span>
-                    <span className="meta-value">{new Date(user.registrationDate).toLocaleDateString('ru-RU')}</span>
+                    <span className="meta-value">
+                      {user.registrationDate 
+                        ? (() => {
+                            try {
+                              return new Date(user.registrationDate).toLocaleDateString('ru-RU');
+                            } catch (e) {
+                              return 'Не указано';
+                            }
+                          })()
+                        : 'Не указано'}
+                    </span>
                   </div>
                   
                   <div className="user-meta-item">
@@ -299,21 +303,24 @@ const UsersList = () => {
                   {user.isBlocked ? 'Разблокировать' : 'Заблокировать'}
                 </button>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
-      <div className="users-stats">
-        <div className="stat-item">
-          <span className="stat-label">Всего пользователей:</span>
-          <span className="stat-value">{users.length}</span>
+      {!isLoading && !error && (
+        <div className="users-stats">
+          <div className="stat-item">
+            <span className="stat-label">Всего пользователей:</span>
+            <span className="stat-value">{users.length}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Найдено:</span>
+            <span className="stat-value">{filteredUsers.length}</span>
+          </div>
         </div>
-        <div className="stat-item">
-          <span className="stat-label">Найдено:</span>
-          <span className="stat-value">{filteredUsers.length}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

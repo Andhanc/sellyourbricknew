@@ -8,6 +8,8 @@
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
   z-index: 100;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
@@ -31,6 +33,8 @@
 
 .sidebar-menu {
   padding: 1.5rem 0;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .menu-item {
@@ -73,6 +77,36 @@
   width: 24px;
   text-align: center;
   flex-shrink: 0;
+}
+
+.sidebar-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.menu-item--logout {
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent !important;
+  border-left: none !important;
+}
+
+.menu-item--logout:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5;
+}
+
+.menu-item--logout.active {
+  background: transparent !important;
+  border-left: none !important;
+}
+
+.menu-item--logout.active::before {
+  display: none;
 }
 
 @media (max-width: 992px) {

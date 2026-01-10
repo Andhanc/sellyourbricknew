@@ -42,6 +42,18 @@ const LoginModal = ({ isOpen, onClose }) => {
     setIsLoading(true)
     
     if (isLogin) {
+      // Проверка для администратора
+      if (formData.email.toLowerCase() === 'admin' && formData.password === 'admin') {
+        // Сохраняем информацию о входе администратора
+        localStorage.setItem('userRole', 'admin')
+        localStorage.setItem('isAdminLoggedIn', 'true')
+        localStorage.setItem('isLoggedIn', 'true')
+        setIsLoading(false)
+        onClose()
+        navigate('/admin')
+        return
+      }
+      
       // Проверка для владельца недвижимости
       if (formData.email.toLowerCase() === 'owner' && formData.password === '1234') {
         // Сохраняем информацию о входе владельца
@@ -380,7 +392,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               value={formData.email}
               onChange={handleInputChange}
               className="login-modal__input"
-              placeholder={isLogin ? "Введите email или логин (owner/client)" : "Введите ваш email"}
+              placeholder={isLogin ? "Введите email или логин (admin/owner/client)" : "Введите ваш email"}
               required
             />
           </div>

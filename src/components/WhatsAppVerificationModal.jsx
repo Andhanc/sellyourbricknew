@@ -8,6 +8,7 @@ import './WhatsAppVerificationModal.css'
 
 const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) => {
   const [phone, setPhone] = useState(phoneNumber || '')
+  const [phoneDigits, setPhoneDigits] = useState('') // Сохраняем номер в цифровом формате
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -18,6 +19,9 @@ const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) 
   useEffect(() => {
     if (phoneNumber) {
       setPhone(phoneNumber)
+      // Сохраняем номер в цифровом формате
+      const digits = phoneNumber.replace(/\D/g, '')
+      setPhoneDigits(digits)
       setStep('code')
       handleSendCode()
     }
@@ -33,6 +37,9 @@ const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) 
   const handlePhoneChange = (e) => {
     const value = e.target.value
     setPhone(value)
+    // Сохраняем номер в цифровом формате (убираем все кроме цифр)
+    const digits = value.replace(/\D/g, '')
+    setPhoneDigits(digits)
     setError('')
   }
 
@@ -48,11 +55,36 @@ const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) 
     setError('')
 
     try {
-      // Форматируем номер (убираем все нецифровые символы, кроме +)
-      const phoneDigits = phone.replace(/[^\d+]/g, '').replace(/^\+/, '')
-      const result = await sendWhatsAppVerificationCode(phoneDigits)
+      // Используем сохраненный номер в цифровом формате или форматируем текущий
+      const digitsToSend = phoneDigits || phone.replace(/\D/g, '')
+      if (!digitsToSend) {
+        setError('Введите номер телефона')
+        setIsLoading(false)
+        return
+      }
+      
+      // Проверяем, существует ли пользователь в БД (для быстрого входа)
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+        const checkResponse = await fetch(`${API_BASE_URL}/users/phone/${digitsToSend}`)
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json()
+          if (checkData.success && checkData.data) {
+            // Пользователь найден - предлагаем быстрый вход
+            const userFromDB = checkData.data
+            console.log('✅ Пользователь найден в БД. Можно использовать быстрый вход.')
+            // Продолжаем обычный процесс отправки кода, но пользователь уже существует
+          }
+        }
+      } catch (checkError) {
+        console.log('Проверка пользователя не удалась, продолжаем обычный процесс:', checkError.message)
+      }
+      
+      const result = await sendWhatsAppVerificationCode(digitsToSend)
 
       if (result.success) {
+        // Сохраняем номер в цифровом формате для проверки кода
+        setPhoneDigits(digitsToSend)
         setStep('code')
         setCountdown(60) // 60 секунд до возможности повторной отправки
         // Фокусируемся на первом поле ввода кода
@@ -137,9 +169,14 @@ const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) 
     setError('')
 
     try {
-      // Форматируем номер (убираем все нецифровые символы, кроме +)
-      const phoneDigits = phone.replace(/[^\d+]/g, '').replace(/^\+/, '')
-      const result = await verifyWhatsAppCode(phoneDigits, codeString)
+      // Используем сохраненный номер в цифровом формате или форматируем текущий
+      const digitsToVerify = phoneDigits || phone.replace(/\D/g, '')
+      if (!digitsToVerify) {
+        setError('Номер телефона не найден. Запросите новый код.')
+        setIsLoading(false)
+        return
+      }
+      const result = await verifyWhatsAppCode(digitsToVerify, codeString)
 
       if (result.success) {
         // Успешная авторизация

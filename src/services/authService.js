@@ -45,6 +45,10 @@ export const saveUserData = (userData, loginMethod = 'email') => {
   localStorage.setItem('isLoggedIn', 'true')
   localStorage.setItem('loginMethod', loginMethod)
   
+  // Сохраняем весь объект userData для удобства доступа
+  localStorage.setItem('userData', JSON.stringify(userData))
+  
+  // Также сохраняем отдельные поля для обратной совместимости
   if (userData.email) {
     localStorage.setItem('userEmail', userData.email)
   }
@@ -54,7 +58,7 @@ export const saveUserData = (userData, loginMethod = 'email') => {
   }
   
   if (userData.id) {
-    localStorage.setItem('userId', userData.id)
+    localStorage.setItem('userId', String(userData.id)) // Преобразуем в строку для совместимости
   }
   
   if (userData.picture) {
@@ -90,8 +94,58 @@ export const saveUserData = (userData, loginMethod = 'email') => {
  * Получает данные пользователя из localStorage
  */
 export const getUserData = () => {
+  // ВАЖНО: Проверяем isLoggedIn ПЕРВЫМ делом
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  
+  // Если пользователь не авторизован, возвращаем пустые данные
+  if (!isLoggedIn) {
+    return {
+      isLoggedIn: false,
+      loginMethod: '',
+      email: '',
+      name: '',
+      id: '',
+      picture: '',
+      role: 'client',
+      phone: '',
+      phoneFormatted: '',
+      country: '',
+      countryCode: '',
+      countryFlag: ''
+    }
+  }
+  
+  // Пользователь авторизован - загружаем данные
+  // Сначала пытаемся получить полный объект userData
+  const savedUserData = localStorage.getItem('userData')
+  if (savedUserData) {
+    try {
+      const parsed = JSON.parse(savedUserData)
+      return {
+        isLoggedIn: true,
+        loginMethod: localStorage.getItem('loginMethod') || parsed.loginMethod || 'email',
+        ...parsed, // Все поля из сохраненного объекта
+        // Переопределяем для совместимости, если они есть в localStorage отдельно
+        email: parsed.email || localStorage.getItem('userEmail') || '',
+        name: parsed.name || localStorage.getItem('userName') || '',
+        id: parsed.id || localStorage.getItem('userId') || '',
+        picture: parsed.picture || localStorage.getItem('userPicture') || '',
+        role: parsed.role || localStorage.getItem('userRole') || 'client',
+        phone: parsed.phone || localStorage.getItem('userPhone') || '',
+        phoneFormatted: parsed.phoneFormatted || localStorage.getItem('userPhoneFormatted') || '',
+        country: parsed.country || localStorage.getItem('userCountry') || '',
+        countryCode: parsed.countryCode || localStorage.getItem('userCountryCode') || '',
+        countryFlag: parsed.countryFlag || localStorage.getItem('userCountryFlag') || ''
+      }
+    } catch (e) {
+      console.warn('Ошибка при парсинге userData из localStorage:', e)
+      // Продолжаем с fallback
+    }
+  }
+  
+  // Fallback: возвращаем данные из отдельных полей (обратная совместимость)
   return {
-    isLoggedIn: localStorage.getItem('isLoggedIn') === 'true',
+    isLoggedIn: true,
     loginMethod: localStorage.getItem('loginMethod') || 'email',
     email: localStorage.getItem('userEmail') || '',
     name: localStorage.getItem('userName') || '',
@@ -110,19 +164,61 @@ export const getUserData = () => {
  * Очищает данные пользователя из localStorage
  */
 export const clearUserData = () => {
-  localStorage.removeItem('isLoggedIn')
-  localStorage.removeItem('loginMethod')
-  localStorage.removeItem('userEmail')
-  localStorage.removeItem('userName')
-  localStorage.removeItem('userId')
-  localStorage.removeItem('userPicture')
-  localStorage.removeItem('userRole')
-  localStorage.removeItem('isOwnerLoggedIn')
-  localStorage.removeItem('userPhone')
-  localStorage.removeItem('userPhoneFormatted')
-  localStorage.removeItem('userCountry')
-  localStorage.removeItem('userCountryCode')
-  localStorage.removeItem('userCountryFlag')
+  // Удаляем основной объект userData (если был сохранен)
+  localStorage.removeItem('userData')
+  
+  // Удаляем все отдельные поля (список всех возможных ключей)
+  const keysToRemove = [
+    'isLoggedIn',
+    'loginMethod',
+    'userEmail',
+    'userName',
+    'userId',
+    'userPicture',
+    'userRole',
+    'isOwnerLoggedIn',
+    'userPhone',
+    'userPhoneFormatted',
+    'userCountry',
+    'userCountryCode',
+    'userCountryFlag',
+    'userPassword', // Для email регистрации
+    // Коды верификации (для безопасности)
+    'whatsappCodes',
+    'emailCodes'
+  ]
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key)
+  })
+  
+  // Дополнительная проверка: удаляем все ключи, начинающиеся с 'user'
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('user') || key === 'isLoggedIn' || key === 'loginMethod' || key.includes('Code')) {
+      localStorage.removeItem(key)
+    }
+  })
+  
+  // Проверяем, что isLoggedIn действительно удален
+  const stillLoggedIn = localStorage.getItem('isLoggedIn')
+  if (stillLoggedIn === 'true') {
+    console.warn('⚠️ isLoggedIn все еще установлен! Принудительно удаляем...')
+    localStorage.removeItem('isLoggedIn')
+  }
+  
+  console.log('✅ Все данные пользователя очищены из localStorage')
+  
+  // Дополнительная проверка для отладки
+  if (import.meta.env.DEV) {
+    const remainingData = Object.keys(localStorage).filter(key => 
+      key.startsWith('user') || key === 'isLoggedIn' || key === 'loginMethod'
+    )
+    if (remainingData.length > 0) {
+      console.warn('⚠️ Обнаружены оставшиеся данные после очистки:', remainingData)
+    } else {
+      console.log('✅ Проверка: все данные пользователя действительно удалены')
+    }
+  }
 }
 
 /**
@@ -147,29 +243,43 @@ const saveVerificationCode = (phone, code) => {
 }
 
 /**
- * Проверяет код верификации
+ * Проверяет код верификации (без удаления из localStorage)
  */
-const verifyCode = (phone, code) => {
+const verifyCode = (phone, code, removeOnSuccess = false) => {
   const codes = JSON.parse(localStorage.getItem('whatsappCodes') || '{}')
   const codeData = codes[phone]
   
+  // Отладка в режиме разработки
+  if (import.meta.env.DEV) {
+    console.log('🔍 Проверка кода WhatsApp:', {
+      phone,
+      code,
+      savedCodes: Object.keys(codes),
+      codeData: codeData ? { code: codeData.code, expiresAt: new Date(codeData.expiresAt).toLocaleString() } : null
+    })
+  }
+  
   if (!codeData) {
-    return { valid: false, error: 'Код не найден' }
+    console.warn('⚠️ Код не найден для номера:', phone, 'Доступные номера:', Object.keys(codes))
+    return { valid: false, error: 'Код не найден. Возможно, вы ввели код для другого номера.' }
   }
   
   if (Date.now() > codeData.expiresAt) {
     delete codes[phone]
     localStorage.setItem('whatsappCodes', JSON.stringify(codes))
-    return { valid: false, error: 'Код истек' }
+    return { valid: false, error: 'Код истек. Запросите новый код.' }
   }
   
   if (codeData.code !== code) {
+    console.warn('⚠️ Неверный код:', { введен: code, ожидается: codeData.code })
     return { valid: false, error: 'Неверный код' }
   }
   
-  // Код верный, удаляем его
-  delete codes[phone]
-  localStorage.setItem('whatsappCodes', JSON.stringify(codes))
+  // Код верный, удаляем его только если требуется
+  if (removeOnSuccess) {
+    delete codes[phone]
+    localStorage.setItem('whatsappCodes', JSON.stringify(codes))
+  }
   
   return { valid: true }
 }
@@ -454,12 +564,53 @@ export const validatePhoneNumber = (phone) => {
 }
 
 /**
+ * Проверяет, существует ли пользователь с таким номером в БД
+ */
+const checkUserExists = async (phone) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/phone/${phone}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      return data.success && data.data ? data.data : null
+    }
+    return null
+  } catch (error) {
+    console.error('Ошибка при проверке пользователя:', error)
+    return null
+  }
+}
+
+/**
  * Отправляет код верификации через WhatsApp
  */
 export const sendWhatsAppVerificationCode = async (phone) => {
   try {
     const formattedPhone = formatPhoneNumber(phone)
+    
+    // Сначала проверяем, существует ли пользователь в БД
+    const existingUser = await checkUserExists(formattedPhone)
+    
+    if (existingUser && import.meta.env.DEV) {
+      console.log('✅ Пользователь найден в БД. Можно использовать быстрый вход.')
+    }
+    
     const code = generateVerificationCode()
+    
+    // Отладка в режиме разработки
+    if (import.meta.env.DEV) {
+      console.log('📱 Отправка кода WhatsApp:', {
+        исходныйНомер: phone,
+        отформатированныйНомер: formattedPhone,
+        сгенерированныйКод: code,
+        пользовательСуществует: !!existingUser
+      })
+    }
     
     // Сохраняем код
     saveVerificationCode(formattedPhone, code)
@@ -521,7 +672,9 @@ export const sendWhatsAppVerificationCode = async (phone) => {
 export const verifyWhatsAppCode = async (phone, code) => {
   try {
     const formattedPhone = formatPhoneNumber(phone)
-    const verification = verifyCode(formattedPhone, code)
+    
+    // Проверяем код (пока не удаляем)
+    const verification = verifyCode(formattedPhone, code, false)
     
     if (!verification.valid) {
       return {
@@ -530,8 +683,34 @@ export const verifyWhatsAppCode = async (phone, code) => {
       }
     }
     
-    // Попытка отправить на бэкенд
+    // Отправляем данные на backend для сохранения в БД
     try {
+      const countryInfo = getCountryByPhoneCode(formattedPhone)
+      const formatPhoneForDisplay = (phone) => {
+        const digits = phone.replace(/\D/g, '')
+        if (digits.startsWith('375') && digits.length === 12) {
+          return `+${digits.substring(0, 3)} (${digits.substring(3, 5)}) ${digits.substring(5, 8)}-${digits.substring(8, 10)}-${digits.substring(10)}`
+        } else if (digits.startsWith('7') && digits.length === 11) {
+          return `+${digits.substring(0, 1)} (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7, 9)}-${digits.substring(9)}`
+        } else if (digits.startsWith('1') && digits.length === 11) {
+          return `+${digits.substring(0, 1)} (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`
+        }
+        return `+${digits}`
+      }
+
+      // Получаем информацию о пользователе из WhatsApp
+      let whatsappInfo = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+        whatsappInfo = await getWhatsAppUserInfo(formattedPhone)
+        if (whatsappInfo && whatsappInfo.name) {
+          console.log(`✅ Имя получено с попытки ${attempt + 1}:`, whatsappInfo.name)
+          break
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/whatsapp`, {
         method: 'POST',
         headers: {
@@ -539,84 +718,92 @@ export const verifyWhatsAppCode = async (phone, code) => {
         },
         body: JSON.stringify({
           phone: formattedPhone,
-          code
+          code,
+          name: whatsappInfo?.name || `Пользователь ${formattedPhone.substring(formattedPhone.length - 4)}`,
+          phoneFormatted: formatPhoneForDisplay(formattedPhone),
+          countryFlag: countryInfo.flag
         })
       })
       
       if (response.ok) {
         const data = await response.json()
-        saveUserData(data.user, 'whatsapp')
+        if (data.success && data.user) {
+          // Объединяем данные от backend с данными WhatsApp
+          const userData = {
+            ...data.user,
+            phoneFormatted: formatPhoneForDisplay(formattedPhone),
+            country: countryInfo.name,
+            countryCode: countryInfo.code,
+            countryFlag: countryInfo.flag,
+            picture: whatsappInfo?.photo || null
+          }
+          // Удаляем код из localStorage только после успешной авторизации
+          verifyCode(formattedPhone, code, true)
+          saveUserData(userData, 'whatsapp')
+          return {
+            success: true,
+            user: userData
+          }
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Ошибка при сохранении в БД:', errorData.error || 'Неизвестная ошибка')
+        // Не удаляем код, чтобы можно было попробовать снова
         return {
-          success: true,
-          user: data.user
+          success: false,
+          error: errorData.error || 'Ошибка при сохранении данных'
         }
       }
     } catch (backendError) {
-      console.log('Бэкенд недоступен, используем локальную обработку:', backendError.message)
-    }
-    
-    // Определяем страну по коду номера
-    const countryInfo = getCountryByPhoneCode(formattedPhone)
-    
-    // Форматируем номер для отображения
-    const formatPhoneForDisplay = (phone) => {
-      const digits = phone.replace(/\D/g, '')
-      if (digits.startsWith('375') && digits.length === 12) {
-        // Беларусь: +375 (29) 180-33-72
-        return `+${digits.substring(0, 3)} (${digits.substring(3, 5)}) ${digits.substring(5, 8)}-${digits.substring(8, 10)}-${digits.substring(10)}`
-      } else if (digits.startsWith('7') && digits.length === 11) {
-        // Россия: +7 (999) 123-45-67
-        return `+${digits.substring(0, 1)} (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7, 9)}-${digits.substring(9)}`
-      } else if (digits.startsWith('1') && digits.length === 11) {
-        // США/Канада: +1 (555) 123-4567
-        return `+${digits.substring(0, 1)} (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`
+      console.error('❌ Backend недоступен, данные НЕ сохранены в БД:', backendError.message)
+      console.warn('⚠️ Данные сохранены только в localStorage. Запустите backend сервер для полной функциональности.')
+      
+      // Fallback: создаем пользователя локально (только если backend недоступен)
+      const countryInfo = getCountryByPhoneCode(formattedPhone)
+      const formatPhoneForDisplay = (phone) => {
+        const digits = phone.replace(/\D/g, '')
+        if (digits.startsWith('375') && digits.length === 12) {
+          return `+${digits.substring(0, 3)} (${digits.substring(3, 5)}) ${digits.substring(5, 8)}-${digits.substring(8, 10)}-${digits.substring(10)}`
+        } else if (digits.startsWith('7') && digits.length === 11) {
+          return `+${digits.substring(0, 1)} (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7, 9)}-${digits.substring(9)}`
+        } else if (digits.startsWith('1') && digits.length === 11) {
+          return `+${digits.substring(0, 1)} (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`
+        }
+        return `+${digits}`
       }
-      // Общий формат
-      return `+${digits}`
-    }
-    
-    // Получаем информацию о пользователе из WhatsApp
-    // Делаем небольшую задержку, чтобы чат успел создаться после отправки кода
-    console.log('Начинаем получение информации о пользователе из WhatsApp...')
-    console.log('Номер телефона:', formattedPhone)
-    
-    // Пробуем получить информацию несколько раз с задержками
-    let whatsappInfo = null
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) {
-        await new Promise(resolve => setTimeout(resolve, 2000)) // Ждем 2 секунды между попытками
+      
+      let whatsappInfo = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+        whatsappInfo = await getWhatsAppUserInfo(formattedPhone)
+        if (whatsappInfo && whatsappInfo.name) {
+          break
+        }
       }
-      whatsappInfo = await getWhatsAppUserInfo(formattedPhone)
-      if (whatsappInfo && whatsappInfo.name) {
-        console.log(`✅ Имя получено с попытки ${attempt + 1}:`, whatsappInfo.name)
-        break
+      
+      const userData = {
+        phone: formattedPhone,
+        phoneFormatted: formatPhoneForDisplay(formattedPhone),
+        name: whatsappInfo?.name || `Пользователь ${formattedPhone.substring(formattedPhone.length - 4)}`,
+        id: `whatsapp_${formattedPhone}`,
+        role: 'client',
+        country: countryInfo.name,
+        countryCode: countryInfo.code,
+        countryFlag: countryInfo.flag,
+        picture: whatsappInfo?.photo || null,
+        loginMethod: 'whatsapp'
       }
-      console.log(`Попытка ${attempt + 1} не удалась, пробуем еще раз...`)
-    }
-    
-    console.log('Итоговая информация из WhatsApp:', whatsappInfo)
-    
-    // Fallback: создаем пользователя локально
-    const userData = {
-      phone: formattedPhone,
-      phoneFormatted: formatPhoneForDisplay(formattedPhone),
-      name: whatsappInfo?.name || `Пользователь ${formattedPhone.substring(formattedPhone.length - 4)}`,
-      id: `whatsapp_${formattedPhone}`,
-      role: 'client',
-      country: countryInfo.name,
-      countryCode: countryInfo.code,
-      countryFlag: countryInfo.flag,
-      picture: whatsappInfo?.photo || null,
-      loginMethod: 'whatsapp'
-    }
-    
-    console.log('Созданные данные пользователя:', userData)
-    
-    saveUserData(userData, 'whatsapp')
-    
-    return {
-      success: true,
-      user: userData
+      
+      // Удаляем код из localStorage после успешной авторизации
+      verifyCode(formattedPhone, code, true)
+      saveUserData(userData, 'whatsapp')
+      
+      return {
+        success: true,
+        user: userData
+      }
     }
   } catch (error) {
     console.error('Ошибка верификации кода:', error)
@@ -784,8 +971,35 @@ export const isAuthenticated = () => {
 /**
  * Выход пользователя
  */
-export const logout = () => {
+export const logout = async () => {
+  // Получаем ID пользователя перед очисткой
+  const userData = getUserData()
+  const userId = userData.id
+  
+  // Обновляем статус в БД (is_online = 0) перед выходом
+  if (userId) {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+      await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_online: 0 })
+      }).catch(error => {
+        console.warn('⚠️ Не удалось обновить статус в БД при выходе:', error.message)
+        // Продолжаем выход даже если не удалось обновить БД
+      })
+    } catch (error) {
+      console.warn('⚠️ Ошибка при обновлении статуса в БД:', error.message)
+      // Продолжаем выход даже если произошла ошибка
+    }
+  }
+  
+  // Очищаем все данные из localStorage
   clearUserData()
+  
+  console.log('✅ Выход выполнен успешно')
 }
 
 /**
@@ -930,13 +1144,17 @@ export const sendEmailVerificationCode = async (email) => {
       })
       
       if (response.ok) {
-        return {
-          success: true,
-          message: 'Код отправлен на email'
-        }
+        const data = await response.json().catch(() => ({}))
+        console.log('✅ Backend подтвердил отправку кода:', data.message || 'Код отправлен')
+        // Backend подтвердил отправку, но фактическая отправка идет через EmailJS ниже
+        // Продолжаем выполнение, чтобы отправить через EmailJS
+      } else {
+        // Если backend вернул ошибку, логируем и продолжаем с EmailJS
+        const errorData = await response.json().catch(() => ({}))
+        console.warn('⚠️ Backend вернул ошибку, пробуем EmailJS:', errorData.error || 'Unknown error')
       }
     } catch (backendError) {
-      console.log('Backend недоступен, пробуем EmailJS:', backendError.message)
+      console.log('ℹ️ Backend недоступен или ошибка, пробуем EmailJS:', backendError.message)
     }
     
     // Отправка через EmailJS
@@ -985,33 +1203,71 @@ export const sendEmailVerificationCode = async (email) => {
           }
         } else {
           console.error('❌ EmailJS вернул статус:', result.status)
+          // В режиме разработки показываем код для тестирования, даже если EmailJS вернул ошибку
+          if (import.meta.env.DEV) {
+            console.log('🔐 В режиме разработки используйте код:', code)
+            return {
+              success: true,
+              message: `EmailJS вернул статус ${result.status}. В режиме разработки используйте код:`,
+              code: code,
+              devMode: true,
+              warning: `EmailJS вернул статус ${result.status}. Проверьте настройки EmailJS.`
+            }
+          }
           return {
             success: false,
             error: 'Не удалось отправить код. Попробуйте позже.'
           }
         }
       } catch (emailjsError) {
-        console.error('Ошибка отправки через EmailJS:', emailjsError)
+        console.error('❌ Ошибка отправки через EmailJS:', emailjsError)
         
         // Проверяем тип ошибки и выводим понятное сообщение
+        let errorMessage = 'Не удалось отправить код на email'
+        
         if (emailjsError.status === 400) {
-          const errorText = emailjsError.text || ''
-          if (errorText.includes('template ID not found')) {
+          const errorText = emailjsError.text || emailjsError.message || ''
+          console.error('❌ EmailJS вернул ошибку 400:', errorText)
+          
+          if (errorText.includes('template') || errorText.includes('Template')) {
             console.error('❌ Template ID не найден. Проверьте VITE_EMAILJS_TEMPLATE_ID в .env.local')
             console.error('   Убедитесь, что шаблон существует в EmailJS Dashboard')
-          } else if (errorText.includes('service ID')) {
+            errorMessage = 'Неверный Template ID. Проверьте VITE_EMAILJS_TEMPLATE_ID в .env.local'
+          } else if (errorText.includes('service') || errorText.includes('Service')) {
             console.error('❌ Service ID не найден. Проверьте VITE_EMAILJS_SERVICE_ID в .env.local')
-          } else if (errorText.includes('Public Key')) {
+            errorMessage = 'Неверный Service ID. Проверьте VITE_EMAILJS_SERVICE_ID в .env.local'
+          } else if (errorText.includes('Public Key') || errorText.includes('public key')) {
             console.error('❌ Public Key неверный. Проверьте VITE_EMAILJS_PUBLIC_KEY в .env.local')
+            errorMessage = 'Неверный Public Key. Проверьте VITE_EMAILJS_PUBLIC_KEY в .env.local'
           } else {
             console.error('❌ Ошибка EmailJS:', errorText)
+            errorMessage = `Ошибка EmailJS: ${errorText.substring(0, 100)}`
+          }
+        } else if (emailjsError.status === 401 || emailjsError.status === 403) {
+          console.error('❌ Ошибка авторизации EmailJS (401/403). Проверьте Public Key')
+          errorMessage = 'Ошибка авторизации EmailJS. Проверьте VITE_EMAILJS_PUBLIC_KEY в .env.local'
+        } else {
+          console.error('❌ Неизвестная ошибка EmailJS:', emailjsError)
+          errorMessage = `Ошибка отправки: ${emailjsError.message || 'Неизвестная ошибка'}`
+        }
+        
+        // В режиме разработки показываем код в консоли и возвращаем его для UI
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ В режиме разработки код доступен в консоли:')
+          console.log(`🔐 Код верификации для ${emailLower}: ${code}`)
+          return {
+            success: true,
+            message: `Код не отправлен через EmailJS (ошибка выше). В режиме разработки используйте код: ${code}`,
+            code: code,
+            devMode: true,
+            error: errorMessage
           }
         }
         
-        // Возвращаем ошибку вместо fallback
+        // В production возвращаем ошибку
         return {
           success: false,
-          error: 'Не удалось отправить код на email. Проверьте настройки EmailJS в .env.local'
+          error: errorMessage
         }
       }
     }
@@ -1023,10 +1279,15 @@ export const sendEmailVerificationCode = async (email) => {
       console.warn('   VITE_EMAILJS_TEMPLATE_ID=template_xxxxxxx')
       console.warn('   VITE_EMAILJS_PUBLIC_KEY=your_public_key')
       console.log(`🔐 Код верификации для ${emailLower}: ${code}`)
+      console.log('📧 В режиме разработки код отображается в консоли и будет показан в UI')
       
+      // В режиме разработки возвращаем успех с кодом, чтобы можно было протестировать
       return {
-        success: false,
-        error: 'EmailJS не настроен. Настройте переменные окружения в .env.local'
+        success: true,
+        message: `EmailJS не настроен. В режиме разработки используйте код ниже:`,
+        code: import.meta.env.DEV ? code : undefined,
+        devMode: true,
+        warning: 'Для отправки реальных email настройте EmailJS в .env.local'
       }
     }
     
@@ -1070,7 +1331,7 @@ export const verifyEmailCode = async (email, code, password, name) => {
     const registrationPassword = verification.registrationData?.password || password
     const registrationName = verification.registrationData?.name || name
     
-    // Попытка отправить на backend
+    // Отправляем данные на backend для сохранения в БД
     try {
       const response = await fetch(`${API_BASE_URL}/auth/email/register`, {
         method: 'POST',
@@ -1087,14 +1348,20 @@ export const verifyEmailCode = async (email, code, password, name) => {
       
       if (response.ok) {
         const data = await response.json()
-        saveUserData(data.user, 'email')
-        return {
-          success: true,
-          user: data.user
+        if (data.success && data.user) {
+          saveUserData(data.user, 'email')
+          return {
+            success: true,
+            user: data.user
+          }
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Ошибка при сохранении в БД:', errorData.error || 'Неизвестная ошибка')
       }
     } catch (backendError) {
-      console.log('Backend недоступен, используем локальную обработку:', backendError.message)
+      console.error('❌ Backend недоступен, данные НЕ сохранены в БД:', backendError.message)
+      console.warn('⚠️ Данные сохранены только в localStorage. Запустите backend сервер для полной функциональности.')
     }
     
     // Fallback: создаем пользователя локально
@@ -1180,6 +1447,83 @@ export const registerWithEmail = async (email, password, name) => {
     return {
       success: false,
       error: 'Произошла ошибка при регистрации'
+    }
+  }
+}
+
+/**
+ * Проверяет код подтверждения email при обновлении профиля
+ */
+export const verifyEmailForProfileUpdate = async (userId, email, code) => {
+  try {
+    const emailLower = email.toLowerCase()
+    
+    // Проверяем код локально
+    const verification = verifyEmailCodeLocal(emailLower, code)
+    
+    if (!verification.valid) {
+      return {
+        success: false,
+        error: verification.error || 'Неверный код'
+      }
+    }
+    
+    // Отправляем данные на backend для обновления профиля
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: emailLower,
+          code
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          // Обновляем данные в localStorage
+          const userData = getUserData()
+          const updatedUserData = {
+            ...userData,
+            ...data.data,
+            email: data.data.email || emailLower
+          }
+          saveUserData(updatedUserData, userData.loginMethod || 'whatsapp')
+          
+          return {
+            success: true,
+            message: 'Email успешно подтвержден',
+            user: data.data
+          }
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Ошибка при обновлении email:', errorData.error || 'Неизвестная ошибка')
+        return {
+          success: false,
+          error: errorData.error || 'Не удалось подтвердить email'
+        }
+      }
+    } catch (backendError) {
+      console.error('❌ Backend недоступен:', backendError.message)
+      return {
+        success: false,
+        error: 'Не удалось подключиться к серверу. Попробуйте позже.'
+      }
+    }
+    
+    return {
+      success: false,
+      error: 'Не удалось подтвердить email'
+    }
+  } catch (error) {
+    console.error('Ошибка верификации email:', error)
+    return {
+      success: false,
+      error: 'Не удалось проверить код. Попробуйте позже.'
     }
   }
 }

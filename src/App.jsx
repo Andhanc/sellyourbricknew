@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import Home from './pages/Home'
 import MainPage from './pages/MainPage'
 import PropertyDetailPage from './pages/PropertyDetailPage'
@@ -18,9 +19,32 @@ import ClerkAuthHandler from './components/ClerkAuthHandler'
 import ClerkDebug from './components/ClerkDebug'
 import './App.css'
 
+// Компонент для очистки сессии администратора при переходе с админ-панели
+function AdminSessionCleaner() {
+  const location = useLocation()
+
+  useEffect(() => {
+    // Если мы не на странице админ-панели и есть активная сессия администратора, очищаем её
+    if (location.pathname !== '/admin') {
+      const userRole = localStorage.getItem('userRole')
+      const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true'
+      
+      if (isAdminLoggedIn && userRole === 'admin') {
+        console.log('🔄 Автоматическая очистка сессии администратора при переходе на:', location.pathname)
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('isAdminLoggedIn')
+        localStorage.removeItem('isLoggedIn')
+      }
+    }
+  }, [location.pathname])
+
+  return null
+}
+
 function App() {
   return (
     <Router>
+      <AdminSessionCleaner />
       <ClerkDebug />
       <ClerkAuthSync />
       <ClerkAuthHandler />

@@ -162,6 +162,32 @@
   outline: 2px solid #111827;
 }
 
+.header__action-btn--avatar {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  position: relative;
+}
+
+.header__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.header__avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0ABAB5 0%, #089a95 100%);
+  color: #ffffff;
+  border-radius: 50%;
+}
+
 .header__action-indicator {
   position: absolute;
   top: 8px;
@@ -3718,6 +3744,35 @@
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
+  }
+
+  .new-header__user-btn--avatar {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: transparent;
+    position: relative;
+  }
+
+  .new-header__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+  }
+
+  .new-header__avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0ABAB5 0%, #089a95 100%);
+    color: #ffffff;
+    border-radius: 50%;
   }
 
   .new-header__notification-btn {

@@ -1,8 +1,8 @@
 import React from 'react';
-import { FaChartBar, FaUsers, FaShieldAlt, FaComment, FaBuilding } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaShieldAlt, FaComment, FaBuilding, FaSignOutAlt } from 'react-icons/fa';
 import './Sidebar.css';
 
-const Sidebar = ({ activeSection, onSectionChange }) => {
+const Sidebar = ({ activeSection, onSectionChange, onLogout }) => {
   const menuItems = [
     { id: 'statistics', icon: FaChartBar, label: 'Статистика' },
     { id: 'users', icon: FaUsers, label: 'Пользователи' },
@@ -30,6 +30,12 @@ const Sidebar = ({ activeSection, onSectionChange }) => {
             </div>
           );
         })}
+      </div>
+      <div className="sidebar-footer">
+        <button className="menu-item menu-item--logout" onClick={onLogout}>
+          <FaSignOutAlt size={20} />
+          <span>Выйти</span>
+        </button>
       </div>
     </div>
   );
