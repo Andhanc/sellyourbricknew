@@ -16,7 +16,6 @@ import AdminPanelPage from './admin/AdminPanelPage'
 import Footer from './components/Footer'
 import ClerkAuthSync from './components/ClerkAuthSync'
 import ClerkAuthHandler from './components/ClerkAuthHandler'
-import ClerkDebug from './components/ClerkDebug'
 import './App.css'
 
 // Компонент для очистки сессии администратора при переходе с админ-панели
@@ -45,7 +44,6 @@ function App() {
   return (
     <Router>
       <AdminSessionCleaner />
-      <ClerkDebug />
       <ClerkAuthSync />
       <ClerkAuthHandler />
       <div className="app-layout">

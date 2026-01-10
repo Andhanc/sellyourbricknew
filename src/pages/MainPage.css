@@ -164,9 +164,16 @@
 
 .header__action-btn--avatar {
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 50%;
   position: relative;
+}
+
+.header__avatar-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
 }
 
 .header__avatar-img {
@@ -186,6 +193,18 @@
   background: linear-gradient(135deg, #0ABAB5 0%, #089a95 100%);
   color: #ffffff;
   border-radius: 50%;
+}
+
+.header__profile-indicator {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .header__action-indicator {
@@ -3744,6 +3763,7 @@
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
+    position: relative;
   }
 
   .new-header__user-btn--avatar {
@@ -3751,9 +3771,16 @@
     height: 40px;
     padding: 0;
     border-radius: 50%;
-    overflow: hidden;
+    overflow: visible;
     background: transparent;
     position: relative;
+  }
+
+  .new-header__avatar-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 50%;
   }
 
   .new-header__avatar-img {
@@ -3773,6 +3800,18 @@
     background: linear-gradient(135deg, #0ABAB5 0%, #089a95 100%);
     color: #ffffff;
     border-radius: 50%;
+  }
+
+  .new-header__profile-indicator {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   .new-header__notification-btn {

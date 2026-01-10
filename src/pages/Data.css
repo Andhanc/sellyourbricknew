@@ -79,7 +79,7 @@
 .sidebar-header {
   padding: 32px 24px 24px;
   border-bottom: 1px solid #e0e0e0;
-  background: #f9f9f9;
+  background: #ffffff;
 }
 
 .sidebar-logo {
@@ -248,7 +248,7 @@
 
 .save-button,
 .cancel-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 12px 24px;
@@ -258,6 +258,9 @@
   cursor: pointer;
   transition: all 0.3s ease;
   border: 1px solid;
+  white-space: nowrap;
+  width: auto;
+  min-width: auto;
 }
 
 .save-button {

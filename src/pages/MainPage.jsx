@@ -913,6 +913,7 @@ function MainPage() {
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [userPhoto, setUserPhoto] = useState(null) // Фотография пользователя
   const [isLoggedIn, setIsLoggedIn] = useState(false) // Статус авторизации
+  const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false) // Есть незаполненные поля профиля
   const [userPreferences, setUserPreferences] = useState({
     purpose: null, // 'для себя', 'под сдачу', 'инвестиции'
     budget: null,
@@ -958,15 +959,82 @@ function MainPage() {
     console.log('🌐 Test translation (home):', t('home'))
   }, [i18n.language, i18n.isInitialized, t])
 
-  // Загружаем фотографию пользователя при изменении авторизации
+  // Функция для проверки заполненности профиля
+  const checkProfileCompleteness = (userData) => {
+    if (!userData) return false
+    
+    // Проверяем важные поля
+    const hasFirstName = userData.first_name && userData.first_name.trim() !== ''
+    const hasLastName = userData.last_name && userData.last_name.trim() !== ''
+    const hasEmail = userData.email && userData.email.trim() !== '' && userData.is_verified === 1
+    const hasPhone = userData.phone_number && userData.phone_number.trim() !== ''
+    const hasAddress = userData.address && userData.address.trim() !== ''
+    const hasPassportSeries = userData.passport_series && userData.passport_series.trim() !== ''
+    const hasPassportNumber = userData.passport_number && userData.passport_number.trim() !== ''
+    
+    // Профиль считается неполным, если:
+    // 1. Нет имени (обязательное поле)
+    // 2. Нет фамилии (важное поле)
+    // 3. Нет подтвержденного email или телефона (хотя бы один контакт)
+    // 4. Нет адреса (желательно, но не критично)
+    // 5. Нет паспортных данных (серия или номер) (желательно, но не критично)
+    
+    // Базовые обязательные поля
+    const missingBasicFields = !hasFirstName || !hasLastName || (!hasEmail && !hasPhone)
+    
+    // Дополнительные желательные поля (если хотя бы одно не заполнено, показываем индикатор)
+    const missingOptionalFields = !hasAddress || (!hasPassportSeries && !hasPassportNumber)
+    
+    // Профиль неполный, если отсутствуют базовые поля ИЛИ дополнительные поля
+    const isIncomplete = missingBasicFields || missingOptionalFields
+    
+    return isIncomplete
+  }
+
+  // Загружаем фотографию пользователя и проверяем заполненность профиля
   useEffect(() => {
-    const loadUserPhoto = async () => {
+    const loadUserPhotoAndCheckProfile = async () => {
       // Проверяем авторизацию через Clerk
       if (userLoaded && user) {
         // Пользователь авторизован через Clerk
         const clerkPhoto = user.imageUrl || user.profileImageUrl || null
         setUserPhoto(clerkPhoto)
         setIsLoggedIn(true)
+        
+        // Пытаемся загрузить данные из БД для полной проверки
+        const userData = getUserData()
+        let profileIncomplete = false
+        
+        if (userData && userData.id) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+            if (response.ok) {
+              const result = await response.json()
+              if (result.success && result.data) {
+                // Проверяем заполненность профиля из БД
+                profileIncomplete = checkProfileCompleteness(result.data)
+                setHasIncompleteProfile(profileIncomplete)
+              } else {
+                // Если данных в БД нет, проверяем базовые поля Clerk
+                profileIncomplete = !user.firstName || !user.lastName || (!user.primaryEmailAddress?.emailAddress && !user.primaryPhoneNumber?.phoneNumber)
+                setHasIncompleteProfile(profileIncomplete)
+              }
+            } else {
+              // Если запрос не удался, проверяем базовые поля Clerk
+              profileIncomplete = !user.firstName || !user.lastName || (!user.primaryEmailAddress?.emailAddress && !user.primaryPhoneNumber?.phoneNumber)
+              setHasIncompleteProfile(profileIncomplete)
+            }
+          } catch (error) {
+            console.warn('⚠️ Не удалось загрузить данные из БД для Clerk пользователя:', error)
+            // Если ошибка, проверяем базовые поля Clerk
+            profileIncomplete = !user.firstName || !user.lastName || (!user.primaryEmailAddress?.emailAddress && !user.primaryPhoneNumber?.phoneNumber)
+            setHasIncompleteProfile(profileIncomplete)
+          }
+        } else {
+          // Если нет ID в localStorage, проверяем базовые поля Clerk
+          profileIncomplete = !user.firstName || !user.lastName || (!user.primaryEmailAddress?.emailAddress && !user.primaryPhoneNumber?.phoneNumber)
+          setHasIncompleteProfile(profileIncomplete)
+        }
       } else {
         // Проверяем старую систему авторизации
         const userData = getUserData()
@@ -975,46 +1043,63 @@ function MainPage() {
           
           // Сначала пытаемся получить фотографию из localStorage
           let photo = userData.picture || null
+          let profileIncomplete = false
           
-          // Если фотографии нет в localStorage, пытаемся загрузить из БД
-          if (!photo && userData.id) {
+          // Загружаем данные из БД для проверки заполненности
+          if (userData.id) {
             try {
               const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
               if (response.ok) {
                 const result = await response.json()
-                if (result.success && result.data && result.data.user_photo) {
-                  // Если user_photo начинается с /uploads, добавляем базовый URL
-                  const photoPath = result.data.user_photo
-                  photo = photoPath.startsWith('http') 
-                    ? photoPath 
-                    : `${API_BASE_URL.replace('/api', '')}${photoPath}`
+                if (result.success && result.data) {
+                  const dbUser = result.data
                   
-                  // Обновляем localStorage с фотографией
-                  const updatedUserData = {
-                    ...userData,
-                    picture: photo
+                  // Проверяем заполненность профиля
+                  profileIncomplete = checkProfileCompleteness(dbUser)
+                  setHasIncompleteProfile(profileIncomplete)
+                  
+                  // Если user_photo есть, используем его
+                  if (dbUser.user_photo && !photo) {
+                    const photoPath = dbUser.user_photo
+                    photo = photoPath.startsWith('http') 
+                      ? photoPath 
+                      : `${API_BASE_URL.replace('/api', '')}${photoPath}`
+                    
+                    // Обновляем localStorage с фотографией
+                    const updatedUserData = {
+                      ...userData,
+                      picture: photo
+                    }
+                    localStorage.setItem('userData', JSON.stringify(updatedUserData))
                   }
-                  localStorage.setItem('userData', JSON.stringify(updatedUserData))
                 }
               }
             } catch (error) {
-              console.warn('⚠️ Не удалось загрузить фотографию из БД:', error)
+              console.warn('⚠️ Не удалось загрузить данные из БД:', error)
+              // Если не удалось загрузить из БД, проверяем localStorage
+              profileIncomplete = !userData.name || (!userData.email && !userData.phone)
+              setHasIncompleteProfile(profileIncomplete)
             }
+          } else {
+            // Если нет ID, проверяем только localStorage
+            profileIncomplete = !userData.name || (!userData.email && !userData.phone)
+            setHasIncompleteProfile(profileIncomplete)
           }
           
           setUserPhoto(photo)
         } else {
           setIsLoggedIn(false)
           setUserPhoto(null)
+          setHasIncompleteProfile(false)
         }
       }
     }
     
-    loadUserPhoto()
+    loadUserPhotoAndCheckProfile()
     
-    // Обновляем фотографию при фокусе окна (когда пользователь возвращается на страницу)
+    // Обновляем данные при фокусе окна (когда пользователь возвращается на страницу)
     const handleFocus = () => {
-      loadUserPhoto()
+      loadUserPhotoAndCheckProfile()
     }
     
     window.addEventListener('focus', handleFocus)
@@ -1747,23 +1832,28 @@ function MainPage() {
                 aria-label={t('profile')}
               >
                 {isLoggedIn ? (
-                  userPhoto ? (
-                    <img 
-                      src={userPhoto} 
-                      alt="Profile" 
-                      className="header__avatar-img"
-                      onError={(e) => {
-                        // Если фото не загрузилось, показываем placeholder
-                        setUserPhoto(null)
-                      }}
-                    />
-                  ) : (
-                    <div className="header__avatar-placeholder">
-                      <FiUser size={18} />
-                    </div>
-                  )
+                  <div className="header__avatar-wrapper">
+                    {userPhoto ? (
+                      <img 
+                        src={userPhoto} 
+                        alt="Profile" 
+                        className="header__avatar-img"
+                        onError={(e) => {
+                          // Если фото не загрузилось, показываем placeholder
+                          setUserPhoto(null)
+                        }}
+                      />
+                    ) : (
+                      <div className="header__avatar-placeholder">
+                        <FiUser size={18} />
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <FiUser size={18} />
+                )}
+                {isLoggedIn && hasIncompleteProfile && (
+                  <span className="header__profile-indicator" />
                 )}
               </button>
             </div>
@@ -2023,23 +2113,28 @@ function MainPage() {
             aria-label={t('profile')}
           >
             {isLoggedIn ? (
-              userPhoto ? (
-                <img 
-                  src={userPhoto} 
-                  alt="Profile" 
-                  className="new-header__avatar-img"
-                  onError={(e) => {
-                    // Если фото не загрузилось, показываем placeholder
-                    setUserPhoto(null)
-                  }}
-                />
-              ) : (
-                <div className="new-header__avatar-placeholder">
-                  <FiUser size={20} />
-                </div>
-              )
+              <div className="new-header__avatar-wrapper">
+                {userPhoto ? (
+                  <img 
+                    src={userPhoto} 
+                    alt="Profile" 
+                    className="new-header__avatar-img"
+                    onError={(e) => {
+                      // Если фото не загрузилось, показываем placeholder
+                      setUserPhoto(null)
+                    }}
+                  />
+                ) : (
+                  <div className="new-header__avatar-placeholder">
+                    <FiUser size={20} />
+                  </div>
+                )}
+              </div>
             ) : (
               <FiUser size={20} />
+            )}
+            {isLoggedIn && hasIncompleteProfile && (
+              <span className="new-header__profile-indicator" />
             )}
           </button>
           <button 

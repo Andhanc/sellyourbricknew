@@ -52,7 +52,7 @@
 
 .profile-sidebar {
   width: 280px;
-  background: #fff;
+  background: #ffffff;
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
@@ -79,7 +79,7 @@
 .sidebar-header {
   padding: 32px 24px 24px;
   border-bottom: 1px solid #e0e0e0;
-  background: #f9f9f9;
+  background: #ffffff;
 }
 
 .sidebar-logo {
@@ -165,10 +165,15 @@
 }
 
 .sidebar-footer {
-  padding: 24px 20px;
+  padding: 20px;
   border-top: 1px solid #e0e0e0;
   margin-top: auto;
-  background: #f9f9f9;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .language-selector {
@@ -178,9 +183,9 @@
   padding: 10px 14px;
   color: #666;
   font-size: 14px;
-  margin-bottom: 12px;
   border-radius: 8px;
   transition: background 0.2s;
+  cursor: pointer;
 }
 
 .language-selector:hover {
@@ -189,6 +194,7 @@
 
 .language-selector svg {
   color: #666;
+  flex-shrink: 0;
 }
 
 .help-link {
@@ -201,7 +207,7 @@
   padding: 10px 14px;
   border-radius: 8px;
   transition: all 0.2s;
-  margin-bottom: 6px;
+  cursor: pointer;
 }
 
 .help-link:hover {
@@ -212,14 +218,60 @@
 
 .help-link svg {
   color: currentColor;
+  flex-shrink: 0;
 }
 
 .copyright {
-  margin-top: 16px;
+  margin-top: 4px;
   padding: 10px 14px;
   color: #999;
   font-size: 12px;
   text-align: center;
+}
+
+.logout-button {
+  width: calc(100% - 32px);
+  max-width: 220px;
+  margin: 8px auto 0;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 10;
+  font-family: inherit;
+  outline: none;
+}
+
+.logout-button:hover {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.logout-button:active {
+  transform: scale(0.98);
+  background-color: #fee2e2;
+}
+
+.logout-button:focus {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+.logout-button svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 .profile-main {

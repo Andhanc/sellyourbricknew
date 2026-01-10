@@ -324,41 +324,6 @@ const Profile = () => {
             </a>
           </nav>
 
-          <button 
-            className="logout-button" 
-            onClick={handleLogout}
-            style={{
-              width: 'calc(100% - 32px)',
-              margin: '16px',
-              padding: '12px 16px',
-              backgroundColor: 'transparent',
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              color: '#ff4444',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#fff5f5'
-              e.target.style.borderColor = '#ff4444'
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'transparent'
-              e.target.style.borderColor = '#e0e0e0'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M7 2H3C2.44772 2 2 2.44772 2 3V15C2 15.5523 2.44772 16 3 16H7M12 13L15 10M15 10L12 7M15 10H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Выйти</span>
-          </button>
-
           <div className="sidebar-footer">
             <div className="language-selector">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -382,6 +347,20 @@ const Profile = () => {
               <span>Яндекс ID для сайта</span>
             </a>
             <div className="copyright">© 2001-2025 Яндекс</div>
+            <button 
+              type="button"
+              className="logout-button" 
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleLogout()
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M7 2H3C2.44772 2 2 2.44772 2 3V15C2 15.5523 2.44772 16 3 16H7M12 13L15 10M15 10L12 7M15 10H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Выйти</span>
+            </button>
           </div>
         </aside>
 
