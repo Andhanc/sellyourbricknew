@@ -458,31 +458,29 @@ const Header = () => {
                       </button>
                     </div>
                     <div className="notification-panel__list">
-                      <div className="notification-item notification-item--property">
+                      <div className="notification-item notification-item--verification">
                         <div className="notification-item__content">
-                          <h4 className="notification-item__title">{t('foundProperty') || 'Нашли для вас объявление!'}</h4>
-                          <div className="notification-item__property">
-                            <div className="notification-item__image">
-                              <img 
-                                src={firstProperty.images[0]}
-                                alt={firstProperty.title}
-                                onError={(e) => {
-                                  e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
-                                }}
-                              />
+                          <h4 className="notification-item__title">Пройдите верификацию</h4>
+                          <div className="notification-item__verification">
+                            <div className="notification-item__icon">
+                              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <circle cx="24" cy="24" r="20" stroke="#0ABAB5" strokeWidth="2" fill="rgba(10, 186, 181, 0.1)"/>
+                                <path d="M24 16V24L28 28" stroke="#0ABAB5" strokeWidth="2" strokeLinecap="round"/>
+                              </svg>
                             </div>
                             <div className="notification-item__info">
-                              <p className="notification-item__property-name">{firstProperty.title}</p>
-                              <p className="notification-item__property-location">{firstProperty.location}</p>
+                              <p className="notification-item__text">
+                                Для полного доступа к функционалу платформы необходимо пройти верификацию документов.
+                              </p>
                               <button 
                                 type="button" 
                                 className="notification-item__button"
                                 onClick={() => {
                                   setIsNotificationOpen(false)
-                                  navigate(`/property/${firstProperty.id}`)
+                                  navigate('/profile')
                                 }}
                               >
-                                {t('goTo') || 'Перейти'}
+                                Перейти к верификации
                                 <FiChevronDown size={18} style={{ transform: 'rotate(-90deg)' }} />
                               </button>
                             </div>

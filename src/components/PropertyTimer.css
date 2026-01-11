@@ -19,9 +19,9 @@
 }
 
 .property-timer-overlay .property-timer.compact {
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .timer-compact-content {
@@ -46,10 +46,10 @@
 .timer-compact-time {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(40, 40, 40, 0.95);
-  padding: 8px 14px;
-  border-radius: 8px;
+  gap: 8px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
   width: fit-content;
   min-width: fit-content;
 }
@@ -58,10 +58,10 @@
   display: flex;
   align-items: baseline;
   gap: 2px;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  border: none;
+  background: rgba(40, 40, 40, 0.95);
+  padding: 8px 12px;
+  border-radius: 8px;
+  min-width: 50px;
 }
 
 .timer-separator {
@@ -73,14 +73,15 @@
 }
 
 .property-timer-overlay .timer-compact-time {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
 }
 
 .property-timer-overlay .time-unit {
-  background: transparent;
-  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .time-value {

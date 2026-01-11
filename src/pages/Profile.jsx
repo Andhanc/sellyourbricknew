@@ -2,7 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser, useClerk, useAuth } from '@clerk/clerk-react'
 import { getUserData, saveUserData, logout } from '../services/authService'
+import ProfileDataWarningToast from '../components/ProfileDataWarningToast'
+import DocumentUploadModal from '../components/DocumentUploadModal'
 import './Profile.css'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
 const Profile = () => {
   const navigate = useNavigate()
@@ -19,6 +23,22 @@ const Profile = () => {
     country: '',
     countryFlag: ''
   })
+  const [showDataWarning, setShowDataWarning] = useState(false)
+  const [hasCheckedData, setHasCheckedData] = useState(false)
+  const [hasDocuments, setHasDocuments] = useState(false)
+  const [hasProfileData, setHasProfileData] = useState(false)
+  const [showProfileDataSuccess, setShowProfileDataSuccess] = useState(false)
+  const prevHasProfileDataRef = useRef(false)
+  const [documentsInfo, setDocumentsInfo] = useState({
+    hasPassportScan: false,
+    hasPassportFace: false
+  })
+  const [documentStatus, setDocumentStatus] = useState({
+    passportScan: null, // null - не загружен, 'pending' - на рассмотрении, 'approved' - одобрен
+    passportFace: null
+  })
+  const [showDocumentModal, setShowDocumentModal] = useState(false)
+  const [selectedDocumentType, setSelectedDocumentType] = useState(null)
   const fileInputRef = useRef(null)
 
   // Синхронизируем данные Clerk с localStorage и загружаем данные пользователя
@@ -149,6 +169,215 @@ const Profile = () => {
   useEffect(() => {
     console.log('Profile: profileData changed', profileData)
   }, [profileData])
+
+  // Отслеживаем изменение hasProfileData для показа зеленой галочки
+  useEffect(() => {
+    if (!prevHasProfileDataRef.current && hasProfileData) {
+      // Данные только что заполнились
+      setShowProfileDataSuccess(true)
+      setTimeout(() => {
+        setShowProfileDataSuccess(false)
+      }, 3000)
+    }
+    prevHasProfileDataRef.current = hasProfileData
+  }, [hasProfileData])
+
+  // Проверяем заполненность документов (для страницы Профиль) и данных
+  useEffect(() => {
+    if (isLoading || hasCheckedData) return
+
+    const checkDocumentsAndData = async () => {
+      try {
+        const savedUserData = getUserData()
+        
+        if (!savedUserData.isLoggedIn || !savedUserData.id) {
+          setHasCheckedData(true)
+          return
+        }
+
+        // Проверяем документы в БД
+        try {
+          const response = await fetch(`${API_BASE_URL}/documents/user/${savedUserData.id}`)
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              // Проверяем наличие документов (должно быть минимум 2: скан паспорта и паспорт + лицо)
+              const documents = result.data || []
+              const passportScanDoc = documents.find(doc => 
+                doc.document_type === 'passport_scan' || 
+                doc.document_type === 'Скан паспорта' ||
+                doc.document_type === 'scan_passport'
+              )
+              const passportFaceDoc = documents.find(doc => 
+                doc.document_type === 'passport_face' || 
+                doc.document_type === 'Паспорт + лицо' ||
+                doc.document_type === 'passport_with_face'
+              )
+              
+              const hasPassportScan = !!passportScanDoc
+              const hasPassportFace = !!passportFaceDoc
+              
+              // Если есть хотя бы 2 документа, считаем, что документы загружены
+              // Но лучше проверить наличие конкретных типов
+              const hasAllDocuments = (hasPassportScan && hasPassportFace) || documents.length >= 2
+              setHasDocuments(hasAllDocuments)
+              
+              // Сохраняем информацию о конкретных документах для подсветки карточек
+              setDocumentsInfo({
+                hasPassportScan,
+                hasPassportFace
+              })
+              
+              // Устанавливаем статус документов
+              setDocumentStatus({
+                passportScan: passportScanDoc 
+                  ? (passportScanDoc.is_reviewed === 1 ? 'approved' : 'pending')
+                  : null,
+                passportFace: passportFaceDoc
+                  ? (passportFaceDoc.is_reviewed === 1 ? 'approved' : 'pending')
+                  : null
+              })
+              
+              if (!hasAllDocuments) {
+                setShowDataWarning(true)
+              }
+            } else {
+              setHasDocuments(false)
+              setDocumentsInfo({
+                hasPassportScan: false,
+                hasPassportFace: false
+              })
+              setDocumentStatus({
+                passportScan: null,
+                passportFace: null
+              })
+              setShowDataWarning(true)
+            }
+          }
+        } catch (error) {
+          console.warn('Не удалось загрузить документы из БД для проверки:', error)
+          setHasDocuments(false)
+          setDocumentsInfo({
+            hasPassportScan: false,
+            hasPassportFace: false
+          })
+          setDocumentStatus({
+            passportScan: null,
+            passportFace: null
+          })
+          setShowDataWarning(true)
+        }
+
+        // Проверяем данные в БД для показа красной точки на "Данные"
+        try {
+          const dataResponse = await fetch(`${API_BASE_URL}/users/${savedUserData.id}`)
+          if (dataResponse.ok) {
+            const dataResult = await dataResponse.json()
+            if (dataResult.success && dataResult.data) {
+              const dbUser = dataResult.data
+              const isComplete = 
+                dbUser.first_name?.trim() && 
+                dbUser.last_name?.trim() && 
+                dbUser.email?.trim() && 
+                dbUser.phone_number?.trim()
+              
+              setHasProfileData(isComplete)
+            } else {
+              setHasProfileData(false)
+            }
+          }
+        } catch (error) {
+          console.warn('Не удалось загрузить данные из БД для проверки:', error)
+        }
+
+        setHasCheckedData(true)
+      } catch (error) {
+        console.error('Ошибка при проверке документов:', error)
+        setHasCheckedData(true)
+      }
+    }
+
+    checkDocumentsAndData()
+  }, [isLoading, hasCheckedData])
+
+  const handleGoToData = () => {
+    // Для страницы Профиль документы заполняются здесь же, просто закрываем уведомление
+    setShowDataWarning(false)
+  }
+
+  // Обработчик клика на карточку документа
+  const handleDocumentCardClick = (documentType) => {
+    setSelectedDocumentType(documentType)
+    setShowDocumentModal(true)
+  }
+
+  // Обработчик загрузки документа
+  const handleDocumentUpload = async (file) => {
+    const savedUserData = getUserData()
+    
+    if (!savedUserData.isLoggedIn || !savedUserData.id) {
+      alert('Пожалуйста, войдите в систему')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('document_photo', file)
+    formData.append('user_id', savedUserData.id)
+    
+    // Определяем тип документа
+    let documentType = null
+    if (selectedDocumentType === 'passportScan') {
+      documentType = 'passport_scan'
+    } else if (selectedDocumentType === 'passportFace') {
+      documentType = 'passport_face'
+    }
+    formData.append('document_type', documentType)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          // Обновляем статус документа на "на рассмотрении"
+          setDocumentStatus(prev => ({
+            ...prev,
+            [selectedDocumentType]: 'pending'
+          }))
+          
+          // Обновляем информацию о документах
+          if (selectedDocumentType === 'passportScan') {
+            setDocumentsInfo(prev => ({
+              ...prev,
+              hasPassportScan: true
+            }))
+          } else if (selectedDocumentType === 'passportFace') {
+            setDocumentsInfo(prev => ({
+              ...prev,
+              hasPassportFace: true
+            }))
+          }
+          
+          // Обновляем общий статус документов
+          const newHasDocuments = 
+            (selectedDocumentType === 'passportScan' ? true : documentsInfo.hasPassportScan) &&
+            (selectedDocumentType === 'passportFace' ? true : documentsInfo.hasPassportFace)
+          setHasDocuments(newHasDocuments)
+        } else {
+          throw new Error(result.error || 'Ошибка при загрузке документа')
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Ошибка при загрузке документа')
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке документа:', error)
+      throw error
+    }
+  }
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -288,6 +517,7 @@ const Profile = () => {
                 <path d="M10 12C5.58172 12 2 13.7909 2 16V20H18V16C18 13.7909 14.4183 12 10 12Z" fill="currentColor"/>
               </svg>
               <span>Профиль</span>
+              {!hasDocuments && <span className="nav-item__badge"></span>}
             </Link>
             <Link to="/data" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -295,6 +525,14 @@ const Profile = () => {
                 <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <span>Данные</span>
+              {!hasProfileData && !showProfileDataSuccess && <span className="nav-item__badge"></span>}
+              {hasProfileData && showProfileDataSuccess && (
+                <span className="nav-item__badge nav-item__badge--success">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M8.33333 2.5L4.16667 7.5L1.66667 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+              )}
             </Link>
             <Link to="/subscriptions" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -479,16 +717,11 @@ const Profile = () => {
                 </div>
                 <div className="section-card subscription-card subscription-inactive">
                   <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="8" width="24" height="24" rx="3" fill="url(#subscriptionInactive1Grad)"/>
-                      <path d="M12 20H28M20 12V28" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-                      <defs>
-                        <linearGradient id="subscriptionInactive1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#999" />
-                          <stop offset="100%" stopColor="#666" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
+                    <img 
+                      src="https://assets.grok.com/users/026c450f-41d0-4596-9758-08785b79c835/generated/db07cb7e-3129-4da9-b973-5afeec4d266f/image.jpg" 
+                      alt="Базовый тариф"
+                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }}
+                    />
                   </div>
                   <div className="card-content">
                     <h3>Базовый</h3>
@@ -524,13 +757,16 @@ const Profile = () => {
                 <div className="section-subtitle">Храните важные документы в безопасности</div>
               </div>
               <div className="section-cards">
-                <div className="section-card">
+                <div 
+                  className={`section-card ${!documentsInfo.hasPassportScan ? 'section-card--error' : ''}`}
+                  onClick={() => handleDocumentCardClick('passportScan')}
+                >
                   <div className="card-icon-wrapper">
                     <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#docAllGrad)"/>
+                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportScanGrad)"/>
                       <path d="M14 14H26M14 18H26M14 22H22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
-                        <linearGradient id="docAllGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="passportScanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#0ABAB5" />
                           <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
@@ -538,18 +774,31 @@ const Profile = () => {
                     </svg>
                   </div>
                   <div className="card-content">
-                    <h3>Все</h3>
-                    <p>Все документы</p>
+                    <h3>Скан паспорта</h3>
+                    <p>
+                      {documentStatus.passportScan === 'pending' 
+                        ? 'На рассмотрении' 
+                        : 'Загрузите скан или фото паспорта'}
+                    </p>
                   </div>
+                  {documentStatus.passportScan !== 'pending' && (
+                    <div className="card-badge">+</div>
+                  )}
+                  {documentStatus.passportScan === 'pending' && (
+                    <div className="card-badge card-badge--pending">⏳</div>
+                  )}
                 </div>
-                <div className="section-card">
+                <div 
+                  className={`section-card ${!documentsInfo.hasPassportFace ? 'section-card--error' : ''}`}
+                  onClick={() => handleDocumentCardClick('passportFace')}
+                >
                   <div className="card-icon-wrapper">
                     <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportGrad)"/>
+                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportFaceGrad)"/>
                       <circle cx="20" cy="16" r="3" fill="white" opacity="0.8"/>
                       <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                       <defs>
-                        <linearGradient id="passportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="passportFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#0ABAB5" />
                           <stop offset="100%" stopColor="#089a95" />
                         </linearGradient>
@@ -557,93 +806,49 @@ const Profile = () => {
                     </svg>
                   </div>
                   <div className="card-content">
-                    <h3>Паспорт</h3>
-                    <p>Российский паспорт</p>
+                    <h3>Паспорт + лицо</h3>
+                    <p>
+                      {documentStatus.passportFace === 'pending' 
+                        ? 'На рассмотрении' 
+                        : 'Паспорт с вашим лицом'}
+                    </p>
                   </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#foreignGrad)"/>
-                      <path d="M12 12H28M12 16H28M12 20H24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="foreignGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>Загран</h3>
-                    <p>Заграничный паспорт</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="10" y="8" width="20" height="24" rx="2" fill="url(#licenseGrad)"/>
-                      <circle cx="20" cy="18" r="4" fill="white" opacity="0.3"/>
-                      <path d="M16 24H24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="licenseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>ВУ</h3>
-                    <p>Водительское удостоверение</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <path d="M20 8L12 14V28L20 34L28 28V14L20 8Z" fill="url(#omsGrad)"/>
-                      <path d="M20 12V20M16 16L24 24" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="omsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>ОМС</h3>
-                    <p>Полис ОМС</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="8" width="24" height="24" rx="3" fill="url(#snilsGrad)"/>
-                      <path d="M14 16H26M14 20H26M14 24H22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="snilsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>СНИЛС</h3>
-                    <p>Страховое свидетельство</p>
-                  </div>
-                  <div className="card-badge">+</div>
+                  {documentStatus.passportFace !== 'pending' && (
+                    <div className="card-badge">+</div>
+                  )}
+                  {documentStatus.passportFace === 'pending' && (
+                    <div className="card-badge card-badge--pending">⏳</div>
+                  )}
                 </div>
               </div>
             </section>
           </div>
         </main>
       </div>
+
+      <ProfileDataWarningToast
+        isOpen={showDataWarning}
+        onClose={() => setShowDataWarning(false)}
+        onGoToData={handleGoToData}
+        message="Пожалуйста, заполните документы в разделе Профиль"
+      />
+
+      <DocumentUploadModal
+        isOpen={showDocumentModal}
+        onClose={() => {
+          setShowDocumentModal(false)
+          setSelectedDocumentType(null)
+        }}
+        documentType={selectedDocumentType}
+        documentTitle={
+          selectedDocumentType === 'passportScan' 
+            ? 'Загрузка скан паспорта' 
+            : selectedDocumentType === 'passportFace'
+            ? 'Загрузка паспорт + лицо'
+            : 'Загрузка документа'
+        }
+        onUpload={handleDocumentUpload}
+      />
     </div>
   )
 }

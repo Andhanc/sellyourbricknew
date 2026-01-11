@@ -34,22 +34,22 @@
   justify-content: center;
   min-width: 0;
   margin-left: -2rem;
-  background: rgba(40, 40, 40, 0.95);
-  padding: 8px 12px;
-  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
 }
 
 .timer-segment {
   display: flex;
-  align-items: baseline;
-  gap: 3px;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  min-width: auto;
-  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  max-width: none;
+  gap: 2px;
+  background: rgba(40, 40, 40, 0.95);
+  padding: 8px 12px;
+  border-radius: 8px;
+  min-width: 50px;
+  flex: 0 0 auto;
 }
 
 .countdown-timer .timer-value {
@@ -67,7 +67,7 @@
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9) !important;
   line-height: 1;
-  margin-left: 2px;
+  margin: 0;
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
   white-space: nowrap;
 }
@@ -86,11 +86,12 @@
 
   .timer-segments {
     gap: 6px;
-    padding: 6px 10px;
+    padding: 0;
   }
 
   .timer-segment {
-    padding: 0;
+    padding: 6px 10px;
+    min-width: 45px;
   }
 
   .countdown-timer .timer-value {
@@ -115,11 +116,12 @@
 
   .timer-segments {
     gap: 4px;
-    padding: 5px 8px;
+    padding: 0;
   }
 
   .timer-segment {
-    padding: 0;
+    padding: 5px 8px;
+    min-width: 40px;
   }
 
   .countdown-timer .timer-value {

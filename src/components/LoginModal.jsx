@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiX, FiMail, FiLock, FiUser } from 'react-icons/fi'
 import { FaGoogle, FaWhatsapp, FaFacebook } from 'react-icons/fa'
-import { useSignIn, useSignUp } from '@clerk/clerk-react'
+import { useSignIn, useSignUp, SignIn, SignUp, useAuth } from '@clerk/clerk-react'
 import WhatsAppVerificationModal from './WhatsAppVerificationModal'
 import EmailVerificationModal from './EmailVerificationModal'
 import { registerWithEmail, loginWithEmail } from '../services/authService'
@@ -12,6 +12,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate()
   const { signIn, isLoaded: signInLoaded } = useSignIn()
   const { signUp, isLoaded: signUpLoaded } = useSignUp()
+  const { isSignedIn } = useAuth()
   const [isLogin, setIsLogin] = useState(true) // true для входа, false для регистрации
   const [formData, setFormData] = useState({
     email: '',
@@ -23,6 +24,19 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState('')
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
   const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false)
+  const [showClerkSignInModal, setShowClerkSignInModal] = useState(false)
+  const [showClerkSignUpModal, setShowClerkSignUpModal] = useState(false)
+
+  // Обработка успешной авторизации через Clerk
+  useEffect(() => {
+    if (isSignedIn && (showClerkSignInModal || showClerkSignUpModal)) {
+      console.log('LoginModal: User signed in through Clerk, closing modals')
+      setShowClerkSignInModal(false)
+      setShowClerkSignUpModal(false)
+      onClose()
+      navigate('/profile')
+    }
+  }, [isSignedIn, showClerkSignInModal, showClerkSignUpModal, onClose, navigate])
 
   // Не скрываем LoginModal полностью, чтобы EmailVerificationModal мог рендериться
   // Вместо этого скрываем только содержимое LoginModal
@@ -144,41 +158,37 @@ const LoginModal = ({ isOpen, onClose }) => {
       setIsLoading(true)
       setError('')
       
-      console.log('LoginModal: Starting Google auth', { signInLoaded, signUpLoaded, isLogin })
+      console.log('LoginModal: Opening Clerk modal for Google auth', { signInLoaded, signUpLoaded, isLogin })
       
+      // Устанавливаем флаг, что начался Google OAuth (для ClerkAuthHandler)
+      sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
+      sessionStorage.setItem('clerk_oauth_provider', 'google')
+      
+      // Закрываем текущее модальное окно и открываем Clerk модальное окно с кнопкой Google
       if (isLogin) {
         if (signInLoaded && signIn) {
-          console.log('LoginModal: Redirecting to Google OAuth via Clerk')
-          // Устанавливаем флаг, что начался OAuth редирект
-          sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
-          // Используем redirectUrl и redirectUrlComplete для правильного редиректа
-          await signIn.authenticateWithRedirect({
-            strategy: 'oauth_google',
-            redirectUrl: `${window.location.origin}/profile`,
-            redirectUrlComplete: `${window.location.origin}/profile`,
-          })
+          // Открываем модальное окно Clerk для входа (там будет кнопка Google)
+          console.log('LoginModal: Opening Clerk SignIn modal with Google button')
+          setShowClerkSignInModal(true)
+          setIsLoading(false)
         } else {
           setError('Система авторизации не готова. Попробуйте обновить страницу.')
           setIsLoading(false)
         }
       } else {
         if (signUpLoaded && signUp) {
-          console.log('LoginModal: Redirecting to Google OAuth via Clerk')
-          // Устанавливаем флаг, что начался OAuth редирект
-          sessionStorage.setItem('clerk_oauth_redirect_started', 'true')
-          await signUp.authenticateWithRedirect({
-            strategy: 'oauth_google',
-            redirectUrl: `${window.location.origin}/profile`,
-            redirectUrlComplete: `${window.location.origin}/profile`,
-          })
+          // Открываем модальное окно Clerk для регистрации (там будет кнопка Google)
+          console.log('LoginModal: Opening Clerk SignUp modal with Google button')
+          setShowClerkSignUpModal(true)
+          setIsLoading(false)
         } else {
           setError('Система регистрации не готова. Попробуйте обновить страницу.')
           setIsLoading(false)
         }
       }
     } catch (error) {
-      console.error('LoginModal: Ошибка авторизации через Google:', error)
-      setError(`Не удалось войти через Google: ${error.message || 'Проверьте настройки'}`)
+      console.error('LoginModal: Ошибка открытия модального окна Google:', error)
+      setError(`Не удалось открыть окно авторизации: ${error.message || 'Проверьте настройки'}`)
       setIsLoading(false)
     }
   }
@@ -266,8 +276,8 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Скрываем LoginModal когда открыт EmailVerificationModal */}
-      {!showEmailVerificationModal && (
+      {/* Скрываем LoginModal когда открыт EmailVerificationModal или Clerk модальное окно */}
+      {!showEmailVerificationModal && !showClerkSignInModal && !showClerkSignUpModal && (
         <div className="login-modal-overlay" onClick={onClose}>
           <div className="login-modal" onClick={(e) => e.stopPropagation()}>
         <button 
@@ -480,6 +490,190 @@ const LoginModal = ({ isOpen, onClose }) => {
         password={formData.password}
         name={formData.name}
       />
+      
+      {/* Модальное окно Clerk для входа через Google */}
+      {showClerkSignInModal && (
+        <div 
+          className="login-modal-overlay" 
+          onClick={() => {
+            setShowClerkSignInModal(false)
+            setIsLoading(false)
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}
+          >
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                onClick={() => {
+                  setShowClerkSignInModal(false)
+                  setIsLoading(false)
+                  onClose()
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-10px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  zIndex: 10001,
+                  padding: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white'
+                }}
+                aria-label="Закрыть"
+              >
+                <FiX size={20} />
+              </button>
+              <SignIn
+                routing="hash"
+                appearance={{
+                  elements: {
+                    rootBox: {
+                      margin: '0 auto',
+                      width: '100%'
+                    },
+                    card: {
+                      boxShadow: 'none',
+                      border: 'none'
+                    }
+                  }
+                }}
+                afterSignInUrl="/profile"
+                afterSignUpUrl="/profile"
+                afterSignInComplete={() => {
+                  console.log('LoginModal: SignIn completed, closing modal')
+                  setShowClerkSignInModal(false)
+                  setIsLoading(false)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Модальное окно Clerk для регистрации через Google */}
+      {showClerkSignUpModal && (
+        <div 
+          className="login-modal-overlay" 
+          onClick={() => {
+            setShowClerkSignUpModal(false)
+            setIsLoading(false)
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}
+          >
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                onClick={() => {
+                  setShowClerkSignUpModal(false)
+                  setIsLoading(false)
+                  onClose()
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-10px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  zIndex: 10001,
+                  padding: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white'
+                }}
+                aria-label="Закрыть"
+              >
+                <FiX size={20} />
+              </button>
+              <SignUp
+                routing="hash"
+                appearance={{
+                  elements: {
+                    rootBox: {
+                      margin: '0 auto',
+                      width: '100%'
+                    },
+                    card: {
+                      boxShadow: 'none',
+                      border: 'none'
+                    }
+                  }
+                }}
+                afterSignInUrl="/profile"
+                afterSignUpUrl="/profile"
+                afterSignUpComplete={() => {
+                  console.log('LoginModal: SignUp completed, closing modal')
+                  setShowClerkSignUpModal(false)
+                  setIsLoading(false)
+                  // Закрываем модальное окно, данные обработаются через ClerkAuthSync/ClerkAuthHandler
+                }}
+                afterSignInComplete={() => {
+                  console.log('LoginModal: SignIn completed, closing modal')
+                  setShowClerkSignUpModal(false)
+                  setIsLoading(false)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

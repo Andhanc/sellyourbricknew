@@ -242,14 +242,13 @@
   position: absolute;
   bottom: 12px;
   left: 12px;
-  right: 12px;
   z-index: 2;
 }
 
 .property-timer-overlay .property-timer.compact {
   margin: 0;
-  width: 100%;
-  max-width: 280px;
+  width: fit-content;
+  max-width: none;
 }
 
 .property-favorite {
