@@ -23,6 +23,7 @@ const COUNTRY_CODES = [
   { code: '61', name: 'Австралия', flag: '🇦🇺' },
   { code: '27', name: 'ЮАР', flag: '🇿🇦' },
   { code: '20', name: 'Египет', flag: '🇪🇬' },
+  { code: '370', name: 'Литва', flag: 'lt' },
 ]
 
 const PhoneInput = ({ value, onChange, onCountryChange, error, disabled }) => {
