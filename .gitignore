@@ -60,3 +60,9 @@ server/uploads/
 *.pdf
 *.doc
 *.docx
+
+# WhatsApp Web.js
+.wwebjs_cache/
+.wwebjs_auth/
+server/.wwebjs_auth/
+server/.wwebjs_cache/
