@@ -579,10 +579,179 @@ const checkUserExists = async (phone) => {
       const data = await response.json()
       return data.success && data.data ? data.data : null
     }
+    // 404 - это нормально, пользователь просто не существует
+    // Не логируем ошибку для 404
+    if (response.status !== 404) {
+      console.warn('Ошибка при проверке пользователя:', response.status, response.statusText)
+    }
     return null
   } catch (error) {
-    console.error('Ошибка при проверке пользователя:', error)
+    // Игнорируем ошибки сети, не логируем их
+    if (import.meta.env.DEV) {
+      console.warn('Не удалось проверить пользователя (возможно, сервер не запущен):', error.message)
+    }
     return null
+  }
+}
+
+/**
+ * Проверяет, есть ли номер в контактах WhatsApp через GreenAPI
+ */
+const checkContactExists = async (formattedPhone) => {
+  try {
+    if (!GREEN_API_ID || !GREEN_API_TOKEN) {
+      return false
+    }
+    
+    const chatId = `${formattedPhone}@c.us`
+    
+    // Метод 1: Проверяем через getContacts
+    try {
+      const contactsResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContacts/${GREEN_API_TOKEN}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      if (contactsResponse.ok) {
+        const contactsData = await contactsResponse.json()
+        if (Array.isArray(contactsData)) {
+          const contact = contactsData.find(c => {
+            const contactId = c.id || c.chatId || c.phoneNumber || ''
+            return contactId.includes(formattedPhone) || contactId === chatId
+          })
+          if (contact) {
+            if (import.meta.env.DEV) {
+              console.log('✅ Контакт найден в списке контактов')
+            }
+            return true
+          }
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('Ошибка при проверке контактов:', error.message)
+      }
+    }
+    
+    // Метод 2: Проверяем через getContactInfo (если контакт существует, метод вернет данные)
+    try {
+      const contactInfoResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContactInfo/${GREEN_API_TOKEN}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: chatId
+        })
+      })
+      
+      if (contactInfoResponse.ok) {
+        if (import.meta.env.DEV) {
+          console.log('✅ Контакт доступен через getContactInfo')
+        }
+        return true
+      }
+    } catch (error) {
+      // Игнорируем ошибки
+    }
+    
+    return false
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('Ошибка при проверке контакта:', error.message)
+    }
+    return false
+  }
+}
+
+/**
+ * Пытается автоматически добавить контакт через различные методы GreenAPI
+ * Примечание: GreenAPI не имеет прямого метода для добавления контакта,
+ * но можно попробовать методы, которые могут автоматически создать чат/контакт
+ */
+const tryAddContactAutomatically = async (formattedPhone) => {
+  try {
+    if (!GREEN_API_ID || !GREEN_API_TOKEN) {
+      return false
+    }
+    
+    const chatId = `${formattedPhone}@c.us`
+    
+    if (import.meta.env.DEV) {
+      console.log('🔄 Попытка автоматически добавить контакт:', chatId)
+    }
+    
+    // Метод 1: Проверяем номер через checkWhatsapp (может помочь "подготовить" номер)
+    try {
+      const checkResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/checkWhatsapp/${GREEN_API_TOKEN}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone
+        })
+      })
+      
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json()
+        if (import.meta.env.DEV) {
+          console.log('📱 Проверка WhatsApp номера:', checkData)
+        }
+        // Если номер существует в WhatsApp, продолжаем
+        if (checkData.existsWhatsapp) {
+          // Небольшая задержка перед следующей попыткой
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('Ошибка при checkWhatsapp:', error.message)
+      }
+    }
+    
+    // Метод 2: Пытаемся получить информацию о контакте (может автоматически создать чат)
+    // Примечание: Если контакт не существует, вернется 400, это нормально
+    try {
+      const contactInfoResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContactInfo/${GREEN_API_TOKEN}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: chatId
+        })
+      })
+      
+      // 400 - это нормально, означает что контакт не существует
+      // 200 - контакт существует, можем отправлять
+      if (import.meta.env.DEV) {
+        if (contactInfoResponse.ok) {
+          console.log('✅ Контакт доступен, можно отправлять сообщение')
+        } else if (contactInfoResponse.status === 400) {
+          console.log('⚠️ Контакт не найден (400) - это нормально, попробуем отправить сообщение')
+        } else {
+          console.log('📞 Статус getContactInfo:', contactInfoResponse.status)
+        }
+      }
+    } catch (error) {
+      // Игнорируем ошибки сети
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Ошибка при getContactInfo:', error.message)
+      }
+    }
+    
+    // Небольшая задержка перед следующей попыткой отправки
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    return true
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('Ошибка при попытке добавить контакт:', error.message)
+    }
+    return false
   }
 }
 
@@ -622,40 +791,183 @@ export const sendWhatsAppVerificationCode = async (phone) => {
         // Green API использует формат: {baseUrl}/waInstance{id}/sendMessage/{token}
         const apiUrl = `${GREEN_API_URL}/waInstance${GREEN_API_ID}/sendMessage/${GREEN_API_TOKEN}`
         
+        // GreenAPI требует номер в формате: код_страны + номер (без +, только цифры)@c.us
+        // Например: 34631252060@c.us для испанского номера +34 631 25 20 60
+        const chatId = `${formattedPhone}@c.us`
+        
+        if (import.meta.env.DEV) {
+          console.log('📤 Отправка через GreenAPI:', {
+            apiUrl: apiUrl.replace(GREEN_API_TOKEN, '***'),
+            chatId,
+            phoneLength: formattedPhone.length
+          })
+        }
+        
+        // ВАЖНО: GreenAPI требует, чтобы номер получателя был в контактах WhatsApp аккаунта
+        // Это ограничение обычного WhatsApp API (не Business API)
+        // Стратегия обхода: сначала отправляем простое сообщение для создания чата,
+        // затем отправляем проверочный код
+        
+        // Шаг 1: Проверяем, есть ли контакт
+        const contactExists = await checkContactExists(formattedPhone)
+        
+        if (!contactExists) {
+          if (import.meta.env.DEV) {
+            console.log('⚠️ Контакт не найден, пытаемся создать чат...')
+          }
+          
+          // Стратегия обхода ошибки 466:
+          // 1. Сначала отправляем простое сообщение, чтобы создать чат/контакт
+          // 2. Затем отправляем проверочный код
+          
+          try {
+            if (import.meta.env.DEV) {
+              console.log('📨 Шаг 1: Отправляем простое сообщение для создания чата...')
+            }
+            
+            // Отправляем простое сообщение для создания чата
+            const initResponse = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                chatId: chatId,
+                message: 'Привет' // Простое сообщение для создания чата
+              })
+            })
+            
+            const initResponseText = await initResponse.text()
+            let initResponseData
+            try {
+              initResponseData = JSON.parse(initResponseText)
+            } catch {
+              initResponseData = { raw: initResponseText }
+            }
+            
+            if (initResponse.ok) {
+              if (import.meta.env.DEV) {
+                console.log('✅ Чат создан успешно, ждем 1 секунду перед отправкой кода...')
+              }
+              // Небольшая задержка, чтобы чат успел создаться
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            } else {
+              if (import.meta.env.DEV) {
+                if (initResponse.status === 466) {
+                  console.warn('⚠️ Первое сообщение получило ошибку 466 (контакт не в списке)')
+                  console.warn('   Но продолжаем попытку отправить код - иногда второе сообщение проходит')
+                } else {
+                  console.warn('⚠️ Не удалось создать чат первым сообщением:', initResponse.status, initResponseData)
+                }
+                console.warn('   Пробуем отправить код...')
+              }
+              // Небольшая задержка даже при ошибке
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+          } catch (initError) {
+            if (import.meta.env.DEV) {
+              console.warn('⚠️ Ошибка при создании чата:', initError.message)
+              console.warn('   Пробуем отправить код напрямую...')
+            }
+          }
+        } else {
+          if (import.meta.env.DEV) {
+            console.log('✅ Контакт уже существует в списке')
+          }
+        }
+        
+        // Шаг 2: Отправляем проверочный код
+        if (import.meta.env.DEV) {
+          console.log('📨 Шаг 2: Отправляем проверочный код...')
+        }
+        
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            chatId: `${formattedPhone}@c.us`,
+            chatId: chatId,
             message: `🔐 Ваш код авторизации: ${code}\n\nКод действителен в течение 10 минут.\n\nЕсли вы не запрашивали этот код, проигнорируйте это сообщение.`
           })
         })
         
+        const responseText = await response.text()
+        let responseData
+        try {
+          responseData = JSON.parse(responseText)
+        } catch {
+          responseData = { raw: responseText }
+        }
+        
         if (response.ok) {
+          if (import.meta.env.DEV) {
+            console.log('✅ Код успешно отправлен через GreenAPI')
+          }
           return {
             success: true,
             message: 'Код отправлен в WhatsApp'
           }
+        } else {
+          // Детальное логирование ошибок GreenAPI
+          console.error('❌ Ошибка GreenAPI:', {
+            status: response.status,
+            statusText: response.statusText,
+            response: responseData,
+            chatId,
+            phone: formattedPhone
+          })
+          
+          // Ошибка 466 - номер не в контактах или другие проблемы
+          if (response.status === 466) {
+            if (import.meta.env.DEV) {
+              console.error('⚠️ ОШИБКА 466: GreenAPI не может отправить сообщение')
+              console.error('📋 ПРИЧИНА: Номер получателя должен быть в контактах WhatsApp аккаунта, подключенного к GreenAPI')
+              console.error('')
+              console.error('🔧 РЕШЕНИЕ для тестирования:')
+              console.error('  1. Откройте WhatsApp на телефоне, подключенном к GreenAPI')
+              console.error(`  2. Добавьте номер ${formattedPhone} в контакты вручную`)
+              console.error('  3. Попробуйте отправить код снова')
+              console.error('')
+              console.error('💡 ПРИМЕЧАНИЕ: Автоматическое добавление контакта через API невозможно')
+              console.error('   GreenAPI не предоставляет метод для добавления контактов')
+              console.error('   Контакт должен быть добавлен вручную в WhatsApp приложении')
+              console.error('')
+              console.error('💼 РЕШЕНИЕ для production:')
+              console.error('  - Используйте WhatsApp Business API (позволяет отправлять без контактов)')
+              console.error('  - Или используйте альтернативные сервисы (Twilio, MessageBird и т.д.)')
+              console.error('  - Или используйте fallback на WhatsApp URL (текущая реализация)')
+            }
+          }
         }
       } catch (error) {
-        console.error('Ошибка отправки через Green API:', error)
+        console.error('❌ Ошибка отправки через Green API:', error)
       }
     }
     
     // Fallback: открываем WhatsApp с предзаполненным сообщением
+    // Для WhatsApp URL нужен номер в формате: код_страны + номер (без +)
+    // Например: 34631252060 для +34 631 25 20 60
     const whatsappMessage = encodeURIComponent(`🔐 Ваш код авторизации: ${code}\n\nКод действителен в течение 10 минут.`)
     const whatsappUrl = `https://wa.me/${formattedPhone}?text=${whatsappMessage}`
     
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ GreenAPI не сработал (возможно, номер не в контактах)')
+      console.warn('📱 Используем fallback: открываем WhatsApp с предзаполненным сообщением')
+      console.warn('💡 Для автоматической отправки добавьте номер в контакты WhatsApp аккаунта GreenAPI')
+    }
+    
     // В реальном приложении здесь должен быть backend, который отправляет сообщение
     // Для демо мы просто открываем WhatsApp
+    // Пользователь должен будет отправить сообщение сам (или скопировать код)
     window.open(whatsappUrl, '_blank')
     
     return {
       success: true,
       message: 'Откройте WhatsApp для получения кода',
-      code: code // Для демо возвращаем код (в production не должно быть)
+      code: code, // Для демо возвращаем код (в production не должно быть)
+      fallback: true, // Указываем, что использован fallback
+      note: 'Для автоматической отправки добавьте номер в контакты WhatsApp аккаунта GreenAPI'
     }
   } catch (error) {
     console.error('Ошибка отправки кода:', error)

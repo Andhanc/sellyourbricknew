@@ -75,3 +75,4 @@ http://localhost:5173/profile
 3. **Какой Client ID используется в Clerk Dashboard?**
    - Должен совпадать с тем, который вы проверяете в Google Cloud Console
 
+

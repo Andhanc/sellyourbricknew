@@ -46,3 +46,4 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_bWVldC1ob3VuZC01NC5jbGVyay5hY2NvdW50cy5kZXYk
 2. Перезапустите dev-сервер (`npm run dev`)
 3. Попробуйте войти через Google/Facebook снова
 
+
