@@ -1,3 +1,2 @@
-2026/01/14-20:28:05.149 4098 Reusing MANIFEST C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Session Storage/MANIFEST-000001
-2026/01/14-20:28:05.166 4098 Recovering log #3
-2026/01/14-20:28:05.170 4098 Reusing old log C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Session Storage/000003.log 
+2026/01/14-23:19:49.877 8b14 Creating DB D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Session Storage since it was missing.
+2026/01/14-23:19:49.891 8b14 Reusing MANIFEST D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Session Storage/MANIFEST-000001

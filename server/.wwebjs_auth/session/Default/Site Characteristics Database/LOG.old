@@ -1,3 +1,5 @@
-2026/01/14-20:23:14.853 256c Reusing MANIFEST C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Site Characteristics Database/MANIFEST-000001
-2026/01/14-20:23:14.854 256c Recovering log #3
-2026/01/14-20:23:14.855 256c Reusing old log C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Site Characteristics Database/000003.log 
+2026/01/14-23:19:49.017 652c Log #3: 1 ops saved to Table #4 OK
+2026/01/14-23:19:49.018 652c Archiving D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Site Characteristics Database/000003.log: OK
+2026/01/14-23:19:49.018 652c Table #4: 1 entries OK
+2026/01/14-23:19:49.019 652c Archiving D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Site Characteristics Database/MANIFEST-000001: OK
+2026/01/14-23:19:49.044 652c **** Repaired leveldb D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Site Characteristics Database; recovered 1 files; 130 bytes. Some data may have been lost. ****
