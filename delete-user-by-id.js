@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const DB_PATH = join(__dirname, 'server', 'database.sqlite');
-const userId = 9;
+const userIds = [10, 11];
 
 try {
   if (!existsSync(DB_PATH)) {
@@ -18,30 +18,37 @@ try {
   
   const db = new Database(DB_PATH);
   
-  // Проверяем, существует ли пользователь
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  let totalDeleted = 0;
   
-  if (!user) {
-    console.log('❌ Пользователь с id=' + userId + ' не найден в базе данных');
-    db.close();
-    process.exit(1);
+  for (const userId of userIds) {
+    console.log(`\n🔍 Обработка пользователя ID ${userId}...`);
+    
+    // Проверяем, существует ли пользователь
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    
+    if (!user) {
+      console.log(`❌ Пользователь с id=${userId} не найден в базе данных`);
+      continue;
+    }
+    
+    console.log('📋 Найден пользователь:');
+    console.log('  ID:', user.id);
+    console.log('  Имя:', user.first_name, user.last_name || '');
+    console.log('  Email:', user.email || '(не указан)');
+    console.log('  Телефон:', user.phone_number || '(не указан)');
+    
+    // Удаляем пользователя
+    const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    
+    if (result.changes > 0) {
+      console.log(`✅ Пользователь с id=${userId} успешно удален из базы данных`);
+      totalDeleted++;
+    } else {
+      console.log(`❌ Не удалось удалить пользователя с id=${userId}`);
+    }
   }
   
-  console.log('📋 Найден пользователь:');
-  console.log('  ID:', user.id);
-  console.log('  Имя:', user.first_name, user.last_name || '');
-  console.log('  Email:', user.email || '(не указан)');
-  console.log('  Телефон:', user.phone_number || '(не указан)');
-  
-  // Удаляем пользователя
-  const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
-  
-  if (result.changes > 0) {
-    console.log('\n✅ Пользователь с id=' + userId + ' успешно удален из базы данных');
-    console.log('   Удалено записей:', result.changes);
-  } else {
-    console.log('\n❌ Не удалось удалить пользователя с id=' + userId);
-  }
+  console.log(`\n📊 Итого удалено пользователей: ${totalDeleted} из ${userIds.length}`);
   
   db.close();
 } catch (error) {

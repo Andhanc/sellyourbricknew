@@ -1,3 +1,3 @@
-2026/01/14-17:49:00.225 2cdc Reusing MANIFEST C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
-2026/01/14-17:49:00.231 2cdc Recovering log #13
-2026/01/14-17:49:00.234 2cdc Reusing old log C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Local Storage\leveldb/000013.log 
+2026/01/14-20:28:04.489 4098 Reusing MANIFEST C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/01/14-20:28:04.497 4098 Recovering log #13
+2026/01/14-20:28:04.501 4098 Reusing old log C:\Проекты\-----111\server\.wwebjs_auth\session\Default\Local Storage\leveldb/000013.log 
