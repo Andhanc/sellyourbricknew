@@ -10,6 +10,7 @@ import UsersList from '../components/admin/UsersList';
 import Moderation from '../components/admin/Moderation';
 import ObjectsList from '../components/admin/ObjectsList';
 import AdminChat from '../components/admin/AdminChat';
+import AccessManagement from '../components/admin/AccessManagement';
 import { mockBusinessInfo } from '../data/mockData';
 import '../styles/admin/global.css';
 import './AdminPanelPage.css';
@@ -18,8 +19,9 @@ const AdminPanelPage = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('statistics');
   const [showUsersModal, setShowUsersModal] = useState(false);
+  const [adminPermissions, setAdminPermissions] = useState(null);
 
-  // Проверка авторизации администратора
+  // Проверка авторизации администратора и загрузка прав доступа
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
     const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
@@ -29,6 +31,17 @@ const AdminPanelPage = () => {
       console.warn('⚠️ Доступ к админ-панели запрещен. Необходима авторизация администратора.')
       navigate('/', { replace: true });
       return;
+    }
+
+    // Загружаем права доступа из localStorage
+    const savedPermissions = localStorage.getItem('adminPermissions');
+    if (savedPermissions) {
+      try {
+        const permissions = JSON.parse(savedPermissions);
+        setAdminPermissions(permissions);
+      } catch (e) {
+        console.error('Ошибка при загрузке прав доступа:', e);
+      }
     }
     
     document.body.classList.add('admin-panel-active');
@@ -42,7 +55,27 @@ const AdminPanelPage = () => {
     users: 'Пользователи',
     moderation: 'Модерация',
     chat: 'Чат',
-    objects: 'Объекты'
+    objects: 'Объекты',
+    access_management: 'Доступы'
+  };
+
+  // Проверка прав доступа к разделу
+  const hasAccess = (section) => {
+    if (!adminPermissions) return false;
+    const isSuperAdmin = adminPermissions.is_super_admin || false;
+    
+    if (isSuperAdmin) return true;
+
+    const accessMap = {
+      statistics: adminPermissions.can_access_statistics,
+      users: adminPermissions.can_access_users,
+      moderation: adminPermissions.can_access_moderation,
+      chat: adminPermissions.can_access_chat,
+      objects: adminPermissions.can_access_objects,
+      access_management: adminPermissions.can_access_access_management
+    };
+
+    return accessMap[section] || false;
   };
 
   // Функция для очистки сессии администратора
@@ -67,7 +100,26 @@ const AdminPanelPage = () => {
     navigate('/');
   };
 
+  const handleSectionChange = (section) => {
+    // Проверяем права доступа перед сменой секции
+    if (hasAccess(section)) {
+      setActiveSection(section);
+    } else {
+      alert('У вас нет прав доступа к этому разделу');
+    }
+  };
+
   const renderContent = () => {
+    // Проверяем права доступа перед рендерингом
+    if (!hasAccess(activeSection)) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <h2>Доступ запрещен</h2>
+          <p>У вас нет прав доступа к этому разделу.</p>
+        </div>
+      );
+    }
+
     switch (activeSection) {
       case 'statistics':
         return <Statistics businessInfo={mockBusinessInfo} onShowUsers={() => setShowUsersModal(true)} />;
@@ -79,6 +131,8 @@ const AdminPanelPage = () => {
         return <AdminChat />;
       case 'objects':
         return <ObjectsList />;
+      case 'access_management':
+        return <AccessManagement />;
       default:
         return <Statistics businessInfo={mockBusinessInfo} onShowUsers={() => setShowUsersModal(true)} />;
     }
@@ -89,8 +143,9 @@ const AdminPanelPage = () => {
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       <Sidebar 
         activeSection={activeSection} 
-        onSectionChange={setActiveSection}
+        onSectionChange={handleSectionChange}
         onLogout={handleLogout}
+        adminPermissions={adminPermissions}
       />
       <div className="main-content">
         <Header 

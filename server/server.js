@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { initDatabase, closeDatabase } from './database/database.js';
-import { userQueries, documentQueries } from './database/database.js';
+import { initDatabase, closeDatabase, getDatabase } from './database/database.js';
+import { userQueries, documentQueries, notificationQueries, administratorQueries } from './database/database.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import multer from 'multer';
@@ -235,10 +235,18 @@ app.post('/api/users', (req, res) => {
     const userData = { ...req.body };
     
     // Валидация обязательных полей
-    if (!userData.first_name || !userData.last_name || !userData.email || !userData.phone_number) {
+    if (!userData.first_name) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Необходимо указать имя, фамилию, email и номер телефона' 
+        error: 'Необходимо указать имя (first_name)' 
+      });
+    }
+    
+    // Проверяем, что указан хотя бы email или phone_number
+    if (!userData.email && !userData.phone_number) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать email или номер телефона' 
       });
     }
     
@@ -263,6 +271,147 @@ app.post('/api/users', (req, res) => {
         error: 'Пользователь с таким email или номером телефона уже существует' 
       });
     }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/users/:id/approve - Одобрить пользователя (верифицировать)
+ * Одобряет все pending документы пользователя и устанавливает is_verified = 1
+ */
+app.put('/api/users/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reviewed_by } = req.body;
+
+    if (!reviewed_by) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать reviewed_by' });
+    }
+
+    const user = userQueries.getById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+
+    // Получаем все pending документы пользователя
+    const userDocuments = documentQueries.getByUserId(id);
+    const pendingDocuments = userDocuments.filter(doc => doc.verification_status === 'pending');
+
+    if (pendingDocuments.length === 0) {
+      return res.status(400).json({ success: false, error: 'У пользователя нет документов на верификацию' });
+    }
+
+    // Одобряем все pending документы
+    pendingDocuments.forEach(doc => {
+      documentQueries.updateStatus(doc.id, 'approved', reviewed_by, null);
+    });
+
+    // Устанавливаем пользователя как верифицированного
+    userQueries.update(id, { is_verified: 1 });
+
+    // Создаем уведомление в БД
+    try {
+      console.log('📝 Создание уведомления для пользователя:', id);
+      const result = notificationQueries.create({
+        user_id: id,
+        type: 'verification_success',
+        title: 'Поздравляем с успешной верификацией!',
+        message: '🎉 Ваши документы были одобрены. Теперь вы можете полноценно пользоваться сервисом.',
+        is_read: 0,
+        view_count: 0
+      });
+      console.log('✅ Уведомление о верификации создано в БД, ID:', result.lastInsertRowid);
+      
+      // Проверяем, что уведомление действительно создано
+      const createdNotif = notificationQueries.getByUserId(id);
+      console.log('📋 Всего уведомлений у пользователя:', createdNotif ? createdNotif.length : 0);
+      if (createdNotif && createdNotif.length > 0) {
+        console.log('📄 Последнее уведомление:', {
+          id: createdNotif[0].id,
+          type: createdNotif[0].type,
+          title: createdNotif[0].title
+        });
+      }
+    } catch (notifError) {
+      console.error('❌ Не удалось создать уведомление в БД:', notifError);
+      console.error('   Ошибка:', notifError.message);
+      console.error('   Stack:', notifError.stack);
+    }
+
+    // Отправляем уведомление через WhatsApp (если доступно)
+    if (user.phone_number && waClientReady) {
+      try {
+        const chatId = `${user.phone_number}@c.us`;
+        await waClient.sendMessage(chatId, '🎉 Поздравляем с успешной верификацией! Теперь вы можете полноценно пользоваться сервисом.');
+      } catch (notifError) {
+        console.warn('⚠️ Не удалось отправить уведомление через WhatsApp:', notifError.message);
+      }
+    }
+
+    const updatedUser = userQueries.getById(id);
+    res.json({ 
+      success: true, 
+      data: updatedUser,
+      message: `Пользователь верифицирован. Одобрено документов: ${pendingDocuments.length}`
+    });
+  } catch (error) {
+    console.error('Ошибка при одобрении пользователя:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/users/:id/reject - Отклонить пользователя
+ * Отклоняет все pending документы пользователя
+ */
+app.put('/api/users/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reviewed_by, rejection_reason } = req.body;
+
+    if (!reviewed_by) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать reviewed_by' });
+    }
+
+    const user = userQueries.getById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+
+    // Получаем все pending документы пользователя
+    const userDocuments = documentQueries.getByUserId(id);
+    const pendingDocuments = userDocuments.filter(doc => doc.verification_status === 'pending');
+
+    if (pendingDocuments.length === 0) {
+      return res.status(400).json({ success: false, error: 'У пользователя нет документов на верификацию' });
+    }
+
+    // Отклоняем все pending документы
+    pendingDocuments.forEach(doc => {
+      documentQueries.updateStatus(doc.id, 'rejected', reviewed_by, rejection_reason || 'Документы не прошли проверку');
+    });
+
+    // Отправляем уведомление пользователю
+    if (user.phone_number && waClientReady) {
+      try {
+        const chatId = `${user.phone_number}@c.us`;
+        const message = rejection_reason 
+          ? `❌ Ваши документы были отклонены по причине: ${rejection_reason}. Пожалуйста, загрузите их снова.`
+          : '❌ Ваши документы были отклонены. Пожалуйста, загрузите их снова.';
+        await waClient.sendMessage(chatId, message);
+      } catch (notifError) {
+        console.warn('⚠️ Не удалось отправить уведомление через WhatsApp:', notifError.message);
+      }
+    }
+
+    const updatedUser = userQueries.getById(id);
+    res.json({ 
+      success: true, 
+      data: updatedUser,
+      message: `Пользователь отклонен. Отклонено документов: ${pendingDocuments.length}`
+    });
+  } catch (error) {
+    console.error('Ошибка при отклонении пользователя:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -461,6 +610,26 @@ app.get('/api/documents/user/:userId', (req, res) => {
 });
 
 /**
+ * GET /api/documents/pending - Получить документы на верификацию
+ * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/documents/:id, иначе "pending" будет интерпретирован как ID
+ */
+app.get('/api/documents/pending', (req, res) => {
+  try {
+    console.log('📥 Запрос на получение документов на верификацию');
+    
+    // Используем упрощенную функцию из documentQueries
+    const documents = documentQueries.getPendingVerification();
+    
+    console.log('✅ Отправляем документы на верификацию:', documents.length);
+    
+    res.json({ success: true, data: documents });
+  } catch (error) {
+    console.error('❌ Ошибка при получении документов на верификацию:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * GET /api/documents/:id - Получить документ по ID
  */
 app.get('/api/documents/:id', (req, res) => {
@@ -493,11 +662,27 @@ app.post('/api/documents', upload.single('document_photo'), (req, res) => {
       user_id: req.body.user_id,
       document_type: req.body.document_type || null,
       document_photo: filePath,
-      is_reviewed: false
+      is_reviewed: false,
+      verification_status: 'pending' // Явно указываем статус 'pending' для верификации
     };
+    
+    console.log('📄 Создание документа:', documentData);
     
     const result = documentQueries.create(documentData);
     const newDocument = documentQueries.getById(result.lastInsertRowid);
+    
+    console.log('✅ Документ создан:', {
+      id: newDocument.id,
+      user_id: newDocument.user_id,
+      document_type: newDocument.document_type,
+      verification_status: newDocument.verification_status,
+      is_reviewed: newDocument.is_reviewed
+    });
+    
+    // Проверяем, что документ действительно имеет статус 'pending'
+    if (newDocument.verification_status !== 'pending') {
+      console.warn('⚠️ ВНИМАНИЕ: Документ создан со статусом', newDocument.verification_status, 'вместо pending!');
+    }
     
     res.status(201).json({ success: true, data: newDocument });
   } catch (error) {
@@ -521,6 +706,110 @@ app.put('/api/documents/:id/review', (req, res) => {
     
     const updatedDocument = documentQueries.getById(req.params.id);
     res.json({ success: true, data: updatedDocument });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/documents/:id/approve - Одобрить документ (верификация успешна)
+ */
+app.put('/api/documents/:id/approve', async (req, res) => {
+  try {
+    if (!req.body.reviewed_by) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать reviewed_by (ID админа/менеджера)' });
+    }
+    
+    const document = documentQueries.getById(req.params.id);
+    if (!document) {
+      return res.status(404).json({ success: false, error: 'Документ не найден' });
+    }
+    
+    // Одобряем документ
+    const result = documentQueries.approveDocument(req.params.id, req.body.reviewed_by);
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: 'Документ не найден' });
+    }
+    
+    // Получаем пользователя
+    const user = userQueries.getById(document.user_id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    // Проверяем, все ли документы пользователя одобрены
+    const userDocuments = documentQueries.getByUserId(document.user_id);
+    const allApproved = userDocuments.every(doc => 
+      doc.verification_status === 'approved' || doc.id === parseInt(req.params.id)
+    );
+    
+    // Если все документы одобрены, обновляем статус пользователя
+    if (allApproved) {
+      userQueries.update(document.user_id, { is_verified: 1 });
+    }
+    
+    // Отправляем уведомление пользователю
+    try {
+      if (user.phone_number && waClientReady) {
+        const digits = String(user.phone_number).replace(/\D/g, '');
+        const chatId = `${digits}@c.us`;
+        const message = `✅ Поздравляем с успешной верификацией!\n\nВаши документы были проверены и одобрены. Давайте познакомим вас с сервисом.`;
+        
+        await waClient.sendMessage(chatId, message);
+      }
+    } catch (notifError) {
+      console.warn('⚠️ Не удалось отправить уведомление через WhatsApp:', notifError.message);
+    }
+    
+    const updatedDocument = documentQueries.getById(req.params.id);
+    res.json({ success: true, data: updatedDocument, message: 'Документ одобрен' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/documents/:id/reject - Отклонить документ
+ */
+app.put('/api/documents/:id/reject', async (req, res) => {
+  try {
+    if (!req.body.reviewed_by) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать reviewed_by (ID админа/менеджера)' });
+    }
+    
+    const document = documentQueries.getById(req.params.id);
+    if (!document) {
+      return res.status(404).json({ success: false, error: 'Документ не найден' });
+    }
+    
+    // Отклоняем документ
+    const rejectionReason = req.body.rejection_reason || null;
+    const result = documentQueries.rejectDocument(req.params.id, req.body.reviewed_by, rejectionReason);
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: 'Документ не найден' });
+    }
+    
+    // Получаем пользователя
+    const user = userQueries.getById(document.user_id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    // Отправляем уведомление пользователю
+    try {
+      if (user.phone_number && waClientReady) {
+        const digits = String(user.phone_number).replace(/\D/g, '');
+        const chatId = `${digits}@c.us`;
+        const message = `❌ Ваши документы были отклонены.\n\nПожалуйста, загрузите документы заново, убедившись, что они четкие и соответствуют требованиям.`;
+        
+        await waClient.sendMessage(chatId, message);
+      }
+    } catch (notifError) {
+      console.warn('⚠️ Не удалось отправить уведомление через WhatsApp:', notifError.message);
+    }
+    
+    const updatedDocument = documentQueries.getById(req.params.id);
+    res.json({ success: true, data: updatedDocument, message: 'Документ отклонен' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -812,7 +1101,7 @@ app.post('/api/auth/email/register', async (req, res) => {
 });
 
 /**
- * POST /api/auth/email/login - Вход через Email
+ * POST /api/auth/email/login - Вход через Email или Username
  */
 app.post('/api/auth/email/login', async (req, res) => {
   try {
@@ -821,25 +1110,34 @@ app.post('/api/auth/email/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Необходимо указать email и пароль' 
+        error: 'Необходимо указать email/username и пароль' 
       });
     }
     
-    const emailLower = email.toLowerCase();
+    const identifier = email.toLowerCase().trim();
     
-    // Находим пользователя по email
-    const user = userQueries.getByEmail(emailLower);
+    console.log('🔐 Попытка входа:', { identifier });
+    
+    // Сначала пробуем найти пользователя по email
+    let user = userQueries.getByEmail(identifier);
+    
+    // Если не нашли по email, можно добавить поиск по username в будущем
+    // Пока ищем только по email
     
     if (!user) {
+      console.log('❌ Пользователь не найден:', identifier);
       return res.status(401).json({ 
         success: false, 
         error: 'Неверный email или пароль' 
       });
     }
     
+    console.log('✅ Пользователь найден:', { id: user.id, email: user.email, hasPassword: !!user.password });
+    
     // Проверяем пароль
     // Если у пользователя нет пароля (WhatsApp регистрация или старые записи)
     if (!user.password) {
+      console.log('⚠️ У пользователя нет пароля');
       // Для пользователей без пароля - требуем установить пароль в настройках
       return res.status(401).json({ 
         success: false, 
@@ -853,8 +1151,15 @@ app.post('/api/auth/email/login', async (req, res) => {
       .update(password)
       .digest('hex');
     
+    console.log('🔑 Проверка пароля:', { 
+      storedHash: user.password.substring(0, 20) + '...', 
+      inputHash: hashedPassword.substring(0, 20) + '...',
+      match: user.password === hashedPassword
+    });
+    
     // Сравниваем хеши паролей
     if (user.password !== hashedPassword) {
+      console.log('❌ Неверный пароль');
       return res.status(401).json({ 
         success: false, 
         error: 'Неверный email или пароль' 
@@ -864,6 +1169,8 @@ app.post('/api/auth/email/login', async (req, res) => {
     // Пароль верный, обновляем статус онлайн
     userQueries.update(user.id, { is_online: 1 });
     
+    console.log('✅ Вход успешен:', { id: user.id, email: user.email, role: user.role });
+    
     // Не возвращаем пароль в ответе (для безопасности)
     const { password: userPassword, ...userWithoutPassword } = user;
     
@@ -871,13 +1178,15 @@ app.post('/api/auth/email/login', async (req, res) => {
       success: true, 
       user: {
         id: user.id,
-        name: `${user.first_name} ${user.last_name}`.trim(),
+        name: `${user.first_name} ${user.last_name}`.trim() || user.email || 'Пользователь',
         email: user.email,
         role: user.role,
-        phone: user.phone_number
+        phone: user.phone_number,
+        is_verified: user.is_verified
       }
     });
   } catch (error) {
+    console.error('❌ Ошибка при входе:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1136,6 +1445,93 @@ app.get('/api/auth/whatsapp/user-info', async (req, res) => {
   }
 });
 
+// ========== РОУТЫ ДЛЯ УВЕДОМЛЕНИЙ ==========
+
+/**
+ * GET /api/notifications/user/:userId - Получить все уведомления пользователя
+ */
+app.get('/api/notifications/user/:userId', (req, res) => {
+  try {
+    console.log('📥 Запрос уведомлений для пользователя:', req.params.userId);
+    const notifications = notificationQueries.getByUserId(req.params.userId);
+    console.log('📋 Найдено уведомлений:', notifications ? notifications.length : 0);
+    
+    if (!notifications || notifications.length === 0) {
+      console.log('⚠️ Уведомления не найдены для пользователя:', req.params.userId);
+      return res.json({ success: true, data: [] });
+    }
+    
+    // Парсим JSON данные для каждого уведомления
+    const formattedNotifications = notifications.map(notif => {
+      try {
+        return {
+          ...notif,
+          data: notif.data ? JSON.parse(notif.data) : null,
+          is_read: notif.is_read === 1,
+          view_count: notif.view_count || 0
+        };
+      } catch (parseError) {
+        console.warn('⚠️ Ошибка парсинга данных уведомления:', parseError);
+        return {
+          ...notif,
+          data: null,
+          is_read: notif.is_read === 1,
+          view_count: notif.view_count || 0
+        };
+      }
+    });
+    
+    console.log('✅ Отправляем уведомления:', formattedNotifications.length);
+    res.json({ success: true, data: formattedNotifications });
+  } catch (error) {
+    console.error('❌ Ошибка при получении уведомлений:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/notifications/user/:userId/unread - Получить непрочитанные уведомления
+ */
+app.get('/api/notifications/user/:userId/unread', (req, res) => {
+  try {
+    const notifications = notificationQueries.getUnreadByUserId(req.params.userId);
+    const formattedNotifications = notifications.map(notif => ({
+      ...notif,
+      data: notif.data ? JSON.parse(notif.data) : null,
+      is_read: false,
+      view_count: notif.view_count || 0
+    }));
+    res.json({ success: true, data: formattedNotifications });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/notifications/:id/view - Отметить уведомление как просмотренное
+ * Увеличивает счетчик просмотров. Если просмотрено 2 раза, удаляет уведомление
+ */
+app.put('/api/notifications/:id/view', (req, res) => {
+  try {
+    notificationQueries.markAsViewed(req.params.id);
+    res.json({ success: true, message: 'Уведомление отмечено как просмотренное' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/notifications/:id - Удалить уведомление
+ */
+app.delete('/api/notifications/:id', (req, res) => {
+  try {
+    notificationQueries.delete(req.params.id);
+    res.json({ success: true, message: 'Уведомление удалено' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== РОУТЫ ДЛЯ АДМИН-ПАНЕЛИ ==========
 
 /**
@@ -1147,6 +1543,251 @@ app.get('/api/admin/users/count', (req, res) => {
     res.json({ success: true, count });
   } catch (error) {
     console.error('Ошибка при получении количества пользователей:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== РОУТЫ ДЛЯ УПРАВЛЕНИЯ АДМИНИСТРАТОРАМИ ==========
+
+/**
+ * POST /api/admin/auth/login - Вход администратора
+ */
+app.post('/api/admin/auth/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать username и пароль' 
+      });
+    }
+
+    // Проверяем супер-админа (admin, admin)
+    if (username === 'admin' && password === 'admin') {
+      // Создаем или получаем супер-админа
+      let superAdmin = administratorQueries.getByUsername('admin');
+      if (!superAdmin) {
+        const hashedPassword = crypto.createHash('sha256').update('admin').digest('hex');
+        administratorQueries.create({
+          username: 'admin',
+          password: hashedPassword,
+          is_super_admin: 1,
+          can_access_statistics: 1,
+          can_access_users: 1,
+          can_access_moderation: 1,
+          can_access_chat: 1,
+          can_access_objects: 1,
+          can_access_access_management: 1
+        });
+        superAdmin = administratorQueries.getByUsername('admin');
+      }
+
+      const { password: _, ...adminWithoutPassword } = superAdmin;
+      return res.json({
+        success: true,
+        admin: adminWithoutPassword
+      });
+    }
+
+    // Проверяем обычного администратора
+    const admin = administratorQueries.getByUsername(username);
+    if (!admin) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Неверный username или пароль' 
+      });
+    }
+
+    // Проверяем пароль
+    const hashedPassword = crypto
+      .createHash('sha256')
+      .update(password)
+      .digest('hex');
+
+    if (admin.password !== hashedPassword) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Неверный username или пароль' 
+      });
+    }
+
+    const { password: __, ...adminWithoutPassword } = admin;
+    res.json({
+      success: true,
+      admin: adminWithoutPassword
+    });
+  } catch (error) {
+    console.error('Ошибка при входе администратора:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/administrators - Получить всех администраторов
+ */
+app.get('/api/admin/administrators', (req, res) => {
+  try {
+    const admins = administratorQueries.getAll();
+    // Убираем пароли из ответа
+    const adminsWithoutPasswords = admins.map(admin => {
+      const { password, ...adminWithoutPassword } = admin;
+      return adminWithoutPassword;
+    });
+    res.json({ success: true, data: adminsWithoutPasswords });
+  } catch (error) {
+    console.error('Ошибка при получении администраторов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/administrators/:id - Получить администратора по ID
+ */
+app.get('/api/admin/administrators/:id', (req, res) => {
+  try {
+    const admin = administratorQueries.getById(req.params.id);
+    if (!admin) {
+      return res.status(404).json({ success: false, error: 'Администратор не найден' });
+    }
+    const { password, ...adminWithoutPassword } = admin;
+    res.json({ success: true, data: adminWithoutPassword });
+  } catch (error) {
+    console.error('Ошибка при получении администратора:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/administrators - Создать нового администратора
+ */
+app.post('/api/admin/administrators', (req, res) => {
+  try {
+    const { username, password, email, full_name, ...permissions } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать username и пароль' 
+      });
+    }
+
+    // Проверяем, не существует ли уже администратор с таким username
+    const existingAdmin = administratorQueries.getByUsername(username);
+    if (existingAdmin) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Администратор с таким username уже существует' 
+      });
+    }
+
+    // Хешируем пароль
+    const hashedPassword = crypto
+      .createHash('sha256')
+      .update(password)
+      .digest('hex');
+
+    const result = administratorQueries.create({
+      username,
+      password: hashedPassword,
+      email: email || null,
+      full_name: full_name || null,
+      is_super_admin: 0,
+      can_access_statistics: permissions.can_access_statistics ? 1 : 0,
+      can_access_users: permissions.can_access_users ? 1 : 0,
+      can_access_moderation: permissions.can_access_moderation ? 1 : 0,
+      can_access_chat: permissions.can_access_chat ? 1 : 0,
+      can_access_objects: permissions.can_access_objects ? 1 : 0,
+      can_access_access_management: 0 // Только для супер-админа
+    });
+
+    const newAdmin = administratorQueries.getById(result.lastInsertRowid);
+    const { password: _, ...adminWithoutPassword } = newAdmin;
+    
+    res.json({ 
+      success: true, 
+      data: adminWithoutPassword,
+      message: 'Администратор успешно создан' 
+    });
+  } catch (error) {
+    console.error('Ошибка при создании администратора:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/administrators/:id - Обновить администратора
+ */
+app.put('/api/admin/administrators/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, full_name, ...permissions } = req.body;
+
+    const admin = administratorQueries.getById(id);
+    if (!admin) {
+      return res.status(404).json({ success: false, error: 'Администратор не найден' });
+    }
+
+    // Не позволяем изменять права супер-админа
+    if (admin.is_super_admin) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Нельзя изменять права супер-администратора' 
+      });
+    }
+
+    administratorQueries.update(id, {
+      email: email || null,
+      full_name: full_name || null,
+      can_access_statistics: permissions.can_access_statistics ? 1 : 0,
+      can_access_users: permissions.can_access_users ? 1 : 0,
+      can_access_moderation: permissions.can_access_moderation ? 1 : 0,
+      can_access_chat: permissions.can_access_chat ? 1 : 0,
+      can_access_objects: permissions.can_access_objects ? 1 : 0,
+      can_access_access_management: 0 // Только для супер-админа
+    });
+
+    const updatedAdmin = administratorQueries.getById(id);
+    const { password: _, ...adminWithoutPassword } = updatedAdmin;
+    
+    res.json({ 
+      success: true, 
+      data: adminWithoutPassword,
+      message: 'Администратор успешно обновлен' 
+    });
+  } catch (error) {
+    console.error('Ошибка при обновлении администратора:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/administrators/:id - Удалить администратора
+ */
+app.delete('/api/admin/administrators/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const admin = administratorQueries.getById(id);
+    if (!admin) {
+      return res.status(404).json({ success: false, error: 'Администратор не найден' });
+    }
+
+    // Не позволяем удалять супер-админа
+    if (admin.is_super_admin) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Нельзя удалить супер-администратора' 
+      });
+    }
+
+    administratorQueries.delete(id);
+    res.json({ 
+      success: true, 
+      message: 'Администратор успешно удален' 
+    });
+  } catch (error) {
+    console.error('Ошибка при удалении администратора:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

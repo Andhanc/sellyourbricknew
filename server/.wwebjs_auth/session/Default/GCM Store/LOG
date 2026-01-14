@@ -1,2 +1,3 @@
-2026/01/14-23:19:54.392 5dfc Creating DB D:\sellyourbricknew\server\.wwebjs_auth\session\Default\GCM Store since it was missing.
-2026/01/14-23:19:54.409 5dfc Reusing MANIFEST D:\sellyourbricknew\server\.wwebjs_auth\session\Default\GCM Store/MANIFEST-000001
+2026/01/15-02:32:22.603 a54 Reusing MANIFEST D:\sellyourbricknew\server\.wwebjs_auth\session\Default\GCM Store/MANIFEST-000001
+2026/01/15-02:32:22.606 a54 Recovering log #3
+2026/01/15-02:32:22.647 a54 Reusing old log D:\sellyourbricknew\server\.wwebjs_auth\session\Default\GCM Store/000003.log 

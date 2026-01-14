@@ -1,2 +1,3 @@
-2026/01/14-23:19:49.072 8b14 Creating DB D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Local Storage\leveldb since it was missing.
-2026/01/14-23:19:49.087 8b14 Reusing MANIFEST D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/01/15-02:32:19.035 2b2c Reusing MANIFEST D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/01/15-02:32:19.043 2b2c Recovering log #3
+2026/01/15-02:32:19.045 2b2c Reusing old log D:\sellyourbricknew\server\.wwebjs_auth\session\Default\Local Storage\leveldb/000003.log 

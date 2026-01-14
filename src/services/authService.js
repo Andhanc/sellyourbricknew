@@ -4,7 +4,8 @@
 
 import emailjs from '@emailjs/browser'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+// Используем proxy из vite.config.js или полный URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 // EmailJS настройки
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || ''
@@ -873,7 +874,8 @@ export const validateSession = async () => {
   }
   
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+    // Используем proxy из vite.config.js или полный URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
     const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
       method: 'GET',
       headers: {
@@ -922,7 +924,8 @@ export const logout = async () => {
   // Обновляем статус в БД (is_online = 0) перед выходом
   if (userId) {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+      // Используем proxy из vite.config.js или полный URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
       await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -1477,9 +1480,17 @@ export const verifyEmailForProfileUpdate = async (userId, email, code) => {
  */
 export const loginWithEmail = async (email, password) => {
   try {
-    const emailLower = email.toLowerCase()
+    const emailLower = email.toLowerCase().trim()
     
-    // Попытка через backend
+    if (!emailLower || !password) {
+      return {
+        success: false,
+        error: 'Необходимо указать email и пароль'
+      }
+    }
+    
+    console.log('🔐 Попытка входа:', { email: emailLower, apiUrl: `${API_BASE_URL}/auth/email/login` })
+    
     try {
       const response = await fetch(`${API_BASE_URL}/auth/email/login`, {
         method: 'POST',
@@ -1492,39 +1503,68 @@ export const loginWithEmail = async (email, password) => {
         })
       })
       
-      if (response.ok) {
-        const data = await response.json()
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Ошибка входа:', response.status, errorData)
+        return {
+          success: false,
+          error: errorData.error || 'Неверный email или пароль'
+        }
+      }
+      
+      const data = await response.json()
+      console.log('✅ Вход успешен:', data)
+      
+      if (data.success && data.user) {
         saveUserData(data.user, 'email')
         return {
           success: true,
           user: data.user
         }
       } else {
-        const errorData = await response.json().catch(() => ({}))
         return {
           success: false,
-          error: errorData.error || 'Неверный email или пароль'
+          error: data.error || 'Неверный email или пароль'
         }
       }
     } catch (backendError) {
-      console.log('Backend недоступен, используем локальную проверку:', backendError.message)
-    }
-    
-    // Fallback: локальная проверка (только для разработки!)
-    const storedPassword = localStorage.getItem(`userPassword_${emailLower}`)
-    if (storedPassword) {
-      const decodedPassword = atob(storedPassword)
-      if (decodedPassword === password) {
-        const userData = getUserData()
-        if (userData.email === emailLower) {
-          return {
-            success: true,
-            user: userData
-          }
+      console.error('❌ Ошибка подключения к серверу:', backendError)
+      if (backendError.message === 'Failed to fetch') {
+        return {
+          success: false,
+          error: 'Не удалось подключиться к серверу. Убедитесь, что сервер запущен на порту 3000.'
         }
       }
+      return {
+        success: false,
+        error: 'Произошла ошибка при входе. Попробуйте позже.'
+      }
+    }
+  } catch (error) {
+    console.error('❌ Ошибка входа:', error)
+    return {
+      success: false,
+      error: 'Произошла ошибка при входе'
+    }
+  }
+}
+
+/**
+ * Вход пользователя с email/username и паролем (улучшенная версия)
+ */
+export const loginWithEmailOrUsername = async (emailOrUsername, password) => {
+  try {
+    const identifier = emailOrUsername.toLowerCase().trim()
+    
+    // Сначала пробуем как email
+    let result = await loginWithEmail(identifier, password)
+    
+    if (result.success) {
+      return result
     }
     
+    // Если не получилось, пробуем найти пользователя по username (если будет реализовано)
+    // Пока просто возвращаем ошибку
     return {
       success: false,
       error: 'Неверный email или пароль'

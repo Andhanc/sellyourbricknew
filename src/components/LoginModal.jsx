@@ -5,6 +5,7 @@ import { FaGoogle, FaWhatsapp, FaFacebook } from 'react-icons/fa'
 import { useSignIn, useSignUp } from '@clerk/clerk-react'
 import WhatsAppVerificationModal from './WhatsAppVerificationModal'
 import EmailVerificationModal from './EmailVerificationModal'
+import VerificationDocumentsModal from './VerificationDocumentsModal'
 import { registerWithEmail, loginWithEmail } from '../services/authService'
 import './LoginModal.css'
 
@@ -24,6 +25,8 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState('')
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
   const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false)
+  const [showVerificationDocumentsModal, setShowVerificationDocumentsModal] = useState(false)
+  const [newUserId, setNewUserId] = useState(null)
 
   // Не скрываем LoginModal полностью, чтобы EmailVerificationModal мог рендериться
   // Вместо этого скрываем только содержимое LoginModal
@@ -43,16 +46,39 @@ const LoginModal = ({ isOpen, onClose }) => {
     setIsLoading(true)
     
     if (isLogin) {
-      // Проверка для администратора
-      if (formData.email.toLowerCase() === 'admin' && formData.password === 'admin') {
-        // Сохраняем информацию о входе администратора
-        localStorage.setItem('userRole', 'admin')
-        localStorage.setItem('isAdminLoggedIn', 'true')
-        localStorage.setItem('isLoggedIn', 'true')
-        setIsLoading(false)
-        onClose()
-        navigate('/admin')
-        return
+      // Проверка для администратора через API
+      const adminUsername = formData.email.toLowerCase().trim();
+      if (adminUsername === 'admin' || adminUsername.includes('admin')) {
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+          const response = await fetch(`${API_BASE_URL}/admin/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username: adminUsername === 'admin' ? 'admin' : formData.email,
+              password: formData.password
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.admin) {
+              // Сохраняем информацию о входе администратора и его права доступа
+              localStorage.setItem('userRole', 'admin');
+              localStorage.setItem('isAdminLoggedIn', 'true');
+              localStorage.setItem('isLoggedIn', 'true');
+              localStorage.setItem('adminPermissions', JSON.stringify(data.admin));
+              setIsLoading(false);
+              onClose();
+              navigate('/admin');
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка при входе администратора:', error);
+        }
       }
       
       // Проверка для владельца недвижимости
@@ -77,21 +103,25 @@ const LoginModal = ({ isOpen, onClose }) => {
         return
       }
       
-      // Обычный вход с email и паролем
+      // Обычный вход с email/username и паролем
       try {
+        console.log('🔐 Попытка входа:', { email: formData.email })
         const result = await loginWithEmail(formData.email, formData.password)
+        
+        console.log('📥 Результат входа:', result)
         
         if (result.success) {
           setIsLoading(false)
           onClose()
-          navigate('/profile')
+          // Обновляем страницу для применения изменений
+          window.location.href = '/profile'
         } else {
           setError(result.error || 'Неверный email или пароль')
           setIsLoading(false)
         }
       } catch (error) {
-        console.error('Ошибка входа:', error)
-        setError('Произошла ошибка при входе. Попробуйте позже.')
+        console.error('❌ Ошибка входа:', error)
+        setError(error.message || 'Произошла ошибка при входе. Попробуйте позже.')
         setIsLoading(false)
       }
     } else {
@@ -235,42 +265,57 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   const handleWhatsAppSuccess = (user) => {
     // Успешная авторизация через WhatsApp
-    onClose()
-    
-    // Показываем уведомление
-    alert(`Добро пожаловать, ${user.name || 'Пользователь'}!`)
-    
-    // Перенаправляем в зависимости от роли
     const userRole = user.role || localStorage.getItem('userRole') || 'buyer'
-    if (userRole === 'seller') {
-      // Для продавца устанавливаем флаг и перенаправляем на /owner
-      localStorage.setItem('isOwnerLoggedIn', 'true')
-      localStorage.setItem('userRole', 'seller')
-      navigate('/owner')
+    const isRegister = !isLogin
+    
+    // Если это регистрация покупателя, показываем модальное окно для загрузки документов
+    if (isRegister && userRole === 'buyer' && user.id) {
+      setNewUserId(user.id)
+      setShowVerificationDocumentsModal(true)
     } else {
-      // Для покупателя перенаправляем на /profile
-      navigate('/profile')
+      // Для входа или продавца - обычный флоу
+      onClose()
+      alert(`Добро пожаловать, ${user.name || 'Пользователь'}!`)
+      
+      if (userRole === 'seller') {
+        localStorage.setItem('isOwnerLoggedIn', 'true')
+        localStorage.setItem('userRole', 'seller')
+        navigate('/owner')
+      } else {
+        navigate('/profile')
+      }
     }
   }
 
   const handleEmailVerificationSuccess = (user) => {
     // Успешная регистрация через email
-    onClose()
-    
-    // Показываем уведомление
-    alert(`Добро пожаловать, ${user.name || 'Пользователь'}! Регистрация завершена.`)
-    
-    // Перенаправляем в зависимости от роли
     const userRole = user.role || localStorage.getItem('userRole') || 'buyer'
-    if (userRole === 'seller') {
-      // Для продавца устанавливаем флаг и перенаправляем на /owner
-      localStorage.setItem('isOwnerLoggedIn', 'true')
-      localStorage.setItem('userRole', 'seller')
-      navigate('/owner')
+    
+    // Если это покупатель, показываем модальное окно для загрузки документов
+    if (userRole === 'buyer' && user.id) {
+      setNewUserId(user.id)
+      setShowVerificationDocumentsModal(true)
     } else {
-      // Для покупателя перенаправляем на /profile
-      navigate('/profile')
+      // Для продавца или если нет ID - обычный флоу
+      onClose()
+      alert(`Добро пожаловать, ${user.name || 'Пользователь'}! Регистрация завершена.`)
+      
+      if (userRole === 'seller') {
+        localStorage.setItem('isOwnerLoggedIn', 'true')
+        localStorage.setItem('userRole', 'seller')
+        navigate('/owner')
+      } else {
+        navigate('/profile')
+      }
     }
+  }
+  
+  const handleVerificationDocumentsComplete = () => {
+    // Документы загружены, закрываем модальное окно и перенаправляем
+    setShowVerificationDocumentsModal(false)
+    onClose()
+    alert('Документы отправлены на верификацию. Вы получите уведомление после проверки.')
+    navigate('/profile')
   }
 
   const toggleMode = () => {
@@ -527,6 +572,17 @@ const LoginModal = ({ isOpen, onClose }) => {
         password={formData.password}
         name={formData.name}
         role={userRole}
+      />
+      
+      <VerificationDocumentsModal
+        isOpen={showVerificationDocumentsModal}
+        onClose={() => {
+          setShowVerificationDocumentsModal(false)
+          onClose()
+          navigate('/profile')
+        }}
+        userId={newUserId}
+        onComplete={handleVerificationDocumentsComplete}
       />
     </>
   )

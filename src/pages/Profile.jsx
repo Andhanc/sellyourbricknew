@@ -20,6 +20,126 @@ const Profile = () => {
     countryFlag: ''
   })
   const fileInputRef = useRef(null)
+  const passportInputRef = useRef(null)
+  const passportWithFaceInputRef = useRef(null)
+  const [userId, setUserId] = useState(null)
+  const [uploading, setUploading] = useState({ passport: false, passportWithFace: false })
+  const [userDocuments, setUserDocuments] = useState({ passport: null, passportWithFace: null })
+  
+  // Используем proxy из vite.config.js или полный URL
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
+  
+  // Загрузка документов пользователя
+  const loadUserDocuments = async (userId) => {
+    if (!userId) return
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/user/${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          // Берем только последние документы каждого типа (на случай если их несколько)
+          const passportDocs = data.data.filter(doc => doc.document_type === 'passport')
+          const passportWithFaceDocs = data.data.filter(doc => doc.document_type === 'passport_with_face')
+          
+          const documents = {
+            passport: passportDocs.length > 0 ? passportDocs[0] : null,
+            passportWithFace: passportWithFaceDocs.length > 0 ? passportWithFaceDocs[0] : null
+          }
+          
+          console.log('Загружены документы пользователя:', documents)
+          setUserDocuments(documents)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки документов:', error)
+    }
+  }
+  
+  const handleDocumentUpload = async (type, file) => {
+    if (!file) {
+      alert('Файл не выбран')
+      return
+    }
+    
+    if (!userId) {
+      alert('Ошибка: ID пользователя не найден. Пожалуйста, обновите страницу.')
+      console.error('userId не установлен:', userId)
+      return
+    }
+    
+    setUploading(prev => ({ ...prev, [type]: true }))
+    
+    try {
+      const formData = new FormData()
+      formData.append('document_photo', file)
+      formData.append('user_id', String(userId))
+      formData.append('document_type', type === 'passport' ? 'passport' : 'passport_with_face')
+      
+      console.log('📤 Загрузка документа:', {
+        type,
+        userId,
+        fileName: file.name,
+        fileSize: file.size,
+        apiUrl: `${API_BASE_URL}/documents`
+      })
+      
+      const response = await fetch(`${API_BASE_URL}/documents`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      console.log('📥 Ответ сервера:', response.status, response.statusText)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Данные от сервера:', data)
+        
+        if (data.success) {
+          alert('Документ успешно загружен и отправлен на верификацию')
+          // Обновляем состояние сразу
+          const newDoc = {
+            id: data.data.id,
+            document_type: data.data.document_type,
+            document_photo: data.data.document_photo,
+            verification_status: data.data.verification_status || 'pending',
+            created_at: data.data.created_at
+          }
+          setUserDocuments(prev => ({
+            ...prev,
+            [type === 'passport' ? 'passport' : 'passportWithFace']: newDoc
+          }))
+          // Перезагружаем документы пользователя для синхронизации
+          await loadUserDocuments(userId)
+        } else {
+          alert(data.error || 'Ошибка загрузки документа')
+        }
+      } else {
+        const errorText = await response.text().catch(() => 'Неизвестная ошибка')
+        console.error('❌ Ошибка сервера:', response.status, errorText)
+        
+        let errorMessage = 'Ошибка загрузки документа'
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          errorMessage = `Ошибка ${response.status}: ${errorText.substring(0, 100)}`
+        }
+        
+        alert(errorMessage)
+      }
+    } catch (error) {
+      console.error('❌ Ошибка загрузки документа:', error)
+      
+      if (error.message === 'Failed to fetch') {
+        alert('Не удалось подключиться к серверу. Убедитесь, что сервер запущен на порту 3000.')
+      } else {
+        alert(`Ошибка: ${error.message}`)
+      }
+    } finally {
+      setUploading(prev => ({ ...prev, [type]: false }))
+    }
+  }
 
   // Синхронизируем данные Clerk с localStorage и загружаем данные пользователя
   useEffect(() => {
@@ -104,6 +224,100 @@ const Profile = () => {
       // Сохраняем данные Clerk в localStorage для совместимости со старой системой
       saveUserData(clerkUserData, 'clerk')
       
+      // Находим или создаем пользователя в БД и получаем его ID
+      const findOrCreateUserInDB = async () => {
+        try {
+          let dbUserId = null
+          
+          // Сначала пытаемся найти пользователя по email
+          if (userEmail) {
+            const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json()
+              if (emailData.success && emailData.data) {
+                dbUserId = emailData.data.id
+                console.log('✅ Пользователь найден в БД по email:', dbUserId)
+              }
+            }
+          }
+          
+          // Если не нашли по email, пытаемся по телефону
+          if (!dbUserId && userPhone) {
+            const phoneDigits = userPhone.replace(/\D/g, '')
+            if (phoneDigits) {
+              const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+              if (phoneResponse.ok) {
+                const phoneData = await phoneResponse.json()
+                if (phoneData.success && phoneData.data) {
+                  dbUserId = phoneData.data.id
+                  console.log('✅ Пользователь найден в БД по телефону:', dbUserId)
+                }
+              }
+            }
+          }
+          
+          // Если пользователь не найден, создаем его
+          if (!dbUserId) {
+            const nameParts = userName.split(' ')
+            const firstName = nameParts[0] || 'Пользователь'
+            const lastName = nameParts.slice(1).join(' ') || ''
+            
+            const createResponse = await fetch(`${API_BASE_URL}/users`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName,
+                email: userEmail || null,
+                phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
+                role: 'buyer',
+                is_verified: 0,
+                is_online: 1
+              })
+            })
+            
+            if (createResponse.ok) {
+              const createData = await createResponse.json()
+              if (createData.success && createData.data) {
+                dbUserId = createData.data.id
+                console.log('✅ Пользователь создан в БД:', dbUserId)
+              }
+            } else {
+              const errorData = await createResponse.json().catch(() => ({}))
+              console.error('❌ Ошибка создания пользователя:', errorData)
+            }
+          }
+          
+          // Используем ID из БД
+          if (dbUserId) {
+            setUserId(dbUserId)
+            // Обновляем localStorage с правильным ID
+            localStorage.setItem('userId', String(dbUserId))
+            loadUserDocuments(dbUserId)
+          } else {
+            console.warn('⚠️ Не удалось получить ID пользователя из БД')
+            // Fallback на ID из localStorage
+            const fallbackId = localStorage.getItem('userId')
+            if (fallbackId) {
+              setUserId(fallbackId)
+              loadUserDocuments(fallbackId)
+            }
+          }
+        } catch (error) {
+          console.error('❌ Ошибка при получении/создании пользователя в БД:', error)
+          // Fallback на ID из localStorage
+          const fallbackId = localStorage.getItem('userId')
+          if (fallbackId) {
+            setUserId(fallbackId)
+            loadUserDocuments(fallbackId)
+          }
+        }
+      }
+      
+      findOrCreateUserInDB()
+      
       const newProfileData = {
         name: clerkUserData.name || 'Пользователь',
         phone: clerkUserData.phoneFormatted || clerkUserData.phone || '',
@@ -137,6 +351,99 @@ const Profile = () => {
           country: userData.country || '',
           countryFlag: userData.countryFlag || ''
         })
+        
+        // Находим или создаем пользователя в БД и получаем его ID
+        const findOrCreateUser = async () => {
+          try {
+            let dbUserId = null
+            const userEmail = userData.email
+            const userPhone = userData.phone || userData.phoneFormatted
+            
+            // Сначала пытаемся найти пользователя по email
+            if (userEmail) {
+              const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+              if (emailResponse.ok) {
+                const emailData = await emailResponse.json()
+                if (emailData.success && emailData.data) {
+                  dbUserId = emailData.data.id
+                  console.log('✅ Пользователь найден в БД по email:', dbUserId)
+                }
+              }
+            }
+            
+            // Если не нашли по email, пытаемся по телефону
+            if (!dbUserId && userPhone) {
+              const phoneDigits = userPhone.replace(/\D/g, '')
+              if (phoneDigits) {
+                const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+                if (phoneResponse.ok) {
+                  const phoneData = await phoneResponse.json()
+                  if (phoneData.success && phoneData.data) {
+                    dbUserId = phoneData.data.id
+                    console.log('✅ Пользователь найден в БД по телефону:', dbUserId)
+                  }
+                }
+              }
+            }
+            
+            // Если пользователь не найден, создаем его
+            if (!dbUserId) {
+              const nameParts = (userData.name || 'Пользователь').split(' ')
+              const firstName = nameParts[0] || 'Пользователь'
+              const lastName = nameParts.slice(1).join(' ') || ''
+              
+              const createResponse = await fetch(`${API_BASE_URL}/users`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  first_name: firstName,
+                  last_name: lastName,
+                  email: userEmail || null,
+                  phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
+                  role: userData.role || 'buyer',
+                  is_verified: 0,
+                  is_online: 1
+                })
+              })
+              
+              if (createResponse.ok) {
+                const createData = await createResponse.json()
+                if (createData.success && createData.data) {
+                  dbUserId = createData.data.id
+                  console.log('✅ Пользователь создан в БД:', dbUserId)
+                }
+              } else {
+                const errorData = await createResponse.json().catch(() => ({}))
+                console.error('❌ Ошибка создания пользователя:', errorData)
+              }
+            }
+            
+            // Используем ID из БД
+            if (dbUserId) {
+              setUserId(dbUserId)
+              localStorage.setItem('userId', String(dbUserId))
+              loadUserDocuments(dbUserId)
+            } else {
+              console.warn('⚠️ Не удалось получить ID пользователя из БД')
+              const fallbackId = userData.id || localStorage.getItem('userId')
+              if (fallbackId) {
+                setUserId(fallbackId)
+                loadUserDocuments(fallbackId)
+              }
+            }
+          } catch (error) {
+            console.error('❌ Ошибка при получении/создании пользователя в БД:', error)
+            const fallbackId = userData.id || localStorage.getItem('userId')
+            if (fallbackId) {
+              setUserId(fallbackId)
+              loadUserDocuments(fallbackId)
+            }
+          }
+        }
+        
+        findOrCreateUser()
       } else {
         // Если не авторизован, перенаправляем на главную страницу
         console.warn('⚠️ Пользователь не авторизован, перенаправление на главную')
@@ -521,124 +828,167 @@ const Profile = () => {
             <section className="profile-section">
               <div className="section-header">
                 <h2 className="section-title">Документы</h2>
-                <div className="section-subtitle">Храните важные документы в безопасности</div>
+                <div className="section-subtitle">Загрузите документы для верификации</div>
               </div>
               <div className="section-cards">
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#docAllGrad)"/>
-                      <path d="M14 14H26M14 18H26M14 22H22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="docAllGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>Все</h3>
-                    <p>Все документы</p>
-                  </div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportGrad)"/>
-                      <circle cx="20" cy="16" r="3" fill="white" opacity="0.8"/>
-                      <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="passportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>Паспорт</h3>
-                    <p>Российский паспорт</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#foreignGrad)"/>
-                      <path d="M12 12H28M12 16H28M12 20H24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="foreignGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>Загран</h3>
-                    <p>Заграничный паспорт</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="10" y="8" width="20" height="24" rx="2" fill="url(#licenseGrad)"/>
-                      <circle cx="20" cy="18" r="4" fill="white" opacity="0.3"/>
-                      <path d="M16 24H24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="licenseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>ВУ</h3>
-                    <p>Водительское удостоверение</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <path d="M20 8L12 14V28L20 34L28 28V14L20 8Z" fill="url(#omsGrad)"/>
-                      <path d="M20 12V20M16 16L24 24" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="omsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>ОМС</h3>
-                    <p>Полис ОМС</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
-                <div className="section-card">
-                  <div className="card-icon-wrapper">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <rect x="8" y="8" width="24" height="24" rx="3" fill="url(#snilsGrad)"/>
-                      <path d="M14 16H26M14 20H26M14 24H22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      <defs>
-                        <linearGradient id="snilsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ABAB5" />
-                          <stop offset="100%" stopColor="#089a95" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </div>
-                  <div className="card-content">
-                    <h3>СНИЛС</h3>
-                    <p>Страховое свидетельство</p>
-                  </div>
-                  <div className="card-badge">+</div>
-                </div>
+                <input
+                  ref={passportInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleDocumentUpload('passport', e.target.files[0])
+                    }
+                  }}
+                />
+                <input
+                  ref={passportWithFaceInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleDocumentUpload('passportWithFace', e.target.files[0])
+                    }
+                  }}
+                />
+                {(() => {
+                  const doc = userDocuments.passport
+                  const status = doc?.verification_status || 'none'
+                  const isPending = status === 'pending'
+                  const isApproved = status === 'approved'
+                  const isRejected = status === 'rejected'
+                  const canUpload = !isPending && !uploading.passport && userId
+                  
+                  return (
+                    <div 
+                      className={`section-card document-card ${isPending ? 'document-pending' : ''} ${isApproved ? 'document-approved' : ''} ${isRejected ? 'document-rejected' : ''}`}
+                      onClick={() => {
+                        if (canUpload) {
+                          passportInputRef.current?.click()
+                        } else if (isPending) {
+                          alert('Документ уже на рассмотрении. Дождитесь результата проверки.')
+                        } else if (!userId) {
+                          alert('Необходимо войти в систему для загрузки документов')
+                        }
+                      }}
+                      style={{ 
+                        cursor: canUpload ? 'pointer' : (isPending || !userId) ? 'not-allowed' : 'pointer',
+                        opacity: uploading.passport ? 0.6 : isPending ? 0.8 : 1
+                      }}
+                    >
+                      <div className="card-icon-wrapper">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                          <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportGrad)"/>
+                          <circle cx="20" cy="16" r="3" fill="white" opacity="0.8"/>
+                          <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                          <defs>
+                            <linearGradient id="passportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#0ABAB5" />
+                              <stop offset="100%" stopColor="#089a95" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                      </div>
+                      <div className="card-content">
+                        <h3>Паспорт</h3>
+                        <p>
+                          {uploading.passport ? 'Загрузка...' : 
+                           isPending ? 'На рассмотрении' :
+                           isApproved ? 'Одобрен' :
+                           isRejected ? 'Отклонен' :
+                           'Загрузите фото или скан паспорта'}
+                        </p>
+                        {isPending && (
+                          <div className="document-status-badge document-status-pending">
+                            ⏳ На рассмотрении
+                          </div>
+                        )}
+                        {isApproved && (
+                          <div className="document-status-badge document-status-approved">
+                            ✅ Одобрен
+                          </div>
+                        )}
+                        {isRejected && (
+                          <div className="document-status-badge document-status-rejected">
+                            ❌ Отклонен
+                          </div>
+                        )}
+                      </div>
+                      {canUpload && <div className="card-badge">+</div>}
+                    </div>
+                  )
+                })()}
+                {(() => {
+                  const doc = userDocuments.passportWithFace
+                  const status = doc?.verification_status || 'none'
+                  const isPending = status === 'pending'
+                  const isApproved = status === 'approved'
+                  const isRejected = status === 'rejected'
+                  const canUpload = !isPending && !uploading.passportWithFace && userId
+                  
+                  return (
+                    <div 
+                      className={`section-card document-card ${isPending ? 'document-pending' : ''} ${isApproved ? 'document-approved' : ''} ${isRejected ? 'document-rejected' : ''}`}
+                      onClick={() => {
+                        if (canUpload) {
+                          passportWithFaceInputRef.current?.click()
+                        } else if (isPending) {
+                          alert('Документ уже на рассмотрении. Дождитесь результата проверки.')
+                        } else if (!userId) {
+                          alert('Необходимо войти в систему для загрузки документов')
+                        }
+                      }}
+                      style={{ 
+                        cursor: canUpload ? 'pointer' : (isPending || !userId) ? 'not-allowed' : 'pointer',
+                        opacity: uploading.passportWithFace ? 0.6 : isPending ? 0.8 : 1
+                      }}
+                    >
+                      <div className="card-icon-wrapper">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                          <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportFaceGrad)"/>
+                          <circle cx="20" cy="16" r="3" fill="white" opacity="0.8"/>
+                          <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                          <circle cx="28" cy="12" r="4" fill="white" opacity="0.9"/>
+                          <path d="M26 12C26 12 27 13 28 13C29 13 30 12 30 12" stroke="#089a95" strokeWidth="1.5" strokeLinecap="round"/>
+                          <defs>
+                            <linearGradient id="passportFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#0ABAB5" />
+                              <stop offset="100%" stopColor="#089a95" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                      </div>
+                      <div className="card-content">
+                        <h3>Паспорт + лицо</h3>
+                        <p>
+                          {uploading.passportWithFace ? 'Загрузка...' : 
+                           isPending ? 'На рассмотрении' :
+                           isApproved ? 'Одобрен' :
+                           isRejected ? 'Отклонен' :
+                           'Селфи с паспортом рядом с лицом'}
+                        </p>
+                        {isPending && (
+                          <div className="document-status-badge document-status-pending">
+                            ⏳ На рассмотрении
+                          </div>
+                        )}
+                        {isApproved && (
+                          <div className="document-status-badge document-status-approved">
+                            ✅ Одобрен
+                          </div>
+                        )}
+                        {isRejected && (
+                          <div className="document-status-badge document-status-rejected">
+                            ❌ Отклонен
+                          </div>
+                        )}
+                      </div>
+                      {canUpload && <div className="card-badge">+</div>}
+                    </div>
+                  )
+                })()}
               </div>
             </section>
           </div>

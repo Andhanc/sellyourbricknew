@@ -427,6 +427,33 @@
   transform: translateY(0);
 }
 
+/* Стили для уведомлений о верификации */
+.notification-item--success {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #10b981;
+}
+
+.notification-item--success .notification-item__title {
+  color: #059669;
+}
+
+.notification-item--error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #ef4444;
+}
+
+.notification-item--error .notification-item__title {
+  color: #dc2626;
+}
+
+.notification-item__message {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1.5;
+}
+
 .notification-item__button svg {
   transition: transform 0.2s ease;
 }

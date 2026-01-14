@@ -1,11 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiUser, FiHome, FiShield, FiShieldOff, FiX, FiCheck, FiXCircle } from 'react-icons/fi';
 import { FaBuilding } from 'react-icons/fa';
 import ModerationPropertyDetail from './ModerationPropertyDetail';
 import ModerationUserDetail from './ModerationUserDetail';
 import './Moderation.css';
 
-// Моковые данные для модерации пользователей
+// Используем proxy из vite.config.js или полный URL
+// В режиме разработки всегда используем относительный путь через proxy
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+// Моковые данные для модерации пользователей (fallback)
 const mockUsersForModeration = [
   {
     id: 1,
@@ -166,16 +170,97 @@ const Moderation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Загрузка документов на верификацию
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadPendingDocuments();
+    }
+  }, [activeTab]);
+
+  // Автообновление каждые 5 секунд
+  useEffect(() => {
+    if (activeTab === 'users') {
+      const interval = setInterval(() => {
+        loadPendingDocuments();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
+  const loadPendingDocuments = async () => {
+    setLoading(true);
+    try {
+      console.log('🔄 Загрузка документов на верификацию из:', `${API_BASE_URL}/documents/pending`);
+      const response = await fetch(`${API_BASE_URL}/documents/pending`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📦 Получены данные от API:', data);
+        
+        if (data.success && data.data) {
+          console.log('✅ Найдено документов:', data.data.length);
+          
+          // Группируем документы по пользователям
+          const groupedByUser = {};
+          data.data.forEach(doc => {
+            console.log('📄 Обработка документа:', doc);
+            
+            if (!groupedByUser[doc.user_id]) {
+              groupedByUser[doc.user_id] = {
+                id: doc.user_id,
+                firstName: doc.first_name || 'Не указано',
+                lastName: doc.last_name || '',
+                email: doc.email || 'Не указано',
+                phone: doc.phone_number || 'Не указано',
+                role: doc.role || 'buyer',
+                documents: []
+              };
+            }
+            groupedByUser[doc.user_id].documents.push({
+              id: doc.id,
+              document_type: doc.document_type,
+              document_photo: doc.document_photo,
+              verification_status: doc.verification_status || 'pending',
+              created_at: doc.created_at
+            });
+          });
+          
+          const usersList = Object.values(groupedByUser);
+          console.log('👥 Сгруппировано пользователей:', usersList.length);
+          console.log('👥 Список пользователей:', usersList);
+          
+          setPendingDocuments(usersList);
+        } else {
+          console.log('⚠️ Нет данных в ответе API');
+          setPendingDocuments([]);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Ошибка загрузки документов: ответ не успешный', response.status, errorText);
+        setPendingDocuments([]);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка загрузки документов:', error);
+      setPendingDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     if (activeTab !== 'users') return [];
-    return mockUsersForModeration.filter(user => {
+    // Используем только реальные данные из API, без моковых
+    return pendingDocuments.filter(user => {
+      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
       return (
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+        fullName.includes(searchQuery.toLowerCase()) ||
+        (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     });
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, pendingDocuments]);
 
   const filteredProperties = useMemo(() => {
     if (activeTab !== 'properties') return [];
@@ -188,25 +273,66 @@ const Moderation = () => {
     });
   }, [activeTab, searchQuery]);
 
-  const handleApprove = (type, id) => {
-    if (window.confirm(`Вы уверены, что хотите одобрить этот ${type === 'users' ? 'пользователя' : 'объект'}?`)) {
-      alert(`${type === 'users' ? 'Пользователь' : 'Объект'} одобрен`);
-      if (type === 'users') {
-        setSelectedUser(null);
+  const handleApprove = async (userId) => {
+    try {
+      const adminId = localStorage.getItem('userId') || 'admin';
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reviewed_by: adminId
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          alert('Пользователь одобрен и верифицирован. Ему отправлено уведомление.');
+          // Перезагружаем список документов
+          loadPendingDocuments();
+          setSelectedUser(null);
+        }
       } else {
-        setSelectedProperty(null);
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Ошибка при одобрении пользователя');
       }
+    } catch (error) {
+      console.error('Ошибка при одобрении пользователя:', error);
+      alert('Ошибка при одобрении пользователя');
     }
   };
 
-  const handleReject = (type, id) => {
-    if (window.confirm(`Вы уверены, что хотите отклонить этот ${type === 'users' ? 'пользователя' : 'объект'}?`)) {
-      alert(`${type === 'users' ? 'Пользователь' : 'Объект'} отклонен`);
-      if (type === 'users') {
-        setSelectedUser(null);
+  const handleReject = async (userId, rejectionReason) => {
+    try {
+      const adminId = localStorage.getItem('userId') || 'admin';
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reviewed_by: adminId,
+          rejection_reason: rejectionReason
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          alert('Пользователь отклонен. Ему отправлено уведомление.');
+          // Перезагружаем список документов
+          loadPendingDocuments();
+          setSelectedUser(null);
+        }
       } else {
-        setSelectedProperty(null);
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Ошибка при отклонении пользователя');
       }
+    } catch (error) {
+      console.error('Ошибка при отклонении пользователя:', error);
+      alert('Ошибка при отклонении пользователя');
     }
   };
 
@@ -237,8 +363,9 @@ const Moderation = () => {
       <ModerationUserDetail
         user={selectedUser}
         onBack={() => setSelectedUser(null)}
-        onApprove={() => handleApprove('users', selectedUser.id)}
-        onReject={() => handleReject('users', selectedUser.id)}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onRefresh={loadPendingDocuments}
       />
     );
   }
@@ -305,9 +432,13 @@ const Moderation = () => {
 
       {activeTab === 'users' && (
         <div className="moderation-content">
-          {filteredUsers.length === 0 ? (
+          {loading ? (
             <div className="moderation-empty">
-              <p>Нет пользователей на модерации</p>
+              <p>Загрузка документов...</p>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="moderation-empty">
+              <p>Нет документов на верификацию</p>
             </div>
           ) : (
             <div className="moderation-list">
@@ -353,7 +484,9 @@ const Moderation = () => {
                       </div>
                       <div className="moderation-meta-item">
                         <span className="moderation-label">Документы:</span>
-                        <span className="moderation-value">{user.documents.map(doc => doc.name).join(', ')}</span>
+                        <span className="moderation-value">
+                          {user.documents ? user.documents.length : 0} документ(ов) на проверку
+                        </span>
                       </div>
                     </div>
                   </div>

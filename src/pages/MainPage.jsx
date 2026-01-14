@@ -48,11 +48,12 @@ import {
 } from 'react-icons/pi'
 import PropertyTimer from '../components/PropertyTimer'
 import LoginModal from '../components/LoginModal'
+import VerificationSuccessNotification from '../components/VerificationSuccessNotification'
 import '../components/PropertyList.css'
 import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
 import { getUserData, clearUserData } from '../services/authService'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const resortLocations = [
   'Costa Adeje, Tenerife',
@@ -1119,11 +1120,136 @@ function MainPage() {
       window.removeEventListener('focus', handleFocus)
     }
   }, [user, userLoaded, location.pathname]) // Обновляем при изменении маршрута
+
+  // Загрузка уведомлений
+  useEffect(() => {
+    const loadNotifications = async () => {
+      const userData = getUserData()
+      if (!userData) {
+        console.log('📭 Нет данных пользователя для загрузки уведомлений');
+        return
+      }
+
+      // Пытаемся найти ID пользователя в БД
+      let dbUserId = userData.id;
+      
+      // Если ID не найден, пробуем найти пользователя по email или phone
+      if (!dbUserId && (userData.email || userData.phone)) {
+        try {
+          const searchUrl = userData.email 
+            ? `${API_BASE_URL}/users/email/${encodeURIComponent(userData.email)}`
+            : `${API_BASE_URL}/users/phone/${encodeURIComponent(userData.phone)}`;
+          const userResponse = await fetch(searchUrl);
+          if (userResponse.ok) {
+            const userResult = await userResponse.json();
+            if (userResult.success && userResult.data) {
+              dbUserId = userResult.data.id;
+              console.log('✅ Найден пользователь в БД по email/phone, ID:', dbUserId);
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Не удалось найти пользователя в БД:', error);
+        }
+      }
+
+      if (!dbUserId) {
+        console.log('📭 Нет ID пользователя в БД для загрузки уведомлений');
+        return
+      }
+
+      console.log('📥 Загрузка уведомлений для пользователя:', dbUserId);
+      setNotificationsLoading(true)
+      try {
+        const response = await fetch(`${API_BASE_URL}/notifications/user/${dbUserId}`)
+        console.log('📥 Ответ API уведомлений:', response.status, response.statusText);
+        if (response.ok) {
+          const data = await response.json()
+          console.log('📦 Получены уведомления:', data);
+          if (data.success) {
+            console.log('✅ Найдено уведомлений:', data.data?.length || 0);
+            const notificationsList = data.data || [];
+            
+            // Проверяем, есть ли уведомление о верификации, которое еще не показывали
+            const verificationNotif = notificationsList.find(
+              n => n.type === 'verification_success' && n.view_count === 0
+            );
+            
+            if (verificationNotif && !showVerificationSuccess) {
+              console.log('🎉 Найдено уведомление о верификации, показываем модальное окно');
+              setVerificationNotification(verificationNotif);
+              setShowVerificationSuccess(true);
+            }
+            
+            if (notificationsList && notificationsList.length > 0) {
+              console.log('📄 Первое уведомление:', notificationsList[0]);
+            }
+            setNotifications(notificationsList)
+          } else {
+            console.warn('⚠️ API вернул success: false');
+            setNotifications([])
+          }
+        } else {
+          const errorText = await response.text()
+          console.error('❌ Ошибка загрузки уведомлений:', response.status, errorText);
+          setNotifications([])
+        }
+      } catch (error) {
+        console.error('❌ Ошибка загрузки уведомлений:', error)
+        setNotifications([])
+      } finally {
+        setNotificationsLoading(false)
+      }
+    }
+
+    if (isLoggedIn) {
+      loadNotifications()
+      // Обновляем уведомления каждые 5 секунд
+      const interval = setInterval(loadNotifications, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [user, userLoaded, isLoggedIn])
+
+  // Обработчик просмотра уведомления
+  const handleNotificationView = async (notificationId) => {
+    try {
+      console.log('👁️ Просмотр уведомления:', notificationId);
+      await fetch(`${API_BASE_URL}/notifications/${notificationId}/view`, {
+        method: 'PUT'
+      })
+      // Обновляем список уведомлений
+      const userData = getUserData()
+      if (userData && userData.id) {
+        const response = await fetch(`${API_BASE_URL}/notifications/user/${userData.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            setNotifications(data.data || [])
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при просмотре уведомления:', error)
+    }
+  }
+
+  // Обработчик закрытия уведомления о верификации
+  const handleVerificationClose = async () => {
+    if (verificationNotification) {
+      // Отмечаем уведомление как просмотренное (удаляется после первого просмотра)
+      await handleNotificationView(verificationNotification.id);
+      setShowVerificationSuccess(false);
+      setVerificationNotification(null);
+    }
+  }
   
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [showMap, setShowMap] = useState(false)
   const [selectedChat, setSelectedChat] = useState(null)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [showVerificationSuccess, setShowVerificationSuccess] = useState(false)
+  const [verificationNotification, setVerificationNotification] = useState(null)
   const [activeCategory, setActiveCategory] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [filteredProperties, setFilteredProperties] = useState(null)
@@ -1787,37 +1913,67 @@ function MainPage() {
                         </button>
                       </div>
                       <div className="notification-panel__list">
-                        <div className="notification-item notification-item--property">
-                          <div className="notification-item__content">
-                            <h4 className="notification-item__title">{t('foundProperty')}</h4>
-                            <div className="notification-item__property">
-                              <div className="notification-item__image">
-                                <img 
-                                  src={recommendedProperties[0].image}
-                                  alt={recommendedProperties[0].name}
-                                  onError={(e) => {
-                                    e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
-                                  }}
-                                />
-                              </div>
-                              <div className="notification-item__info">
-                                <p className="notification-item__property-name">{recommendedProperties[0].name}</p>
-                                <p className="notification-item__property-location">{recommendedProperties[0].location}</p>
-                                <button 
-                                  type="button" 
-                                  className="notification-item__button"
-                                  onClick={() => {
-                                    setIsNotificationOpen(false)
-                                    navigate(`/property/${recommendedProperties[0].id}`)
-                                  }}
-                                >
-                                  {t('goTo')}
-                                  <FiArrowRight size={18} />
-                                </button>
+                        {notificationsLoading ? (
+                          <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка...</div>
+                        ) : notifications.length === 0 ? (
+                          <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Нет уведомлений</div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <div 
+                              key={notification.id} 
+                              className={`notification-item ${notification.type === 'verification_success' ? 'notification-item--success' : notification.type === 'verification_rejected' ? 'notification-item--error' : 'notification-item--property'}`}
+                              onClick={() => handleNotificationView(notification.id)}
+                            >
+                              <div className="notification-item__content">
+                                <h4 className="notification-item__title">{notification.title}</h4>
+                                {notification.message && (
+                                  <p className="notification-item__message">{notification.message}</p>
+                                )}
+                                {notification.data && notification.data.property_id && (
+                                  <div className="notification-item__property">
+                                    <div className="notification-item__image">
+                                      <img 
+                                        src={recommendedProperties[0]?.image || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'}
+                                        alt={recommendedProperties[0]?.name || 'Property'}
+                                        onError={(e) => {
+                                          e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="notification-item__info">
+                                      <p className="notification-item__property-name">{recommendedProperties[0]?.name || 'Property'}</p>
+                                      <p className="notification-item__property-location">{recommendedProperties[0]?.location || 'Location'}</p>
+                                      <button 
+                                        type="button" 
+                                        className="notification-item__button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setIsNotificationOpen(false)
+                                          navigate(`/property/${notification.data.property_id}`)
+                                        }}
+                                      >
+                                        {t('goTo')}
+                                        <FiArrowRight size={18} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                {!notification.data && (
+                                  <button 
+                                    type="button" 
+                                    className="notification-item__button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setIsNotificationOpen(false)
+                                    }}
+                                  >
+                                    Закрыть
+                                  </button>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2214,37 +2370,67 @@ function MainPage() {
                   </button>
                 </div>
                 <div className="notification-panel__list">
-                  <div className="notification-item notification-item--property">
-                    <div className="notification-item__content">
-                      <h4 className="notification-item__title">Нашли для вас объявление!</h4>
-                      <div className="notification-item__property">
-                        <div className="notification-item__image">
-                          <img 
-                            src={recommendedProperties[0].image}
-                            alt={recommendedProperties[0].name}
-                            onError={(e) => {
-                              e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
-                            }}
-                          />
-                        </div>
-                        <div className="notification-item__info">
-                          <p className="notification-item__property-name">{recommendedProperties[0].name}</p>
-                          <p className="notification-item__property-location">{recommendedProperties[0].location}</p>
-                          <button 
-                            type="button" 
-                            className="notification-item__button"
-                            onClick={() => {
-                              setIsNotificationOpen(false)
-                              handlePropertyClick('recommended', recommendedProperties[0].id, false)
-                            }}
-                          >
-                            Перейти
-                            <FiArrowRight size={18} />
-                          </button>
+                  {notificationsLoading ? (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка...</div>
+                  ) : notifications.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Нет уведомлений</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div 
+                        key={notification.id} 
+                        className={`notification-item ${notification.type === 'verification_success' ? 'notification-item--success' : notification.type === 'verification_rejected' ? 'notification-item--error' : 'notification-item--property'}`}
+                        onClick={() => handleNotificationView(notification.id)}
+                      >
+                        <div className="notification-item__content">
+                          <h4 className="notification-item__title">{notification.title}</h4>
+                          {notification.message && (
+                            <p className="notification-item__message">{notification.message}</p>
+                          )}
+                          {notification.data && notification.data.property_id && (
+                            <div className="notification-item__property">
+                              <div className="notification-item__image">
+                                <img 
+                                  src={recommendedProperties[0]?.image || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'}
+                                  alt={recommendedProperties[0]?.name || 'Property'}
+                                  onError={(e) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80'
+                                  }}
+                                />
+                              </div>
+                              <div className="notification-item__info">
+                                <p className="notification-item__property-name">{recommendedProperties[0]?.name || 'Property'}</p>
+                                <p className="notification-item__property-location">{recommendedProperties[0]?.location || 'Location'}</p>
+                                <button 
+                                  type="button" 
+                                  className="notification-item__button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setIsNotificationOpen(false)
+                                    handlePropertyClick('recommended', notification.data.property_id, false)
+                                  }}
+                                >
+                                  Перейти
+                                  <FiArrowRight size={18} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {!notification.data && (
+                            <button 
+                              type="button" 
+                              className="notification-item__button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setIsNotificationOpen(false)
+                              }}
+                            >
+                              Закрыть
+                            </button>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -3430,6 +3616,15 @@ function MainPage() {
             </button>
           </form>
         </div>
+      )}
+
+      {/* Модальное окно успешной верификации */}
+      {showVerificationSuccess && verificationNotification && (
+        <VerificationSuccessNotification
+          notification={verificationNotification}
+          onClose={handleVerificationClose}
+          onView={handleNotificationView}
+        />
       )}
 
       {/* Модальное окно входа/регистрации */}

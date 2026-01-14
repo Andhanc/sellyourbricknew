@@ -866,3 +866,74 @@
     height: 100px;
   }
 }
+
+/* Стили для статусов документов */
+.document-card.document-pending {
+  border: 2px solid #f59e0b !important;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+}
+
+.document-card.document-pending .card-icon-wrapper {
+  opacity: 0.8;
+}
+
+.document-card.document-pending:hover {
+  border-color: #d97706 !important;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3) !important;
+}
+
+.document-card.document-approved {
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+}
+
+.document-card.document-approved .card-icon-wrapper {
+  opacity: 0.9;
+}
+
+.document-card.document-approved:hover {
+  border-color: #059669 !important;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3) !important;
+}
+
+.document-card.document-rejected {
+  border: 2px solid #ef4444 !important;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+}
+
+.document-card.document-rejected .card-icon-wrapper {
+  opacity: 0.7;
+}
+
+.document-card.document-rejected:hover {
+  border-color: #dc2626 !important;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3) !important;
+}
+
+.document-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.document-status-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.document-status-approved {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.document-status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}

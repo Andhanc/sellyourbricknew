@@ -2,23 +2,43 @@ import React, { useState } from 'react';
 import { FiArrowLeft, FiUser, FiMail, FiCalendar, FiFileText, FiPhone, FiCreditCard, FiGlobe, FiHash, FiImage, FiDollarSign, FiCheck, FiXCircle } from 'react-icons/fi';
 import './ModerationUserDetail.css';
 
-const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+const ModerationUserDetail = ({ user, onBack, onApprove, onReject, onRefresh }) => {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
 
-  const handleApproveClick = () => {
-    if (window.confirm('Вы уверены, что хотите одобрить этого пользователя?')) {
+  const handleApproveUser = () => {
+    if (window.confirm('Вы уверены, что хотите одобрить этого пользователя? Все его документы будут одобрены, и пользователь получит статус верифицированного.')) {
       onApprove(user.id);
     }
   };
 
-  const handleRejectClick = () => {
-    if (window.confirm('Вы уверены, что хотите отклонить этого пользователя?')) {
-      onReject(user.id);
+  const handleRejectUser = () => {
+    const rejectionReason = prompt('Укажите причину отклонения (необязательно):') || null;
+    if (rejectionReason !== null) { // null если пользователь нажал Cancel
+      if (window.confirm('Вы уверены, что хотите отклонить этого пользователя? Все его документы будут отклонены.')) {
+        onReject(user.id, rejectionReason);
+      }
     }
   };
 
-  const fullName = `${user.lastName} ${user.firstName}${user.middleName ? ' ' + user.middleName : ''}`;
+  const getDocumentTypeLabel = (type) => {
+    const types = {
+      'passport': 'Паспорт',
+      'passport_with_face': 'Паспорт + лицо',
+      'other': 'Другой документ'
+    };
+    return types[type] || type || 'Документ';
+  };
+
+  const getDocumentImageUrl = (photoPath) => {
+    if (!photoPath) return null;
+    if (photoPath.startsWith('http')) return photoPath;
+    return `${API_BASE_URL.replace('/api', '')}${photoPath}`;
+  };
+
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Не указано';
 
   return (
     <div className="moderation-user-detail">
@@ -36,7 +56,7 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
               <div className="moderation-user-detail__info-row">
                 <div className="moderation-user-detail__info-label">
                   <FiUser size={18} />
-                  ФИО
+                  Имя
                 </div>
                 <div className="moderation-user-detail__info-value">
                   {fullName}
@@ -65,41 +85,11 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
 
               <div className="moderation-user-detail__info-row">
                 <div className="moderation-user-detail__info-label">
-                  <FiCreditCard size={18} />
-                  Номер паспорта
-                </div>
-                <div className="moderation-user-detail__info-value">
-                  {user.passportNumber || 'Не указан'}
-                </div>
-              </div>
-
-              <div className="moderation-user-detail__info-row">
-                <div className="moderation-user-detail__info-label">
-                  <FiGlobe size={18} />
-                  Гражданство
-                </div>
-                <div className="moderation-user-detail__info-value">
-                  {user.citizenship || 'Не указано'}
-                </div>
-              </div>
-
-              <div className="moderation-user-detail__info-row">
-                <div className="moderation-user-detail__info-label">
                   <FiHash size={18} />
                   ID
                 </div>
                 <div className="moderation-user-detail__info-value">
                   {user.id}
-                </div>
-              </div>
-
-              <div className="moderation-user-detail__info-row">
-                <div className="moderation-user-detail__info-label">
-                  <FiDollarSign size={18} />
-                  Номер счета
-                </div>
-                <div className="moderation-user-detail__info-value">
-                  {user.accountNumber || 'Не указан'}
                 </div>
               </div>
 
@@ -113,36 +103,9 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
                 </div>
               </div>
 
-              <div className="moderation-user-detail__info-row">
-                <div className="moderation-user-detail__info-label">
-                  <FiCalendar size={18} />
-                  Дата регистрации
-                </div>
-                <div className="moderation-user-detail__info-value">
-                  {new Date(user.registrationDate).toLocaleDateString('ru-RU')}
-                </div>
-              </div>
             </div>
           </div>
 
-          <div className="moderation-user-detail__actions-card">
-            <div className="moderation-user-detail__actions">
-              <button
-                className="moderation-user-detail__btn moderation-user-detail__btn--approve"
-                onClick={handleApproveClick}
-              >
-                <FiCheck size={20} />
-                Одобрить
-              </button>
-              <button
-                className="moderation-user-detail__btn moderation-user-detail__btn--reject"
-                onClick={handleRejectClick}
-              >
-                <FiXCircle size={20} />
-                Отклонить
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="moderation-user-detail__media-section">
@@ -166,47 +129,48 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
           <div className="moderation-user-detail__media-card">
             <h2 className="moderation-user-detail__media-title">
               <FiFileText size={20} />
-              Фотографии документов
+              Документы на верификацию
             </h2>
             <div className="moderation-user-detail__documents-photos-grid">
               {user.documents && user.documents.length > 0 ? (
-                user.documents.map((doc, index) => {
-                  const documentName = typeof doc === 'string' ? doc : doc.name;
-                  const documentPhoto = typeof doc === 'object' && doc.photo ? doc.photo : null;
-                  const documentUrl = typeof doc === 'object' && doc.url ? doc.url : null;
-                  const documentType = typeof doc === 'object' && doc.type ? doc.type : 'pdf';
+                user.documents.map((doc) => {
+                  const documentPhoto = getDocumentImageUrl(doc.document_photo);
+                  const documentName = getDocumentTypeLabel(doc.document_type);
+                  const isPassport = doc.document_type === 'passport';
+                  const isPassportWithFace = doc.document_type === 'passport_with_face';
 
                   if (!documentPhoto) return null;
 
-                  if (documentName === 'Справка') return null;
-
-                  if (documentName === 'Паспорт') {
-                    return (
-                      <div key={index} className="moderation-user-detail__document-photo-item-full">
-                        <div className="moderation-user-detail__document-photo-label">
-                          {documentName}
-                        </div>
-                        <div className="moderation-user-detail__document-photo-image-full">
-                          <img src={documentPhoto} alt={documentName} />
-                        </div>
-                      </div>
-                    );
-                  }
-
                   return (
-                    <div
-                      key={index}
-                      className="moderation-user-detail__document-photo-item"
-                      onClick={() => {
-                        setSelectedPhoto(documentPhoto);
-                      }}
-                    >
-                      <div className="moderation-user-detail__document-photo-image">
-                        <img src={documentPhoto} alt={documentName} />
-                      </div>
-                      <div className="moderation-user-detail__document-photo-label">
-                        {documentName}
-                      </div>
+                    <div key={doc.id} className="moderation-user-detail__document-item-wrapper">
+                      {(isPassport || isPassportWithFace) ? (
+                        <div className="moderation-user-detail__document-photo-item-full">
+                          <div className="moderation-user-detail__document-photo-label">
+                            {documentName}
+                          </div>
+                          <div className="moderation-user-detail__document-photo-image-full">
+                            <img 
+                              src={documentPhoto} 
+                              alt={documentName}
+                              onClick={() => setSelectedPhoto(documentPhoto)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="moderation-user-detail__document-photo-item">
+                          <div 
+                            className="moderation-user-detail__document-photo-image"
+                            onClick={() => setSelectedPhoto(documentPhoto)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <img src={documentPhoto} alt={documentName} />
+                          </div>
+                          <div className="moderation-user-detail__document-photo-label">
+                            {documentName}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -216,6 +180,24 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Кнопки одобрения/отклонения пользователя */}
+      <div className="moderation-user-detail__user-actions">
+        <button
+          className="moderation-user-detail__user-btn moderation-user-detail__user-btn--approve"
+          onClick={handleApproveUser}
+        >
+          <FiCheck size={20} />
+          Одобрить пользователя
+        </button>
+        <button
+          className="moderation-user-detail__user-btn moderation-user-detail__user-btn--reject"
+          onClick={handleRejectUser}
+        >
+          <FiXCircle size={20} />
+          Отклонить пользователя
+        </button>
       </div>
 
       {selectedDocument && (
