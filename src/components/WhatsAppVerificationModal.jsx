@@ -6,7 +6,11 @@ import PhoneInput from './PhoneInput'
 import './PhoneInput.css'
 import './WhatsAppVerificationModal.css'
 
-const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) => {
+/**
+ * mode: 'login' | 'register'
+ * role: 'buyer' | 'seller'
+ */
+const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber, role = 'buyer', mode = 'login' }) => {
   const [phone, setPhone] = useState(phoneNumber || '')
   const [phoneDigits, setPhoneDigits] = useState('') // Сохраняем номер в цифровом формате
   const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -176,7 +180,7 @@ const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) 
         setIsLoading(false)
         return
       }
-      const result = await verifyWhatsAppCode(digitsToVerify, codeString)
+      const result = await verifyWhatsAppCode(digitsToVerify, codeString, role, mode)
 
       if (result.success) {
         // Успешная авторизация
@@ -222,7 +226,9 @@ const WhatsAppVerificationModal = ({ isOpen, onClose, onSuccess, phoneNumber }) 
             <FaWhatsapp size={32} />
           </div>
           <h2 className="whatsapp-verification-modal__title">
-            {step === 'phone' ? 'Вход через WhatsApp' : 'Введите код'}
+            {step === 'phone'
+              ? (mode === 'login' ? 'Вход через WhatsApp' : 'Регистрация через WhatsApp')
+              : 'Введите код'}
           </h2>
           <p className="whatsapp-verification-modal__subtitle">
             {step === 'phone' 

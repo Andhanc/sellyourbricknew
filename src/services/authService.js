@@ -5,9 +5,6 @@
 import emailjs from '@emailjs/browser'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-const GREEN_API_URL = import.meta.env.VITE_GREEN_API_URL || 'https://api.green-api.com'
-const GREEN_API_ID = import.meta.env.VITE_GREEN_API_ID || ''
-const GREEN_API_TOKEN = import.meta.env.VITE_GREEN_API_TOKEN || ''
 
 // EmailJS настройки
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || ''
@@ -67,6 +64,10 @@ export const saveUserData = (userData, loginMethod = 'email') => {
   
   if (userData.role) {
     localStorage.setItem('userRole', userData.role)
+    // Если роль продавца, устанавливаем флаг isOwnerLoggedIn
+    if (userData.role === 'seller' || userData.role === 'owner') {
+      localStorage.setItem('isOwnerLoggedIn', 'true')
+    }
   }
 
   if (userData.phone) {
@@ -177,6 +178,7 @@ export const clearUserData = () => {
     'userPicture',
     'userRole',
     'isOwnerLoggedIn',
+    'hasSeenWelcome', // Флаг просмотра приветственного модального окна
     'userPhone',
     'userPhoneFormatted',
     'userCountry',
@@ -192,18 +194,30 @@ export const clearUserData = () => {
     localStorage.removeItem(key)
   })
   
-  // Дополнительная проверка: удаляем все ключи, начинающиеся с 'user'
+  // Дополнительная проверка: удаляем все ключи, начинающиеся с 'user' и другие связанные флаги
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('user') || key === 'isLoggedIn' || key === 'loginMethod' || key.includes('Code')) {
+    if (
+      key.startsWith('user') || 
+      key === 'isLoggedIn' || 
+      key === 'loginMethod' || 
+      key === 'isOwnerLoggedIn' ||
+      key === 'hasSeenWelcome' ||
+      key.includes('Code')
+    ) {
       localStorage.removeItem(key)
     }
   })
   
-  // Проверяем, что isLoggedIn действительно удален
+  // Проверяем, что все важные флаги действительно удалены
   const stillLoggedIn = localStorage.getItem('isLoggedIn')
+  const stillOwner = localStorage.getItem('isOwnerLoggedIn')
   if (stillLoggedIn === 'true') {
     console.warn('⚠️ isLoggedIn все еще установлен! Принудительно удаляем...')
     localStorage.removeItem('isLoggedIn')
+  }
+  if (stillOwner === 'true') {
+    console.warn('⚠️ isOwnerLoggedIn все еще установлен! Принудительно удаляем...')
+    localStorage.removeItem('isOwnerLoggedIn')
   }
   
   console.log('✅ Все данные пользователя очищены из localStorage')
@@ -348,195 +362,43 @@ const getCountryByPhoneCode = (phone) => {
 }
 
 /**
- * Получает информацию о пользователе из WhatsApp через Green API
+ * Получает информацию о пользователе из WhatsApp через backend (whatsapp-web.js)
  */
 const getWhatsAppUserInfo = async (phone) => {
   try {
-    if (!GREEN_API_ID || !GREEN_API_TOKEN) {
-      console.log('Green API credentials не настроены')
+    const formattedPhone = formatPhoneNumber(phone)
+    if (!formattedPhone) {
       return null
     }
-    
-    const formattedPhone = formatPhoneNumber(phone)
-    const chatId = `${formattedPhone}@c.us`
-    
-    console.log('Попытка получить информацию о пользователе:', chatId)
-    
-    // Метод 1: getContactInfo - получение информации о контакте
-    // Green API может требовать, чтобы номер был в контактах или был активный чат
-    try {
-      const response = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContactInfo/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: chatId
-        })
-      })
-      
-      const responseText = await response.text()
-      console.log('Raw response от getContactInfo:', responseText)
-      
-      if (response.ok) {
-        let data
-        try {
-          data = JSON.parse(responseText)
-        } catch (e) {
-          console.log('Ошибка парсинга JSON:', e)
-          data = {}
-        }
-        
-        console.log('Данные от getContactInfo (полный ответ):', JSON.stringify(data, null, 2))
-        
-        // Green API может вернуть данные в разных форматах
-        // Проверяем все возможные поля для имени
-        const name = data.name || 
-                     data.pushName || 
-                     data.notifyName || 
-                     data.contactName ||
-                     data.displayName ||
-                     data.formattedName ||
-                     data.profileName ||
-                     (data.result && (data.result.name || data.result.pushName || data.result.notifyName)) ||
-                     (data.data && (data.data.name || data.data.pushName)) ||
-                     null
-        
-        const photo = data.avatar || 
-                      data.avatarUrl || 
-                      data.profilePicture || 
-                      data.profilePicUrl ||
-                      (data.result && data.result.avatar) ||
-                      (data.data && data.data.avatar) ||
-                      null
-        
-        console.log('Извлеченное имя:', name, 'Фото:', photo)
-        
-        if (name && name.trim() !== '' && name.trim() !== 'null' && name.trim() !== 'undefined') {
-          console.log('✅ Имя успешно получено из getContactInfo:', name)
-          return { name: name.trim(), photo }
-        } else {
-          console.log('⚠️ Имя не найдено в ответе getContactInfo. Структура ответа:', Object.keys(data))
-        }
-      } else {
-        console.log('❌ Ошибка getContactInfo:', response.status, responseText)
-        // Если ошибка 404 или другая, пробуем другие методы
+
+    const params = new URLSearchParams({ phone: formattedPhone })
+    const response = await fetch(`${API_BASE_URL}/auth/whatsapp/user-info?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
-    } catch (error) {
-      console.log('❌ Ошибка при вызове getContactInfo:', error.message)
-    }
-    
-    // Метод 2: Проверяем через getChatInfo (может содержать информацию о чате)
-    try {
-      const chatResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getChatInfo/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: chatId
-        })
-      })
-      
-      if (chatResponse.ok) {
-        const chatData = await chatResponse.json()
-        console.log('Данные от getChatInfo:', chatData)
-        
-        const name = chatData.name || chatData.pushName || chatData.notifyName || null
-        const photo = chatData.avatar || chatData.avatarUrl || null
-        
-        if (name) {
-          return { name, photo }
-        }
+    })
+
+    if (!response.ok) {
+      if (import.meta.env.DEV) {
+        console.warn('Не удалось получить информацию о пользователе WhatsApp:', response.status)
       }
-    } catch (error) {
-      console.log('Ошибка при вызове getChatInfo:', error.message)
+      return null
     }
-    
-    // Метод 3: Проверяем через checkWhatsApp (проверка номера и получение информации)
-    try {
-      const checkResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/checkWhatsapp/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: formattedPhone
-        })
-      })
-      
-      if (checkResponse.ok) {
-        const checkData = await checkResponse.json()
-        console.log('Данные от checkWhatsApp:', checkData)
-        
-        // Если номер есть в WhatsApp, пробуем получить информацию еще раз
-        if (checkData.existsWhatsapp) {
-          console.log('Номер подтвержден в WhatsApp, повторно запрашиваем информацию...')
-          // Повторный запрос через getContactInfo после подтверждения
-          const retryResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContactInfo/${GREEN_API_TOKEN}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chatId: chatId
-            })
-          })
-          
-          if (retryResponse.ok) {
-            const retryData = await retryResponse.json()
-            console.log('Данные от повторного getContactInfo:', retryData)
-            const name = retryData.name || retryData.pushName || retryData.notifyName || null
-            const photo = retryData.avatar || retryData.avatarUrl || null
-            if (name && name.trim() !== '') {
-              return { name: name.trim(), photo }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.log('Ошибка при вызове checkWhatsApp:', error.message)
+
+    const data = await response.json()
+    if (!data.success || !data.data) {
+      return null
     }
-    
-    // Метод 4: Проверяем через getContacts (список контактов)
-    try {
-      const contactsResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContacts/${GREEN_API_TOKEN}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-      
-      if (contactsResponse.ok) {
-        const contactsData = await contactsResponse.json()
-        console.log('Данные от getContacts:', contactsData)
-        
-        // Ищем контакт по номеру
-        if (Array.isArray(contactsData)) {
-          const contact = contactsData.find(c => {
-            const contactId = c.id || c.chatId || c.phoneNumber || ''
-            return contactId.includes(formattedPhone) || contactId === chatId
-          })
-          
-          if (contact) {
-            console.log('Найден контакт в списке:', contact)
-            const name = contact.name || contact.pushName || contact.notifyName || contact.displayName || null
-            const photo = contact.avatar || contact.avatarUrl || null
-            if (name && name.trim() !== '') {
-              console.log('✅ Имя найдено в getContacts:', name)
-              return { name: name.trim(), photo }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.log('Ошибка при вызове getContacts:', error.message)
+
+    return {
+      name: data.data.name || null,
+      photo: data.data.picture || null
     }
-    
-    console.log('⚠️ Не удалось получить имя пользователя из WhatsApp через все методы')
-    return null
   } catch (error) {
-    console.error('Ошибка получения информации о пользователе:', error)
+    if (import.meta.env.DEV) {
+      console.error('Ошибка получения информации о пользователе WhatsApp:', error)
+    }
     return null
   }
 }
@@ -594,166 +456,8 @@ const checkUserExists = async (phone) => {
   }
 }
 
-/**
- * Проверяет, есть ли номер в контактах WhatsApp через GreenAPI
- */
-const checkContactExists = async (formattedPhone) => {
-  try {
-    if (!GREEN_API_ID || !GREEN_API_TOKEN) {
-      return false
-    }
-    
-    const chatId = `${formattedPhone}@c.us`
-    
-    // Метод 1: Проверяем через getContacts
-    try {
-      const contactsResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContacts/${GREEN_API_TOKEN}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-      
-      if (contactsResponse.ok) {
-        const contactsData = await contactsResponse.json()
-        if (Array.isArray(contactsData)) {
-          const contact = contactsData.find(c => {
-            const contactId = c.id || c.chatId || c.phoneNumber || ''
-            return contactId.includes(formattedPhone) || contactId === chatId
-          })
-          if (contact) {
-            if (import.meta.env.DEV) {
-              console.log('✅ Контакт найден в списке контактов')
-            }
-            return true
-          }
-        }
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn('Ошибка при проверке контактов:', error.message)
-      }
-    }
-    
-    // Метод 2: Проверяем через getContactInfo (если контакт существует, метод вернет данные)
-    try {
-      const contactInfoResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContactInfo/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: chatId
-        })
-      })
-      
-      if (contactInfoResponse.ok) {
-        if (import.meta.env.DEV) {
-          console.log('✅ Контакт доступен через getContactInfo')
-        }
-        return true
-      }
-    } catch (error) {
-      // Игнорируем ошибки
-    }
-    
-    return false
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn('Ошибка при проверке контакта:', error.message)
-    }
-    return false
-  }
-}
-
-/**
- * Пытается автоматически добавить контакт через различные методы GreenAPI
- * Примечание: GreenAPI не имеет прямого метода для добавления контакта,
- * но можно попробовать методы, которые могут автоматически создать чат/контакт
- */
-const tryAddContactAutomatically = async (formattedPhone) => {
-  try {
-    if (!GREEN_API_ID || !GREEN_API_TOKEN) {
-      return false
-    }
-    
-    const chatId = `${formattedPhone}@c.us`
-    
-    if (import.meta.env.DEV) {
-      console.log('🔄 Попытка автоматически добавить контакт:', chatId)
-    }
-    
-    // Метод 1: Проверяем номер через checkWhatsapp (может помочь "подготовить" номер)
-    try {
-      const checkResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/checkWhatsapp/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: formattedPhone
-        })
-      })
-      
-      if (checkResponse.ok) {
-        const checkData = await checkResponse.json()
-        if (import.meta.env.DEV) {
-          console.log('📱 Проверка WhatsApp номера:', checkData)
-        }
-        // Если номер существует в WhatsApp, продолжаем
-        if (checkData.existsWhatsapp) {
-          // Небольшая задержка перед следующей попыткой
-          await new Promise(resolve => setTimeout(resolve, 500))
-        }
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn('Ошибка при checkWhatsapp:', error.message)
-      }
-    }
-    
-    // Метод 2: Пытаемся получить информацию о контакте (может автоматически создать чат)
-    // Примечание: Если контакт не существует, вернется 400, это нормально
-    try {
-      const contactInfoResponse = await fetch(`${GREEN_API_URL}/waInstance${GREEN_API_ID}/getContactInfo/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: chatId
-        })
-      })
-      
-      // 400 - это нормально, означает что контакт не существует
-      // 200 - контакт существует, можем отправлять
-      if (import.meta.env.DEV) {
-        if (contactInfoResponse.ok) {
-          console.log('✅ Контакт доступен, можно отправлять сообщение')
-        } else if (contactInfoResponse.status === 400) {
-          console.log('⚠️ Контакт не найден (400) - это нормально, попробуем отправить сообщение')
-        } else {
-          console.log('📞 Статус getContactInfo:', contactInfoResponse.status)
-        }
-      }
-    } catch (error) {
-      // Игнорируем ошибки сети
-      if (import.meta.env.DEV) {
-        console.warn('⚠️ Ошибка при getContactInfo:', error.message)
-      }
-    }
-    
-    // Небольшая задержка перед следующей попыткой отправки
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    return true
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn('Ошибка при попытке добавить контакт:', error.message)
-    }
-    return false
-  }
-}
+// checkContactExists и tryAddContactAutomatically больше не используются,
+// так как отправка происходит через whatsapp-web.js на backend без ограничения "контакт должен быть в списках".
 
 /**
  * Отправляет код верификации через WhatsApp
@@ -781,193 +485,65 @@ export const sendWhatsAppVerificationCode = async (phone) => {
       })
     }
     
-    // Сохраняем код
+    // Сохраняем код локально (пока без backend-хранилища)
     saveVerificationCode(formattedPhone, code)
-    
-    // Если есть Green API credentials, отправляем через API
-    if (GREEN_API_ID && GREEN_API_TOKEN) {
-      try {
-        // Формируем URL для отправки сообщения
-        // Green API использует формат: {baseUrl}/waInstance{id}/sendMessage/{token}
-        const apiUrl = `${GREEN_API_URL}/waInstance${GREEN_API_ID}/sendMessage/${GREEN_API_TOKEN}`
-        
-        // GreenAPI требует номер в формате: код_страны + номер (без +, только цифры)@c.us
-        // Например: 34631252060@c.us для испанского номера +34 631 25 20 60
-        const chatId = `${formattedPhone}@c.us`
-        
-        if (import.meta.env.DEV) {
-          console.log('📤 Отправка через GreenAPI:', {
-            apiUrl: apiUrl.replace(GREEN_API_TOKEN, '***'),
-            chatId,
-            phoneLength: formattedPhone.length
-          })
-        }
-        
-        // ВАЖНО: GreenAPI требует, чтобы номер получателя был в контактах WhatsApp аккаунта
-        // Это ограничение обычного WhatsApp API (не Business API)
-        // Стратегия обхода: сначала отправляем простое сообщение для создания чата,
-        // затем отправляем проверочный код
-        
-        // Шаг 1: Проверяем, есть ли контакт
-        const contactExists = await checkContactExists(formattedPhone)
-        
-        if (!contactExists) {
-          if (import.meta.env.DEV) {
-            console.log('⚠️ Контакт не найден, пытаемся создать чат...')
-          }
-          
-          // Стратегия обхода ошибки 466:
-          // 1. Сначала отправляем простое сообщение, чтобы создать чат/контакт
-          // 2. Затем отправляем проверочный код
-          
-          try {
-            if (import.meta.env.DEV) {
-              console.log('📨 Шаг 1: Отправляем простое сообщение для создания чата...')
-            }
-            
-            // Отправляем простое сообщение для создания чата
-            const initResponse = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                chatId: chatId,
-                message: 'Привет' // Простое сообщение для создания чата
-              })
-            })
-            
-            const initResponseText = await initResponse.text()
-            let initResponseData
-            try {
-              initResponseData = JSON.parse(initResponseText)
-            } catch {
-              initResponseData = { raw: initResponseText }
-            }
-            
-            if (initResponse.ok) {
-              if (import.meta.env.DEV) {
-                console.log('✅ Чат создан успешно, ждем 1 секунду перед отправкой кода...')
-              }
-              // Небольшая задержка, чтобы чат успел создаться
-              await new Promise(resolve => setTimeout(resolve, 1000))
-            } else {
-              if (import.meta.env.DEV) {
-                if (initResponse.status === 466) {
-                  console.warn('⚠️ Первое сообщение получило ошибку 466 (контакт не в списке)')
-                  console.warn('   Но продолжаем попытку отправить код - иногда второе сообщение проходит')
-                } else {
-                  console.warn('⚠️ Не удалось создать чат первым сообщением:', initResponse.status, initResponseData)
-                }
-                console.warn('   Пробуем отправить код...')
-              }
-              // Небольшая задержка даже при ошибке
-              await new Promise(resolve => setTimeout(resolve, 500))
-            }
-          } catch (initError) {
-            if (import.meta.env.DEV) {
-              console.warn('⚠️ Ошибка при создании чата:', initError.message)
-              console.warn('   Пробуем отправить код напрямую...')
-            }
-          }
-        } else {
-          if (import.meta.env.DEV) {
-            console.log('✅ Контакт уже существует в списке')
-          }
-        }
-        
-        // Шаг 2: Отправляем проверочный код
-        if (import.meta.env.DEV) {
-          console.log('📨 Шаг 2: Отправляем проверочный код...')
-        }
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chatId: chatId,
-            message: `🔐 Ваш код авторизации: ${code}\n\nКод действителен в течение 10 минут.\n\nЕсли вы не запрашивали этот код, проигнорируйте это сообщение.`
-          })
+
+    // Отправляем код через backend, который использует whatsapp-web.js
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/whatsapp/send-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          code
         })
-        
-        const responseText = await response.text()
-        let responseData
-        try {
-          responseData = JSON.parse(responseText)
-        } catch {
-          responseData = { raw: responseText }
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: data.message || 'Код отправлен в WhatsApp'
         }
-        
-        if (response.ok) {
-          if (import.meta.env.DEV) {
-            console.log('✅ Код успешно отправлен через GreenAPI')
-          }
-          return {
-            success: true,
-            message: 'Код отправлен в WhatsApp'
-          }
-        } else {
-          // Детальное логирование ошибок GreenAPI
-          console.error('❌ Ошибка GreenAPI:', {
-            status: response.status,
-            statusText: response.statusText,
-            response: responseData,
-            chatId,
-            phone: formattedPhone
-          })
-          
-          // Ошибка 466 - номер не в контактах или другие проблемы
-          if (response.status === 466) {
-            if (import.meta.env.DEV) {
-              console.error('⚠️ ОШИБКА 466: GreenAPI не может отправить сообщение')
-              console.error('📋 ПРИЧИНА: Номер получателя должен быть в контактах WhatsApp аккаунта, подключенного к GreenAPI')
-              console.error('')
-              console.error('🔧 РЕШЕНИЕ для тестирования:')
-              console.error('  1. Откройте WhatsApp на телефоне, подключенном к GreenAPI')
-              console.error(`  2. Добавьте номер ${formattedPhone} в контакты вручную`)
-              console.error('  3. Попробуйте отправить код снова')
-              console.error('')
-              console.error('💡 ПРИМЕЧАНИЕ: Автоматическое добавление контакта через API невозможно')
-              console.error('   GreenAPI не предоставляет метод для добавления контактов')
-              console.error('   Контакт должен быть добавлен вручную в WhatsApp приложении')
-              console.error('')
-              console.error('💼 РЕШЕНИЕ для production:')
-              console.error('  - Используйте WhatsApp Business API (позволяет отправлять без контактов)')
-              console.error('  - Или используйте альтернативные сервисы (Twilio, MessageBird и т.д.)')
-              console.error('  - Или используйте fallback на WhatsApp URL (текущая реализация)')
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Ошибка отправки через Green API:', error)
       }
-    }
-    
-    // Fallback: открываем WhatsApp с предзаполненным сообщением
-    // Для WhatsApp URL нужен номер в формате: код_страны + номер (без +)
-    // Например: 34631252060 для +34 631 25 20 60
-    const whatsappMessage = encodeURIComponent(`🔐 Ваш код авторизации: ${code}\n\nКод действителен в течение 10 минут.`)
-    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${whatsappMessage}`
-    
-    if (import.meta.env.DEV) {
-      console.warn('⚠️ GreenAPI не сработал (возможно, номер не в контактах)')
-      console.warn('📱 Используем fallback: открываем WhatsApp с предзаполненным сообщением')
-      console.warn('💡 Для автоматической отправки добавьте номер в контакты WhatsApp аккаунта GreenAPI')
-    }
-    
-    // В реальном приложении здесь должен быть backend, который отправляет сообщение
-    // Для демо мы просто открываем WhatsApp
-    // Пользователь должен будет отправить сообщение сам (или скопировать код)
-    window.open(whatsappUrl, '_blank')
-    
-    return {
-      success: true,
-      message: 'Откройте WhatsApp для получения кода',
-      code: code, // Для демо возвращаем код (в production не должно быть)
-      fallback: true, // Указываем, что использован fallback
-      note: 'Для автоматической отправки добавьте номер в контакты WhatsApp аккаунта GreenAPI'
+
+      // Если backend ответил ошибкой, но мы в dev-режиме — покажем код для отладки
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Не удалось отправить код через backend WhatsApp:', data.error || response.statusText)
+        console.log(`🔐 В режиме разработки используйте код: ${code}`)
+        return {
+          success: true,
+          message: 'Не удалось отправить код автоматически, используйте код из консоли (режим разработки)',
+          code,
+          devMode: true
+        }
+      }
+
+      return {
+        success: false,
+        error: data.error || 'Не удалось отправить код через WhatsApp'
+      }
+    } catch (error) {
+      console.error('Ошибка запроса к backend для WhatsApp:', error)
+
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Backend WhatsApp недоступен. Код выведен в консоль для разработки.')
+        console.log(`🔐 Код для ${formattedPhone}: ${code}`)
+        return {
+          success: true,
+          message: 'Backend недоступен. В режиме разработки используйте код из консоли.',
+          code,
+          devMode: true
+        }
+      }
+
+      return {
+        success: false,
+        error: 'Не удалось отправить код. Попробуйте позже.'
+      }
     }
   } catch (error) {
     console.error('Ошибка отправки кода:', error)
@@ -980,8 +556,9 @@ export const sendWhatsAppVerificationCode = async (phone) => {
 
 /**
  * Проверяет код верификации и авторизует пользователя
+ * mode: 'login' | 'register' — в режиме login новый пользователь НЕ создается
  */
-export const verifyWhatsAppCode = async (phone, code) => {
+export const verifyWhatsAppCode = async (phone, code, role = 'buyer', mode = 'register') => {
   try {
     const formattedPhone = formatPhoneNumber(phone)
     
@@ -1033,7 +610,9 @@ export const verifyWhatsAppCode = async (phone, code) => {
           code,
           name: whatsappInfo?.name || `Пользователь ${formattedPhone.substring(formattedPhone.length - 4)}`,
           phoneFormatted: formatPhoneForDisplay(formattedPhone),
-          countryFlag: countryInfo.flag
+          countryFlag: countryInfo.flag,
+          role: role, // Передаем роль в backend
+          mode // login или register
         })
       })
       
@@ -1100,7 +679,7 @@ export const verifyWhatsAppCode = async (phone, code) => {
         phoneFormatted: formatPhoneForDisplay(formattedPhone),
         name: whatsappInfo?.name || `Пользователь ${formattedPhone.substring(formattedPhone.length - 4)}`,
         id: `whatsapp_${formattedPhone}`,
-        role: 'client',
+        role: role || 'buyer', // Используем переданную роль
         country: countryInfo.name,
         countryCode: countryInfo.code,
         countryFlag: countryInfo.flag,
@@ -1278,6 +857,58 @@ const handleGoogleAccessToken = async (accessToken) => {
  */
 export const isAuthenticated = () => {
   return localStorage.getItem('isLoggedIn') === 'true'
+}
+
+/**
+ * Валидирует активную сессию пользователя, проверяя его существование в БД
+ * Если пользователь не найден в БД, автоматически очищает локальную сессию
+ * Эта функция должна вызываться при запуске приложения
+ */
+export const validateSession = async () => {
+  const userData = getUserData()
+  
+  // Если пользователь не авторизован локально, ничего не делаем
+  if (!userData.isLoggedIn || !userData.id) {
+    return { valid: true, user: null }
+  }
+  
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+    const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    // Если пользователь не найден в БД (404) — сессия устарела, очищаем её
+    if (response.status === 404) {
+      console.warn('⚠️ Локальная сессия устарела: пользователь с ID', userData.id, 'не найден в БД. Очищаем данные.')
+      clearUserData()
+      return { valid: false, user: null, cleared: true }
+    }
+    
+    // Если другая ошибка — не очищаем сессию (может быть проблема с сетью)
+    if (!response.ok) {
+      console.warn('⚠️ Не удалось проверить сессию (статус', response.status, '). Оставляем локальную сессию.')
+      return { valid: true, user: userData, error: `HTTP ${response.status}` }
+    }
+    
+    // Пользователь найден — сессия валидна
+    const result = await response.json()
+    if (result.success && result.data) {
+      return { valid: true, user: result.data }
+    }
+    
+    // Неожиданный формат ответа
+    console.warn('⚠️ Неожиданный формат ответа при проверке сессии')
+    return { valid: true, user: userData, error: 'Unexpected response format' }
+    
+  } catch (error) {
+    // Ошибка сети — не очищаем сессию (может быть временная проблема)
+    console.warn('⚠️ Ошибка при проверке сессии (возможно, сервер недоступен):', error.message)
+    return { valid: true, user: userData, error: error.message }
+  }
 }
 
 /**
@@ -1620,7 +1251,7 @@ export const sendEmailVerificationCode = async (email) => {
 /**
  * Проверяет код верификации email и регистрирует пользователя
  */
-export const verifyEmailCode = async (email, code, password, name) => {
+export const verifyEmailCode = async (email, code, password, name, role = 'buyer') => {
   try {
     const emailLower = email.toLowerCase()
     
@@ -1654,7 +1285,8 @@ export const verifyEmailCode = async (email, code, password, name) => {
           email: emailLower,
           password: registrationPassword,
           name: registrationName,
-          code
+          code,
+          role: role // Передаем роль в backend
         })
       })
       
@@ -1676,14 +1308,14 @@ export const verifyEmailCode = async (email, code, password, name) => {
       console.warn('⚠️ Данные сохранены только в localStorage. Запустите backend сервер для полной функциональности.')
     }
     
-    // Fallback: создаем пользователя локально
-    const userData = {
-      email: emailLower,
-      name: registrationName || emailLower.split('@')[0],
-      id: `email_${emailLower}`,
-      role: 'client',
-      loginMethod: 'email'
-    }
+      // Fallback: создаем пользователя локально
+      const userData = {
+        email: emailLower,
+        name: registrationName || emailLower.split('@')[0],
+        id: `email_${emailLower}`,
+        role: role || 'buyer', // Используем переданную роль
+        loginMethod: 'email'
+      }
     
     // Сохраняем пароль в зашифрованном виде (в production должно быть на backend)
     // Здесь просто сохраняем в localStorage для демо

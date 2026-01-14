@@ -27,7 +27,10 @@ import QuickAddCard from '../components/QuickAddCard'
 import FileUploadModal from '../components/FileUploadModal'
 import PropertyCalculatorModal from '../components/PropertyCalculatorModal'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
+import { getUserData, saveUserData, logout } from '../services/authService'
 import './OwnerDashboard.css'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 // Демонстрационные данные объявлений владельца
 const mockOwnerProperties = [
@@ -107,6 +110,16 @@ const OwnerDashboard = () => {
   const [isSalesExpanded, setIsSalesExpanded] = useState(false)
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false)
   const [selectedPropertyForHistory, setSelectedPropertyForHistory] = useState(null)
+  const [ownerProfile, setOwnerProfile] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    passportSeries: '',
+    passportNumber: '',
+    passportId: ''
+  })
+  const [isProfileEditing, setIsProfileEditing] = useState(false)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
 
   useEffect(() => {
     // Проверяем, авторизован ли владелец
@@ -114,6 +127,50 @@ const OwnerDashboard = () => {
     if (!isOwnerLoggedIn) {
       navigate('/')
     } else {
+      // Подтягиваем данные пользователя из локального хранилища
+      const userData = getUserData()
+      if (userData && userData.isLoggedIn) {
+        setOwnerProfile(prev => ({
+          ...prev,
+          name: userData.name || 'Пользователь',
+          email: userData.email || '',
+          phone: userData.phoneFormatted || userData.phone || '',
+          passportSeries: userData.passportSeries || '',
+          passportNumber: userData.passportNumber || '',
+          passportId: userData.passportId || ''
+        }))
+
+        // Дополнительно загружаем актуальные данные из БД (если есть ID)
+        const loadFromDb = async () => {
+          if (!userData.id) return
+          try {
+            const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+            if (response.ok) {
+              const result = await response.json()
+              if (result.success && result.data) {
+                const dbUser = result.data
+                setOwnerProfile(prev => ({
+                  ...prev,
+                  name:
+                    prev.name ||
+                    `${dbUser.first_name || ''} ${dbUser.last_name || ''}`.trim() ||
+                    'Пользователь',
+                  email: prev.email || dbUser.email || '',
+                  phone: prev.phone || dbUser.phone_number || '',
+                  passportSeries: prev.passportSeries || dbUser.passport_series || '',
+                  passportNumber: prev.passportNumber || dbUser.passport_number || '',
+                  passportId: prev.passportId || dbUser.identification_number || ''
+                }))
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ Не удалось загрузить данные владельца из БД:', error)
+          }
+        }
+
+        loadFromDb()
+      }
+
       // Показываем модальное окно приветствия при первом входе
       // Для тестирования можно временно убрать проверку hasSeenWelcome
       const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
@@ -132,10 +189,111 @@ const OwnerDashboard = () => {
     localStorage.setItem('hasSeenWelcome', 'true')
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('isOwnerLoggedIn')
-    localStorage.removeItem('userRole')
-    navigate('/')
+  const handleProfileFieldChange = (field, value) => {
+    setOwnerProfile(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleProfileCancel = () => {
+    const userData = getUserData()
+    if (userData && userData.isLoggedIn) {
+      setOwnerProfile({
+        name: userData.name || 'Пользователь',
+        email: userData.email || '',
+        phone: userData.phoneFormatted || userData.phone || '',
+        passportSeries: userData.passportSeries || '',
+        passportNumber: userData.passportNumber || '',
+        passportId: userData.passportId || ''
+      })
+    }
+    setIsProfileEditing(false)
+  }
+
+  const handleProfileSave = async () => {
+    try {
+      setIsSavingProfile(true)
+      const userData = getUserData()
+
+      // Парсим ФИО во имя и фамилию для БД
+      const fullName = (ownerProfile.name || '').trim()
+      const nameParts = fullName.split(' ').filter(Boolean)
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      // Обновляем данные в БД, если есть ID пользователя
+      if (userData.id) {
+        try {
+          await fetch(`${API_BASE_URL}/users/${userData.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              first_name: firstName || null,
+              last_name: lastName || null,
+              email: ownerProfile.email || null,
+              phone_number: ownerProfile.phone || null,
+              passport_series: ownerProfile.passportSeries || null,
+              passport_number: ownerProfile.passportNumber || null,
+              identification_number: ownerProfile.passportId || null
+            })
+          })
+        } catch (apiError) {
+          console.warn('⚠️ Не удалось обновить данные владельца в БД:', apiError)
+        }
+      }
+
+      // Обновляем данные в localStorage (как у покупателя)
+      const updatedUserData = {
+        ...userData,
+        name: fullName || userData.name,
+        email: ownerProfile.email || userData.email,
+        phone: ownerProfile.phone || userData.phone,
+        phoneFormatted: ownerProfile.phone || userData.phoneFormatted,
+        passportSeries: ownerProfile.passportSeries,
+        passportNumber: ownerProfile.passportNumber,
+        passportId: ownerProfile.passportId
+      }
+
+      saveUserData(updatedUserData, userData.loginMethod || 'whatsapp')
+      setIsProfileEditing(false)
+    } catch (error) {
+      console.error('Ошибка при сохранении профиля владельца:', error)
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    if (window.confirm('Вы уверены, что хотите выйти?')) {
+      try {
+        // Используем функцию logout из authService для полной очистки данных
+        await logout()
+        // Дополнительно удаляем специфичные для продавца флаги
+        localStorage.removeItem('isOwnerLoggedIn')
+        localStorage.removeItem('hasSeenWelcome')
+        // Перенаправляем на главную страницу
+        navigate('/')
+        // Небольшая задержка перед перезагрузкой, чтобы данные успели очиститься
+        setTimeout(() => {
+          window.location.reload()
+        }, 100)
+      } catch (error) {
+        console.error('Ошибка при выходе:', error)
+        // В случае ошибки все равно очищаем данные и перенаправляем
+        localStorage.removeItem('isOwnerLoggedIn')
+        localStorage.removeItem('hasSeenWelcome')
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('isLoggedIn')
+        localStorage.removeItem('userData')
+        navigate('/')
+        setTimeout(() => {
+          window.location.reload()
+        }, 100)
+      }
+    }
   }
 
   // Статистика
@@ -258,7 +416,9 @@ const OwnerDashboard = () => {
       <header className="owner-dashboard__header">
         <div className="owner-dashboard__header-content">
           <div className="owner-dashboard__header-left">
-            <h1 className="owner-dashboard__title">Иванов Иван</h1>
+            <h1 className="owner-dashboard__title">
+              {ownerProfile.name || 'Ваш кабинет продавца'}
+            </h1>
             <p className="owner-dashboard__subtitle">Управление вашей недвижимостью</p>
           </div>
           <div className="owner-dashboard__header-right">
@@ -679,7 +839,7 @@ const OwnerDashboard = () => {
       <WelcomeModal 
         isOpen={showWelcomeModal}
         onClose={handleWelcomeClose}
-        userName="Иван Иванов"
+        userName={ownerProfile.name || 'Ваш кабинет продавца'}
       />
 
       {/* Модальное окно загрузки файла */}
@@ -728,11 +888,72 @@ const OwnerDashboard = () => {
               <div className="owner-sidebar-panel__body">
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">ФИО</h4>
-                  <p className="owner-profile-section__value">Иванов Иван Иванович</p>
+                  {isProfileEditing ? (
+                    <input
+                      type="text"
+                      className="owner-profile-section__value-input"
+                      value={ownerProfile.name}
+                      onChange={(e) => handleProfileFieldChange('name', e.target.value)}
+                      placeholder="Введите ФИО"
+                    />
+                  ) : (
+                    <p className="owner-profile-section__value">
+                      {ownerProfile.name || 'Имя не указано'}
+                    </p>
+                  )}
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Паспортные данные</h4>
-                  <p className="owner-profile-section__value">45 12 123456</p>
+                  <div className="owner-profile-passport">
+                    <div className="owner-profile-passport-row">
+                      <span className="owner-profile-passport-label">Серия</span>
+                      {isProfileEditing ? (
+                        <input
+                          type="text"
+                          className="owner-profile-section__value-input"
+                          value={ownerProfile.passportSeries}
+                          onChange={(e) => handleProfileFieldChange('passportSeries', e.target.value)}
+                          placeholder="Серия паспорта"
+                        />
+                      ) : (
+                        <span className="owner-profile-section__value">
+                          {ownerProfile.passportSeries || 'Не указана'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="owner-profile-passport-row">
+                      <span className="owner-profile-passport-label">Номер</span>
+                      {isProfileEditing ? (
+                        <input
+                          type="text"
+                          className="owner-profile-section__value-input"
+                          value={ownerProfile.passportNumber}
+                          onChange={(e) => handleProfileFieldChange('passportNumber', e.target.value)}
+                          placeholder="Номер паспорта"
+                        />
+                      ) : (
+                        <span className="owner-profile-section__value">
+                          {ownerProfile.passportNumber || 'Не указан'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="owner-profile-passport-row">
+                      <span className="owner-profile-passport-label">Идентификационный номер</span>
+                      {isProfileEditing ? (
+                        <input
+                          type="text"
+                          className="owner-profile-section__value-input"
+                          value={ownerProfile.passportId}
+                          onChange={(e) => handleProfileFieldChange('passportId', e.target.value)}
+                          placeholder="Идентификационный номер"
+                        />
+                      ) : (
+                        <span className="owner-profile-section__value">
+                          {ownerProfile.passportId || 'Не указан'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Подписка</h4>
@@ -751,13 +972,63 @@ const OwnerDashboard = () => {
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Почта</h4>
-                  <p className="owner-profile-section__value">ivan@example.com</p>
-                  <button className="owner-profile-section__button">Изменить</button>
+                  {isProfileEditing ? (
+                    <input
+                      type="email"
+                      className="owner-profile-section__value-input"
+                      value={ownerProfile.email}
+                      onChange={(e) => handleProfileFieldChange('email', e.target.value)}
+                      placeholder="Введите email"
+                    />
+                  ) : (
+                    <p className="owner-profile-section__value">
+                      {ownerProfile.email || 'Email не указан'}
+                    </p>
+                  )}
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">WhatsApp</h4>
-                  <p className="owner-profile-section__value">+7 (999) 123-45-67</p>
-                  <button className="owner-profile-section__button">Изменить</button>
+                  {isProfileEditing ? (
+                    <input
+                      type="tel"
+                      className="owner-profile-section__value-input"
+                      value={ownerProfile.phone}
+                      onChange={(e) => handleProfileFieldChange('phone', e.target.value)}
+                      placeholder="Введите номер телефона"
+                    />
+                  ) : (
+                    <p className="owner-profile-section__value">
+                      {ownerProfile.phone || 'Телефон не указан'}
+                    </p>
+                  )}
+                </div>
+
+                <div className="owner-profile-section owner-profile-section--actions">
+                  {!isProfileEditing ? (
+                    <button
+                      className="owner-profile-section__button owner-profile-section__button--primary"
+                      onClick={() => setIsProfileEditing(true)}
+                    >
+                      Редактировать профиль
+                    </button>
+                  ) : (
+                    <div className="owner-profile-actions">
+                      <button
+                        className="owner-profile-section__button owner-profile-section__button--primary"
+                        onClick={handleProfileSave}
+                        disabled={isSavingProfile}
+                      >
+                        {isSavingProfile ? 'Сохранение...' : 'Сохранить'}
+                      </button>
+                      <button
+                        className="owner-profile-section__button"
+                        onClick={handleProfileCancel}
+                        disabled={isSavingProfile}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

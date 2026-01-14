@@ -19,6 +19,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     name: '',
     confirmPassword: ''
   })
+  const [userRole, setUserRole] = useState('buyer') // 'buyer' или 'seller'
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
@@ -239,8 +240,17 @@ const LoginModal = ({ isOpen, onClose }) => {
     // Показываем уведомление
     alert(`Добро пожаловать, ${user.name || 'Пользователь'}!`)
     
-    // Перенаправляем на страницу профиля
-    navigate('/profile')
+    // Перенаправляем в зависимости от роли
+    const userRole = user.role || localStorage.getItem('userRole') || 'buyer'
+    if (userRole === 'seller') {
+      // Для продавца устанавливаем флаг и перенаправляем на /owner
+      localStorage.setItem('isOwnerLoggedIn', 'true')
+      localStorage.setItem('userRole', 'seller')
+      navigate('/owner')
+    } else {
+      // Для покупателя перенаправляем на /profile
+      navigate('/profile')
+    }
   }
 
   const handleEmailVerificationSuccess = (user) => {
@@ -250,8 +260,17 @@ const LoginModal = ({ isOpen, onClose }) => {
     // Показываем уведомление
     alert(`Добро пожаловать, ${user.name || 'Пользователь'}! Регистрация завершена.`)
     
-    // Перенаправляем на страницу профиля
-    navigate('/profile')
+    // Перенаправляем в зависимости от роли
+    const userRole = user.role || localStorage.getItem('userRole') || 'buyer'
+    if (userRole === 'seller') {
+      // Для продавца устанавливаем флаг и перенаправляем на /owner
+      localStorage.setItem('isOwnerLoggedIn', 'true')
+      localStorage.setItem('userRole', 'seller')
+      navigate('/owner')
+    } else {
+      // Для покупателя перенаправляем на /profile
+      navigate('/profile')
+    }
   }
 
   const toggleMode = () => {
@@ -262,6 +281,8 @@ const LoginModal = ({ isOpen, onClose }) => {
       name: '',
       confirmPassword: ''
     })
+    // При переключении режима сбрасываем роль на покупателя
+    setUserRole('buyer')
   }
 
   return (
@@ -288,6 +309,30 @@ const LoginModal = ({ isOpen, onClose }) => {
               : 'Создайте новый аккаунт для начала работы'}
           </p>
         </div>
+
+        {!isLogin && (
+          <div className="login-modal__role-section">
+            <span className="login-modal__role-label">Вы регистрируетесь как</span>
+            <div className="login-modal__role-switch">
+              <button
+                type="button"
+                className={`login-modal__role-btn ${userRole === 'buyer' ? 'login-modal__role-btn--active' : ''}`}
+                onClick={() => setUserRole('buyer')}
+                disabled={isLoading}
+              >
+                Покупатель
+              </button>
+              <button
+                type="button"
+                className={`login-modal__role-btn ${userRole === 'seller' ? 'login-modal__role-btn--active' : ''}`}
+                onClick={() => setUserRole('seller')}
+                disabled={isLoading}
+              >
+                Продавец
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="login-modal__error" style={{
@@ -466,6 +511,8 @@ const LoginModal = ({ isOpen, onClose }) => {
         isOpen={showWhatsAppModal}
         onClose={() => setShowWhatsAppModal(false)}
         onSuccess={handleWhatsAppSuccess}
+        role={userRole}
+        mode={isLogin ? 'login' : 'register'}
       />
       
       <EmailVerificationModal
@@ -479,6 +526,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         email={formData.email}
         password={formData.password}
         name={formData.name}
+        role={userRole}
       />
     </>
   )

@@ -50,7 +50,7 @@ import PropertyTimer from '../components/PropertyTimer'
 import LoginModal from '../components/LoginModal'
 import '../components/PropertyList.css'
 import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
-import { getUserData } from '../services/authService'
+import { getUserData, clearUserData } from '../services/authService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
@@ -1049,6 +1049,17 @@ function MainPage() {
           if (userData.id) {
             try {
               const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+              
+              // Если пользователь не найден в БД (404) — сессия устарела, очищаем её
+              if (response.status === 404) {
+                console.warn('⚠️ Локальная сессия устарела: пользователь не найден в БД. Очищаем данные.')
+                clearUserData()
+                setIsLoggedIn(false)
+                setUserPhoto(null)
+                setHasIncompleteProfile(false)
+                return
+              }
+              
               if (response.ok) {
                 const result = await response.json()
                 if (result.success && result.data) {
@@ -1816,17 +1827,29 @@ function MainPage() {
                 type="button" 
                 className={`header__action-btn ${isLoggedIn ? 'header__action-btn--avatar' : ''}`}
                 onClick={() => {
-                  // Проверяем авторизацию через Clerk
+                  // Всегда сначала проверяем локальные данные (роль, флаги)
+                  const userData = getUserData()
+                  const localRole = localStorage.getItem('userRole')
+                  const storedRole = userData.role || localRole
+                  const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+                  const isOwner =
+                    storedRole === 'seller' ||
+                    storedRole === 'owner' ||
+                    isOwnerFlag
+
+                  // Продавца ведем в кабинет продавца
+                  if (isOwner) {
+                    navigate('/owner')
+                    return
+                  }
+
+                  // Дальше обычная логика профиля покупателя
                   if (userLoaded && user) {
                     navigate('/profile')
+                  } else if (userData.isLoggedIn) {
+                    navigate('/profile')
                   } else {
-                    // Проверяем старую систему авторизации
-                    const userData = getUserData()
-                    if (userData.isLoggedIn) {
-                      navigate('/profile')
-                    } else {
-                      setIsLoginModalOpen(true)
-                    }
+                    setIsLoginModalOpen(true)
                   }
                 }}
                 aria-label={t('profile')}
@@ -1979,7 +2002,20 @@ function MainPage() {
                         <button 
                           className="menu-dropdown__item"
                           onClick={() => {
-                            navigate('/profile')
+                            const userData = getUserData()
+                            const localRole = localStorage.getItem('userRole')
+                            const storedRole = userData.role || localRole
+                            const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+                            const isOwner =
+                              storedRole === 'seller' ||
+                              storedRole === 'owner' ||
+                              isOwnerFlag
+
+                            if (isOwner) {
+                              navigate('/owner')
+                            } else {
+                              navigate('/profile')
+                            }
                             setIsMenuOpen(false)
                           }}
                         >
@@ -2097,17 +2133,29 @@ function MainPage() {
           <button 
             className={`new-header__user-btn ${isLoggedIn ? 'new-header__user-btn--avatar' : ''}`}
             onClick={() => {
-              // Проверяем авторизацию через Clerk
+              // Всегда сначала проверяем локальные данные (роль, флаги)
+              const userData = getUserData()
+              const localRole = localStorage.getItem('userRole')
+              const storedRole = userData.role || localRole
+              const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+              const isOwner =
+                storedRole === 'seller' ||
+                storedRole === 'owner' ||
+                isOwnerFlag
+
+              // Продавца ведем в кабинет продавца
+              if (isOwner) {
+                navigate('/owner')
+                return
+              }
+
+              // Дальше обычная логика профиля покупателя
               if (userLoaded && user) {
                 navigate('/profile')
+              } else if (userData.isLoggedIn) {
+                navigate('/profile')
               } else {
-                // Проверяем старую систему авторизации
-                const userData = getUserData()
-                if (userData.isLoggedIn) {
-                  navigate('/profile')
-                } else {
-                  setIsLoginModalOpen(true)
-                }
+                setIsLoginModalOpen(true)
               }
             }}
             aria-label={t('profile')}

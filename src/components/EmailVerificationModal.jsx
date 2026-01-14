@@ -3,7 +3,7 @@ import { FiX, FiMail } from 'react-icons/fi'
 import { sendEmailVerificationCode, verifyEmailCode, verifyEmailForProfileUpdate, validateEmail } from '../services/authService'
 import './EmailVerificationModal.css'
 
-const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmail, password, name, isProfileUpdate = false, userId = null }) => {
+const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmail, password, name, isProfileUpdate = false, userId = null, role = 'buyer' }) => {
   const [email, setEmail] = useState(initialEmail || '')
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [isLoading, setIsLoading] = useState(false)
@@ -208,7 +208,7 @@ const EmailVerificationModal = ({ isOpen, onClose, onSuccess, email: initialEmai
         }
       } else {
         // Регистрация
-        result = await verifyEmailCode(email, codeString, password, name)
+        result = await verifyEmailCode(email, codeString, password, name, role)
 
         if (result.success) {
           // Успешная регистрация

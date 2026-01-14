@@ -1214,6 +1214,59 @@
   font-family: inherit;
 }
 
+/* Поля ввода в профиле владельца */
+.owner-profile-section__value-input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 12px;
+  border: 2px solid #0ABAB5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.owner-profile-section__value-input:focus {
+  outline: none;
+  border-color: #089a95;
+  box-shadow: 0 0 0 3px rgba(10, 186, 181, 0.12);
+}
+
+.owner-profile-section__value-input::placeholder {
+  color: #9ca3af;
+}
+
+.owner-profile-passport {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.owner-profile-passport-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.owner-profile-passport-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.owner-profile-section--actions {
+  margin-top: 16px;
+}
+
+.owner-profile-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .owner-profile-section__value--warning {
   color: #f97316;
 }

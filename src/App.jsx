@@ -16,7 +16,36 @@ import AdminPanelPage from './admin/AdminPanelPage'
 import Footer from './components/Footer'
 import ClerkAuthSync from './components/ClerkAuthSync'
 import ClerkAuthHandler from './components/ClerkAuthHandler'
+import { validateSession } from './services/authService'
 import './App.css'
+
+// Компонент для валидации сессии при запуске приложения
+function SessionValidator() {
+  useEffect(() => {
+    // Валидируем сессию при монтировании приложения
+    const checkSession = async () => {
+      try {
+        const result = await validateSession()
+        if (!result.valid && result.cleared) {
+          console.log('✅ Устаревшая сессия автоматически очищена при запуске приложения')
+          // Перезагружаем страницу для полного сброса состояния
+          window.location.reload()
+        } else if (result.valid) {
+          console.log('✅ Сессия валидна, пользователь авторизован')
+        }
+      } catch (error) {
+        console.error('❌ Ошибка при валидации сессии:', error)
+      }
+    }
+    
+    // Небольшая задержка, чтобы дать время другим компонентам инициализироваться
+    const timeoutId = setTimeout(checkSession, 500)
+    
+    return () => clearTimeout(timeoutId)
+  }, [])
+
+  return null
+}
 
 // Компонент для очистки сессии администратора при переходе с админ-панели
 function AdminSessionCleaner() {
@@ -43,6 +72,7 @@ function AdminSessionCleaner() {
 function App() {
   return (
     <Router>
+      <SessionValidator />
       <AdminSessionCleaner />
       <ClerkAuthSync />
       <ClerkAuthHandler />

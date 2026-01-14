@@ -86,6 +86,61 @@
   line-height: 1.5;
 }
 
+.login-modal__role-section {
+  padding: 0 32px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-modal__role-label {
+  font-size: 13px;
+  color: #666;
+  text-align: left;
+}
+
+.login-modal__role-switch {
+  display: flex;
+  gap: 12px;
+  background: #f5f5f5;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.login-modal__role-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.login-modal__role-btn:hover:not(:disabled) {
+  color: #333;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.login-modal__role-btn--active {
+  background: #0ABAB5; /* основной цвет тиффани */
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(10, 186, 181, 0.35);
+}
+
+.login-modal__role-btn--active:hover {
+  background: #089a95; /* чуть темнее для ховера */
+}
+
+.login-modal__role-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .login-modal__social {
   padding: 0 32px 24px;
   display: flex;

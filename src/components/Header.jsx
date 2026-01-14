@@ -13,7 +13,7 @@ import {
 import { IoLocationOutline } from 'react-icons/io5'
 import { properties } from '../data/properties'
 import LoginModal from './LoginModal'
-import { getUserData } from '../services/authService'
+import { getUserData, clearUserData } from '../services/authService'
 import '../pages/MainPage.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -105,6 +105,17 @@ const Header = () => {
           if (!photo && userData.id) {
             try {
               const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+              
+              // Если пользователь в БД не найден (например, был удален админом) —
+              // принудительно сбрасываем локальную сессию
+              if (response.status === 404) {
+                console.warn('⚠️ Локальная сессия пользователя устарела: пользователь не найден в БД. Очищаем данные.')
+                clearUserData()
+                setIsLoggedIn(false)
+                setUserPhoto(null)
+                return
+              }
+
               if (response.ok) {
                 const result = await response.json()
                 if (result.success && result.data && result.data.user_photo) {
@@ -392,17 +403,32 @@ const Header = () => {
                 <button 
                   className={`new-header__user-btn ${isLoggedIn ? 'new-header__user-btn--avatar' : ''}`}
                   onClick={() => {
-                    // Проверяем авторизацию через Clerk
+                    // Всегда сначала пробуем прочитать локальные данные (роль, флаги)
+                    const userData = getUserData()
+                    const localRole = localStorage.getItem('userRole')
+                    const storedRole = userData.role || localRole
+                    const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+                    const isOwner =
+                      storedRole === 'seller' ||
+                      storedRole === 'owner' ||
+                      isOwnerFlag
+
+                    // Если по локальным данным видно, что это продавец — ведем в кабинет продавца
+                    if (isOwner) {
+                      navigate('/owner')
+                      return
+                    }
+
+                    // Дальше проверяем авторизацию через Clerk и локальную авторизацию покупателя
                     if (userLoaded && user) {
+                      // Для пользователей Clerk по умолчанию открываем профиль покупателя
+                      navigate('/profile')
+                    } else if (userData.isLoggedIn) {
+                      // Локально авторизованный покупатель
                       navigate('/profile')
                     } else {
-                      // Проверяем старую систему авторизации
-                      const userData = getUserData()
-                      if (userData.isLoggedIn) {
-                        navigate('/profile')
-                      } else {
-                        setIsLoginModalOpen(true)
-                      }
+                      // Не авторизован — открываем модалку
+                      setIsLoginModalOpen(true)
                     }
                   }}
                   aria-label={t('profile')}

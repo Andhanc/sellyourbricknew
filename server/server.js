@@ -7,9 +7,13 @@ import { dirname, join } from 'path';
 import multer from 'multer';
 import fs from 'fs';
 import crypto from 'crypto';
+import qrcode from 'qrcode-terminal';
+import whatsappPkg from 'whatsapp-web.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const { Client, LocalAuth } = whatsappPkg;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +50,79 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Инициализация базы данных
 initDatabase();
+
+// ========== НАСТРОЙКА WHATSAPP WEB КЛИЕНТА ==========
+let waClientReady = false;
+
+const waClient = new Client({
+  authStrategy: new LocalAuth({
+    dataPath: join(__dirname, '.wwebjs_auth')
+  }),
+  puppeteer: {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  },
+  // Фиксация версии веб-клиента WhatsApp, чтобы избежать ошибок
+  // вида "Cannot read properties of undefined (reading 'markedUnread')"
+  // из-за изменения внутреннего кода WhatsApp Web.
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+  }
+});
+
+waClient.on('qr', (qr) => {
+  console.log('📲 Отсканируйте этот QR-код в WhatsApp (телефон, который будет отправлять коды):');
+  try {
+    qrcode.generate(qr, { small: true });
+  } catch (e) {
+    console.log('QR-код (текстом):', qr);
+  }
+});
+
+waClient.on('ready', async () => {
+  waClientReady = true;
+  console.log('✅ WhatsApp клиент готов к отправке сообщений');
+
+  // Хак-обход бага whatsapp-web.js с window.WWebJS.sendSeen / markedUnread
+  // В некоторых версиях WhatsApp Web внутренняя структура меняется,
+  // и стандартная реализация sendSeen падает с ошибкой
+  // "Cannot read properties of undefined (reading 'markedUnread')".
+  //
+  // Мы переопределяем функцию sendSeen в контексте страницы на безопасный no-op,
+  // чтобы отправка сообщений (sendMessage) не падала на этом месте.
+  try {
+    if (waClient.pupPage) {
+      await waClient.pupPage.evaluate(() => {
+        if (window.WWebJS && typeof window.WWebJS.sendSeen === 'function') {
+          console.log('⚙️ Переопределяем window.WWebJS.sendSeen на безопасную функцию');
+          window.WWebJS.sendSeen = async () => {
+            // Ничего не делаем, просто обходим баг с markedUnread
+            return;
+          };
+        }
+      });
+      console.log('✅ Патч sendSeen применён успешно');
+    }
+  } catch (patchError) {
+    console.warn('⚠️ Не удалось применить патч sendSeen:', patchError.message);
+  }
+});
+
+waClient.on('auth_failure', (msg) => {
+  waClientReady = false;
+  console.error('❌ Ошибка авторизации WhatsApp:', msg);
+});
+
+waClient.on('disconnected', (reason) => {
+  waClientReady = false;
+  console.warn('⚠️ WhatsApp клиент отключен. Причина:', reason);
+  console.log('🔄 Пытаемся переподключиться...');
+  waClient.initialize();
+});
+
+// Инициализируем WhatsApp клиент
+waClient.initialize();
 
 /**
  * Удаляет пароль из объекта пользователя (для безопасности)
@@ -478,17 +555,17 @@ app.delete('/api/documents/:id', (req, res) => {
 
 /**
  * POST /api/auth/whatsapp - Регистрация/Авторизация через WhatsApp
+ * mode: 'login' | 'register'
+ *  - login: только вход, без создания нового пользователя
+ *  - register: создаем пользователя, если его еще нет
  */
 app.post('/api/auth/whatsapp', async (req, res) => {
   try {
-    const { phone, code } = req.body;
+    const { phone, code, mode = 'register', role } = req.body;
     
     if (!phone) {
       return res.status(400).json({ success: false, error: 'Необходимо указать номер телефона' });
     }
-    
-    // В реальном приложении здесь должна быть проверка кода через БД
-    // Пока просто создаем/находим пользователя
     
     // Проверяем, существует ли пользователь с таким номером
     let user = userQueries.getByPhone(phone);
@@ -497,7 +574,7 @@ app.post('/api/auth/whatsapp', async (req, res) => {
       // Пользователь существует - авторизуем и обновляем статус онлайн
       userQueries.update(user.id, { is_online: 1 });
       const updatedUser = userQueries.getById(user.id);
-      res.json({ 
+      return res.json({ 
         success: true, 
         user: {
           id: updatedUser.id,
@@ -511,47 +588,54 @@ app.post('/api/auth/whatsapp', async (req, res) => {
           is_online: 1
         }
       });
-    } else {
-      // Пользователь не существует - создаем нового
-      // Определяем страну по коду номера (упрощенная версия)
-      const country = phone.startsWith('375') ? 'Беларусь' : 
-                     phone.startsWith('7') ? 'Россия' : 
-                     phone.startsWith('380') ? 'Украина' : 'Неизвестно';
-      
-      // Разбиваем имя из номера (будет обновлено позже)
-      const nameParts = (req.body.name || `Пользователь ${phone.substring(phone.length - 4)}`).split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
-      const newUser = {
-        first_name: firstName,
-        last_name: lastName,
-        email: null, // Email не требуется для WhatsApp
-        phone_number: phone,
-        country: country,
-        role: 'buyer', // По умолчанию покупатель
-        is_verified: 0,
-        is_online: 1
-      };
-      
-      const result = userQueries.create(newUser);
-      const createdUser = userQueries.getById(result.lastInsertRowid);
-      
-      res.status(201).json({ 
-        success: true, 
-        user: {
-          id: createdUser.id,
-          name: `${createdUser.first_name} ${createdUser.last_name}`.trim(),
-          phone: createdUser.phone_number,
-          phoneFormatted: req.body.phoneFormatted || phone,
-          email: createdUser.email,
-          role: createdUser.role,
-          country: createdUser.country,
-          countryFlag: req.body.countryFlag || '',
-          picture: null
-        }
+    }
+
+    // Если пользователь не найден и это режим входа — не регистрируем, а возвращаем ошибку
+    if (mode === 'login') {
+      return res.status(404).json({
+        success: false,
+        error: 'Пользователь с таким номером не найден. Сначала зарегистрируйтесь через WhatsApp.'
       });
     }
+    
+    // Режим регистрации: создаем нового пользователя
+    const country = phone.startsWith('375') ? 'Беларусь' : 
+                   phone.startsWith('7') ? 'Россия' : 
+                   phone.startsWith('380') ? 'Украина' : 'Неизвестно';
+    
+    // Разбиваем имя из номера (будет обновлено позже)
+    const nameParts = (req.body.name || `Пользователь ${phone.substring(phone.length - 4)}`).split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    const newUser = {
+      first_name: firstName,
+      last_name: lastName,
+      email: null, // Email не требуется для WhatsApp
+      phone_number: phone,
+      country: country,
+      role: role || 'buyer', // Используем переданную роль или 'buyer' по умолчанию
+      is_verified: 0,
+      is_online: 1
+    };
+    
+    const result = userQueries.create(newUser);
+    const createdUser = userQueries.getById(result.lastInsertRowid);
+    
+    return res.status(201).json({ 
+      success: true, 
+      user: {
+        id: createdUser.id,
+        name: `${createdUser.first_name} ${createdUser.last_name}`.trim(),
+        phone: createdUser.phone_number,
+        phoneFormatted: req.body.phoneFormatted || phone,
+        email: createdUser.email,
+        role: createdUser.role,
+        country: createdUser.country,
+        countryFlag: req.body.countryFlag || '',
+        picture: null
+      }
+    });
   } catch (error) {
     if (error.message.includes('UNIQUE constraint')) {
       return res.status(409).json({ 
@@ -560,6 +644,95 @@ app.post('/api/auth/whatsapp', async (req, res) => {
       });
     }
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/whatsapp/send-code - Отправка кода верификации через WhatsApp (whatsapp-web.js)
+ */
+app.post('/api/auth/whatsapp/send-code', async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+
+    if (!phone || !code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходимо указать номер телефона и код'
+      });
+    }
+
+    if (!waClientReady) {
+      return res.status(503).json({
+        success: false,
+        error: 'WhatsApp клиент еще не готов. Подождите несколько секунд и попробуйте снова.'
+      });
+    }
+
+    const digits = String(phone).replace(/\D/g, '');
+    if (!digits) {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный формат номера телефона'
+      });
+    }
+
+    const chatId = `${digits}@c.us`;
+    const message = `🔐 Ваш код авторизации: ${code}\n\nКод действителен в течение 10 минут.\n\nЕсли вы не запрашивали этот код, просто проигнорируйте это сообщение.`;
+
+    let contactName = null;
+    let profilePicUrl = null;
+
+    try {
+      const contact = await waClient.getContactById(chatId);
+      if (contact) {
+        contactName = contact.pushname || contact.name || contact.number || null;
+        try {
+          profilePicUrl = await contact.getProfilePicUrl();
+        } catch {
+          profilePicUrl = null;
+        }
+      }
+    } catch {
+      // Если контакт не найден, просто продолжаем отправку сообщения
+    }
+
+    // Отправляем сообщение с дополнительной диагностикой
+    try {
+      await waClient.sendMessage(chatId, message);
+    } catch (sendError) {
+      const errorMessage = sendError.message || '';
+      const errorStack = sendError.stack || '';
+      const isMarkedUnreadError = 
+        errorMessage.includes('markedUnread') || 
+        errorStack.includes('markedUnread') ||
+        errorMessage.includes('Cannot read properties of undefined');
+      
+      if (isMarkedUnreadError) {
+        // Это известная ошибка библиотеки. Раньше мы её гасили, считая, что
+        // сообщение всё равно ушло, но у вас оно реально не доставляется.
+        // Поэтому теперь считаем это ошибкой и отдаём 500 на фронт.
+        console.error('❌ Ошибка whatsapp-web.js (markedUnread) при отправке сообщения. Ответ пользователю: 500.');
+        throw sendError;
+      } else {
+        // Если это другая ошибка - пробрасываем её дальше
+        throw sendError;
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Код отправлен в WhatsApp',
+      contact: {
+        name: contactName,
+        picture: profilePicUrl
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка отправки кода через WhatsApp:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Не удалось отправить код через WhatsApp'
+    });
   }
 });
 
@@ -606,7 +779,7 @@ app.post('/api/auth/email/register', async (req, res) => {
       email: emailLower,
       password: hashedPassword, // Сохраняем хешированный пароль
       phone_number: null, // Телефон не требуется для email регистрации
-      role: 'buyer',
+      role: req.body.role || 'buyer', // Используем переданную роль или 'buyer' по умолчанию
       is_verified: 1, // Email верифицирован кодом
       is_online: 1
     };
@@ -898,6 +1071,68 @@ app.post('/api/auth/google', async (req, res) => {
       });
     }
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/auth/whatsapp/user-info - Получение информации о пользователе WhatsApp по номеру
+ */
+app.get('/api/auth/whatsapp/user-info', async (req, res) => {
+  try {
+    const { phone } = req.query;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходимо указать номер телефона'
+      });
+    }
+
+    if (!waClientReady) {
+      return res.status(503).json({
+        success: false,
+        error: 'WhatsApp клиент еще не готов'
+      });
+    }
+
+    const digits = String(phone).replace(/\D/g, '');
+    if (!digits) {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный формат номера телефона'
+      });
+    }
+
+    const chatId = `${digits}@c.us`;
+
+    const contact = await waClient.getContactById(chatId);
+
+    let profilePicUrl = null;
+    try {
+      profilePicUrl = await contact.getProfilePicUrl();
+    } catch {
+      profilePicUrl = null;
+    }
+
+    const name = contact.pushname ||
+      contact.name ||
+      contact.shortName ||
+      contact.number ||
+      null;
+
+    return res.json({
+      success: true,
+      data: {
+        name,
+        picture: profilePicUrl
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка получения информации о пользователе WhatsApp:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Не удалось получить информацию о пользователе WhatsApp'
+    });
   }
 });
 

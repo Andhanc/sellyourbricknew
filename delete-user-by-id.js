@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const DB_PATH = join(__dirname, 'server', 'database.sqlite');
-const userId = 3;
+const userId = 9;
 
 try {
   if (!existsSync(DB_PATH)) {
