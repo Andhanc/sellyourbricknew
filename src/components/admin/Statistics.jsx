@@ -39,6 +39,9 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
   const calendarRef = useRef(null);
   const [usersCount, setUsersCount] = useState(null); // Реальное количество пользователей из БД
   const [isLoadingUsersCount, setIsLoadingUsersCount] = useState(true);
+  const [countryStats, setCountryStats] = useState([]); // Статистика по странам
+  const [roleStats, setRoleStats] = useState({ sellers: 0, buyers: 0 }); // Статистика по ролям
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -89,6 +92,42 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
 
     fetchUsersCount();
   }, [businessInfo.stats.clients_count]);
+
+  // Загружаем статистику по странам и ролям
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoadingStats(true);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        
+        // Загружаем статистику по странам
+        const countryResponse = await fetch(`${API_BASE_URL}/admin/users/country-stats`);
+        if (countryResponse.ok) {
+          const countryData = await countryResponse.json();
+          if (countryData.success && countryData.data) {
+            setCountryStats(countryData.data);
+          }
+        }
+
+        // Загружаем статистику по ролям
+        const roleResponse = await fetch(`${API_BASE_URL}/admin/users/role-stats`);
+        if (roleResponse.ok) {
+          const roleData = await roleResponse.json();
+          if (roleData.success && roleData.data) {
+            const sellers = roleData.data.find(item => item.role === 'seller')?.count || 0;
+            const buyers = roleData.data.find(item => item.role === 'buyer')?.count || 0;
+            setRoleStats({ sellers, buyers });
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка при загрузке статистики:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const getTimeMultiplier = (period, customStartDate = null, customEndDate = null) => {
     if (customStartDate && customEndDate) {
@@ -216,25 +255,59 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
   };
 
 
-  // Пример: страны и их доля регистраций в процентах
-  const weekdayData = useMemo(() => ({
-    labels: ['Россия', 'Испания', 'Германия', 'Франция', 'Италия', 'США', 'Остальные'],
-    datasets: [{
-      label: 'Доля регистраций, %',
-      data: [35, 20, 15, 10, 8, 7, 5],
-      backgroundColor: [
-        '#4361ee',
-        '#4895ef',
-        '#3f37c9',
-        '#4cc9f0',
-        '#f8961e',
-        '#f72585',
-        '#10b981'
-      ],
-      borderRadius: 6,
-      borderWidth: 0
-    }]
-  }), []);
+  // Данные для графика национальности пользователей (реальные данные из БД)
+  const weekdayData = useMemo(() => {
+    if (isLoadingStats || countryStats.length === 0) {
+      // Показываем заглушку во время загрузки
+      return {
+        labels: ['Загрузка...'],
+        datasets: [{
+          label: 'Доля регистраций, %',
+          data: [0],
+          backgroundColor: ['#4361ee'],
+          borderRadius: 6,
+          borderWidth: 0
+        }]
+      };
+    }
+
+    // Вычисляем общее количество пользователей
+    const total = countryStats.reduce((sum, item) => sum + item.count, 0);
+    
+    // Сортируем по количеству и берем топ-7, остальные объединяем в "Остальные"
+    const sorted = [...countryStats].sort((a, b) => b.count - a.count);
+    const topCountries = sorted.slice(0, 6);
+    const othersCount = sorted.slice(6).reduce((sum, item) => sum + item.count, 0);
+    
+    const labels = topCountries.map(item => item.country);
+    const data = topCountries.map(item => ((item.count / total) * 100).toFixed(1));
+    
+    if (othersCount > 0) {
+      labels.push('Остальные');
+      data.push(((othersCount / total) * 100).toFixed(1));
+    }
+
+    const colors = [
+      '#4361ee',
+      '#4895ef',
+      '#3f37c9',
+      '#4cc9f0',
+      '#f8961e',
+      '#f72585',
+      '#10b981'
+    ];
+
+    return {
+      labels: labels,
+      datasets: [{
+        label: 'Доля регистраций, %',
+        data: data.map(val => parseFloat(val)),
+        backgroundColor: colors.slice(0, labels.length),
+        borderRadius: 6,
+        borderWidth: 0
+      }]
+    };
+  }, [countryStats, isLoadingStats]);
 
   // Данные для диаграммы пользователей по дням недели
   const usersByWeekdayData = useMemo(() => {
@@ -271,20 +344,28 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     }]
   }), []);
 
-  const userRoleData = useMemo(() => ({
-    labels: ['Продавцы', 'Покупатели'],
-    datasets: [{
-      data: [
-        Math.round((businessInfo.user_role_stats?.sellers || 45) * multiplier),
-        Math.round((businessInfo.user_role_stats?.buyers || 55) * multiplier)
-      ],
-      backgroundColor: [
-        '#4361ee',
-        '#f72585'
-      ],
-      borderWidth: 0
-    }]
-  }), [businessInfo.user_role_stats, multiplier]);
+  const userRoleData = useMemo(() => {
+    // Используем реальные данные из БД, если они загружены
+    const sellers = isLoadingStats ? 0 : roleStats.sellers;
+    const buyers = isLoadingStats ? 0 : roleStats.buyers;
+    const total = sellers + buyers;
+    
+    // Если нет данных, используем значения по умолчанию
+    const sellersValue = total > 0 ? sellers : Math.round((businessInfo.user_role_stats?.sellers || 45) * multiplier);
+    const buyersValue = total > 0 ? buyers : Math.round((businessInfo.user_role_stats?.buyers || 55) * multiplier);
+
+    return {
+      labels: ['Продавцы', 'Покупатели'],
+      datasets: [{
+        data: [sellersValue, buyersValue],
+        backgroundColor: [
+          '#4361ee',
+          '#f72585'
+        ],
+        borderWidth: 0
+      }]
+    };
+  }, [roleStats, isLoadingStats, businessInfo.user_role_stats, multiplier]);
 
   const weekdayChartOptions = {
     responsive: true,

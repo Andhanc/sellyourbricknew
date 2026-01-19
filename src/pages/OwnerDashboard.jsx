@@ -188,7 +188,10 @@ const OwnerDashboard = () => {
         // Загружаем статус верификации и документы
         if (userData.id) {
           setUserId(userData.id)
-          loadVerificationStatus(userData.id)
+          // При первой загрузке проверяем непросмотренное уведомление о верификации
+          checkVerificationNotification(userData.id)
+          // При первой загрузке не показываем уведомление (isStatusUpdate = false)
+          loadVerificationStatus(userData.id, false)
           loadUserDocuments(userData.id)
         }
       }
@@ -205,8 +208,48 @@ const OwnerDashboard = () => {
     }
   }, [navigate])
 
+  // Сохраняем предыдущий статус верификации для отслеживания изменений
+  const previousVerificationStatus = useRef(false)
+  const hasCheckedNotification = useRef(false)
+
+  // Проверяем непросмотренное уведомление о верификации
+  const checkVerificationNotification = async (userId) => {
+    if (!userId || hasCheckedNotification.current) return
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/user/${userId}/unread`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          // Ищем непросмотренное уведомление о верификации
+          const verificationNotif = result.data.find(
+            n => n.type === 'verification_success' && n.view_count === 0
+          )
+          if (verificationNotif) {
+            // Показываем уведомление только если есть непросмотренное уведомление
+            setShowVerificationSuccess(true)
+            // Автоматически скрываем уведомление через 5 секунд
+            setTimeout(() => {
+              setShowVerificationSuccess(false)
+            }, 5000)
+            // Отмечаем уведомление как просмотренное
+            try {
+              await fetch(`${API_BASE_URL}/notifications/${verificationNotif.id}/view`, {
+                method: 'PUT'
+              })
+            } catch (err) {
+              console.warn('Не удалось отметить уведомление как просмотренное:', err)
+            }
+          }
+          hasCheckedNotification.current = true
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка проверки уведомлений:', error)
+    }
+  }
+
   // Загружаем статус верификации
-  const loadVerificationStatus = async (userId) => {
+  const loadVerificationStatus = async (userId, isStatusUpdate = false) => {
     if (!userId) return
     try {
       const response = await fetch(`${API_BASE_URL}/users/${userId}/verification-status`)
@@ -214,16 +257,24 @@ const OwnerDashboard = () => {
         const result = await response.json()
         if (result.success && result.data) {
           const status = result.data
+          const wasVerified = previousVerificationStatus.current
+          const isNowVerified = status.isVerified
+          
           setVerificationStatus(status)
           
-          // Проверяем, была ли верификация одобрена
-          if (status.isVerified) {
+          // Показываем уведомление только если:
+          // 1. Статус изменился с неверифицированного на верифицированный (при событии обновления)
+          // 2. Это означает, что администратор только что одобрил пользователя
+          if (isStatusUpdate && isNowVerified && !wasVerified) {
             setShowVerificationSuccess(true)
             // Автоматически скрываем уведомление через 5 секунд
             setTimeout(() => {
               setShowVerificationSuccess(false)
             }, 5000)
           }
+          
+          // Обновляем предыдущий статус
+          previousVerificationStatus.current = isNowVerified
         }
       }
     } catch (error) {
@@ -231,11 +282,12 @@ const OwnerDashboard = () => {
     }
   }
 
-  // Слушаем событие обновления статуса верификации
+  // Слушаем событие обновления статуса верификации (только при одобрении администратором)
   useEffect(() => {
     const handleStatusUpdate = () => {
       if (userId) {
-        loadVerificationStatus(userId)
+        // При событии обновления передаем флаг isStatusUpdate = true
+        loadVerificationStatus(userId, true)
       }
     }
     

@@ -626,6 +626,37 @@ export const userQueries = {
     const db = getDatabase();
     const stmt = db.prepare('DELETE FROM users WHERE id = ?');
     return stmt.run(id);
+  },
+
+  /**
+   * Получить статистику по странам (национальностям)
+   */
+  getCountryStats: () => {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT 
+        COALESCE(country, 'Не указано') as country,
+        COUNT(*) as count
+      FROM users
+      GROUP BY country
+      ORDER BY count DESC
+    `);
+    return stmt.all();
+  },
+
+  /**
+   * Получить статистику по ролям (продавцы/покупатели)
+   */
+  getRoleStats: () => {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT 
+        COALESCE(role, 'buyer') as role,
+        COUNT(*) as count
+      FROM users
+      GROUP BY role
+    `);
+    return stmt.all();
   }
 };
 

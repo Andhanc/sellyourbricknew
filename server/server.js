@@ -65,7 +65,30 @@ function validatePassword(password) {
 }
 
 // Настройка middleware
-app.use(cors());
+// CORS с поддержкой dev tunnels и других доменов
+app.use(cors({
+  origin: function (origin, callback) {
+    // Разрешаем запросы без origin (например, Postman, мобильные приложения)
+    if (!origin) return callback(null, true);
+    
+    // Разрешаем localhost для локальной разработки
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Разрешаем dev tunnels домены
+    if (origin.includes('devtunnels.ms') || origin.includes('devtunnels')) {
+      return callback(null, true);
+    }
+    
+    // Разрешаем все остальные домены (для тестирования)
+    // В production здесь нужно указать конкретные домены
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -2157,6 +2180,32 @@ app.get('/api/admin/users/count', (req, res) => {
     res.json({ success: true, count });
   } catch (error) {
     console.error('Ошибка при получении количества пользователей:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/users/country-stats - Получить статистику по национальностям (странам)
+ */
+app.get('/api/admin/users/country-stats', (req, res) => {
+  try {
+    const stats = userQueries.getCountryStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Ошибка при получении статистики по странам:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/users/role-stats - Получить статистику по ролям (продавцы/покупатели)
+ */
+app.get('/api/admin/users/role-stats', (req, res) => {
+  try {
+    const stats = userQueries.getRoleStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Ошибка при получении статистики по ролям:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
