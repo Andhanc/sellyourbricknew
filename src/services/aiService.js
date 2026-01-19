@@ -206,6 +206,130 @@ ${JSON.stringify(userPreferences, null, 2)}
 }
 
 /**
+ * Извлекает данные из распознанного текста паспорта с помощью AI
+ * @param {string} recognizedText - Текст, распознанный с фото паспорта (OCR)
+ * @returns {Promise<Object>} Объект с извлеченными данными паспорта
+ */
+export async function extractPassportData(recognizedText) {
+  const systemPrompt = `Ты специалист по извлечению данных из документов. Твоя задача - проанализировать распознанный текст с фото паспорта и извлечь структурированные данные.
+
+**ТВОЯ РОЛЬ:**
+- Анализируй предоставленный текст, распознанный с фото паспорта
+- Извлекай максимально много информации для заполнения полей формы пользователя
+- Будь точным и аккуратным при извлечении данных
+
+**ПОЛЯ ДЛЯ ИЗВЛЕЧЕНИЯ:**
+1. firstName (Имя) - имя владельца паспорта
+2. lastName (Фамилия) - фамилия владельца паспорта
+3. middleName (Отчество) - отчество, если есть
+4. passportSeries (Серия паспорта) - первые 2 цифры серии паспорта
+5. passportNumber (Номер паспорта) - номер паспорта (обычно 7 цифр)
+6. identificationNumber (Идентификационный номер) - персональный идентификационный номер
+7. address (Адрес) - адрес регистрации/проживания
+8. email (Email) - если есть в документе
+
+**ВАЖНО:**
+- Извлекай только данные, которые точно присутствуют в тексте
+- Если поле не найдено, оставляй его пустым (null)
+- Для passportSeries извлекай только первые 2 цифры
+- Для passportNumber извлекай только цифры (без серии)
+- Нормализуй имена и фамилии (первая буква заглавная, остальные строчные)
+- Если текст не содержит данных паспорта, верни объект с null значениями
+
+**ФОРМАТ ОТВЕТА:**
+Отвечай ТОЛЬКО в формате JSON (без дополнительного текста):
+{
+  "firstName": "Имя или null",
+  "lastName": "Фамилия или null",
+  "middleName": "Отчество или null",
+  "passportSeries": "XX или null",
+  "passportNumber": "XXXXXXX или null",
+  "identificationNumber": "XXXXXXXXXXXXX или null",
+  "address": "Адрес или null",
+  "email": "email@example.com или null"
+}`;
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { 
+      role: "user", 
+      content: `Распознанный текст с фото паспорта:\n\n${recognizedText}\n\nИзвлеки данные в формате JSON.`
+    }
+  ];
+
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${AI_API_KEY}`
+    };
+
+    const payload = {
+      "model": AI_MODEL,
+      "messages": messages,
+      "temperature": 0.1 // Низкая температура для более точного извлечения
+    };
+
+    const response = await fetch(AI_API_URL, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API Error ${response.status}: ${errorText}`);
+      throw new Error(`AI API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.choices && data.choices.length > 0) {
+      let messageContent = data.choices[0].message?.content || "";
+
+      // Удаляем возможные служебные метки
+      while (messageContent.includes("</think>")) {
+        messageContent = messageContent.split("</think>").pop().trim();
+      }
+      messageContent = messageContent.replace(/<\/?redacted_reasoning>/g, "").trim();
+      messageContent = messageContent.replace(/<\/?think>/g, "").trim();
+
+      // Пытаемся распарсить JSON из ответа
+      try {
+        let jsonText = messageContent;
+        jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+        
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          
+          // Валидация и нормализация данных
+          return {
+            firstName: parsed.firstName && parsed.firstName !== 'null' ? parsed.firstName.trim() : null,
+            lastName: parsed.lastName && parsed.lastName !== 'null' ? parsed.lastName.trim() : null,
+            middleName: parsed.middleName && parsed.middleName !== 'null' ? parsed.middleName.trim() : null,
+            passportSeries: parsed.passportSeries && parsed.passportSeries !== 'null' ? parsed.passportSeries.trim() : null,
+            passportNumber: parsed.passportNumber && parsed.passportNumber !== 'null' ? parsed.passportNumber.trim() : null,
+            identificationNumber: parsed.identificationNumber && parsed.identificationNumber !== 'null' ? parsed.identificationNumber.trim() : null,
+            address: parsed.address && parsed.address !== 'null' ? parsed.address.trim() : null,
+            email: parsed.email && parsed.email !== 'null' ? parsed.email.trim() : null
+          };
+        }
+      } catch (parseError) {
+        console.error("Ошибка парсинга JSON от AI:", parseError);
+        throw new Error("Не удалось распарсить ответ от AI");
+      }
+
+      throw new Error("AI не вернул валидный JSON");
+    } else {
+      throw new Error("Неожиданный формат ответа от AI");
+    }
+  } catch (error) {
+    console.error("AI Service Error:", error);
+    throw error;
+  }
+}
+
+/**
  * Фильтрует недвижимость по Испании и Дубаю
  * @param {Array} properties - Массив всех объявлений
  * @returns {Array} Отфильтрованные объявления

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiUser, FiUserCheck, FiShield, FiShieldOff, FiX } from 'react-icons/fi';
+import UserDetailModal from './UserDetailModal';
 import './UsersList.css';
 
 const UsersList = () => {
@@ -9,6 +10,8 @@ const UsersList = () => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Загружаем реальных пользователей из БД
   useEffect(() => {
@@ -41,7 +44,7 @@ const UsersList = () => {
                 avatar: avatarUrl,
                 role: user.role || 'buyer', // 'buyer' или 'seller'
                 moderationStatus: user.is_verified ? 'approved' : 'pending',
-                isBlocked: false, // Пока нет поля isBlocked в БД, используем false
+                isBlocked: user.is_blocked === 1, // Читаем из БД
                 email: user.email || '',
                 phone: user.phone_number || '',
                 registrationDate: user.created_at || new Date().toISOString(),
@@ -98,14 +101,45 @@ const UsersList = () => {
     });
   }, [searchQuery, roleFilter, statusFilter, users]);
 
-  const handleBlock = (userId) => {
+  const handleBlock = async (userId) => {
     const user = users.find(u => u.id === userId);
     const action = user?.isBlocked ? 'разблокировать' : 'заблокировать';
     
     if (window.confirm(`Вы уверены, что хотите ${action} этого пользователя?`)) {
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, isBlocked: !user.isBlocked } : user
-      ));
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const endpoint = user?.isBlocked 
+          ? `${API_BASE_URL}/users/${userId}/unblock`
+          : `${API_BASE_URL}/users/${userId}/block`;
+        
+        const response = await fetch(endpoint, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            // Обновляем локальное состояние
+            setUsers(users.map(user => 
+              user.id === userId ? { ...user, isBlocked: !user.isBlocked } : user
+            ));
+            
+            // Показываем сообщение об успехе
+            alert(`Пользователь успешно ${action === 'заблокировать' ? 'заблокирован' : 'разблокирован'}`);
+          } else {
+            alert(`Ошибка: ${result.error || 'Не удалось изменить статус блокировки'}`);
+          }
+        } else {
+          const errorData = await response.json();
+          alert(`Ошибка: ${errorData.error || 'Не удалось изменить статус блокировки'}`);
+        }
+      } catch (error) {
+        console.error('Ошибка при изменении статуса блокировки:', error);
+        alert('Произошла ошибка при изменении статуса блокировки');
+      }
     }
   };
 
@@ -225,6 +259,11 @@ const UsersList = () => {
             <div 
               key={user.id} 
               className={`user-card ${user.isBlocked ? 'user-card--blocked' : ''}`}
+              onClick={() => {
+                setSelectedUserId(user.id);
+                setIsDetailModalOpen(true);
+              }}
+              style={{ cursor: 'pointer' }}
             >
               <div className="user-card__avatar">
                 {user.avatar ? (
@@ -294,7 +333,7 @@ const UsersList = () => {
                 </div>
               </div>
               
-              <div className="user-card__actions">
+              <div className="user-card__actions" onClick={(e) => e.stopPropagation()}>
                 <button
                   className={`btn-action ${user.isBlocked ? 'btn-action--unblock' : 'btn-action--block'}`}
                   onClick={() => handleBlock(user.id)}
@@ -319,8 +358,17 @@ const UsersList = () => {
             <span className="stat-label">Найдено:</span>
             <span className="stat-value">{filteredUsers.length}</span>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+
+      <UserDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedUserId(null);
+        }}
+        userId={selectedUserId}
+      />
     </div>
   );
 };

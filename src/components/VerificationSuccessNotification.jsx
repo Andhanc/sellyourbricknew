@@ -98,3 +98,4 @@ const VerificationSuccessNotification = ({ notification, onClose, onView }) => {
 
 export default VerificationSuccessNotification;
 
+

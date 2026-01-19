@@ -1471,3 +1471,241 @@
     font-size: 16px;
   }
 }
+
+/* Уведомление о необходимости заполнить данные */
+.owner-verification-notification {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.owner-verification-notification__content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.owner-verification-notification__icon {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.owner-verification-notification__text {
+  flex: 1;
+}
+
+.owner-verification-notification__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 4px 0;
+}
+
+.owner-verification-notification__message {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.owner-verification-notification__button {
+  padding: 10px 20px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.owner-verification-notification__button:hover {
+  background: #333;
+}
+
+/* Уведомление об успешной верификации */
+.owner-verification-success {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: #10b981;
+  border: 1px solid #059669;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  z-index: 1000;
+  max-width: 500px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.owner-verification-success__content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.owner-verification-success__icon {
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.owner-verification-success__text {
+  flex: 1;
+}
+
+.owner-verification-success__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 4px 0;
+}
+
+.owner-verification-success__message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.owner-verification-success__close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.owner-verification-success__close:hover {
+  opacity: 0.7;
+}
+
+/* Секция верификации вверху */
+.owner-profile-section--verification-top {
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+
+.owner-profile-section__value--success {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.owner-profile-section__button--success {
+  background: #10b981;
+  color: #fff;
+  border-color: #10b981;
+}
+
+.owner-profile-section__button--success:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+/* Стили для документов */
+.owner-profile-section__subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 8px 0 16px 0;
+}
+
+.owner-documents-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.owner-document-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.owner-document-card:hover {
+  border-color: #000;
+  background: #f9f9f9;
+}
+
+.owner-document-card.owner-document-pending {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.owner-document-card.owner-document-approved {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.owner-document-card__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f5f5f5;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.owner-document-card.owner-document-pending .owner-document-card__icon {
+  background: #fef3c7;
+  color: #f59e0b;
+}
+
+.owner-document-card.owner-document-approved .owner-document-card__icon {
+  background: #d1fae5;
+  color: #10b981;
+}
+
+.owner-document-card__content {
+  flex: 1;
+}
+
+.owner-document-card__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 4px 0;
+}
+
+.owner-document-card__status {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}

@@ -13,3 +13,4 @@ UPDATE documents SET verification_status = 'approved' WHERE is_reviewed = 1 AND 
 -- Обновляем существующие записи: если is_reviewed = 0, то verification_status = 'pending'
 UPDATE documents SET verification_status = 'pending' WHERE is_reviewed = 0 AND verification_status IS NULL;
 
+

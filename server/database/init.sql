@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     is_verified INTEGER DEFAULT 0, -- 0 для false, 1 для true
     role TEXT DEFAULT 'buyer', -- 'buyer', 'seller', 'admin', 'manager'
     is_online INTEGER DEFAULT 0, -- 0 для offline, 1 для online
+    is_blocked INTEGER DEFAULT 0, -- 0 для false, 1 для true
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_is_blocked ON users(is_blocked);
 CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
 CREATE INDEX IF NOT EXISTS idx_documents_verification_status ON documents(verification_status);
 CREATE INDEX IF NOT EXISTS idx_documents_user_status ON documents(user_id, verification_status);
@@ -86,4 +88,5 @@ CREATE TABLE IF NOT EXISTS administrators (
 -- Создание индексов для администраторов
 CREATE INDEX IF NOT EXISTS idx_administrators_username ON administrators(username);
 CREATE INDEX IF NOT EXISTS idx_administrators_is_super_admin ON administrators(is_super_admin);
+CREATE INDEX IF NOT EXISTS idx_administrators_email ON administrators(email);
 

@@ -2,7 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser, useClerk, useAuth } from '@clerk/clerk-react'
 import { getUserData, saveUserData, logout } from '../services/authService'
+import VerificationToast from '../components/VerificationToast'
 import './Profile.css'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
 
 const Profile = () => {
   const navigate = useNavigate()
@@ -25,6 +28,7 @@ const Profile = () => {
   const [userId, setUserId] = useState(null)
   const [uploading, setUploading] = useState({ passport: false, passportWithFace: false })
   const [userDocuments, setUserDocuments] = useState({ passport: null, passportWithFace: null })
+  const [verificationStatus, setVerificationStatus] = useState(null)
   
   // Используем proxy из vite.config.js или полный URL
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
@@ -111,6 +115,10 @@ const Profile = () => {
           }))
           // Перезагружаем документы пользователя для синхронизации
           await loadUserDocuments(userId)
+          // Загружаем статус верификации после загрузки документа
+          await loadVerificationStatus(userId)
+          // Отправляем событие для обновления уведомления о верификации
+          window.dispatchEvent(new Event('verification-status-update'))
         } else {
           alert(data.error || 'Ошибка загрузки документа')
         }
@@ -139,6 +147,98 @@ const Profile = () => {
     } finally {
       setUploading(prev => ({ ...prev, [type]: false }))
     }
+  }
+
+  // Загружаем статус верификации
+  const loadVerificationStatus = async (userId) => {
+    if (!userId) return
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/verification-status`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setVerificationStatus(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статуса верификации:', error)
+    }
+  }
+
+  // Проверяем заполненность документов
+  const isDocumentsComplete = () => {
+    // Приоритет userDocuments (более актуальные данные, загружаются при открытии страницы)
+    const hasDocumentsFromState = !!(userDocuments.passport || userDocuments.passportWithFace)
+    if (hasDocumentsFromState) return true
+    
+    // Если userDocuments пусты, проверяем verificationStatus
+    const hasDocumentsFromStatus = verificationStatus?.hasDocuments || false
+    return hasDocumentsFromStatus
+  }
+
+  // Проверяем заполненность базовых данных
+  const isBasicInfoComplete = () => {
+    if (!verificationStatus?.missingFields) return false
+    const { missingFields } = verificationStatus
+    return !missingFields.firstName && 
+           !missingFields.lastName && 
+           !missingFields.emailOrPhone && 
+           !missingFields.country && 
+           !missingFields.address
+  }
+
+  // Проверяем заполненность паспортных данных
+  const isPassportDataComplete = () => {
+    if (!verificationStatus?.missingFields) return false
+    const { missingFields } = verificationStatus
+    return !missingFields.passportSeries && 
+           !missingFields.passportNumber && 
+           !missingFields.identificationNumber
+  }
+
+  // Проверяем, нужно ли показывать индикатор для "Данные"
+  const shouldShowDataIndicator = () => {
+    // Если verificationStatus еще не загружен, не показываем (чтобы избежать ложных срабатываний)
+    if (!verificationStatus) {
+      return false
+    }
+    
+    // Если missingFields нет, считаем данные неполными (на всякий случай показываем индикатор)
+    if (!verificationStatus.missingFields) {
+      return true
+    }
+    
+    const { missingFields } = verificationStatus
+    
+    // Проверяем базовые данные
+    const hasBasicMissing = !!(missingFields.firstName || missingFields.lastName || 
+                                missingFields.emailOrPhone || missingFields.country || 
+                                missingFields.address)
+    
+    // Проверяем паспортные данные
+    const hasPassportMissing = !!(missingFields.passportSeries || missingFields.passportNumber || 
+                                   missingFields.identificationNumber)
+    
+    // Показываем точку если есть хотя бы одно незаполненное поле
+    const shouldShow = hasBasicMissing || hasPassportMissing
+    
+    if (shouldShow) {
+      console.log('🔴 Profile: Показываем индикатор "Данные"', {
+        hasBasicMissing,
+        hasPassportMissing,
+        missingFields
+      })
+    }
+    
+    return shouldShow
+  }
+
+  // Проверяем, нужно ли показывать индикатор для "Профиль"
+  const shouldShowProfileIndicator = () => {
+    // Всегда проверяем наличие документов (приоритет userDocuments, потом verificationStatus)
+    const hasDocs = isDocumentsComplete()
+    // Показываем точку если НЕТ документов
+    return !hasDocs
   }
 
   // Синхронизируем данные Clerk с localStorage и загружаем данные пользователя
@@ -262,6 +362,19 @@ const Profile = () => {
             const firstName = nameParts[0] || 'Пользователь'
             const lastName = nameParts.slice(1).join(' ') || ''
             
+            // Получаем роль из sessionStorage (сохранена при регистрации через Clerk)
+            // Или из localStorage, или по умолчанию 'buyer'
+            const savedRole = sessionStorage.getItem('clerk_oauth_user_role')
+            const storedRole = localStorage.getItem('userRole')
+            const userRole = savedRole || storedRole || 'buyer'
+            
+            // Очищаем сохраненную роль после использования
+            if (savedRole) {
+              sessionStorage.removeItem('clerk_oauth_user_role')
+            }
+            
+            console.log('Profile: Создание пользователя Clerk в БД с ролью:', userRole)
+            
             const createResponse = await fetch(`${API_BASE_URL}/users`, {
               method: 'POST',
               headers: {
@@ -272,7 +385,7 @@ const Profile = () => {
                 last_name: lastName,
                 email: userEmail || null,
                 phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
-                role: 'buyer',
+                role: userRole === 'seller' ? 'seller' : 'buyer',
                 is_verified: 0,
                 is_online: 1
               })
@@ -296,6 +409,7 @@ const Profile = () => {
             // Обновляем localStorage с правильным ID
             localStorage.setItem('userId', String(dbUserId))
             loadUserDocuments(dbUserId)
+            loadVerificationStatus(dbUserId)
           } else {
             console.warn('⚠️ Не удалось получить ID пользователя из БД')
             // Fallback на ID из localStorage
@@ -303,6 +417,7 @@ const Profile = () => {
             if (fallbackId) {
               setUserId(fallbackId)
               loadUserDocuments(fallbackId)
+              loadVerificationStatus(fallbackId)
             }
           }
         } catch (error) {
@@ -312,6 +427,7 @@ const Profile = () => {
           if (fallbackId) {
             setUserId(fallbackId)
             loadUserDocuments(fallbackId)
+            loadVerificationStatus(fallbackId)
           }
         }
       }
@@ -392,6 +508,12 @@ const Profile = () => {
               const firstName = nameParts[0] || 'Пользователь'
               const lastName = nameParts.slice(1).join(' ') || ''
               
+              // Используем роль из userData или localStorage
+              const storedRole = localStorage.getItem('userRole')
+              const userRole = userData.role || storedRole || 'buyer'
+              
+              console.log('Profile: Создание пользователя (старая система) в БД с ролью:', userRole)
+              
               const createResponse = await fetch(`${API_BASE_URL}/users`, {
                 method: 'POST',
                 headers: {
@@ -402,7 +524,7 @@ const Profile = () => {
                   last_name: lastName,
                   email: userEmail || null,
                   phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
-                  role: userData.role || 'buyer',
+                  role: userRole === 'seller' ? 'seller' : 'buyer',
                   is_verified: 0,
                   is_online: 1
                 })
@@ -519,22 +641,32 @@ const Profile = () => {
   }
 
   const handleLogout = async () => {
-    if (window.confirm('Вы уверены, что хотите выйти?')) {
-      // Если пользователь авторизован через Clerk, используем Clerk для выхода
-      if (user) {
-        await signOut()
-        navigate('/')
-        window.location.reload()
-      } else {
-        // Используем старую систему выхода
-        await logout()
-        navigate('/')
-        // Небольшая задержка перед перезагрузкой, чтобы данные успели очиститься
-        setTimeout(() => {
-          window.location.reload()
-        }, 100)
-      }
+    if (!window.confirm('Вы уверены, что хотите выйти?')) {
+      return
     }
+
+    try {
+      // 1. Если пользователь авторизован через Clerk — выходим из Clerk
+      if (user && signOut) {
+        await signOut()
+      }
+    } catch (error) {
+      console.warn('⚠️ Ошибка при выходе из Clerk:', error)
+      // Даже при ошибке продолжаем локальный выход
+    }
+
+    try {
+      // 2. Всегда очищаем локальную сессию и помечаем пользователя оффлайн в БД
+      await logout()
+    } catch (error) {
+      console.warn('⚠️ Ошибка при локальном выходе:', error)
+    }
+
+    // 3. Перенаправляем на главную и перезагружаем приложение
+    navigate('/')
+    setTimeout(() => {
+      window.location.reload()
+    }, 50)
   }
 
   const handleAvatarClick = () => {
@@ -570,6 +702,9 @@ const Profile = () => {
 
   return (
     <div className="profile-page">
+      {/* Всплывающее уведомление о прогрессе верификации */}
+      {userId && <VerificationToast userId={userId} />}
+      
       <div className="profile-container">
         <aside className="profile-sidebar">
           <div className="sidebar-header">
@@ -595,6 +730,9 @@ const Profile = () => {
                 <path d="M10 12C5.58172 12 2 13.7909 2 16V20H18V16C18 13.7909 14.4183 12 10 12Z" fill="currentColor"/>
               </svg>
               <span>Профиль</span>
+              {shouldShowProfileIndicator() && (
+                <span className="nav-item-indicator"></span>
+              )}
             </Link>
             <Link to="/data" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -602,6 +740,9 @@ const Profile = () => {
                 <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <span>Данные</span>
+              {shouldShowDataIndicator() && (
+                <span className="nav-item-indicator"></span>
+              )}
             </Link>
             <Link to="/subscriptions" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -827,7 +968,12 @@ const Profile = () => {
 
             <section className="profile-section">
               <div className="section-header">
-                <h2 className="section-title">Документы</h2>
+                <h2 className="section-title">
+                  Документы
+                  {!isDocumentsComplete() && (
+                    <span className="section-indicator section-indicator--incomplete"></span>
+                  )}
+                </h2>
                 <div className="section-subtitle">Загрузите документы для верификации</div>
               </div>
               <div className="section-cards">

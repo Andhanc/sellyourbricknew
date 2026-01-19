@@ -164,6 +164,30 @@
   transform: scale(1.1);
 }
 
+.nav-item-indicator {
+  display: inline-block !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+  animation: navPulse 2s infinite !important;
+  position: relative !important;
+}
+
+@keyframes navPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
 .history-main {
   flex: 1;
   padding: 48px 56px;

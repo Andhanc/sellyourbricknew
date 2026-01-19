@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getUserData, logout, sendEmailVerificationCode, verifyEmailForProfileUpdate } from '../services/authService'
+import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { useUser, useAuth } from '@clerk/clerk-react'
+import { getUserData, logout, sendEmailVerificationCode, verifyEmailForProfileUpdate, validatePassword, saveUserData } from '../services/authService'
 import EmailVerificationModal from '../components/EmailVerificationModal'
+import PassportRecognitionModal from '../components/PassportRecognitionModal'
+import CountrySelect, { countries as countryList } from '../components/CountrySelect'
+import VerificationToast from '../components/VerificationToast'
+import { extractPassportData } from '../services/aiService'
 import './Data.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 const Data = () => {
   const navigate = useNavigate()
+  const { user: clerkUser, isLoaded: userLoaded } = useUser()
+  const { isSignedIn, isLoaded: authLoaded } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [userData, setUserData] = useState({
     firstName: '',
@@ -29,6 +37,13 @@ const Data = () => {
   const [originalEmail, setOriginalEmail] = useState('')
   const [userId, setUserId] = useState(null)
   const [isWhatsAppUser, setIsWhatsAppUser] = useState(false)
+  const [isRecognizingPassport, setIsRecognizingPassport] = useState(false)
+  const [showPassportRecognitionModal, setShowPassportRecognitionModal] = useState(false)
+  const [extractedPassportData, setExtractedPassportData] = useState(null)
+  const passportInputRef = useRef(null)
+  const [verificationStatus, setVerificationStatus] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordView, setShowPasswordView] = useState(false)
 
   // Вспомогательная функция для форматирования номера телефона с плюсом
   const formatPhoneWithPlus = (phone) => {
@@ -54,51 +69,196 @@ const Data = () => {
         setIsWhatsAppUser(whatsAppUser)
         setUserId(savedUserData.id)
         
+        // Проверяем, зарегистрирован ли пользователь через Clerk
+        const isClerkUser = savedUserData.loginMethod === 'clerk' || (isSignedIn && clerkUser)
+        
+        // Если пользователь зарегистрирован через Clerk, проверяем, что ID числовой (из БД)
+        // Если ID из Clerk (например, user_xxxxx), нужно найти или создать пользователя в БД
+        const isNumericId = savedUserData.id && /^\d+$/.test(savedUserData.id.toString())
+        
         // Если пользователь авторизован в localStorage, загружаем его данные
         // Также пытаемся синхронизировать с БД, если есть ID
         if (savedUserData.id) {
           try {
-            const response = await fetch(`${API_BASE_URL}/users/${savedUserData.id}`)
-            if (response.ok) {
-              const result = await response.json()
-              if (result.success && result.data) {
-                // Обновляем данные из БД
-                const dbUser = result.data
-                const nameParts = (dbUser.first_name && dbUser.last_name 
-                  ? `${dbUser.first_name} ${dbUser.last_name}`.trim()
-                  : savedUserData.name || '').split(' ')
-                const firstName = nameParts[0] || dbUser.first_name || ''
-                const lastName = nameParts.slice(1).join(' ') || dbUser.last_name || ''
-                
-                const email = dbUser.email || savedUserData.email || ''
-                setOriginalEmail(email)
-                
-                // Форматируем номер телефона с плюсом
-                const phoneFromDB = dbUser.phone_number || ''
-                const phoneFormatted = formatPhoneWithPlus(savedUserData.phoneFormatted || phoneFromDB)
-                
-                setUserData({
-                  firstName: firstName,
-                  lastName: lastName,
-                  middleName: '',
-                  email: email,
-                  login: savedUserData.login || '',
-                  password: '',
-                  phone: phoneFormatted,
-                  country: dbUser.country || savedUserData.country || '',
-                  countryFlag: savedUserData.countryFlag || '',
-                  address: dbUser.address || '',
-                  passportSeries: dbUser.passport_series || '',
-                  passportNumber: dbUser.passport_number || '',
-                  identificationNumber: dbUser.identification_number || ''
-                })
-                
-                // Обновляем информацию о пользователе WhatsApp, если email был null или is_verified = 0
-                if (whatsAppUser && dbUser.phone_number && (!dbUser.email || dbUser.is_verified === 0)) {
-                  setIsWhatsAppUser(true)
+            // Если пользователь через Clerk и ID не числовой (ID из Clerk), 
+            // нужно найти пользователя в БД по email/телефону или создать его
+            if (isClerkUser && !isNumericId) {
+              console.log('⚠️ Data: Пользователь Clerk с ID из Clerk, синхронизируем с БД...')
+              
+              let dbUserId = null
+              
+              // Получаем email и телефон из Clerk или localStorage
+              let userEmail = ''
+              let userPhone = ''
+              let userName = savedUserData.name || ''
+              
+              if (isSignedIn && clerkUser && userLoaded) {
+                // Используем данные из Clerk, если доступны
+                if (clerkUser.primaryEmailAddress?.emailAddress) {
+                  userEmail = clerkUser.primaryEmailAddress.emailAddress
+                } else if (clerkUser.emailAddresses && clerkUser.emailAddresses.length > 0) {
+                  userEmail = clerkUser.emailAddresses[0].emailAddress || ''
                 }
                 
-                return
+                if (clerkUser.primaryPhoneNumber?.phoneNumber) {
+                  userPhone = clerkUser.primaryPhoneNumber.phoneNumber
+                } else if (clerkUser.phoneNumbers && clerkUser.phoneNumbers.length > 0) {
+                  userPhone = clerkUser.phoneNumbers[0].phoneNumber || ''
+                }
+                
+                if (clerkUser.fullName) {
+                  userName = clerkUser.fullName
+                } else if (clerkUser.firstName || clerkUser.lastName) {
+                  userName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim()
+                }
+              } else {
+                // Используем данные из localStorage
+                userEmail = savedUserData.email || ''
+                userPhone = savedUserData.phone || savedUserData.phoneFormatted || ''
+              }
+              
+              // Сначала пытаемся найти пользователя по email
+              if (userEmail) {
+                const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+                if (emailResponse.ok) {
+                  const emailData = await emailResponse.json()
+                  if (emailData.success && emailData.data) {
+                    dbUserId = emailData.data.id
+                    console.log('✅ Data: Пользователь найден в БД по email:', dbUserId)
+                  }
+                }
+              }
+              
+              // Если не нашли по email, пытаемся по телефону
+              if (!dbUserId && userPhone) {
+                const phoneDigits = userPhone.replace(/\D/g, '')
+                if (phoneDigits) {
+                  const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+                  if (phoneResponse.ok) {
+                    const phoneData = await phoneResponse.json()
+                    if (phoneData.success && phoneData.data) {
+                      dbUserId = phoneData.data.id
+                      console.log('✅ Data: Пользователь найден в БД по телефону:', dbUserId)
+                    }
+                  }
+                }
+              }
+              
+              // Если пользователь не найден, создаем его
+              if (!dbUserId) {
+                const nameParts = userName.split(' ')
+                const firstName = nameParts[0] || 'Пользователь'
+                const lastName = nameParts.slice(1).join(' ') || ''
+                
+                // Получаем роль из localStorage или sessionStorage
+                const savedRole = sessionStorage.getItem('clerk_oauth_user_role') || 
+                                localStorage.getItem('userRole') || 
+                                savedUserData.role || 
+                                'buyer'
+                
+                console.log('Data: Создание пользователя Clerk в БД с ролью:', savedRole)
+                
+                const createResponse = await fetch(`${API_BASE_URL}/users`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    first_name: firstName,
+                    last_name: lastName,
+                    email: userEmail || null,
+                    phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
+                    role: savedRole === 'seller' ? 'seller' : 'buyer',
+                    is_verified: 0,
+                    is_online: 1
+                  })
+                })
+                
+                if (createResponse.ok) {
+                  const createData = await createResponse.json()
+                  if (createData.success && createData.data) {
+                    dbUserId = createData.data.id
+                    console.log('✅ Data: Пользователь создан в БД:', dbUserId)
+                    
+                    // Обновляем localStorage с правильным ID из БД
+                    const updatedUserData = {
+                      ...savedUserData,
+                      id: dbUserId.toString()
+                    }
+                    saveUserData(updatedUserData, 'clerk')
+                    localStorage.setItem('userId', String(dbUserId))
+                  }
+                } else {
+                  const errorData = await createResponse.json().catch(() => ({}))
+                  console.error('❌ Data: Ошибка создания пользователя:', errorData)
+                }
+              } else {
+                // Если нашли пользователя, обновляем localStorage с правильным ID из БД
+                const updatedUserData = {
+                  ...savedUserData,
+                  id: dbUserId.toString()
+                }
+                saveUserData(updatedUserData, 'clerk')
+                localStorage.setItem('userId', String(dbUserId))
+              }
+              
+              // Если нашли или создали пользователя, обновляем savedUserData.id для дальнейшего использования
+              if (dbUserId) {
+                savedUserData.id = dbUserId.toString()
+                setUserId(dbUserId)
+              }
+            }
+            
+            // Теперь пытаемся загрузить данные из БД, используя числовой ID
+            const userIdToFetch = savedUserData.id && /^\d+$/.test(savedUserData.id.toString()) 
+              ? savedUserData.id 
+              : null
+            
+            if (userIdToFetch) {
+              const response = await fetch(`${API_BASE_URL}/users/${userIdToFetch}`)
+              if (response.ok) {
+                const result = await response.json()
+                if (result.success && result.data) {
+                  // Обновляем данные из БД
+                  const dbUser = result.data
+                  const nameParts = (dbUser.first_name && dbUser.last_name 
+                    ? `${dbUser.first_name} ${dbUser.last_name}`.trim()
+                    : savedUserData.name || '').split(' ')
+                  const firstName = nameParts[0] || dbUser.first_name || ''
+                  const lastName = nameParts.slice(1).join(' ') || dbUser.last_name || ''
+                  
+                  const email = dbUser.email || savedUserData.email || ''
+                  setOriginalEmail(email)
+                  
+                  // Форматируем номер телефона с плюсом
+                  const phoneFromDB = dbUser.phone_number || ''
+                  const phoneFormatted = formatPhoneWithPlus(savedUserData.phoneFormatted || phoneFromDB)
+                  
+                  setUserData({
+                    firstName: firstName,
+                    lastName: lastName,
+                    middleName: '',
+                    email: email,
+                    login: savedUserData.login || '',
+                    password: savedUserData.password || '', // Загружаем пароль из localStorage, если есть
+                    phone: phoneFormatted,
+                    country: dbUser.country || savedUserData.country || '',
+                    countryFlag: savedUserData.countryFlag || '',
+                    address: dbUser.address || '',
+                    passportSeries: dbUser.passport_series || '',
+                    passportNumber: dbUser.passport_number || '',
+                    identificationNumber: dbUser.identification_number || ''
+                  })
+                  
+                  // Обновляем информацию о пользователе WhatsApp, если email был null или is_verified = 0
+                  if (whatsAppUser && dbUser.phone_number && (!dbUser.email || dbUser.is_verified === 0)) {
+                    setIsWhatsAppUser(true)
+                  }
+                  
+                  return
+                }
+              } else if (response.status === 404) {
+                console.warn('⚠️ Data: Пользователь не найден в БД (404), будет использован fallback')
               }
             }
           } catch (error) {
@@ -124,7 +284,7 @@ const Data = () => {
           middleName: '',
           email: email,
           login: savedUserData.login || '',
-          password: '',
+          password: savedUserData.password || '', // Загружаем пароль из localStorage, если есть
           phone: phoneFormattedStorage,
           country: savedUserData.country || '',
           countryFlag: savedUserData.countryFlag || '',
@@ -141,7 +301,66 @@ const Data = () => {
     }
     
     loadUserData()
-  }, [navigate])
+  }, [navigate, isSignedIn, clerkUser, userLoaded, authLoaded])
+
+  // Загружаем статус верификации при изменении userId или userData
+  useEffect(() => {
+    if (userId) {
+      loadVerificationStatus()
+    }
+  }, [userId, userData])
+
+  const loadVerificationStatus = async () => {
+    if (!userId) return
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/verification-status`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setVerificationStatus(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статуса верификации:', error)
+    }
+  }
+
+  // Функции для проверки заполненности блоков
+  const isBasicInfoComplete = () => {
+    if (!verificationStatus?.missingFields) return false
+    const { missingFields } = verificationStatus
+    return !missingFields.firstName && 
+           !missingFields.lastName && 
+           !missingFields.emailOrPhone && 
+           !missingFields.country && 
+           !missingFields.address
+  }
+
+  const isPassportDataComplete = () => {
+    if (!verificationStatus?.missingFields) return false
+    const { missingFields } = verificationStatus
+    return !missingFields.passportSeries && 
+           !missingFields.passportNumber && 
+           !missingFields.identificationNumber
+  }
+
+  const isDocumentsComplete = () => {
+    return verificationStatus?.hasDocuments || false
+  }
+
+  // Проверяем, нужно ли показывать индикатор для "Данные"
+  const shouldShowDataIndicator = () => {
+    // Если verificationStatus еще не загружен, не показываем
+    if (!verificationStatus) return false
+    return !isBasicInfoComplete() || !isPassportDataComplete()
+  }
+
+  // Проверяем, нужно ли показывать индикатор для "Профиль"
+  const shouldShowProfileIndicator = () => {
+    // Если verificationStatus еще не загружен, не показываем
+    if (!verificationStatus) return false
+    return !isDocumentsComplete()
+  }
 
   const [connectedAccounts, setConnectedAccounts] = useState({
     google: true
@@ -164,6 +383,138 @@ const Data = () => {
         console.warn('⚠️ Пользователь не авторизован, данные сохранены только локально')
         setIsEditing(false)
         return
+      }
+      
+      // Проверяем, зарегистрирован ли пользователь через Clerk
+      const isClerkUser = savedUserData.loginMethod === 'clerk' || (isSignedIn && clerkUser)
+      
+      // Если пользователь через Clerk и ID не числовой (ID из Clerk), 
+      // нужно найти или создать пользователя в БД перед сохранением
+      const isNumericId = savedUserData.id && /^\d+$/.test(savedUserData.id.toString())
+      
+      if (isClerkUser && !isNumericId) {
+        console.log('⚠️ Data handleSave: Пользователь Clerk с ID из Clerk, синхронизируем с БД перед сохранением...')
+        
+        try {
+          let dbUserId = null
+          
+          // Получаем email и телефон из Clerk или localStorage
+          let userEmail = userData.email || savedUserData.email || ''
+          let userPhone = userData.phone || savedUserData.phone || savedUserData.phoneFormatted || ''
+          let userName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || savedUserData.name || ''
+          
+          if (isSignedIn && clerkUser && userLoaded) {
+            // Используем данные из Clerk, если они более свежие
+            if (!userEmail && clerkUser.primaryEmailAddress?.emailAddress) {
+              userEmail = clerkUser.primaryEmailAddress.emailAddress
+            }
+            if (!userPhone && clerkUser.primaryPhoneNumber?.phoneNumber) {
+              userPhone = clerkUser.primaryPhoneNumber.phoneNumber
+            }
+            if (!userName && clerkUser.fullName) {
+              userName = clerkUser.fullName
+            }
+          }
+          
+          // Сначала пытаемся найти пользователя по email
+          if (userEmail) {
+            const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json()
+              if (emailData.success && emailData.data) {
+                dbUserId = emailData.data.id
+                console.log('✅ Data handleSave: Пользователь найден в БД по email:', dbUserId)
+              }
+            }
+          }
+          
+          // Если не нашли по email, пытаемся по телефону
+          if (!dbUserId && userPhone) {
+            const phoneDigits = userPhone.replace(/\D/g, '')
+            if (phoneDigits) {
+              const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+              if (phoneResponse.ok) {
+                const phoneData = await phoneResponse.json()
+                if (phoneData.success && phoneData.data) {
+                  dbUserId = phoneData.data.id
+                  console.log('✅ Data handleSave: Пользователь найден в БД по телефону:', dbUserId)
+                }
+              }
+            }
+          }
+          
+          // Если пользователь не найден, создаем его
+          if (!dbUserId) {
+            const nameParts = userName.split(' ')
+            const firstName = nameParts[0] || userData.firstName || 'Пользователь'
+            const lastName = nameParts.slice(1).join(' ') || userData.lastName || ''
+            
+            // Получаем роль из localStorage или sessionStorage
+            const savedRole = sessionStorage.getItem('clerk_oauth_user_role') || 
+                            localStorage.getItem('userRole') || 
+                            savedUserData.role || 
+                            'buyer'
+            
+            console.log('Data handleSave: Создание пользователя Clerk в БД с ролью:', savedRole)
+            
+            const createResponse = await fetch(`${API_BASE_URL}/users`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName,
+                email: userEmail || null,
+                phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
+                role: savedRole === 'seller' ? 'seller' : 'buyer',
+                is_verified: 0,
+                is_online: 1
+              })
+            })
+            
+            if (createResponse.ok) {
+              const createData = await createResponse.json()
+              if (createData.success && createData.data) {
+                dbUserId = createData.data.id
+                console.log('✅ Data handleSave: Пользователь создан в БД:', dbUserId)
+                
+                // Обновляем localStorage с правильным ID из БД
+                const updatedUserData = {
+                  ...savedUserData,
+                  id: dbUserId.toString()
+                }
+                saveUserData(updatedUserData, 'clerk')
+                localStorage.setItem('userId', String(dbUserId))
+              }
+            } else {
+              const errorData = await createResponse.json().catch(() => ({}))
+              console.error('❌ Data handleSave: Ошибка создания пользователя:', errorData)
+            }
+          } else {
+            // Если нашли пользователя, обновляем localStorage с правильным ID из БД
+            const updatedUserData = {
+              ...savedUserData,
+              id: dbUserId.toString()
+            }
+            saveUserData(updatedUserData, 'clerk')
+            localStorage.setItem('userId', String(dbUserId))
+          }
+          
+          // Обновляем savedUserData.id для дальнейшего использования
+          if (dbUserId) {
+            savedUserData.id = dbUserId.toString()
+            setUserId(dbUserId)
+          } else {
+            // Если не удалось создать или найти пользователя, показываем ошибку
+            alert('❌ Не удалось синхронизировать данные с базой данных. Попробуйте обновить страницу.')
+            return
+          }
+        } catch (error) {
+          console.error('❌ Data handleSave: Ошибка синхронизации с БД:', error)
+          alert('❌ Ошибка синхронизации с базой данных. Попробуйте обновить страницу.')
+          return
+        }
       }
 
       // Проверяем, изменился ли email для пользователя WhatsApp
@@ -194,7 +545,7 @@ const Data = () => {
       }
 
       // Форматируем номер телефона (убираем все кроме цифр)
-      const phoneDigits = userData.phone.replace(/\D/g, '') || null
+      const phoneDigits = userData.phone ? userData.phone.replace(/\D/g, '') || null : null
 
       // Подготавливаем данные для отправки на backend
       const updateData = {
@@ -209,15 +560,28 @@ const Data = () => {
         identification_number: userData.identificationNumber || null
       }
       
-      // Если пароль заполнен, добавляем его в данные для обновления
+      // Если пароль заполнен, валидируем и добавляем его в данные для обновления
       // ВАЖНО: пароль отправляется только если поле заполнено (для изменения существующего пароля)
       if (userData.password && userData.password.trim() !== '') {
+        // Валидация пароля по требованиям (заглавная буква, спецсимвол, цифра)
+        const passwordValidation = validatePassword(userData.password.trim())
+        if (!passwordValidation.valid) {
+          alert(passwordValidation.message)
+          return // Не сохраняем, если пароль не валиден
+        }
+        
         updateData.password = userData.password.trim() // Пароль будет захеширован на backend
         console.log('🔐 Пароль будет обновлен при сохранении')
       } else {
         // Если пароль пустой, не отправляем его (не меняем существующий пароль)
         console.log('ℹ️ Пароль не изменен (поле пустое)')
       }
+
+      console.log('📤 Отправка данных на сервер:', {
+        userId: savedUserData.id,
+        apiUrl: `${API_BASE_URL}/users/${savedUserData.id}`,
+        updateData: { ...updateData, password: updateData.password ? '***скрыт***' : undefined }
+      })
 
       // Отправляем данные на backend
       const response = await fetch(`${API_BASE_URL}/users/${savedUserData.id}`, {
@@ -275,18 +639,64 @@ const Data = () => {
         // Обновляем originalEmail после успешного сохранения
         setOriginalEmail(result.data?.email || userData.email || originalEmail)
         
+        // Сохраняем пароль в localStorage, если он был изменен
+        const currentUserData = getUserData()
+        if (userData.password && userData.password.trim() !== '') {
+          const updatedUserDataWithPassword = {
+            ...currentUserData,
+            password: userData.password // Сохраняем пароль локально для показа
+          }
+          localStorage.setItem('userData', JSON.stringify(updatedUserDataWithPassword))
+        }
+        
         // Обновляем состояние, включая номер телефона с плюсом
+        // Пароль НЕ очищаем, чтобы можно было его видеть
         setUserData(prev => ({ 
           ...prev, 
-          phone: formattedPhone || prev.phone,
-          password: '' 
+          phone: formattedPhone || prev.phone
         }))
         
         setIsEditing(false)
+        // Перезагружаем статус верификации после сохранения
+        loadVerificationStatus()
+        // Отправляем событие для обновления уведомления о верификации
+        window.dispatchEvent(new Event('verification-status-update'))
         alert('Данные успешно сохранены!')
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Ошибка при сохранении в БД:', errorData.error || 'Неизвестная ошибка')
+        const errorText = await response.text().catch(() => 'Не удалось получить детали ошибки')
+        let errorData = {}
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText || `Ошибка ${response.status}: ${response.statusText}` }
+        }
+        
+        console.error('❌ Ошибка при сохранении в БД:', response.status, errorData.error || 'Неизвестная ошибка')
+        
+        // Формируем информативное сообщение об ошибке
+        let errorMessage = '⚠️ Данные сохранены локально, но не в БД.\n\n'
+        
+        // Если это ошибка валидации пароля, показываем детальную информацию
+        if (response.status === 400 && errorData.passwordValidation) {
+          errorMessage = errorData.error || errorData.message || 'Пароль не соответствует требованиям'
+          if (errorData.passwordValidation.missing && errorData.passwordValidation.missing.length > 0) {
+            errorMessage += `\n\nДобавьте: ${errorData.passwordValidation.missing.join(', ')}`
+          }
+          if (errorData.passwordValidation.present && errorData.passwordValidation.present.length > 0) {
+            errorMessage += `\nУже есть: ${errorData.passwordValidation.present.join(', ')}`
+          }
+        } else if (response.status === 404) {
+          errorMessage += '❌ Пользователь не найден в базе данных.'
+        } else if (response.status === 409) {
+          errorMessage += '❌ Конфликт данных: ' + (errorData.error || 'Пользователь с такими данными уже существует')
+        } else if (response.status === 500) {
+          errorMessage += '❌ Ошибка сервера: ' + (errorData.error || 'Внутренняя ошибка сервера')
+          errorMessage += '\n\n💡 Проверьте логи сервера для подробностей.'
+        } else {
+          errorMessage += '❌ Ошибка ' + response.status + ': ' + (errorData.error || response.statusText)
+        }
+        
+        errorMessage += '\n\n💡 Убедитесь, что:\n- Backend сервер запущен\n- База данных доступна\n- URL API правильный: ' + API_BASE_URL
         
         // Fallback: сохраняем только в localStorage
         const updatedUserData = {
@@ -300,11 +710,26 @@ const Data = () => {
         }
         localStorage.setItem('userData', JSON.stringify(updatedUserData))
         
-        alert('⚠️ Данные сохранены локально, но не в БД. Убедитесь, что backend сервер запущен.')
+        alert(errorMessage)
         setIsEditing(false)
       }
     } catch (error) {
       console.error('❌ Ошибка при сохранении данных:', error)
+      console.error('   Тип ошибки:', error.name)
+      console.error('   Сообщение:', error.message)
+      console.error('   Stack:', error.stack)
+      
+      // Определяем тип ошибки для более информативного сообщения
+      let errorMessage = '⚠️ Ошибка при сохранении. Данные сохранены локально.'
+      
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        errorMessage += '\n\n💡 Проверьте:\n- Запущен ли сервер (npm run server или node server/server.js)\n- Правильно ли указан API_BASE_URL\n- Доступен ли сервер по адресу ' + API_BASE_URL
+      } else if (error.message?.includes('replace')) {
+        errorMessage += '\n\n❌ Ошибка обработки данных: ' + error.message
+        errorMessage += '\n\n💡 Убедитесь, что все поля заполнены корректно.'
+      } else {
+        errorMessage += '\n\nОшибка: ' + (error.message || 'Неизвестная ошибка')
+      }
       
       // Fallback: сохраняем только в localStorage
       const savedUserData = getUserData()
@@ -318,7 +743,7 @@ const Data = () => {
       }
       localStorage.setItem('userData', JSON.stringify(updatedUserData))
       
-      alert('⚠️ Ошибка при сохранении. Данные сохранены локально. Проверьте подключение к серверу.')
+      alert(errorMessage)
       setIsEditing(false)
     }
   }
@@ -535,6 +960,84 @@ const Data = () => {
     }
   }
 
+  // Обработка распознавания паспорта
+  const handlePassportRecognition = async (file) => {
+    setIsRecognizingPassport(true)
+    
+    try {
+      // Динамически импортируем Tesseract.js только при необходимости
+      const Tesseract = await import('tesseract.js')
+      
+      console.log('📸 Начало распознавания паспорта...')
+      
+      // Распознаем текст с помощью Tesseract.js
+      const { data: { text } } = await Tesseract.recognize(file, 'rus+eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            console.log('🔄 Прогресс:', Math.round(m.progress * 100) + '%')
+          }
+        }
+      })
+      
+      console.log('✅ Текст распознан:', text.substring(0, 200) + '...')
+      
+      // Отправляем распознанный текст на сервер для извлечения данных через AI
+      const response = await fetch(`${API_BASE_URL}/passport/extract`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recognizedText: text })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Ошибка при извлечении данных из паспорта')
+      }
+      
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        console.log('✅ Данные извлечены:', result.data)
+        
+        // Сохраняем извлеченные данные
+        setExtractedPassportData(result.data)
+        
+        // Автоматически заполняем поля
+        const extracted = result.data
+        setUserData(prev => ({
+          ...prev,
+          firstName: extracted.firstName || prev.firstName,
+          lastName: extracted.lastName || prev.lastName,
+          middleName: extracted.middleName || prev.middleName,
+          passportSeries: extracted.passportSeries || prev.passportSeries,
+          passportNumber: extracted.passportNumber || prev.passportNumber,
+          identificationNumber: extracted.identificationNumber || prev.identificationNumber,
+          address: extracted.address || prev.address,
+          email: extracted.email || prev.email
+        }))
+        
+        // Показываем модальное окно с подтверждением
+        setShowPassportRecognitionModal(true)
+      } else {
+        throw new Error('Не удалось извлечь данные из паспорта')
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при распознавании паспорта:', error)
+      alert('Ошибка при распознавании паспорта: ' + (error.message || 'Неизвестная ошибка'))
+    } finally {
+      setIsRecognizingPassport(false)
+    }
+  }
+
+  // Обработка подтверждения распознавания
+  const handlePassportRecognitionConfirm = () => {
+    // Убеждаемся, что мы в режиме редактирования
+    if (!isEditing) {
+      setIsEditing(true)
+    }
+    // Закрываем модальное окно (оно закроется автоматически через onConfirm)
+  }
+
   return (
     <div className="data-page">
       <div className="data-container">
@@ -562,6 +1065,9 @@ const Data = () => {
                 <path d="M10 12C5.58172 12 2 13.7909 2 16V20H18V16C18 13.7909 14.4183 12 10 12Z" fill="currentColor"/>
               </svg>
               <span>Профиль</span>
+              {shouldShowProfileIndicator() && (
+                <span className="nav-item-indicator"></span>
+              )}
             </Link>
             <Link to="/data" className="nav-item active">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -569,6 +1075,9 @@ const Data = () => {
                 <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <span>Данные</span>
+              {shouldShowDataIndicator() && (
+                <span className="nav-item-indicator"></span>
+              )}
             </Link>
             <Link to="/subscriptions" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -637,34 +1146,19 @@ const Data = () => {
         <main className="data-main">
           <div className="data-header">
             <h1>Личные данные</h1>
-            {!isEditing ? (
-              <button className="edit-button" onClick={handleEdit}>
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <path d="M12.75 2.25C13.0721 1.92788 13.4563 1.70947 13.8874 1.61553C14.3185 1.52159 14.767 1.46849 15.2188 1.47159C15.6706 1.47469 16.1188 1.53394 16.5474 1.63628C16.976 1.73862 17.3638 1.96012 17.6875 2.28375C18.0111 2.60738 18.2326 2.99525 18.335 3.42381C18.4373 3.85237 18.4966 4.30056 18.4997 4.75237C18.5028 5.20419 18.4497 5.65269 18.3557 6.08381C18.2618 6.51494 18.0434 6.89912 17.7213 7.22125L6.375 18.5625L1.125 19.875L2.4375 14.625L13.7813 3.28125C13.9001 3.16245 14.0438 3.07141 14.2026 3.01406C14.3614 2.95671 14.5316 2.93439 14.7006 2.94844H14.8L12.75 2.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Редактировать</span>
-              </button>
-            ) : (
-              <div className="edit-actions">
-                <button className="save-button" onClick={handleSave}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M15 4.5L6.75 12.75L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Сохранить</span>
-                </button>
-                <button className="cancel-button" onClick={handleCancel}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M13.5 4.5L4.5 13.5M4.5 4.5L13.5 13.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Отменить</span>
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="data-content">
+            {/* Всплывающее уведомление о прогрессе верификации */}
+            {userId && <VerificationToast userId={userId} />}
+
             <section className="data-section">
-              <h2 className="section-title">Основная информация</h2>
+              <h2 className="section-title">
+                Основная информация
+                {verificationStatus && !isBasicInfoComplete() && (
+                  <span className="section-indicator section-indicator--incomplete"></span>
+                )}
+              </h2>
               <div className="data-grid">
                 <div className="data-field">
                   <label>Имя</label>
@@ -726,15 +1220,37 @@ const Data = () => {
                 <div className="data-field">
                   <label>Пароль</label>
                   {isEditing ? (
-                    <input
-                      type="password"
-                      value={userData.password}
-                      onChange={(e) => handleChange('password', e.target.value)}
-                      className="data-input"
-                      placeholder="Введите новый пароль (оставьте пустым, чтобы не изменять)"
-                    />
+                    <div className="data-input-password-wrapper">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={userData.password}
+                        onChange={(e) => handleChange('password', e.target.value)}
+                        className="data-input data-input--password"
+                        placeholder={userData.password ? "Введите новый пароль или оставьте текущий" : "Введите новый пароль"}
+                      />
+                      <button
+                        type="button"
+                        className="data-input-password-toggle"
+                        onClick={() => setShowPassword(!showPassword)}
+                        title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      >
+                        {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      </button>
+                    </div>
                   ) : (
-                    <div className="data-value">••••••••</div>
+                    <div className="data-value data-value--password">
+                      {showPasswordView && userData.password ? userData.password : '••••••••'}
+                      {userData.password && (
+                        <button
+                          type="button"
+                          className="data-value-password-toggle"
+                          onClick={() => setShowPasswordView(!showPasswordView)}
+                          title={showPasswordView ? "Скрыть пароль" : "Показать пароль"}
+                        >
+                          {showPasswordView ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -752,15 +1268,31 @@ const Data = () => {
                   )}
                 </div>
 
-                {userData.country && (
-                  <div className="data-field">
-                    <label>Страна</label>
+                <div className="data-field">
+                  <label>Страна *</label>
+                  {isEditing ? (
+                    <CountrySelect
+                      value={userData.country}
+                      onChange={(value) => handleChange('country', value)}
+                      placeholder="Выберите страну"
+                      className="data-input"
+                    />
+                  ) : (
                     <div className="data-value">
-                      {userData.countryFlag && <span style={{ marginRight: '6px' }}>{userData.countryFlag}</span>}
-                      {userData.country}
+                      {(() => {
+                        const selectedCountry = countryList.find(c => c.name === userData.country);
+                        return userData.country ? (
+                          <>
+                            {selectedCountry && <span style={{ marginRight: '6px' }}>{selectedCountry.flag}</span>}
+                            {userData.country}
+                          </>
+                        ) : (
+                          'Не указана'
+                        );
+                      })()}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="data-field">
                   <label>Адрес проживания</label>
@@ -779,8 +1311,97 @@ const Data = () => {
               </div>
             </section>
 
+            {/* Кнопки редактирования под блоком "Основная информация" */}
+            <div className="data-edit-controls">
+              {!isEditing ? (
+                <button className="edit-button" onClick={handleEdit}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M12.75 2.25C13.0721 1.92788 13.4563 1.70947 13.8874 1.61553C14.3185 1.52159 14.767 1.46849 15.2188 1.47159C15.6706 1.47469 16.1188 1.53394 16.5474 1.63628C16.976 1.73862 17.3638 1.96012 17.6875 2.28375C18.0111 2.60738 18.2326 2.99525 18.335 3.42381C18.4373 3.85237 18.4966 4.30056 18.4997 4.75237C18.5028 5.20419 18.4497 5.65269 18.3557 6.08381C18.2618 6.51494 18.0434 6.89912 17.7213 7.22125L6.375 18.5625L1.125 19.875L2.4375 14.625L13.7813 3.28125C13.9001 3.16245 14.0438 3.07141 14.2026 3.01406C14.3614 2.95671 14.5316 2.93439 14.7006 2.94844H14.8L12.75 2.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Редактировать</span>
+                </button>
+              ) : (
+                <div className="edit-actions">
+                  <button className="save-button" onClick={handleSave}>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M15 4.5L6.75 12.75L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Сохранить</span>
+                  </button>
+                  <button className="cancel-button" onClick={handleCancel}>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M13.5 4.5L4.5 13.5M4.5 4.5L13.5 13.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Отменить</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <section className="data-section">
-              <h2 className="section-title">Паспортные данные</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 className="section-title">
+                  Паспортные данные
+                  {verificationStatus && !isPassportDataComplete() && (
+                    <span className="section-indicator section-indicator--incomplete"></span>
+                  )}
+                </h2>
+                <button
+                  onClick={() => passportInputRef.current?.click()}
+                  disabled={isRecognizingPassport}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: isRecognizingPassport ? '#ccc' : '#0ABAB5',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: isRecognizingPassport ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {isRecognizingPassport ? (
+                    <>
+                      <span className="spinner" style={{ 
+                        width: '16px', 
+                        height: '16px', 
+                        border: '2px solid #fff', 
+                        borderTop: '2px solid transparent', 
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></span>
+                      Распознавание...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                      </svg>
+                      Распознать с фото паспорта
+                    </>
+                  )}
+                </button>
+              </div>
+              <input
+                ref={passportInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files[0]
+                  if (!file) return
+                  
+                  await handlePassportRecognition(file)
+                  // Сбрасываем input
+                  e.target.value = ''
+                }}
+              />
               <div className="data-grid">
                 <div className="data-field">
                   <label>Серия паспорта</label>
@@ -890,6 +1511,17 @@ const Data = () => {
         email={pendingEmail}
         isProfileUpdate={true}
         userId={userId}
+      />
+
+      {/* Модальное окно распознавания паспорта */}
+      <PassportRecognitionModal
+        isOpen={showPassportRecognitionModal}
+        onClose={() => {
+          setShowPassportRecognitionModal(false)
+          setExtractedPassportData(null)
+        }}
+        onConfirm={handlePassportRecognitionConfirm}
+        extractedData={extractedPassportData}
       />
     </div>
   )

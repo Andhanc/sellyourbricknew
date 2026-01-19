@@ -117,6 +117,12 @@ const ClerkAuthHandler = () => {
         userPhone = user.phoneNumbers[0].phoneNumber || ''
       }
       
+      // Получаем роль из sessionStorage (сохранена при регистрации через Clerk)
+      // Или из publicMetadata Clerk, или по умолчанию 'buyer'
+      const savedRole = sessionStorage.getItem('clerk_oauth_user_role')
+      const userRoleFromMetadata = user.publicMetadata?.role
+      const userRole = savedRole || userRoleFromMetadata || 'buyer'
+      
       const clerkUserData = {
         name: userName,
         email: userEmail,
@@ -124,13 +130,109 @@ const ClerkAuthHandler = () => {
         id: user.id || '',
         phone: userPhone,
         phoneFormatted: userPhone,
-        role: 'client'
+        role: userRole === 'seller' ? 'seller' : 'buyer' // Используем правильную роль
       }
       
       console.log('ClerkAuthHandler: User authenticated, saving data', clerkUserData)
       
       // Сохраняем данные в localStorage (как в WhatsApp)
       saveUserData(clerkUserData, 'clerk')
+      
+      // Создаем или обновляем пользователя в БД
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+      const syncToDatabase = async () => {
+        try {
+          let dbUserId = null
+          
+          // Сначала пытаемся найти пользователя по email
+          if (userEmail) {
+            const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json()
+              if (emailData.success && emailData.data) {
+                dbUserId = emailData.data.id
+                console.log('✅ ClerkAuthHandler: Пользователь найден в БД по email:', dbUserId)
+              }
+            }
+          }
+          
+          // Если не нашли по email, пытаемся по телефону
+          if (!dbUserId && userPhone) {
+            const phoneDigits = userPhone.replace(/\D/g, '')
+            if (phoneDigits) {
+              const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+              if (phoneResponse.ok) {
+                const phoneData = await phoneResponse.json()
+                if (phoneData.success && phoneData.data) {
+                  dbUserId = phoneData.data.id
+                  console.log('✅ ClerkAuthHandler: Пользователь найден в БД по телефону:', dbUserId)
+                }
+              }
+            }
+          }
+          
+          // Если пользователь не найден, создаем его
+          if (!dbUserId) {
+            const nameParts = userName.split(' ')
+            const firstName = nameParts[0] || 'Пользователь'
+            const lastName = nameParts.slice(1).join(' ') || ''
+            
+            // Получаем роль из sessionStorage или publicMetadata
+            const savedRole = sessionStorage.getItem('clerk_oauth_user_role')
+            const userRoleFromMetadata = user.publicMetadata?.role
+            const userRole = savedRole || userRoleFromMetadata || 'buyer'
+            
+            // Очищаем сохраненную роль после использования
+            if (savedRole) {
+              sessionStorage.removeItem('clerk_oauth_user_role')
+            }
+            
+            console.log('ClerkAuthHandler: Создание пользователя с ролью:', userRole)
+            
+            const createResponse = await fetch(`${API_BASE_URL}/users`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName,
+                email: userEmail || null,
+                phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
+                role: userRole === 'seller' ? 'seller' : 'buyer', // Убеждаемся, что роль правильная
+                is_verified: 0,
+                is_online: 1
+              })
+            })
+            
+            if (createResponse.ok) {
+              const createData = await createResponse.json()
+              if (createData.success && createData.data) {
+                dbUserId = createData.data.id
+                console.log('✅ ClerkAuthHandler: Пользователь создан в БД:', dbUserId)
+              }
+            } else {
+              const errorData = await createResponse.json().catch(() => ({}))
+              console.error('❌ ClerkAuthHandler: Ошибка создания пользователя:', errorData)
+            }
+          }
+          
+          // Используем ID из БД для обновления localStorage
+          if (dbUserId) {
+            const updatedUserData = {
+              ...clerkUserData,
+              id: dbUserId.toString()
+            }
+            saveUserData(updatedUserData, 'clerk')
+            localStorage.setItem('userId', String(dbUserId))
+            console.log('✅ ClerkAuthHandler: Данные синхронизированы с БД, ID:', dbUserId)
+          }
+        } catch (error) {
+          console.error('❌ ClerkAuthHandler: Ошибка синхронизации с БД:', error)
+        }
+      }
+      
+      syncToDatabase()
       
       setHasProcessed(true)
       
@@ -146,13 +248,18 @@ const ClerkAuthHandler = () => {
         console.log('ClerkAuthHandler: Cleaned OAuth params from URL')
       }
       
-      // Навигация на страницу профиля, если мы не там
-      if (window.location.pathname !== '/profile') {
-        console.log('ClerkAuthHandler: Navigating to profile page')
-        navigate('/profile', { replace: true })
+      // Определяем куда редиректить в зависимости от роли пользователя
+      // Используем роль из clerkUserData, которая уже была сохранена выше
+      const savedUserRole = clerkUserData.role || localStorage.getItem('userRole') || 'buyer'
+      const redirectPath = (savedUserRole === 'seller' || savedUserRole === 'owner') ? '/owner' : '/profile'
+      
+      // Навигация на правильную страницу в зависимости от роли
+      if (window.location.pathname !== redirectPath) {
+        console.log('ClerkAuthHandler: Navigating to', redirectPath, 'for role:', savedUserRole)
+        navigate(redirectPath, { replace: true })
       } else {
-        // Если уже на странице профиля, обновляем данные без перезагрузки
-        console.log('ClerkAuthHandler: Already on profile page, data should update automatically')
+        // Если уже на правильной странице, обновляем данные без перезагрузки
+        console.log('ClerkAuthHandler: Already on correct page, data should update automatically')
       }
     } else if ((!isSignedIn && !session) && (hasOAuthParams || oauthRedirectStarted || wasOnClerkDomain) && !hasProcessed) {
       // Если есть OAuth параметры или был запущен OAuth редирект, но пользователь не авторизован, ждем и проверяем повторно

@@ -1,3 +1,12 @@
+/* Блокируем взаимодействие с интерфейсом когда пользователь заблокирован */
+.app-layout--blocked {
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.6;
+  filter: blur(2px);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
 .app-layout {
   display: flex;
   flex-direction: column;
