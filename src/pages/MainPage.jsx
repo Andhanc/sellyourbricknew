@@ -912,6 +912,7 @@ function MainPage() {
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
+  const chatHistoryLoadedRef = useRef(false) // Флаг для отслеживания загрузки истории
   const [userPhoto, setUserPhoto] = useState(null) // Фотография пользователя
   const [isLoggedIn, setIsLoggedIn] = useState(false) // Статус авторизации
   const [hasIncompleteProfile, setHasIncompleteProfile] = useState(false) // Есть незаполненные поля профиля
@@ -939,18 +940,67 @@ function MainPage() {
     return filterPropertiesByLocation(combined)
   }, [])
   
-  // Инициализируем первое сообщение бота при загрузке
+  // Загружаем историю чата из localStorage для авторизованных пользователей
   useEffect(() => {
-    if (chatMessages.length === 0) {
-      setChatMessages([{
-        id: 1,
-        text: 'Здравствуйте! Я ваш AI-консультант по недвижимости. Помогу подобрать идеальный вариант в Испании или Дубае. Для начала, скажите, для какой цели вы ищете недвижимость?',
-        sender: 'bot',
-        timestamp: new Date(),
-        buttons: ['Для себя', 'Под сдачу', 'Инвестиции'],
-      }])
+    // Если пользователь авторизован и история еще не загружена
+    if (isLoggedIn && !chatHistoryLoadedRef.current) {
+      const savedChatHistory = localStorage.getItem('aiChatHistory')
+      if (savedChatHistory) {
+        try {
+          const parsed = JSON.parse(savedChatHistory)
+          // Преобразуем timestamp из строк в Date объекты
+          const messagesWithDates = parsed.map(msg => ({
+            ...msg,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+          }))
+          setChatMessages(messagesWithDates)
+          chatHistoryLoadedRef.current = true
+          return // Не показываем приветственное сообщение, если есть сохраненная история
+        } catch (error) {
+          console.error('Ошибка при загрузке истории чата:', error)
+        }
+      }
+      // Если нет сохраненной истории, но пользователь авторизован - показываем приветствие
+      if (chatMessages.length === 0) {
+        setChatMessages([{
+          id: 1,
+          text: 'Здравствуйте! Я ваш AI-консультант по недвижимости. Помогу подобрать идеальный вариант в Испании или Дубае. Для начала, скажите, для какой цели вы ищете недвижимость?',
+          sender: 'bot',
+          timestamp: new Date(),
+          buttons: ['Для себя', 'Под сдачу', 'Инвестиции'],
+        }])
+      }
+      chatHistoryLoadedRef.current = true
     }
-  }, [i18n.language, t, chatMessages.length])
+    
+    // Если пользователь не авторизован - сбрасываем флаг
+    if (!isLoggedIn) {
+      chatHistoryLoadedRef.current = false
+      // Показываем приветствие только если история пустая (для неавторизованных)
+      if (chatMessages.length === 0) {
+        setChatMessages([{
+          id: 1,
+          text: 'Здравствуйте! Я ваш AI-консультант по недвижимости. Помогу подобрать идеальный вариант в Испании или Дубае. Для начала, скажите, для какой цели вы ищете недвижимость?',
+          sender: 'bot',
+          timestamp: new Date(),
+          buttons: ['Для себя', 'Под сдачу', 'Инвестиции'],
+        }])
+      }
+    }
+  }, [isLoggedIn]) // Загружаем только при изменении статуса авторизации
+
+  // Сохраняем историю чата в localStorage для авторизованных пользователей
+  useEffect(() => {
+    if (isLoggedIn && chatMessages.length > 0) {
+      try {
+        // Сохраняем историю в localStorage
+        localStorage.setItem('aiChatHistory', JSON.stringify(chatMessages))
+      } catch (error) {
+        console.error('Ошибка при сохранении истории чата:', error)
+      }
+    }
+    // История не очищается при выходе из аккаунта - остается в localStorage
+  }, [chatMessages, isLoggedIn])
   
   // Отладочная информация о состоянии i18n
   useEffect(() => {

@@ -155,7 +155,6 @@ const AdminPanelPage = () => {
       <UsersModal
         isOpen={showUsersModal}
         onClose={() => setShowUsersModal(false)}
-        businessInfo={mockBusinessInfo}
       />
     </div>
   );

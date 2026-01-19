@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useUser, useClerk, useAuth } from '@clerk/clerk-react'
 import { getUserData, saveUserData, logout } from '../services/authService'
 import VerificationToast from '../components/VerificationToast'
+import VerificationModal from '../components/VerificationModal'
 import './Profile.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
@@ -27,8 +28,10 @@ const Profile = () => {
   const passportWithFaceInputRef = useRef(null)
   const [userId, setUserId] = useState(null)
   const [uploading, setUploading] = useState({ passport: false, passportWithFace: false })
-  const [userDocuments, setUserDocuments] = useState({ passport: null, passportWithFace: null })
+  const [userDocuments, setUserDocuments] = useState({ passport: null, passportWithFace: null, selfie: null })
   const [verificationStatus, setVerificationStatus] = useState(null)
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
+  const [documentsCompleted, setDocumentsCompleted] = useState(false)
   
   // Используем proxy из vite.config.js или полный URL
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
@@ -45,11 +48,17 @@ const Profile = () => {
           // Берем только последние документы каждого типа (на случай если их несколько)
           const passportDocs = data.data.filter(doc => doc.document_type === 'passport')
           const passportWithFaceDocs = data.data.filter(doc => doc.document_type === 'passport_with_face')
+          const selfieDocs = data.data.filter(doc => doc.document_type === 'selfie')
           
           const documents = {
             passport: passportDocs.length > 0 ? passportDocs[0] : null,
-            passportWithFace: passportWithFaceDocs.length > 0 ? passportWithFaceDocs[0] : null
+            passportWithFace: passportWithFaceDocs.length > 0 ? passportWithFaceDocs[0] : null,
+            selfie: selfieDocs.length > 0 ? selfieDocs[0] : null
           }
+          
+          // Проверяем, загружены ли все три документа
+          const allUploaded = !!(documents.passport && documents.selfie && documents.passportWithFace)
+          setDocumentsCompleted(allUploaded)
           
           console.log('Загружены документы пользователя:', documents)
           setUserDocuments(documents)
@@ -705,6 +714,20 @@ const Profile = () => {
       {/* Всплывающее уведомление о прогрессе верификации */}
       {userId && <VerificationToast userId={userId} />}
       
+      {/* Модальное окно верификации */}
+      {userId && (
+        <VerificationModal
+          isOpen={isVerificationModalOpen}
+          onClose={() => setIsVerificationModalOpen(false)}
+          userId={userId}
+          onComplete={async () => {
+            // Обновляем документы пользователя и статус верификации
+            await loadUserDocuments(userId)
+            await loadVerificationStatus(userId)
+          }}
+        />
+      )}
+      
       <div className="profile-container">
         <aside className="profile-sidebar">
           <div className="sidebar-header">
@@ -975,166 +998,58 @@ const Profile = () => {
                   )}
                 </h2>
                 <div className="section-subtitle">Загрузите документы для верификации</div>
-              </div>
-              <div className="section-cards">
-                <input
-                  ref={passportInputRef}
-                  type="file"
-                  accept="image/*,.pdf"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    if (e.target.files[0]) {
-                      handleDocumentUpload('passport', e.target.files[0])
-                    }
-                  }}
-                />
-                <input
-                  ref={passportWithFaceInputRef}
-                  type="file"
-                  accept="image/*,.pdf"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    if (e.target.files[0]) {
-                      handleDocumentUpload('passportWithFace', e.target.files[0])
-                    }
-                  }}
-                />
-                {(() => {
-                  const doc = userDocuments.passport
-                  const status = doc?.verification_status || 'none'
-                  const isPending = status === 'pending'
-                  const isApproved = status === 'approved'
-                  const isRejected = status === 'rejected'
-                  const canUpload = !isPending && !uploading.passport && userId
-                  
-                  return (
-                    <div 
-                      className={`section-card document-card ${isPending ? 'document-pending' : ''} ${isApproved ? 'document-approved' : ''} ${isRejected ? 'document-rejected' : ''}`}
-                      onClick={() => {
-                        if (canUpload) {
-                          passportInputRef.current?.click()
-                        } else if (isPending) {
-                          alert('Документ уже на рассмотрении. Дождитесь результата проверки.')
-                        } else if (!userId) {
-                          alert('Необходимо войти в систему для загрузки документов')
-                        }
-                      }}
-                      style={{ 
-                        cursor: canUpload ? 'pointer' : (isPending || !userId) ? 'not-allowed' : 'pointer',
-                        opacity: uploading.passport ? 0.6 : isPending ? 0.8 : 1
-                      }}
-                    >
-                      <div className="card-icon-wrapper">
-                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                          <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportGrad)"/>
-                          <circle cx="20" cy="16" r="3" fill="white" opacity="0.8"/>
-                          <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                          <defs>
-                            <linearGradient id="passportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#0ABAB5" />
-                              <stop offset="100%" stopColor="#089a95" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                      </div>
-                      <div className="card-content">
-                        <h3>Паспорт</h3>
-                        <p>
-                          {uploading.passport ? 'Загрузка...' : 
-                           isPending ? 'На рассмотрении' :
-                           isApproved ? 'Одобрен' :
-                           isRejected ? 'Отклонен' :
-                           'Загрузите фото или скан паспорта'}
-                        </p>
-                        {isPending && (
-                          <div className="document-status-badge document-status-pending">
-                            ⏳ На рассмотрении
-                          </div>
-                        )}
-                        {isApproved && (
-                          <div className="document-status-badge document-status-approved">
-                            ✅ Одобрен
-                          </div>
-                        )}
-                        {isRejected && (
-                          <div className="document-status-badge document-status-rejected">
-                            ❌ Отклонен
-                          </div>
-                        )}
-                      </div>
-                      {canUpload && <div className="card-badge">+</div>}
+                {documentsCompleted ? (
+                  <div className="section-verification-complete">
+                    <div className="verification-complete__check">
+                      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                        <circle cx="32" cy="32" r="32" fill="url(#checkGradient)"/>
+                        <path d="M20 32L28 40L44 24" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                        <defs>
+                          <linearGradient id="checkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#0ABAB5" />
+                            <stop offset="100%" stopColor="#089a95" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
                     </div>
-                  )
-                })()}
-                {(() => {
-                  const doc = userDocuments.passportWithFace
-                  const status = doc?.verification_status || 'none'
-                  const isPending = status === 'pending'
-                  const isApproved = status === 'approved'
-                  const isRejected = status === 'rejected'
-                  const canUpload = !isPending && !uploading.passportWithFace && userId
-                  
-                  return (
-                    <div 
-                      className={`section-card document-card ${isPending ? 'document-pending' : ''} ${isApproved ? 'document-approved' : ''} ${isRejected ? 'document-rejected' : ''}`}
-                      onClick={() => {
-                        if (canUpload) {
-                          passportWithFaceInputRef.current?.click()
-                        } else if (isPending) {
-                          alert('Документ уже на рассмотрении. Дождитесь результата проверки.')
-                        } else if (!userId) {
-                          alert('Необходимо войти в систему для загрузки документов')
-                        }
-                      }}
-                      style={{ 
-                        cursor: canUpload ? 'pointer' : (isPending || !userId) ? 'not-allowed' : 'pointer',
-                        opacity: uploading.passportWithFace ? 0.6 : isPending ? 0.8 : 1
-                      }}
+                    <h3 className="verification-complete__title">Документы загружены!</h3>
+                    <p className="verification-complete__text">
+                      Все фотографии успешно отправлены на модерацию. 
+                      Для завершения верификации необходимо также заполнить ваши данные.
+                    </p>
+                    <Link 
+                      to="/data"
+                      className="verification-complete__button"
                     >
-                      <div className="card-icon-wrapper">
-                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                          <rect x="8" y="6" width="24" height="28" rx="2" fill="url(#passportFaceGrad)"/>
-                          <circle cx="20" cy="16" r="3" fill="white" opacity="0.8"/>
-                          <path d="M14 22C14 22 16 26 20 26C24 26 26 22 26 22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                          <circle cx="28" cy="12" r="4" fill="white" opacity="0.9"/>
-                          <path d="M26 12C26 12 27 13 28 13C29 13 30 12 30 12" stroke="#089a95" strokeWidth="1.5" strokeLinecap="round"/>
-                          <defs>
-                            <linearGradient id="passportFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#0ABAB5" />
-                              <stop offset="100%" stopColor="#089a95" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                      </div>
-                      <div className="card-content">
-                        <h3>Паспорт + лицо</h3>
-                        <p>
-                          {uploading.passportWithFace ? 'Загрузка...' : 
-                           isPending ? 'На рассмотрении' :
-                           isApproved ? 'Одобрен' :
-                           isRejected ? 'Отклонен' :
-                           'Селфи с паспортом рядом с лицом'}
-                        </p>
-                        {isPending && (
-                          <div className="document-status-badge document-status-pending">
-                            ⏳ На рассмотрении
-                          </div>
-                        )}
-                        {isApproved && (
-                          <div className="document-status-badge document-status-approved">
-                            ✅ Одобрен
-                          </div>
-                        )}
-                        {isRejected && (
-                          <div className="document-status-badge document-status-rejected">
-                            ❌ Отклонен
-                          </div>
-                        )}
-                      </div>
-                      {canUpload && <div className="card-badge">+</div>}
-                    </div>
-                  )
-                })()}
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                        <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      Перейти к заполнению данных
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="section-verification-intro">
+                    <p className="verification-intro__text">
+                      Для завершения верификации нужно загрузить 3 фотографии:
+                    </p>
+                    <ul className="verification-intro__list">
+                      <li>📄 Фото паспорта</li>
+                      <li>📷 Ваше селфи</li>
+                      <li>📸 Селфи с паспортом рядом с лицом</li>
+                    </ul>
+                    <button 
+                      className="verification-intro__button"
+                      onClick={() => setIsVerificationModalOpen(true)}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                      Начать верификацию
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
           </div>
