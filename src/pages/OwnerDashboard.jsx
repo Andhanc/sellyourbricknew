@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   FiHome, 
@@ -18,7 +18,9 @@ import {
   FiChevronDown,
   FiCalendar,
   FiDollarSign as FiDollar,
-  FiClock
+  FiClock,
+  FiAlertCircle,
+  FiCheck
 } from 'react-icons/fi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
@@ -27,7 +29,7 @@ import QuickAddCard from '../components/QuickAddCard'
 import FileUploadModal from '../components/FileUploadModal'
 import PropertyCalculatorModal from '../components/PropertyCalculatorModal'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
-import { getUserData, saveUserData, logout } from '../services/authService'
+import { getUserData, saveUserData, logout, clearUserData } from '../services/authService'
 import './OwnerDashboard.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -114,12 +116,21 @@ const OwnerDashboard = () => {
     name: '',
     email: '',
     phone: '',
+    country: '',
+    address: '',
     passportSeries: '',
     passportNumber: '',
     passportId: ''
   })
   const [isProfileEditing, setIsProfileEditing] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [verificationStatus, setVerificationStatus] = useState(null)
+  const [showVerificationSuccess, setShowVerificationSuccess] = useState(false)
+  const [userId, setUserId] = useState(null)
+  const [userDocuments, setUserDocuments] = useState({ passport: null, passportWithFace: null })
+  const [uploading, setUploading] = useState({ passport: false, passportWithFace: false })
+  const passportInputRef = useRef(null)
+  const passportWithFaceInputRef = useRef(null)
 
   useEffect(() => {
     // Проверяем, авторизован ли владелец
@@ -137,7 +148,9 @@ const OwnerDashboard = () => {
           phone: userData.phoneFormatted || userData.phone || '',
           passportSeries: userData.passportSeries || '',
           passportNumber: userData.passportNumber || '',
-          passportId: userData.passportId || ''
+          passportId: userData.passportId || '',
+          country: userData.country || '',
+          address: userData.address || ''
         }))
 
         // Дополнительно загружаем актуальные данные из БД (если есть ID)
@@ -159,7 +172,9 @@ const OwnerDashboard = () => {
                   phone: prev.phone || dbUser.phone_number || '',
                   passportSeries: prev.passportSeries || dbUser.passport_series || '',
                   passportNumber: prev.passportNumber || dbUser.passport_number || '',
-                  passportId: prev.passportId || dbUser.identification_number || ''
+                  passportId: prev.passportId || dbUser.identification_number || '',
+                  country: prev.country || dbUser.country || '',
+                  address: prev.address || dbUser.address || ''
                 }))
               }
             }
@@ -169,6 +184,13 @@ const OwnerDashboard = () => {
         }
 
         loadFromDb()
+        
+        // Загружаем статус верификации и документы
+        if (userData.id) {
+          setUserId(userData.id)
+          loadVerificationStatus(userData.id)
+          loadUserDocuments(userData.id)
+        }
       }
 
       // Показываем модальное окно приветствия при первом входе
@@ -183,6 +205,149 @@ const OwnerDashboard = () => {
     }
   }, [navigate])
 
+  // Загружаем статус верификации
+  const loadVerificationStatus = async (userId) => {
+    if (!userId) return
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/verification-status`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          const status = result.data
+          setVerificationStatus(status)
+          
+          // Проверяем, была ли верификация одобрена
+          if (status.isVerified) {
+            setShowVerificationSuccess(true)
+            // Автоматически скрываем уведомление через 5 секунд
+            setTimeout(() => {
+              setShowVerificationSuccess(false)
+            }, 5000)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статуса верификации:', error)
+    }
+  }
+
+  // Слушаем событие обновления статуса верификации
+  useEffect(() => {
+    const handleStatusUpdate = () => {
+      if (userId) {
+        loadVerificationStatus(userId)
+      }
+    }
+    
+    window.addEventListener('verification-status-update', handleStatusUpdate)
+    return () => window.removeEventListener('verification-status-update', handleStatusUpdate)
+  }, [userId])
+
+  // Проверяем, все ли поля заполнены
+  const isAllFieldsFilled = () => {
+    if (!verificationStatus) return false
+    // Считаем профиль "завершенным", если либо все поля заполнены и есть документы,
+    // либо пользователь уже верифицирован администратором
+    return (
+      verificationStatus.isVerified === true ||
+      (verificationStatus.isReady && verificationStatus.hasDocuments)
+    )
+  }
+
+  // Обработчик кнопки "Пройти верификацию"
+  const handleStartVerification = () => {
+    // Закрываем панель профиля и переходим на страницу профиля покупателя
+    setIsProfilePanelOpen(false)
+    // Здесь можно добавить навигацию на страницу профиля, если нужно
+    // navigate('/profile')
+  }
+
+  // Загружаем документы пользователя
+  const loadUserDocuments = async (userId) => {
+    if (!userId) return
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/user/${userId}`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          const docs = result.data
+          const passport = docs.find(d => d.document_type === 'passport')
+          const passportWithFace = docs.find(d => d.document_type === 'passport_with_face')
+          setUserDocuments({
+            passport: passport || null,
+            passportWithFace: passportWithFace || null
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки документов пользователя:', error)
+    }
+  }
+
+  // Загружаем документ
+  const handleDocumentUpload = async (type, file) => {
+    if (!userId) {
+      alert('Ошибка: ID пользователя не найден. Пожалуйста, обновите страницу.')
+      return
+    }
+
+    setUploading(prev => ({ ...prev, [type]: true }))
+
+    try {
+      const formData = new FormData()
+      formData.append('document_photo', file)
+      formData.append('user_id', String(userId))
+      formData.append('document_type', type === 'passport' ? 'passport' : 'passport_with_face')
+
+      console.log('📤 Загрузка документа:', {
+        type,
+        userId,
+        fileName: file.name,
+        fileSize: file.size
+      })
+
+      const response = await fetch(`${API_BASE_URL}/documents`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          alert('Документ успешно загружен и отправлен на верификацию')
+          // Обновляем состояние
+          const newDoc = {
+            id: data.data.id,
+            document_type: data.data.document_type,
+            document_photo: data.data.document_photo,
+            verification_status: data.data.verification_status || 'pending',
+            created_at: data.data.created_at
+          }
+          setUserDocuments(prev => ({
+            ...prev,
+            [type === 'passport' ? 'passport' : 'passportWithFace']: newDoc
+          }))
+          // Перезагружаем документы
+          await loadUserDocuments(userId)
+          // Загружаем статус верификации
+          await loadVerificationStatus(userId)
+          // Отправляем событие для обновления
+          window.dispatchEvent(new Event('verification-status-update'))
+        } else {
+          alert(data.error || 'Ошибка загрузки документа')
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Неизвестная ошибка' }))
+        alert(errorData.error || 'Ошибка загрузки документа')
+      }
+    } catch (error) {
+      console.error('❌ Ошибка загрузки документа:', error)
+      alert(`Ошибка: ${error.message || 'Неизвестная ошибка'}`)
+    } finally {
+      setUploading(prev => ({ ...prev, [type]: false }))
+    }
+  }
+
   // Сохраняем флаг после закрытия модального окна
   const handleWelcomeClose = () => {
     setShowWelcomeModal(false)
@@ -196,25 +361,16 @@ const OwnerDashboard = () => {
     }))
   }
 
-  const handleProfileCancel = () => {
-    const userData = getUserData()
-    if (userData && userData.isLoggedIn) {
-      setOwnerProfile({
-        name: userData.name || 'Пользователь',
-        email: userData.email || '',
-        phone: userData.phoneFormatted || userData.phone || '',
-        passportSeries: userData.passportSeries || '',
-        passportNumber: userData.passportNumber || '',
-        passportId: userData.passportId || ''
-      })
-    }
-    setIsProfileEditing(false)
-  }
 
   const handleProfileSave = async () => {
     try {
       setIsSavingProfile(true)
       const userData = getUserData()
+
+      if (!userData.id) {
+        alert('Ошибка: ID пользователя не найден. Пожалуйста, войдите заново.')
+        return
+      }
 
       // Парсим ФИО во имя и фамилию для БД
       const fullName = (ownerProfile.name || '').trim()
@@ -222,28 +378,49 @@ const OwnerDashboard = () => {
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
 
-      // Обновляем данные в БД, если есть ID пользователя
-      if (userData.id) {
-        try {
-          await fetch(`${API_BASE_URL}/users/${userData.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              first_name: firstName || null,
-              last_name: lastName || null,
-              email: ownerProfile.email || null,
-              phone_number: ownerProfile.phone || null,
-              passport_series: ownerProfile.passportSeries || null,
-              passport_number: ownerProfile.passportNumber || null,
-              identification_number: ownerProfile.passportId || null
-            })
-          })
-        } catch (apiError) {
-          console.warn('⚠️ Не удалось обновить данные владельца в БД:', apiError)
-        }
+      // Подготавливаем данные для отправки в БД
+      const updateData = {
+        first_name: firstName || null,
+        last_name: lastName || null,
+        email: ownerProfile.email || null,
+        phone_number: ownerProfile.phone || null,
+        country: ownerProfile.country || null,
+        address: ownerProfile.address || null,
+        passport_series: ownerProfile.passportSeries || null,
+        passport_number: ownerProfile.passportNumber || null,
+        identification_number: ownerProfile.passportId || null
       }
+
+      console.log('💾 Сохранение данных профиля в БД:', {
+        userId: userData.id,
+        updateData
+      })
+
+      // Обновляем данные в БД
+      const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Неизвестная ошибка' }))
+        console.error('❌ Ошибка при сохранении в БД:', errorData)
+        alert(`Ошибка при сохранении данных: ${errorData.error || 'Неизвестная ошибка'}`)
+        return
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        console.error('❌ Сервер вернул ошибку:', result.error)
+        alert(`Ошибка при сохранении данных: ${result.error || 'Неизвестная ошибка'}`)
+        return
+      }
+
+      console.log('✅ Данные успешно сохранены в БД:', result.data)
 
       // Обновляем данные в localStorage (как у покупателя)
       const updatedUserData = {
@@ -252,15 +429,28 @@ const OwnerDashboard = () => {
         email: ownerProfile.email || userData.email,
         phone: ownerProfile.phone || userData.phone,
         phoneFormatted: ownerProfile.phone || userData.phoneFormatted,
+        country: ownerProfile.country || userData.country,
+        address: ownerProfile.address || userData.address,
         passportSeries: ownerProfile.passportSeries,
         passportNumber: ownerProfile.passportNumber,
         passportId: ownerProfile.passportId
       }
 
       saveUserData(updatedUserData, userData.loginMethod || 'whatsapp')
+      
+      // Перезагружаем статус верификации после сохранения
+      await loadVerificationStatus(userData.id)
+      
+      // Отправляем событие для обновления статуса верификации
+      window.dispatchEvent(new Event('verification-status-update'))
+      
+      // Выходим из режима редактирования после успешного сохранения
       setIsProfileEditing(false)
+      
+      alert('✅ Данные профиля успешно сохранены!')
     } catch (error) {
-      console.error('Ошибка при сохранении профиля владельца:', error)
+      console.error('❌ Ошибка при сохранении профиля владельца:', error)
+      alert(`Ошибка при сохранении данных: ${error.message || 'Неизвестная ошибка'}`)
     } finally {
       setIsSavingProfile(false)
     }
@@ -270,10 +460,8 @@ const OwnerDashboard = () => {
     if (window.confirm('Вы уверены, что хотите выйти?')) {
       try {
         // Используем функцию logout из authService для полной очистки данных
+        // logout() вызывает clearUserData(), который удаляет все пользовательские данные
         await logout()
-        // Дополнительно удаляем специфичные для продавца флаги
-        localStorage.removeItem('isOwnerLoggedIn')
-        localStorage.removeItem('hasSeenWelcome')
         // Перенаправляем на главную страницу
         navigate('/')
         // Небольшая задержка перед перезагрузкой, чтобы данные успели очиститься
@@ -282,9 +470,8 @@ const OwnerDashboard = () => {
         }, 100)
       } catch (error) {
         console.error('Ошибка при выходе:', error)
-        // В случае ошибки все равно очищаем данные и перенаправляем
-        localStorage.removeItem('isOwnerLoggedIn')
-        localStorage.removeItem('hasSeenWelcome')
+        // В случае ошибки все равно очищаем данные через clearUserData
+        clearUserData()
         localStorage.removeItem('userRole')
         localStorage.removeItem('isLoggedIn')
         localStorage.removeItem('userData')
@@ -477,6 +664,53 @@ const OwnerDashboard = () => {
           </button>
         </div>
       </header>
+
+      {/* Уведомление о необходимости заполнить данные */}
+      {verificationStatus && !verificationStatus.isReady && (
+        <div className="owner-verification-notification">
+          <div className="owner-verification-notification__content">
+            <div className="owner-verification-notification__icon">
+              <FiAlertCircle size={24} />
+            </div>
+            <div className="owner-verification-notification__text">
+              <h4 className="owner-verification-notification__title">Заполните данные для верификации</h4>
+              <p className="owner-verification-notification__message">
+                Для прохождения верификации необходимо заполнить все поля в разделе профиля. 
+                Перейдите в профиль, чтобы завершить заполнение данных.
+              </p>
+            </div>
+            <button
+              className="owner-verification-notification__button"
+              onClick={() => setIsProfilePanelOpen(true)}
+            >
+              Перейти в профиль
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Уведомление об успешной верификации */}
+      {showVerificationSuccess && (
+        <div className="owner-verification-success">
+          <div className="owner-verification-success__content">
+            <div className="owner-verification-success__icon">
+              <FiCheck size={24} />
+            </div>
+            <div className="owner-verification-success__text">
+              <h4 className="owner-verification-success__title">Поздравляем!</h4>
+              <p className="owner-verification-success__message">
+                Ваша верификация успешно одобрена администратором. Теперь вы можете использовать все возможности платформы.
+              </p>
+            </div>
+            <button
+              className="owner-verification-success__close"
+              onClick={() => setShowVerificationSuccess(false)}
+            >
+              <FiX size={20} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="owner-dashboard__content">
         {/* Статистика - показывается всегда */}
@@ -886,72 +1120,116 @@ const OwnerDashboard = () => {
                 </button>
               </div>
               <div className="owner-sidebar-panel__body">
+                {/* Блок статуса верификации */}
+                {verificationStatus && (
+                  <div className="owner-profile-section owner-profile-section--verification-top">
+                    <h4 className="owner-profile-section__title">Верификация</h4>
+                    <p
+                      className={`owner-profile-section__value ${
+                        verificationStatus.isVerified
+                          ? 'owner-profile-section__value--success'
+                          : verificationStatus.isReady
+                          ? 'owner-profile-section__value--warning'
+                          : 'owner-profile-section__value--warning'
+                      }`}
+                    >
+                      {verificationStatus.isVerified
+                        ? 'Верифицирован'
+                        : verificationStatus.isReady
+                        ? 'Готов к верификации'
+                        : 'Не верифицирован'}
+                    </p>
+                    {!verificationStatus.isVerified && (
+                      <button
+                        className="owner-profile-section__button owner-profile-section__button--primary"
+                        onClick={handleStartVerification}
+                      >
+                        Пройти верификацию
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Кнопки редактирования профиля */}
+                <div className="owner-profile-section owner-profile-section--actions">
+                  <div className="owner-profile-actions">
+                    {isProfileEditing ? (
+                      <>
+                        <button
+                          className="owner-profile-section__button owner-profile-section__button--primary"
+                          onClick={handleProfileSave}
+                          disabled={isSavingProfile}
+                        >
+                          {isSavingProfile ? 'Сохранение...' : 'Сохранить'}
+                        </button>
+                        <button
+                          type="button"
+                          className="owner-profile-section__button"
+                          onClick={() => setIsProfileEditing(false)}
+                          disabled={isSavingProfile}
+                          style={{ marginLeft: 8 }}
+                        >
+                          Отмена
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="owner-profile-section__button"
+                        onClick={() => setIsProfileEditing(true)}
+                      >
+                        Редактировать профиль
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">ФИО</h4>
-                  {isProfileEditing ? (
-                    <input
-                      type="text"
-                      className="owner-profile-section__value-input"
-                      value={ownerProfile.name}
-                      onChange={(e) => handleProfileFieldChange('name', e.target.value)}
-                      placeholder="Введите ФИО"
-                    />
-                  ) : (
-                    <p className="owner-profile-section__value">
-                      {ownerProfile.name || 'Имя не указано'}
-                    </p>
-                  )}
+                  <input
+                    type="text"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.name}
+                    onChange={(e) => handleProfileFieldChange('name', e.target.value)}
+                    placeholder="Введите ФИО"
+                    disabled={!isProfileEditing}
+                  />
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Паспортные данные</h4>
                   <div className="owner-profile-passport">
                     <div className="owner-profile-passport-row">
                       <span className="owner-profile-passport-label">Серия</span>
-                      {isProfileEditing ? (
-                        <input
-                          type="text"
-                          className="owner-profile-section__value-input"
-                          value={ownerProfile.passportSeries}
-                          onChange={(e) => handleProfileFieldChange('passportSeries', e.target.value)}
-                          placeholder="Серия паспорта"
-                        />
-                      ) : (
-                        <span className="owner-profile-section__value">
-                          {ownerProfile.passportSeries || 'Не указана'}
-                        </span>
-                      )}
+                      <input
+                        type="text"
+                        className="owner-profile-section__value-input"
+                        value={ownerProfile.passportSeries}
+                        onChange={(e) => handleProfileFieldChange('passportSeries', e.target.value)}
+                        placeholder="Серия паспорта"
+                        disabled={!isProfileEditing}
+                      />
                     </div>
                     <div className="owner-profile-passport-row">
                       <span className="owner-profile-passport-label">Номер</span>
-                      {isProfileEditing ? (
-                        <input
-                          type="text"
-                          className="owner-profile-section__value-input"
-                          value={ownerProfile.passportNumber}
-                          onChange={(e) => handleProfileFieldChange('passportNumber', e.target.value)}
-                          placeholder="Номер паспорта"
-                        />
-                      ) : (
-                        <span className="owner-profile-section__value">
-                          {ownerProfile.passportNumber || 'Не указан'}
-                        </span>
-                      )}
+                      <input
+                        type="text"
+                        className="owner-profile-section__value-input"
+                        value={ownerProfile.passportNumber}
+                        onChange={(e) => handleProfileFieldChange('passportNumber', e.target.value)}
+                        placeholder="Номер паспорта"
+                        disabled={!isProfileEditing}
+                      />
                     </div>
                     <div className="owner-profile-passport-row">
                       <span className="owner-profile-passport-label">Идентификационный номер</span>
-                      {isProfileEditing ? (
-                        <input
-                          type="text"
-                          className="owner-profile-section__value-input"
-                          value={ownerProfile.passportId}
-                          onChange={(e) => handleProfileFieldChange('passportId', e.target.value)}
-                          placeholder="Идентификационный номер"
-                        />
-                      ) : (
-                        <span className="owner-profile-section__value">
-                          {ownerProfile.passportId || 'Не указан'}
-                        </span>
-                      )}
+                      <input
+                        type="text"
+                        className="owner-profile-section__value-input"
+                        value={ownerProfile.passportId}
+                        onChange={(e) => handleProfileFieldChange('passportId', e.target.value)}
+                        placeholder="Идентификационный номер"
+                        disabled={!isProfileEditing}
+                      />
                     </div>
                   </div>
                 </div>
@@ -961,74 +1239,159 @@ const OwnerDashboard = () => {
                   <button className="owner-profile-section__button">Изменить подписку</button>
                 </div>
                 <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">Верификация</h4>
-                  <p className="owner-profile-section__value owner-profile-section__value--warning">Не верифицирован</p>
-                  <button className="owner-profile-section__button owner-profile-section__button--primary">Пройти верификацию</button>
-                </div>
-                <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">Паспортные данные</h4>
-                  <p className="owner-profile-section__value">Загружено</p>
-                  <button className="owner-profile-section__button">Изменить</button>
+                  <h4 className="owner-profile-section__title">Документы</h4>
+                  <p className="owner-profile-section__subtitle">Загрузите документы для верификации</p>
+                  
+                  <input
+                    ref={passportInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        handleDocumentUpload('passport', e.target.files[0])
+                      }
+                    }}
+                  />
+                  <input
+                    ref={passportWithFaceInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        handleDocumentUpload('passportWithFace', e.target.files[0])
+                      }
+                    }}
+                  />
+
+                  <div className="owner-documents-upload">
+                    {(() => {
+                      const doc = userDocuments.passport
+                      const status = doc?.verification_status || 'none'
+                      const isPending = status === 'pending'
+                      const isApproved = status === 'approved'
+                      const canUpload = !isPending && !uploading.passport && userId
+
+                      return (
+                        <div 
+                          className={`owner-document-card ${isPending ? 'owner-document-pending' : ''} ${isApproved ? 'owner-document-approved' : ''}`}
+                          onClick={() => {
+                            if (canUpload) {
+                              passportInputRef.current?.click()
+                            } else if (isPending) {
+                              alert('Документ уже на рассмотрении')
+                            }
+                          }}
+                          style={{ 
+                            cursor: canUpload ? 'pointer' : 'default',
+                            opacity: uploading.passport ? 0.6 : 1
+                          }}
+                        >
+                          <div className="owner-document-card__icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                          <div className="owner-document-card__content">
+                            <h5 className="owner-document-card__title">Паспорт</h5>
+                            <p className="owner-document-card__status">
+                              {uploading.passport ? 'Загрузка...' : 
+                               isPending ? 'На рассмотрении' :
+                               isApproved ? 'Одобрен' :
+                               'Загрузить фото или скан паспорта'}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {(() => {
+                      const doc = userDocuments.passportWithFace
+                      const status = doc?.verification_status || 'none'
+                      const isPending = status === 'pending'
+                      const isApproved = status === 'approved'
+                      const canUpload = !isPending && !uploading.passportWithFace && userId
+
+                      return (
+                        <div 
+                          className={`owner-document-card ${isPending ? 'owner-document-pending' : ''} ${isApproved ? 'owner-document-approved' : ''}`}
+                          onClick={() => {
+                            if (canUpload) {
+                              passportWithFaceInputRef.current?.click()
+                            } else if (isPending) {
+                              alert('Документ уже на рассмотрении')
+                            }
+                          }}
+                          style={{ 
+                            cursor: canUpload ? 'pointer' : 'default',
+                            opacity: uploading.passportWithFace ? 0.6 : 1
+                          }}
+                        >
+                          <div className="owner-document-card__icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                              <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                          <div className="owner-document-card__content">
+                            <h5 className="owner-document-card__title">Паспорт с лицом</h5>
+                            <p className="owner-document-card__status">
+                              {uploading.passportWithFace ? 'Загрузка...' : 
+                               isPending ? 'На рассмотрении' :
+                               isApproved ? 'Одобрен' :
+                               'Загрузить фото паспорта с лицом'}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Почта</h4>
-                  {isProfileEditing ? (
-                    <input
-                      type="email"
-                      className="owner-profile-section__value-input"
-                      value={ownerProfile.email}
-                      onChange={(e) => handleProfileFieldChange('email', e.target.value)}
-                      placeholder="Введите email"
-                    />
-                  ) : (
-                    <p className="owner-profile-section__value">
-                      {ownerProfile.email || 'Email не указан'}
-                    </p>
-                  )}
+                  <input
+                    type="email"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.email}
+                    onChange={(e) => handleProfileFieldChange('email', e.target.value)}
+                    placeholder="Введите email"
+                    disabled={!isProfileEditing}
+                  />
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">WhatsApp</h4>
-                  {isProfileEditing ? (
-                    <input
-                      type="tel"
-                      className="owner-profile-section__value-input"
-                      value={ownerProfile.phone}
-                      onChange={(e) => handleProfileFieldChange('phone', e.target.value)}
-                      placeholder="Введите номер телефона"
-                    />
-                  ) : (
-                    <p className="owner-profile-section__value">
-                      {ownerProfile.phone || 'Телефон не указан'}
-                    </p>
-                  )}
+                  <input
+                    type="tel"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.phone}
+                    onChange={(e) => handleProfileFieldChange('phone', e.target.value)}
+                    placeholder="Введите номер телефона"
+                    disabled={!isProfileEditing}
+                  />
                 </div>
-
-                <div className="owner-profile-section owner-profile-section--actions">
-                  {!isProfileEditing ? (
-                    <button
-                      className="owner-profile-section__button owner-profile-section__button--primary"
-                      onClick={() => setIsProfileEditing(true)}
-                    >
-                      Редактировать профиль
-                    </button>
-                  ) : (
-                    <div className="owner-profile-actions">
-                      <button
-                        className="owner-profile-section__button owner-profile-section__button--primary"
-                        onClick={handleProfileSave}
-                        disabled={isSavingProfile}
-                      >
-                        {isSavingProfile ? 'Сохранение...' : 'Сохранить'}
-                      </button>
-                      <button
-                        className="owner-profile-section__button"
-                        onClick={handleProfileCancel}
-                        disabled={isSavingProfile}
-                      >
-                        Отмена
-                      </button>
-                    </div>
-                  )}
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Страна</h4>
+                  <input
+                    type="text"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.country}
+                    onChange={(e) => handleProfileFieldChange('country', e.target.value)}
+                    placeholder="Введите страну"
+                    disabled={!isProfileEditing}
+                  />
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Адрес</h4>
+                  <input
+                    type="text"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.address}
+                    onChange={(e) => handleProfileFieldChange('address', e.target.value)}
+                    placeholder="Введите адрес"
+                    disabled={!isProfileEditing}
+                  />
                 </div>
               </div>
             </div>

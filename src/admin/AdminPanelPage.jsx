@@ -12,6 +12,7 @@ import ObjectsList from '../components/admin/ObjectsList';
 import AdminChat from '../components/admin/AdminChat';
 import AccessManagement from '../components/admin/AccessManagement';
 import { mockBusinessInfo } from '../data/mockData';
+import { clearUserData } from '../services/authService';
 import '../styles/admin/global.css';
 import './AdminPanelPage.css';
 
@@ -78,25 +79,21 @@ const AdminPanelPage = () => {
     return accessMap[section] || false;
   };
 
-  // Функция для очистки сессии администратора
-  const clearAdminSession = () => {
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('isAdminLoggedIn');
-    localStorage.removeItem('isLoggedIn');
-  };
-
   const handleLogout = () => {
     if (window.confirm('Вы уверены, что хотите выйти?')) {
-      // Очищаем данные администратора
-      clearAdminSession();
+      // Очищаем все данные пользователя из localStorage
+      clearUserData();
       navigate('/');
-      alert('Выход выполнен');
+      // Перезагружаем страницу для полной очистки состояния
+      setTimeout(() => {
+        window.location.reload();
+      }, 50);
     }
   };
 
   const handleBack = () => {
     // При переходе на главную автоматически завершаем сессию администратора
-    clearAdminSession();
+    clearUserData();
     navigate('/');
   };
 

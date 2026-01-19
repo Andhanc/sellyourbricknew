@@ -32,6 +32,31 @@
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease-out;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Декоративный градиентный фон */
+.login-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #0ABAB5 0%, #089a95 100%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: 1;
+}
+
+.login-modal--buyer::before {
+  opacity: 1;
+  background: linear-gradient(90deg, #0ABAB5 0%, #25d366 100%);
+}
+
+.login-modal--seller::before {
+  opacity: 1;
+  background: linear-gradient(90deg, #ff6b6b 0%, #ff8e53 100%);
 }
 
 @keyframes slideUp {
@@ -70,6 +95,18 @@
 .login-modal__header {
   padding: 32px 32px 24px;
   text-align: center;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-modal--buyer .login-modal__header {
+  background: linear-gradient(135deg, rgba(10, 186, 181, 0.03) 0%, rgba(37, 211, 102, 0.03) 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.login-modal--seller .login-modal__header {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.03) 0%, rgba(255, 142, 83, 0.03) 100%);
+  border-radius: 16px 16px 0 0;
 }
 
 .login-modal__title {
@@ -77,6 +114,18 @@
   font-weight: 700;
   color: #000;
   margin: 0 0 8px 0;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.login-modal--buyer .login-modal__title {
+  color: #0ABAB5;
+  text-shadow: 0 2px 10px rgba(10, 186, 181, 0.2);
+}
+
+.login-modal--seller .login-modal__title {
+  color: #ff6b6b;
+  text-shadow: 0 2px 10px rgba(255, 107, 107, 0.2);
 }
 
 .login-modal__subtitle {
@@ -91,6 +140,20 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInScale 0.4s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .login-modal__role-label {
@@ -105,6 +168,19 @@
   background: #f5f5f5;
   padding: 4px;
   border-radius: 12px;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.login-modal--buyer .login-modal__role-switch {
+  background: linear-gradient(135deg, rgba(10, 186, 181, 0.1) 0%, rgba(37, 211, 102, 0.1) 100%);
+  box-shadow: 0 4px 15px rgba(10, 186, 181, 0.15);
+}
+
+.login-modal--seller .login-modal__role-switch {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(255, 142, 83, 0.1) 100%);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.15);
 }
 
 .login-modal__role-btn {
@@ -117,8 +193,36 @@
   font-weight: 500;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  position: relative;
+  z-index: 1;
+  transform: scale(1);
+  overflow: hidden;
+}
+
+.login-modal__role-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s;
+  z-index: -1;
+}
+
+.login-modal__role-btn:hover:not(:disabled)::after {
+  width: 200px;
+  height: 200px;
+}
+
+.login-modal__role-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  color: #333;
 }
 
 .login-modal__role-btn:hover:not(:disabled) {
@@ -127,13 +231,32 @@
 }
 
 .login-modal__role-btn--active {
-  background: #0ABAB5; /* основной цвет тиффани */
+  background: #0ABAB5;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(10, 186, 181, 0.35);
+  box-shadow: 0 4px 15px rgba(10, 186, 181, 0.4);
+  transform: scale(1.05);
+}
+
+.login-modal--buyer .login-modal__role-btn--active {
+  background: linear-gradient(135deg, #0ABAB5 0%, #25d366 100%);
+  box-shadow: 0 4px 20px rgba(10, 186, 181, 0.5);
+}
+
+.login-modal--seller .login-modal__role-btn--active {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
 }
 
 .login-modal__role-btn--active:hover {
-  background: #089a95; /* чуть темнее для ховера */
+  transform: scale(1.08);
+}
+
+.login-modal--buyer .login-modal__role-btn--active:hover {
+  background: linear-gradient(135deg, #089a95 0%, #20b85a 100%);
+}
+
+.login-modal--seller .login-modal__role-btn--active:hover {
+  background: linear-gradient(135deg, #e55a5a 0%, #e67d4a 100%);
 }
 
 .login-modal__role-btn:disabled {
@@ -161,13 +284,32 @@
   font-weight: 500;
   color: #000;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-modal__social-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.login-modal__social-btn:hover::before {
+  left: 100%;
 }
 
 .login-modal__social-btn:hover {
   border-color: #d0d0d0;
   background-color: #fafafa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .login-modal__social-btn--facebook {
@@ -223,6 +365,15 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-modal--buyer .login-modal__form {
+  background: linear-gradient(180deg, rgba(10, 186, 181, 0.01) 0%, transparent 100%);
+}
+
+.login-modal--seller .login-modal__form {
+  background: linear-gradient(180deg, rgba(255, 107, 107, 0.01) 0%, transparent 100%);
 }
 
 .login-modal__field {
@@ -247,17 +398,79 @@
   font-size: 15px;
   color: #000;
   background: #fff;
-  transition: border-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
 }
 
 .login-modal__input:focus {
   outline: none;
   border-color: #4285f4;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+}
+
+.login-modal--buyer .login-modal__input:focus {
+  border-color: #0ABAB5;
+  box-shadow: 0 4px 12px rgba(10, 186, 181, 0.3);
+}
+
+.login-modal--seller .login-modal__input:focus {
+  border-color: #ff6b6b;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
 }
 
 .login-modal__input::placeholder {
   color: #999;
+}
+
+.login-modal__password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.login-modal__input--password {
+  padding-right: 45px;
+  width: 100%;
+  /* Убираем любые отличия в размере от обычного input */
+  box-sizing: border-box;
+}
+
+.login-modal__password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  z-index: 2;
+  /* Убеждаемся, что кнопка не влияет на размер input */
+  pointer-events: auto;
+}
+
+.login-modal__password-toggle:hover {
+  color: #0ABAB5;
+}
+
+.login-modal__password-toggle:focus {
+  outline: none;
+  color: #0ABAB5;
+}
+
+.login-modal--seller .login-modal__password-toggle:hover {
+  color: #ff6b6b;
+}
+
+.login-modal--seller .login-modal__password-toggle:focus {
+  color: #ff6b6b;
 }
 
 .login-modal__forgot {
@@ -290,22 +503,71 @@
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-modal__submit::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.login-modal__submit:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .login-modal__submit:hover {
   background: #333;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.login-modal--buyer .login-modal__submit {
+  background: linear-gradient(135deg, #0ABAB5 0%, #089a95 100%);
+}
+
+.login-modal--buyer .login-modal__submit:hover {
+  background: linear-gradient(135deg, #089a95 0%, #067a76 100%);
+  box-shadow: 0 6px 20px rgba(10, 186, 181, 0.4);
+}
+
+.login-modal--seller .login-modal__submit {
+  background: linear-gradient(135deg, #ff6b6b 0%, #e55a5a 100%);
+}
+
+.login-modal--seller .login-modal__submit:hover {
+  background: linear-gradient(135deg, #e55a5a 0%, #cc4a4a 100%);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
 }
 
 .login-modal__submit:active {
-  background: #000;
+  transform: translateY(0);
 }
 
 .login-modal__footer {
   padding: 24px 32px 32px;
   text-align: center;
   border-top: 1px solid #f0f0f0;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-modal--buyer .login-modal__footer {
+  background: linear-gradient(180deg, transparent 0%, rgba(10, 186, 181, 0.02) 100%);
+}
+
+.login-modal--seller .login-modal__footer {
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 107, 107, 0.02) 100%);
 }
 
 .login-modal__footer-text {
@@ -328,6 +590,23 @@
 .login-modal__footer-link:hover {
   color: #1a73e8;
   text-decoration: underline;
+}
+
+.login-modal__error {
+  animation: shake 0.5s ease-in-out, fadeIn 0.3s ease-out;
+  transition: all 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
 }
 
 /* Адаптивность для мобильных устройств */

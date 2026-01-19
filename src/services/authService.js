@@ -4,23 +4,27 @@
 
 import emailjs from '@emailjs/browser'
 
+import { getApiBaseUrl, getEmailJsConfig, isDevelopment } from '../utils/env'
+
 // Используем proxy из vite.config.js или полный URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+// Поддержка как REACT_APP_ (Create React App), так и VITE_ (Vite)
+const API_BASE_URL = getApiBaseUrl()
 
 // EmailJS настройки
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || ''
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || ''
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || ''
+const emailJsConfig = getEmailJsConfig()
+const EMAILJS_SERVICE_ID = emailJsConfig.serviceId || ''
+const EMAILJS_TEMPLATE_ID = emailJsConfig.templateId || ''
+const EMAILJS_PUBLIC_KEY = emailJsConfig.publicKey || ''
 
 // Инициализация EmailJS
 if (EMAILJS_PUBLIC_KEY) {
   emailjs.init(EMAILJS_PUBLIC_KEY)
-} else if (import.meta.env.DEV) {
-  console.warn('⚠️ VITE_EMAILJS_PUBLIC_KEY не установлен в .env.local')
+} else if (isDevelopment()) {
+  console.warn('⚠️ REACT_APP_EMAILJS_PUBLIC_KEY или VITE_EMAILJS_PUBLIC_KEY не установлен в .env.local')
 }
 
 // Диагностика в режиме разработки
-if (import.meta.env.DEV) {
+if (isDevelopment()) {
   if (!EMAILJS_SERVICE_ID) {
     console.warn('⚠️ VITE_EMAILJS_SERVICE_ID не установлен в .env.local')
   }
@@ -33,6 +37,52 @@ if (import.meta.env.DEV) {
       templateId: EMAILJS_TEMPLATE_ID,
       hasPublicKey: !!EMAILJS_PUBLIC_KEY
     })
+  }
+}
+
+/**
+ * Валидация пароля на клиенте
+ * Проверяет наличие заглавной буквы, спецсимволов и цифр
+ * @param {string} password - Пароль для проверки
+ * @returns {object} - { valid: boolean, errors: string[], missing: string[], present: string[] }
+ */
+export function validatePassword(password) {
+  const errors = []
+  const missing = []
+  const present = []
+
+  // Проверка наличия заглавной буквы
+  if (!/[A-ZА-Я]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы одну заглавную букву')
+    missing.push('заглавную букву')
+  } else {
+    present.push('заглавную букву')
+  }
+
+  // Проверка наличия спецсимволов
+  if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы один спецсимвол (!@#$%^&*()_+-=[]{}|;:,.<>?)')
+    missing.push('спецсимвол')
+  } else {
+    present.push('спецсимвол')
+  }
+
+  // Проверка наличия цифры
+  if (!/[0-9]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы одну цифру')
+    missing.push('цифру')
+  } else {
+    present.push('цифру')
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    missing,
+    present,
+    message: errors.length > 0 
+      ? `Пароль не соответствует требованиям. Добавьте: ${missing.join(', ')}. ${present.length > 0 ? `Уже есть: ${present.join(', ')}.` : ''}`
+      : 'Пароль соответствует всем требованиям'
   }
 }
 
@@ -179,6 +229,10 @@ export const clearUserData = () => {
     'userPicture',
     'userRole',
     'isOwnerLoggedIn',
+    'isAdminLoggedIn', // Флаг входа администратора
+    'adminPermissions', // Права администратора
+    'isBlocked', // Флаг блокировки пользователя
+    'blockedUserId', // ID заблокированного пользователя
     'hasSeenWelcome', // Флаг просмотра приветственного модального окна
     'userPhone',
     'userPhoneFormatted',
@@ -202,6 +256,10 @@ export const clearUserData = () => {
       key === 'isLoggedIn' || 
       key === 'loginMethod' || 
       key === 'isOwnerLoggedIn' ||
+      key === 'isAdminLoggedIn' ||
+      key === 'adminPermissions' ||
+      key === 'isBlocked' ||
+      key === 'blockedUserId' ||
       key === 'hasSeenWelcome' ||
       key.includes('Code')
     ) {
@@ -212,6 +270,9 @@ export const clearUserData = () => {
   // Проверяем, что все важные флаги действительно удалены
   const stillLoggedIn = localStorage.getItem('isLoggedIn')
   const stillOwner = localStorage.getItem('isOwnerLoggedIn')
+  const stillAdmin = localStorage.getItem('isAdminLoggedIn')
+  const stillBlocked = localStorage.getItem('isBlocked')
+  
   if (stillLoggedIn === 'true') {
     console.warn('⚠️ isLoggedIn все еще установлен! Принудительно удаляем...')
     localStorage.removeItem('isLoggedIn')
@@ -220,13 +281,30 @@ export const clearUserData = () => {
     console.warn('⚠️ isOwnerLoggedIn все еще установлен! Принудительно удаляем...')
     localStorage.removeItem('isOwnerLoggedIn')
   }
+  if (stillAdmin === 'true') {
+    console.warn('⚠️ isAdminLoggedIn все еще установлен! Принудительно удаляем...')
+    localStorage.removeItem('isAdminLoggedIn')
+    localStorage.removeItem('adminPermissions')
+  }
+  if (stillBlocked === 'true') {
+    console.warn('⚠️ isBlocked все еще установлен! Принудительно удаляем...')
+    localStorage.removeItem('isBlocked')
+    localStorage.removeItem('blockedUserId')
+  }
   
   console.log('✅ Все данные пользователя очищены из localStorage')
   
   // Дополнительная проверка для отладки
-  if (import.meta.env.DEV) {
+  if (isDevelopment()) {
     const remainingData = Object.keys(localStorage).filter(key => 
-      key.startsWith('user') || key === 'isLoggedIn' || key === 'loginMethod'
+      key.startsWith('user') || 
+      key === 'isLoggedIn' || 
+      key === 'loginMethod' ||
+      key === 'isOwnerLoggedIn' ||
+      key === 'isAdminLoggedIn' ||
+      key === 'adminPermissions' ||
+      key === 'isBlocked' ||
+      key === 'blockedUserId'
     )
     if (remainingData.length > 0) {
       console.warn('⚠️ Обнаружены оставшиеся данные после очистки:', remainingData)
@@ -265,7 +343,7 @@ const verifyCode = (phone, code, removeOnSuccess = false) => {
   const codeData = codes[phone]
   
   // Отладка в режиме разработки
-  if (import.meta.env.DEV) {
+  if (isDevelopment()) {
     console.log('🔍 Проверка кода WhatsApp:', {
       phone,
       code,
@@ -620,6 +698,15 @@ export const verifyWhatsAppCode = async (phone, code, role = 'buyer', mode = 're
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.user) {
+          // Проверяем, заблокирован ли пользователь
+          if (data.user.is_blocked === true || data.user.is_blocked === 1) {
+            return {
+              success: false,
+              error: 'Пользователь заблокирован',
+              is_blocked: true
+            }
+          }
+          
           // Объединяем данные от backend с данными WhatsApp
           const userData = {
             ...data.user,
@@ -634,16 +721,28 @@ export const verifyWhatsAppCode = async (phone, code, role = 'buyer', mode = 're
           saveUserData(userData, 'whatsapp')
           return {
             success: true,
-            user: userData
+            user: userData,
+            is_blocked: false
           }
         }
       } else {
         const errorData = await response.json().catch(() => ({}))
         console.error('Ошибка при сохранении в БД:', errorData.error || 'Неизвестная ошибка')
+        
+        // Проверяем, заблокирован ли пользователь (403)
+        if (response.status === 403 && errorData.is_blocked) {
+          return {
+            success: false,
+            error: errorData.error || 'Пользователь заблокирован',
+            is_blocked: true
+          }
+        }
+        
         // Не удаляем код, чтобы можно было попробовать снова
         return {
           success: false,
-          error: errorData.error || 'Ошибка при сохранении данных'
+          error: errorData.error || 'Ошибка при сохранении данных',
+          is_blocked: false
         }
       }
     } catch (backendError) {
@@ -875,7 +974,7 @@ export const validateSession = async () => {
   
   try {
     // Используем proxy из vite.config.js или полный URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = getApiBaseUrl()
     const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
       method: 'GET',
       headers: {
@@ -896,10 +995,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
       return { valid: true, user: userData, error: `HTTP ${response.status}` }
     }
     
-    // Пользователь найден — сессия валидна
+    // Пользователь найден — проверяем блокировку
     const result = await response.json()
     if (result.success && result.data) {
-      return { valid: true, user: result.data }
+      // Проверяем, заблокирован ли пользователь
+      if (result.data.is_blocked === 1) {
+        console.warn('🚫 Пользователь заблокирован')
+        return { valid: true, user: result.data, is_blocked: true }
+      }
+      return { valid: true, user: result.data, is_blocked: false }
     }
     
     // Неожиданный формат ответа
@@ -925,7 +1029,7 @@ export const logout = async () => {
   if (userId) {
     try {
       // Используем proxy из vite.config.js или полный URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = getApiBaseUrl()
       await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -1231,7 +1335,7 @@ export const sendEmailVerificationCode = async (email) => {
       return {
         success: true,
         message: `EmailJS не настроен. В режиме разработки используйте код ниже:`,
-        code: import.meta.env.DEV ? code : undefined,
+        code: isDevelopment() ? code : undefined,
         devMode: true,
         warning: 'Для отправки реальных email настройте EmailJS в .env.local'
       }
@@ -1303,7 +1407,23 @@ export const verifyEmailCode = async (email, code, password, name, role = 'buyer
           }
         }
       } else {
+        // Обрабатываем ошибки валидации пароля
         const errorData = await response.json().catch(() => ({}))
+        if (response.status === 400 && errorData.passwordValidation) {
+          let errorMessage = errorData.error || errorData.message || 'Пароль не соответствует требованиям'
+          if (errorData.passwordValidation.missing && errorData.passwordValidation.missing.length > 0) {
+            errorMessage += `\n\nДобавьте: ${errorData.passwordValidation.missing.join(', ')}`
+          }
+          if (errorData.passwordValidation.present && errorData.passwordValidation.present.length > 0) {
+            errorMessage += `\nУже есть: ${errorData.passwordValidation.present.join(', ')}`
+          }
+          return {
+            success: false,
+            error: errorMessage,
+            passwordValidation: errorData.passwordValidation
+          }
+        }
+        // Общая обработка других ошибок
         console.error('Ошибка при сохранении в БД:', errorData.error || 'Неизвестная ошибка')
       }
     } catch (backendError) {
@@ -1506,25 +1626,72 @@ export const loginWithEmail = async (email, password) => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         console.error('❌ Ошибка входа:', response.status, errorData)
+        
+        // Проверяем, заблокирован ли пользователь (403)
+        if (response.status === 403 && errorData.is_blocked) {
+          return {
+            success: false,
+            error: errorData.error || 'Пользователь заблокирован',
+            is_blocked: true
+          }
+        }
+        
         return {
           success: false,
-          error: errorData.error || 'Неверный email или пароль'
+          error: errorData.error || 'Неверный email или пароль',
+          is_blocked: false
         }
       }
       
       const data = await response.json()
       console.log('✅ Вход успешен:', data)
+      console.log('🔍 Роль пользователя из ответа сервера:', data.user?.role)
       
       if (data.success && data.user) {
-        saveUserData(data.user, 'email')
+        // Проверяем, заблокирован ли пользователь
+        if (data.user.is_blocked === true || data.user.is_blocked === 1) {
+          // Сохраняем данные пользователя с флагом блокировки для показа модального окна
+          localStorage.setItem('isLoggedIn', 'true');
+          localStorage.setItem('loginMethod', 'email');
+          localStorage.setItem('isBlocked', 'true');
+          localStorage.setItem('blockedUserId', data.user.id?.toString() || '');
+          
+          // Сохраняем минимальные данные пользователя
+          const userData = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name || data.user.email || 'Пользователь',
+            role: data.user.role || 'buyer'
+          };
+          localStorage.setItem('userData', JSON.stringify(userData));
+          
+          return {
+            success: false,
+            error: 'Пользователь заблокирован',
+            is_blocked: true,
+            user: data.user
+          }
+        }
+        
+        // Убеждаемся, что роль присутствует в данных пользователя
+        const userDataWithRole = {
+          ...data.user,
+          role: data.user.role || 'buyer' // Если роль не пришла, используем 'buyer' по умолчанию
+        }
+        
+        console.log('💾 Сохраняем данные пользователя с ролью:', userDataWithRole.role)
+        saveUserData(userDataWithRole, 'email')
+        
         return {
           success: true,
-          user: data.user
+          user: userDataWithRole,
+          is_blocked: false
         }
       } else {
         return {
           success: false,
-          error: data.error || 'Неверный email или пароль'
+          error: data.error || 'Неверный email или пароль',
+          is_blocked: false
         }
       }
     } catch (backendError) {

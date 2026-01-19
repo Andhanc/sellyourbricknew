@@ -215,9 +215,15 @@ const Moderation = () => {
                 lastName: doc.last_name || '',
                 email: doc.email || 'Не указано',
                 phone: doc.phone_number || 'Не указано',
-                role: doc.role || 'buyer',
+                role: doc.role || 'buyer', // Используем роль из документа (берется из БД через JOIN)
                 documents: []
               };
+              console.log('📋 Создан пользователь для модерации:', {
+                id: doc.user_id,
+                name: `${doc.first_name} ${doc.last_name}`,
+                role: doc.role || 'buyer',
+                email: doc.email
+              });
             }
             groupedByUser[doc.user_id].documents.push({
               id: doc.id,

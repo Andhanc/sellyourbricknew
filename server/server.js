@@ -18,6 +18,52 @@ const { Client, LocalAuth } = whatsappPkg;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/**
+ * Валидация пароля
+ * Проверяет наличие заглавной буквы, спецсимволов и цифр
+ * @param {string} password - Пароль для проверки
+ * @returns {object} - { valid: boolean, errors: string[], missing: string[] }
+ */
+function validatePassword(password) {
+  const errors = [];
+  const missing = [];
+  const present = [];
+
+  // Проверка наличия заглавной буквы
+  if (!/[A-ZА-Я]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы одну заглавную букву');
+    missing.push('заглавную букву');
+  } else {
+    present.push('заглавную букву');
+  }
+
+  // Проверка наличия спецсимволов
+  if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы один спецсимвол (!@#$%^&*()_+-=[]{}|;:,.<>?)');
+    missing.push('спецсимвол');
+  } else {
+    present.push('спецсимвол');
+  }
+
+  // Проверка наличия цифры
+  if (!/[0-9]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы одну цифру');
+    missing.push('цифру');
+  } else {
+    present.push('цифру');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    missing,
+    present,
+    message: errors.length > 0 
+      ? `Пароль не соответствует требованиям. Добавьте: ${missing.join(', ')}. ${present.length > 0 ? `Уже есть: ${present.join(', ')}.` : ''}`
+      : 'Пароль соответствует всем требованиям'
+  };
+}
+
 // Настройка middleware
 app.use(cors());
 app.use(express.json());
@@ -60,7 +106,25 @@ const waClient = new Client({
   }),
   puppeteer: {
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu'
+    ],
+    // Увеличиваем таймаут для протокольных операций (по умолчанию 180000мс)
+    // Это решает ошибку "Runtime.callFunctionOn timed out"
+    protocolTimeout: 300000, // 5 минут вместо 3 минут по умолчанию
+    // Дополнительные настройки для стабильности
+    defaultViewport: {
+      width: 1280,
+      height: 720
+    },
+    // Игнорируем ошибки HTTPS (если есть проблемы с сертификатами)
+    ignoreHTTPSErrors: true
   },
   // Фиксация версии веб-клиента WhatsApp, чтобы избежать ошибок
   // вида "Cannot read properties of undefined (reading 'markedUnread')"
@@ -93,7 +157,8 @@ waClient.on('ready', async () => {
   // чтобы отправка сообщений (sendMessage) не падала на этом месте.
   try {
     if (waClient.pupPage) {
-      await waClient.pupPage.evaluate(() => {
+      // Используем Promise.race с таймаутом для избежания зависаний
+      const evaluatePromise = waClient.pupPage.evaluate(() => {
         if (window.WWebJS && typeof window.WWebJS.sendSeen === 'function') {
           console.log('⚙️ Переопределяем window.WWebJS.sendSeen на безопасную функцию');
           window.WWebJS.sendSeen = async () => {
@@ -102,10 +167,17 @@ waClient.on('ready', async () => {
           };
         }
       });
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Evaluate timeout')), 30000); // 30 секунд таймаут
+      });
+      
+      await Promise.race([evaluatePromise, timeoutPromise]);
       console.log('✅ Патч sendSeen применён успешно');
     }
   } catch (patchError) {
-    console.warn('⚠️ Не удалось применить патч sendSeen:', patchError.message);
+    // Не критичная ошибка, просто логируем
+    console.warn('⚠️ Не удалось применить патч sendSeen (это не критично):', patchError.message);
   }
 });
 
@@ -117,12 +189,30 @@ waClient.on('auth_failure', (msg) => {
 waClient.on('disconnected', (reason) => {
   waClientReady = false;
   console.warn('⚠️ WhatsApp клиент отключен. Причина:', reason);
-  console.log('🔄 Пытаемся переподключиться...');
-  waClient.initialize();
+  console.log('🔄 Пытаемся переподключиться через 5 секунд...');
+  
+  // Задержка перед переподключением для избежания быстрых циклов переподключения
+  setTimeout(() => {
+    try {
+      waClient.initialize();
+    } catch (error) {
+      console.error('❌ Ошибка при переподключении WhatsApp:', error.message);
+    }
+  }, 5000);
 });
 
-// Инициализируем WhatsApp клиент
-waClient.initialize();
+// Инициализируем WhatsApp клиент с обработкой ошибок
+// Используем try-catch для перехвата ошибок инициализации
+try {
+  waClient.initialize().catch((error) => {
+    console.error('❌ Ошибка при инициализации WhatsApp клиента:', error.message);
+    console.log('💡 Это нормально, если WhatsApp Web еще не авторизован.');
+    console.log('   Отсканируйте QR-код, который появится в консоли, чтобы подключить WhatsApp.');
+  });
+} catch (error) {
+  console.error('❌ Критическая ошибка при инициализации WhatsApp:', error.message);
+  console.log('⚠️ WhatsApp клиент будет недоступен до перезапуска сервера.');
+}
 
 /**
  * Удаляет пароль из объекта пользователя (для безопасности)
@@ -170,6 +260,64 @@ app.get('/api/users/:id', (req, res) => {
     // Удаляем пароль перед отправкой (для безопасности)
     const userWithoutPassword = removePasswordFromUser(user);
     res.json({ success: true, data: userWithoutPassword });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/users/:id/verification-status - Получить статус готовности к верификации
+ * Возвращает информацию о том, какие поля заполнены и что нужно для готовности
+ */
+app.get('/api/users/:id/verification-status', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = userQueries.getById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    // Получаем документы пользователя
+    const documents = documentQueries.getByUserId(userId);
+    const pendingDocuments = documents.filter(doc => doc.verification_status === 'pending');
+    
+    // Создаем объект для проверки готовности
+    const userForCheck = {
+      ...user,
+      documents: pendingDocuments
+    };
+    
+    // Проверяем готовность
+    const readiness = checkUserReadinessForModeration(userForCheck);
+    
+    // Подсчитываем прогресс заполнения
+    const totalFields = 8; // Всего полей
+    let filledFields = 0;
+    if (readiness.missingFields.firstName === false) filledFields++;
+    if (readiness.missingFields.lastName === false) filledFields++;
+    if (readiness.missingFields.emailOrPhone === false) filledFields++;
+    if (readiness.missingFields.country === false) filledFields++;
+    if (readiness.missingFields.address === false) filledFields++;
+    if (readiness.missingFields.passportSeries === false) filledFields++;
+    if (readiness.missingFields.passportNumber === false) filledFields++;
+    if (readiness.missingFields.identificationNumber === false) filledFields++;
+    
+    const progress = Math.round((filledFields / totalFields) * 100);
+    
+    res.json({
+      success: true,
+      data: {
+        isReady: readiness.isReady,
+        hasDocuments: readiness.hasDocuments,
+        documentsCount: pendingDocuments.length,
+        progress,
+        filledFields,
+        totalFields,
+        missingFields: readiness.missingFields,
+        isVerified: user.is_verified === 1 || user.is_verified === true
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -417,6 +565,58 @@ app.put('/api/users/:id/reject', async (req, res) => {
 });
 
 /**
+ * PUT /api/users/:id/block - Заблокировать пользователя
+ */
+app.put('/api/users/:id/block', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = userQueries.getById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    userQueries.update(userId, { is_blocked: 1 });
+    const updatedUser = userQueries.getById(userId);
+    const userWithoutPassword = removePasswordFromUser(updatedUser);
+    
+    res.json({ 
+      success: true, 
+      data: userWithoutPassword,
+      message: 'Пользователь заблокирован'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/users/:id/unblock - Разблокировать пользователя
+ */
+app.put('/api/users/:id/unblock', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = userQueries.getById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    userQueries.update(userId, { is_blocked: 0 });
+    const updatedUser = userQueries.getById(userId);
+    const userWithoutPassword = removePasswordFromUser(updatedUser);
+    
+    res.json({ 
+      success: true, 
+      data: userWithoutPassword,
+      message: 'Пользователь разблокирован'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * PUT /api/users/:id - Обновить данные пользователя
  */
 app.put('/api/users/:id', (req, res) => {
@@ -424,9 +624,15 @@ app.put('/api/users/:id', (req, res) => {
     const updateData = { ...req.body };
     const userId = req.params.id;
     
+    console.log(`📥 PUT /api/users/${userId} - Получен запрос на обновление:`, {
+      userId,
+      updateData: { ...updateData, password: updateData.password ? '***скрыт***' : undefined }
+    });
+    
     // Получаем текущего пользователя
     const currentUser = userQueries.getById(userId);
     if (!currentUser) {
+      console.error(`❌ Пользователь с ID ${userId} не найден`);
       return res.status(404).json({ success: false, error: 'Пользователь не найден' });
     }
     
@@ -467,12 +673,25 @@ app.put('/api/users/:id', (req, res) => {
         });
       }
       
-      // Если email уже подтвержден и просто обновляется, устанавливаем is_verified = 1
-      updateData.is_verified = 1;
+      // Если email уже подтвержден и просто обновляется, не меняем статус верификации документов.
+      // is_verified используется только для статуса KYC (одобрение документов администратором).
     }
     
-    // Если пароль передан, хешируем его перед сохранением
+    // Если пароль передан, валидируем и хешируем его перед сохранением
     if (updateData.password && updateData.password.trim() !== '') {
+      // Валидация пароля
+      const passwordValidation = validatePassword(updateData.password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          error: passwordValidation.message,
+          passwordValidation: {
+            missing: passwordValidation.missing,
+            present: passwordValidation.present
+          }
+        });
+      }
+      
       // Хешируем пароль тем же способом, что и при регистрации
       updateData.password = crypto
         .createHash('sha256')
@@ -489,10 +708,20 @@ app.put('/api/users/:id', (req, res) => {
       updateData.email = updateData.email.toLowerCase();
     }
     
+    console.log(`💾 Обновление пользователя ${userId} с данными:`, {
+      fields: Object.keys(updateData),
+      updateData: { ...updateData, password: updateData.password ? '***скрыт***' : undefined }
+    });
+    
     const result = userQueries.update(userId, updateData);
+    
     if (result.changes === 0) {
-      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+      console.warn(`⚠️ Пользователь ${userId} не обновлен (changes = 0)`);
+      return res.status(404).json({ success: false, error: 'Пользователь не найден или данные не изменились' });
     }
+    
+    console.log(`✅ Пользователь ${userId} успешно обновлен (changes: ${result.changes})`);
+    
     const updatedUser = userQueries.getById(userId);
     
     // Не возвращаем пароль в ответе (даже захешированный)
@@ -500,13 +729,22 @@ app.put('/api/users/:id', (req, res) => {
     
     res.json({ success: true, data: userWithoutPassword });
   } catch (error) {
-    if (error.message.includes('UNIQUE constraint')) {
+    console.error(`❌ Ошибка при обновлении пользователя ${req.params.id}:`, error);
+    console.error('   Тип ошибки:', error.name);
+    console.error('   Сообщение:', error.message);
+    console.error('   Stack:', error.stack);
+    
+    if (error.message && error.message.includes('UNIQUE constraint')) {
       return res.status(409).json({ 
         success: false, 
         error: 'Пользователь с таким email или номером телефона уже существует' 
       });
     }
-    res.status(500).json({ success: false, error: error.message });
+    
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Внутренняя ошибка сервера при обновлении пользователя' 
+    });
   }
 });
 
@@ -569,6 +807,150 @@ app.post('/api/users/:id/upload-passport', upload.single('passport_photo'), (req
   }
 });
 
+// ========== РОУТЫ ДЛЯ РАСПОЗНАВАНИЯ ПАСПОРТА ==========
+
+const AI_API_URL = "https://api.intelligence.io.solutions/api/v1/chat/completions";
+const AI_MODEL = "deepseek-ai/DeepSeek-V3.2";
+const AI_API_KEY = "io-v2-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6ImE5YzAwNjc4LTFjNzEtNDY5Ny1hY2NiLTliYTU0NTdhMWU4NSIsImV4cCI6NDkyMTI0NDg2NX0.E92VNc-ri_VH1bRLZfJ4seHnvr_hdL0vzgBbRC97WYDaENrvqU-jV1gYxqG128Tvyf8yfEczZ9hfpdKeZ2E0UA";
+
+/**
+ * POST /api/passport/extract - Извлечь данные из распознанного текста паспорта с помощью AI
+ * Принимает распознанный текст (OCR сделан на клиенте) и извлекает структурированные данные
+ */
+app.post('/api/passport/extract', async (req, res) => {
+  try {
+    const { recognizedText } = req.body;
+
+    if (!recognizedText || !recognizedText.trim()) {
+      return res.status(400).json({ success: false, error: 'Распознанный текст не предоставлен' });
+    }
+
+    console.log('🤖 Извлечение данных из текста паспорта...');
+
+    const systemPrompt = `Ты специалист по извлечению данных из документов. Твоя задача - проанализировать распознанный текст с фото паспорта и извлечь структурированные данные.
+
+**ТВОЯ РОЛЬ:**
+- Анализируй предоставленный текст, распознанный с фото паспорта
+- Извлекай максимально много информации для заполнения полей формы пользователя
+- Будь точным и аккуратным при извлечении данных
+
+**ПОЛЯ ДЛЯ ИЗВЛЕЧЕНИЯ:**
+1. firstName (Имя) - имя владельца паспорта
+2. lastName (Фамилия) - фамилия владельца паспорта
+3. middleName (Отчество) - отчество, если есть
+4. passportSeries (Серия паспорта) - первые 2 цифры серии паспорта
+5. passportNumber (Номер паспорта) - номер паспорта (обычно 7 цифр)
+6. identificationNumber (Идентификационный номер) - персональный идентификационный номер
+7. address (Адрес) - адрес регистрации/проживания
+8. email (Email) - если есть в документе
+
+**ВАЖНО:**
+- Извлекай только данные, которые точно присутствуют в тексте
+- Если поле не найдено, оставляй его пустым (null)
+- Для passportSeries извлекай только первые 2 цифры
+- Для passportNumber извлекай только цифры (без серии)
+- Нормализуй имена и фамилии (первая буква заглавная, остальные строчные)
+- Если текст не содержит данных паспорта, верни объект с null значениями
+
+**ФОРМАТ ОТВЕТА:**
+Отвечай ТОЛЬКО в формате JSON (без дополнительного текста):
+{
+  "firstName": "Имя или null",
+  "lastName": "Фамилия или null",
+  "middleName": "Отчество или null",
+  "passportSeries": "XX или null",
+  "passportNumber": "XXXXXXX или null",
+  "identificationNumber": "XXXXXXXXXXXXX или null",
+  "address": "Адрес или null",
+  "email": "email@example.com или null"
+}`;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { 
+        role: "user", 
+        content: `Распознанный текст с фото паспорта:\n\n${recognizedText}\n\nИзвлеки данные в формате JSON.`
+      }
+    ];
+
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${AI_API_KEY}`
+    };
+
+    const payload = {
+      "model": AI_MODEL,
+      "messages": messages,
+      "temperature": 0.1 // Низкая температура для более точного извлечения
+    };
+
+    const aiResponse = await fetch(AI_API_URL, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error(`AI API Error ${aiResponse.status}: ${errorText}`);
+      throw new Error(`AI API Error: ${aiResponse.status}`);
+    }
+
+    const aiData = await aiResponse.json();
+
+    if (aiData.choices && aiData.choices.length > 0) {
+      let messageContent = aiData.choices[0].message?.content || "";
+
+      // Удаляем возможные служебные метки
+      while (messageContent.includes("</think>")) {
+        messageContent = messageContent.split("</think>").pop().trim();
+      }
+      messageContent = messageContent.replace(/<\/?redacted_reasoning>/g, "").trim();
+      messageContent = messageContent.replace(/<\/?think>/g, "").trim();
+
+      // Пытаемся распарсить JSON из ответа
+      try {
+        let jsonText = messageContent;
+        jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+        
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          
+          // Валидация и нормализация данных
+          const extractedData = {
+            firstName: parsed.firstName && parsed.firstName !== 'null' ? parsed.firstName.trim() : null,
+            lastName: parsed.lastName && parsed.lastName !== 'null' ? parsed.lastName.trim() : null,
+            middleName: parsed.middleName && parsed.middleName !== 'null' ? parsed.middleName.trim() : null,
+            passportSeries: parsed.passportSeries && parsed.passportSeries !== 'null' ? parsed.passportSeries.trim() : null,
+            passportNumber: parsed.passportNumber && parsed.passportNumber !== 'null' ? parsed.passportNumber.trim() : null,
+            identificationNumber: parsed.identificationNumber && parsed.identificationNumber !== 'null' ? parsed.identificationNumber.trim() : null,
+            address: parsed.address && parsed.address !== 'null' ? parsed.address.trim() : null,
+            email: parsed.email && parsed.email !== 'null' ? parsed.email.trim() : null
+          };
+
+          console.log('✅ Данные успешно извлечены:', extractedData);
+          
+          res.json({
+            success: true,
+            data: extractedData
+          });
+        } else {
+          throw new Error("AI не вернул валидный JSON");
+        }
+      } catch (parseError) {
+        console.error("Ошибка парсинга JSON от AI:", parseError);
+        throw new Error("Не удалось распарсить ответ от AI");
+      }
+    } else {
+      throw new Error("Неожиданный формат ответа от AI");
+    }
+  } catch (error) {
+    console.error('❌ Ошибка при извлечении данных из паспорта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== РОУТЫ ДЛЯ ДОКУМЕНТОВ ==========
 
 /**
@@ -610,19 +992,204 @@ app.get('/api/documents/user/:userId', (req, res) => {
 });
 
 /**
+ * Проверяет готовность пользователя к модерации
+ * Пользователь готов, если:
+ * 1. Загружены документы на верификацию
+ * 2. Заполнены все обязательные поля: имя, фамилия, email/телефон, страна, адрес, паспортные данные
+ */
+function checkUserReadinessForModeration(user) {
+  // Проверяем наличие документов
+  const hasDocuments = user.documents && user.documents.length > 0;
+  
+  // Проверяем обязательные поля (базовые для всех)
+  const hasFirstName = user.first_name && user.first_name.trim() !== '';
+  const hasLastName = user.last_name && user.last_name.trim() !== '';
+  const hasEmailOrPhone = (user.email && user.email.trim() !== '') || 
+                         (user.phone_number && user.phone_number.trim() !== '');
+  
+  // Базовые поля обязательны для всех ролей
+  const basicFieldsFilled = hasFirstName && hasLastName && hasEmailOrPhone;
+  
+  // Определяем роль пользователя (по умолчанию 'buyer')
+  const userRole = user.role || 'buyer';
+  
+  // Для покупателей (buyer) требуются дополнительные поля: паспортные данные, адрес, страна
+  // Для продавцов (seller) достаточно базовых полей + документы
+  let allFieldsFilled = basicFieldsFilled;
+  let missingFields = {
+    firstName: !hasFirstName,
+    lastName: !hasLastName,
+    emailOrPhone: !hasEmailOrPhone,
+    country: false,
+    address: false,
+    passportSeries: false,
+    passportNumber: false,
+    identificationNumber: false
+  };
+  
+  if (userRole === 'buyer') {
+    // Для покупателей требуем все поля
+    const hasCountry = user.country && user.country.trim() !== '';
+    const hasAddress = user.address && user.address.trim() !== '';
+    const hasPassportSeries = user.passport_series && user.passport_series.trim() !== '';
+    const hasPassportNumber = user.passport_number && user.passport_number.trim() !== '';
+    const hasIdentificationNumber = user.identification_number && user.identification_number.trim() !== '';
+    
+    allFieldsFilled = basicFieldsFilled && hasCountry && hasAddress && 
+                     hasPassportSeries && hasPassportNumber && hasIdentificationNumber;
+    
+    missingFields.country = !hasCountry;
+    missingFields.address = !hasAddress;
+    missingFields.passportSeries = !hasPassportSeries;
+    missingFields.passportNumber = !hasPassportNumber;
+    missingFields.identificationNumber = !hasIdentificationNumber;
+  } else if (userRole === 'seller') {
+    // Для продавцов достаточно базовых полей + документы
+    // Дополнительные поля (паспорт, адрес) желательны, но не обязательны для отправки на модерацию
+    allFieldsFilled = basicFieldsFilled;
+  }
+  
+  const isReady = hasDocuments && allFieldsFilled;
+  
+  // Логирование для отладки
+  if (!isReady) {
+    console.log(`⚠️ Пользователь ${user.id} (${userRole}) не готов к модерации:`, {
+      hasDocuments,
+      allFieldsFilled,
+      missingFields
+    });
+  }
+  
+  // Возвращаем детальную информацию о готовности
+  return {
+    isReady,
+    hasDocuments,
+    missingFields,
+    allFieldsFilled,
+    role: userRole
+  };
+}
+
+/**
  * GET /api/documents/pending - Получить документы на верификацию
  * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/documents/:id, иначе "pending" будет интерпретирован как ID
+ * Возвращает только пользователей, которые полностью заполнили все поля
  */
 app.get('/api/documents/pending', (req, res) => {
   try {
     console.log('📥 Запрос на получение документов на верификацию');
     
-    // Используем упрощенную функцию из documentQueries
+    // Получаем все документы на верификацию
     const documents = documentQueries.getPendingVerification();
     
-    console.log('✅ Отправляем документы на верификацию:', documents.length);
+    console.log('📄 Найдено документов:', documents.length);
     
-    res.json({ success: true, data: documents });
+    // Группируем документы по пользователям и проверяем готовность
+    const readyUsers = [];
+    const userMap = {};
+    
+    documents.forEach(doc => {
+      const userId = doc.user_id;
+      
+      if (!userMap[userId]) {
+        // Создаем объект пользователя с данными из документа
+        userMap[userId] = {
+          id: userId,
+          user_id: userId,
+          first_name: doc.first_name,
+          last_name: doc.last_name,
+          email: doc.email,
+          phone_number: doc.phone_number,
+          role: doc.role,
+          country: null, // Нужно будет загрузить отдельно
+          address: null,
+          passport_series: null,
+          passport_number: null,
+          identification_number: null,
+          documents: []
+        };
+      }
+      
+      userMap[userId].documents.push({
+        id: doc.id,
+        document_type: doc.document_type,
+        document_photo: doc.document_photo,
+        verification_status: doc.verification_status,
+        created_at: doc.created_at
+      });
+    });
+    
+    // Загружаем полные данные пользователей из БД для проверки готовности
+    const usersArray = Object.values(userMap);
+    const readyDocuments = [];
+    
+    usersArray.forEach(user => {
+      try {
+        // Загружаем полные данные пользователя
+        const fullUser = userQueries.getById(user.id);
+        
+        if (fullUser) {
+          // Обновляем данные пользователя
+          user.country = fullUser.country;
+          user.address = fullUser.address;
+          user.passport_series = fullUser.passport_series;
+          user.passport_number = fullUser.passport_number;
+          user.identification_number = fullUser.identification_number;
+          
+          // Убеждаемся, что роль правильно установлена из полных данных пользователя
+          if (fullUser.role) {
+            user.role = fullUser.role;
+          }
+          
+          console.log(`🔍 Проверка готовности пользователя ${user.id} (роль: ${user.role}):`, {
+            firstName: user.first_name,
+            lastName: user.last_name,
+            email: user.email,
+            phone: user.phone_number,
+            hasDocuments: user.documents.length,
+            role: user.role
+          });
+          
+          // Проверяем готовность
+          const readiness = checkUserReadinessForModeration(user);
+          
+          // ИЗМЕНЕНИЕ:
+          //  - Документы должны попадать в модерацию, как только они отправлены,
+          //    даже если профиль заполнен не полностью.
+          //  - Поле is_verified используется только после одобрения документов админом.
+          // Поэтому здесь проверяем прежде всего наличие документов.
+          if (readiness.hasDocuments) {
+            // Пользователь имеет документы - добавляем их на модерацию
+            user.documents.forEach(doc => {
+              readyDocuments.push({
+                ...doc,
+                user_id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                phone_number: user.phone_number,
+                role: user.role || fullUser.role || 'buyer', // Используем роль из полных данных
+                user_db_id: user.id
+              });
+            });
+            
+            if (readiness.isReady) {
+              console.log(`✅ Пользователь ${user.id} (${user.role || 'buyer'}) готов к модерации (профиль заполнен)`);
+            } else {
+              console.log(`⚠️ Пользователь ${user.id} (${user.role || 'buyer'}) добавлен на модерацию, но профиль заполнен не полностью. Пропущенные поля:`, readiness.missingFields);
+            }
+          } else {
+            console.log(`⚠️ Пользователь ${user.id} (${user.role || 'buyer'}) не добавлен на модерацию — нет документов`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Ошибка при проверке пользователя ${user.id}:`, error.message);
+      }
+    });
+    
+    console.log('✅ Отправляем готовых к модерации:', readyDocuments.length);
+    
+    res.json({ success: true, data: readyDocuments });
   } catch (error) {
     console.error('❌ Ошибка при получении документов на верификацию:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -860,6 +1427,15 @@ app.post('/api/auth/whatsapp', async (req, res) => {
     let user = userQueries.getByPhone(phone);
     
     if (user) {
+      // Проверяем, заблокирован ли пользователь
+      if (user.is_blocked === 1) {
+        return res.status(403).json({ 
+          success: false, 
+          error: 'Пользователь заблокирован',
+          is_blocked: true
+        });
+      }
+      
       // Пользователь существует - авторизуем и обновляем статус онлайн
       userQueries.update(user.id, { is_online: 1 });
       const updatedUser = userQueries.getById(user.id);
@@ -874,7 +1450,8 @@ app.post('/api/auth/whatsapp', async (req, res) => {
           role: updatedUser.role,
           country: updatedUser.country,
           countryFlag: req.body.countryFlag || '',
-          is_online: 1
+          is_online: 1,
+          is_blocked: updatedUser.is_blocked === 1
         }
       });
     }
@@ -1039,6 +1616,19 @@ app.post('/api/auth/email/register', async (req, res) => {
       });
     }
     
+    // Валидация пароля
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: passwordValidation.message,
+        passwordValidation: {
+          missing: passwordValidation.missing,
+          present: passwordValidation.present
+        }
+      });
+    }
+    
     const emailLower = email.toLowerCase();
     
     // Проверяем, существует ли пользователь с таким email
@@ -1069,7 +1659,9 @@ app.post('/api/auth/email/register', async (req, res) => {
       password: hashedPassword, // Сохраняем хешированный пароль
       phone_number: null, // Телефон не требуется для email регистрации
       role: req.body.role || 'buyer', // Используем переданную роль или 'buyer' по умолчанию
-      is_verified: 1, // Email верифицирован кодом
+      // ВАЖНО: is_verified отвечает за верификацию документов администратором,
+      // а не за подтверждение email. Новый пользователь всегда стартует как не верифицированный.
+      is_verified: 0,
       is_online: 1
     };
     
@@ -1166,6 +1758,16 @@ app.post('/api/auth/email/login', async (req, res) => {
       });
     }
     
+    // Проверяем, заблокирован ли пользователь
+    if (user.is_blocked === 1) {
+      console.log('🚫 Пользователь заблокирован:', { id: user.id, email: user.email });
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Пользователь заблокирован',
+        is_blocked: true
+      });
+    }
+    
     // Пароль верный, обновляем статус онлайн
     userQueries.update(user.id, { is_online: 1 });
     
@@ -1182,7 +1784,8 @@ app.post('/api/auth/email/login', async (req, res) => {
         email: user.email,
         role: user.role,
         phone: user.phone_number,
-        is_verified: user.is_verified
+        is_verified: user.is_verified,
+        is_blocked: user.is_blocked === 1
       }
     });
   } catch (error) {
@@ -1254,10 +1857,9 @@ app.post('/api/users/:id/verify-email', async (req, res) => {
       });
     }
     
-    // Обновляем email и устанавливаем is_verified = 1
+    // Обновляем email. Статус is_verified (верификация документов) не трогаем.
     const result = userQueries.update(id, { 
-      email: email.toLowerCase(),
-      is_verified: 1 
+      email: email.toLowerCase()
     });
     
     if (result.changes === 0) {
@@ -1324,6 +1926,15 @@ app.post('/api/auth/google', async (req, res) => {
     let user = userQueries.getByEmail(emailLower);
     
     if (user) {
+      // Проверяем, заблокирован ли пользователь
+      if (user.is_blocked === 1) {
+        return res.status(403).json({ 
+          success: false, 
+          error: 'Пользователь заблокирован',
+          is_blocked: true
+        });
+      }
+      
       // Пользователь существует - обновляем и авторизуем
       userQueries.update(user.id, { 
         is_online: 1,
@@ -1338,7 +1949,8 @@ app.post('/api/auth/google', async (req, res) => {
           name: `${updatedUser.first_name} ${updatedUser.last_name}`.trim() || googleName,
           email: updatedUser.email,
           picture: googlePicture,
-          role: updatedUser.role
+          role: updatedUser.role,
+          is_blocked: updatedUser.is_blocked === 1
         }
       });
     } else {
@@ -1354,7 +1966,9 @@ app.post('/api/auth/google', async (req, res) => {
         phone_number: null,
         user_photo: googlePicture,
         role: 'buyer',
-        is_verified: 1, // Google email уже верифицирован
+        // Статус верификации документов всегда начинается с 0.
+        // Одобрение документов админом устанавливает is_verified = 1.
+        is_verified: 0,
         is_online: 1
       };
       
@@ -1559,12 +2173,14 @@ app.post('/api/admin/auth/login', (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Необходимо указать username и пароль' 
+        error: 'Необходимо указать username/email и пароль' 
       });
     }
 
+    const identifier = username.toLowerCase().trim();
+
     // Проверяем супер-админа (admin, admin)
-    if (username === 'admin' && password === 'admin') {
+    if (identifier === 'admin' && password === 'admin') {
       // Создаем или получаем супер-админа
       let superAdmin = administratorQueries.getByUsername('admin');
       if (!superAdmin) {
@@ -1590,14 +2206,22 @@ app.post('/api/admin/auth/login', (req, res) => {
       });
     }
 
-    // Проверяем обычного администратора
-    const admin = administratorQueries.getByUsername(username);
+    // Проверяем администратора сначала по username, затем по email
+    let admin = administratorQueries.getByUsername(identifier);
     if (!admin) {
+      // Если не найден по username, пробуем найти по email
+      admin = administratorQueries.getByEmail(identifier);
+    }
+    
+    if (!admin) {
+      console.log('❌ Администратор не найден:', { identifier, searchedBy: 'username and email' });
       return res.status(401).json({ 
         success: false, 
-        error: 'Неверный username или пароль' 
+        error: 'Неверный username/email или пароль' 
       });
     }
+    
+    console.log('✅ Администратор найден:', { id: admin.id, username: admin.username, email: admin.email });
 
     // Проверяем пароль
     const hashedPassword = crypto
@@ -1608,7 +2232,7 @@ app.post('/api/admin/auth/login', (req, res) => {
     if (admin.password !== hashedPassword) {
       return res.status(401).json({ 
         success: false, 
-        error: 'Неверный username или пароль' 
+        error: 'Неверный username/email или пароль' 
       });
     }
 
@@ -1681,16 +2305,32 @@ app.post('/api/admin/administrators', (req, res) => {
       });
     }
 
+    // Валидация пароля
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: passwordValidation.message,
+        passwordValidation: {
+          missing: passwordValidation.missing,
+          present: passwordValidation.present
+        }
+      });
+    }
+
     // Хешируем пароль
     const hashedPassword = crypto
       .createHash('sha256')
       .update(password)
       .digest('hex');
 
+    // Нормализуем email (lowercase и trim) если он указан
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
     const result = administratorQueries.create({
       username,
       password: hashedPassword,
-      email: email || null,
+      email: normalizedEmail,
       full_name: full_name || null,
       is_super_admin: 0,
       can_access_statistics: permissions.can_access_statistics ? 1 : 0,
@@ -1736,8 +2376,11 @@ app.put('/api/admin/administrators/:id', (req, res) => {
       });
     }
 
+    // Нормализуем email (lowercase и trim) если он указан
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
     administratorQueries.update(id, {
-      email: email || null,
+      email: normalizedEmail,
       full_name: full_name || null,
       can_access_statistics: permissions.can_access_statistics ? 1 : 0,
       can_access_users: permissions.can_access_users ? 1 : 0,
@@ -1792,10 +2435,39 @@ app.delete('/api/admin/administrators/:id', (req, res) => {
   }
 });
 
-// Обработка ошибок
+// Обработка ошибок БД
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);
-  res.status(500).json({ success: false, error: 'Внутренняя ошибка сервера' });
+  
+  // Специальная обработка ошибок базы данных
+  if (err.message?.includes('locked') || 
+      err.message?.includes('SQLITE_BUSY') || 
+      err.message?.includes('SQLITE_LOCKED') ||
+      err.code?.includes('SQLITE_BUSY') ||
+      err.code?.includes('SQLITE_LOCKED')) {
+    console.error('⚠️ Ошибка блокировки БД:', err.message);
+    return res.status(503).json({ 
+      success: false, 
+      error: 'База данных временно недоступна. Попробуйте позже.',
+      retryable: true
+    });
+  }
+  
+  // Ошибки целостности данных
+  if (err.message?.includes('UNIQUE constraint') || 
+      err.message?.includes('FOREIGN KEY constraint')) {
+    return res.status(409).json({ 
+      success: false, 
+      error: err.message || 'Нарушение целостности данных'
+    });
+  }
+  
+  // Общие ошибки
+  res.status(500).json({ 
+    success: false, 
+    error: 'Внутренняя ошибка сервера',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 // Запуск сервера

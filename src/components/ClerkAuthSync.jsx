@@ -1,15 +1,18 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useUser, useAuth } from '@clerk/clerk-react'
 import { saveUserData } from '../services/authService'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
 /**
- * Компонент для синхронизации данных пользователя Clerk с localStorage
+ * Компонент для синхронизации данных пользователя Clerk с localStorage и БД
  * Это обеспечивает совместимость со старой системой авторизации
  * Работает аналогично WhatsApp авторизации - сохраняет данные сразу после успешного входа
  */
 const ClerkAuthSync = () => {
   const { user, isLoaded: userLoaded } = useUser()
   const { isSignedIn, isLoaded: authLoaded } = useAuth()
+  const hasSyncedRef = useRef(false)
 
   useEffect(() => {
     // Ждем полной загрузки данных
@@ -17,10 +20,10 @@ const ClerkAuthSync = () => {
       return
     }
 
-    console.log('ClerkAuthSync: Checking sync', { isSignedIn, hasUser: !!user })
+    console.log('ClerkAuthSync: Checking sync', { isSignedIn, hasUser: !!user, hasSynced: hasSyncedRef.current })
 
     // Если пользователь авторизован и данные загружены
-    if (isSignedIn && user) {
+    if (isSignedIn && user && !hasSyncedRef.current) {
       // Формируем имя пользователя
       let userName = 'Пользователь'
       if (user.fullName) {
@@ -55,6 +58,12 @@ const ClerkAuthSync = () => {
         userPhone = user.phoneNumbers[0].phoneNumber || ''
       }
       
+      // Получаем роль из sessionStorage (сохранена при регистрации через Clerk)
+      // Или из publicMetadata Clerk, или по умолчанию 'buyer'
+      const savedRole = sessionStorage.getItem('clerk_oauth_user_role')
+      const userRoleFromMetadata = user.publicMetadata?.role
+      const userRole = savedRole || userRoleFromMetadata || 'buyer'
+      
       // Синхронизируем данные Clerk с localStorage (как в WhatsApp)
       const clerkUserData = {
         name: userName,
@@ -63,16 +72,116 @@ const ClerkAuthSync = () => {
         id: user.id || '',
         phone: userPhone,
         phoneFormatted: userPhone,
-        role: 'client'
+        role: userRole === 'seller' ? 'seller' : 'buyer' // Используем правильную роль
       }
       
       console.log('ClerkAuthSync: User authenticated, syncing data to localStorage', clerkUserData)
       
       // Сохраняем данные в localStorage для совместимости (аналогично WhatsApp)
       saveUserData(clerkUserData, 'clerk')
+      
+      // Создаем или обновляем пользователя в БД
+      const syncToDatabase = async () => {
+        try {
+          let dbUserId = null
+          
+          // Сначала пытаемся найти пользователя по email
+          if (userEmail) {
+            const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json()
+              if (emailData.success && emailData.data) {
+                dbUserId = emailData.data.id
+                console.log('✅ ClerkAuthSync: Пользователь найден в БД по email:', dbUserId)
+              }
+            }
+          }
+          
+          // Если не нашли по email, пытаемся по телефону
+          if (!dbUserId && userPhone) {
+            const phoneDigits = userPhone.replace(/\D/g, '')
+            if (phoneDigits) {
+              const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+              if (phoneResponse.ok) {
+                const phoneData = await phoneResponse.json()
+                if (phoneData.success && phoneData.data) {
+                  dbUserId = phoneData.data.id
+                  console.log('✅ ClerkAuthSync: Пользователь найден в БД по телефону:', dbUserId)
+                }
+              }
+            }
+          }
+          
+          // Если пользователь не найден, создаем его
+          if (!dbUserId) {
+            const nameParts = userName.split(' ')
+            const firstName = nameParts[0] || 'Пользователь'
+            const lastName = nameParts.slice(1).join(' ') || ''
+            
+            // Получаем роль из sessionStorage (сохранена при регистрации через Clerk)
+            // Или из publicMetadata Clerk, или по умолчанию 'buyer'
+            const savedRole = sessionStorage.getItem('clerk_oauth_user_role')
+            const userRoleFromMetadata = user.publicMetadata?.role
+            const userRole = savedRole || userRoleFromMetadata || 'buyer'
+            
+            // Очищаем сохраненную роль после использования
+            if (savedRole) {
+              sessionStorage.removeItem('clerk_oauth_user_role')
+            }
+            
+            console.log('ClerkAuthSync: Создание пользователя с ролью:', userRole)
+            
+            const createResponse = await fetch(`${API_BASE_URL}/users`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName,
+                email: userEmail || null,
+                phone_number: userPhone ? userPhone.replace(/\D/g, '') : null,
+                role: userRole === 'seller' ? 'seller' : 'buyer', // Убеждаемся, что роль правильная
+                is_verified: 0,
+                is_online: 1
+              })
+            })
+            
+            if (createResponse.ok) {
+              const createData = await createResponse.json()
+              if (createData.success && createData.data) {
+                dbUserId = createData.data.id
+                console.log('✅ ClerkAuthSync: Пользователь создан в БД:', dbUserId)
+              }
+            } else {
+              const errorData = await createResponse.json().catch(() => ({}))
+              console.error('❌ ClerkAuthSync: Ошибка создания пользователя:', errorData)
+            }
+          }
+          
+          // Используем ID из БД для обновления localStorage
+          if (dbUserId) {
+            // Обновляем localStorage с правильным ID из БД
+            const updatedUserData = {
+              ...clerkUserData,
+              id: dbUserId.toString()
+            }
+            saveUserData(updatedUserData, 'clerk')
+            localStorage.setItem('userId', String(dbUserId))
+            console.log('✅ ClerkAuthSync: Данные синхронизированы с БД, ID:', dbUserId)
+          }
+        } catch (error) {
+          console.error('❌ ClerkAuthSync: Ошибка синхронизации с БД:', error)
+          // Продолжаем работу, даже если БД недоступна
+        }
+      }
+      
+      syncToDatabase()
+      hasSyncedRef.current = true
     } else if (!isSignedIn) {
       // Если пользователь не авторизован, очищаем данные Clerk из localStorage
       console.log('ClerkAuthSync: User not signed in, clearing Clerk data')
+      hasSyncedRef.current = false
     }
   }, [user, userLoaded, isSignedIn, authLoaded])
 

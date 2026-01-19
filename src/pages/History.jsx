@@ -1,7 +1,83 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { getUserData } from '../services/authService'
+import VerificationToast from '../components/VerificationToast'
 import './History.css'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+
 const History = () => {
+  const [userId, setUserId] = useState(null)
+  const [verificationStatus, setVerificationStatus] = useState(null)
+
+  useEffect(() => {
+    const userData = getUserData()
+    if (userData?.id) {
+      setUserId(userData.id)
+    } else {
+      // Пытаемся получить из localStorage
+      const storedUserId = localStorage.getItem('userId')
+      if (storedUserId) {
+        setUserId(storedUserId)
+      }
+    }
+  }, [])
+
+  // Загружаем статус верификации
+  useEffect(() => {
+    if (userId) {
+      loadVerificationStatus()
+    }
+  }, [userId])
+
+  const loadVerificationStatus = async () => {
+    if (!userId) return
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/verification-status`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setVerificationStatus(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статуса верификации:', error)
+    }
+  }
+
+  // Функции для проверки заполненности
+  const isDocumentsComplete = () => {
+    return verificationStatus?.hasDocuments || false
+  }
+
+  const isBasicInfoComplete = () => {
+    if (!verificationStatus?.missingFields) return false
+    const { missingFields } = verificationStatus
+    return !missingFields.firstName && 
+           !missingFields.lastName && 
+           !missingFields.emailOrPhone && 
+           !missingFields.country && 
+           !missingFields.address
+  }
+
+  const isPassportDataComplete = () => {
+    if (!verificationStatus?.missingFields) return false
+    const { missingFields } = verificationStatus
+    return !missingFields.passportSeries && 
+           !missingFields.passportNumber && 
+           !missingFields.identificationNumber
+  }
+
+  const shouldShowProfileIndicator = () => {
+    if (!verificationStatus) return false
+    return !isDocumentsComplete()
+  }
+
+  const shouldShowDataIndicator = () => {
+    if (!verificationStatus) return false
+    return !isBasicInfoComplete() || !isPassportDataComplete()
+  }
+
   // Примерные данные истории
   const purchaseHistory = [
     {
@@ -118,6 +194,9 @@ const History = () => {
 
   return (
     <div className="history-page">
+      {/* Всплывающее уведомление о прогрессе верификации */}
+      {userId && <VerificationToast userId={userId} />}
+      
       <div className="history-container">
         <aside className="history-sidebar">
           <div className="sidebar-header">
@@ -143,6 +222,9 @@ const History = () => {
                 <path d="M10 12C5.58172 12 2 13.7909 2 16V20H18V16C18 13.7909 14.4183 12 10 12Z" fill="currentColor"/>
               </svg>
               <span>Профиль</span>
+              {shouldShowProfileIndicator() && (
+                <span className="nav-item-indicator"></span>
+              )}
             </Link>
             <Link to="/data" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -150,6 +232,9 @@ const History = () => {
                 <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <span>Данные</span>
+              {shouldShowDataIndicator() && (
+                <span className="nav-item-indicator"></span>
+              )}
             </Link>
             <Link to="/subscriptions" className="nav-item">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
