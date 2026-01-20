@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaChartBar, FaUsers, FaShieldAlt, FaComment, FaBuilding, FaSignOutAlt, FaKey } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaShieldAlt, FaComment, FaBuilding, FaSignOutAlt, FaKey, FaWhatsapp } from 'react-icons/fa';
 import './Sidebar.css';
 
 const Sidebar = ({ activeSection, onSectionChange, onLogout, adminPermissions }) => {
@@ -13,6 +13,7 @@ const Sidebar = ({ activeSection, onSectionChange, onLogout, adminPermissions })
     { id: 'moderation', icon: FaShieldAlt, label: 'Модерация', permission: 'can_access_moderation' },
     { id: 'chat', icon: FaComment, label: 'Чат', permission: 'can_access_chat' },
     { id: 'objects', icon: FaBuilding, label: 'Объекты', permission: 'can_access_objects' },
+    { id: 'whatsapp', icon: FaWhatsapp, label: 'WhatsApp', permission: 'can_access_whatsapp' },
     { id: 'access_management', icon: FaKey, label: 'Доступы', permission: 'can_access_access_management' }
   ];
 

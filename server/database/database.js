@@ -328,6 +328,19 @@ export function initDatabase() {
       } catch (adminError) {
         console.warn('⚠️ Не удалось создать таблицу администраторов:', adminError.message);
       }
+
+      // Создаем таблицу WhatsApp пользователей, если её нет
+      try {
+        const whatsappUsersTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='whatsapp_users'").get();
+        if (!whatsappUsersTable) {
+          console.log('🔄 Создание таблицы WhatsApp пользователей...');
+          const whatsappSql = readFileSync(join(__dirname, 'add_whatsapp_users_table.sql'), 'utf8');
+          db.exec(whatsappSql);
+          console.log('✅ Таблица WhatsApp пользователей создана');
+        }
+      } catch (whatsappError) {
+        console.warn('⚠️ Не удалось создать таблицу WhatsApp пользователей:', whatsappError.message);
+      }
     } catch (migrationError) {
       console.warn('⚠️ Не удалось обновить схему документов:', migrationError.message);
     }
@@ -1239,6 +1252,148 @@ export const administratorQueries = {
     const db = getDatabase();
     const stmt = db.prepare('DELETE FROM administrators WHERE id = ?');
     return stmt.run(id);
+  }
+};
+
+// ========== ФУНКЦИИ ДЛЯ РАБОТЫ С WHATSAPP ПОЛЬЗОВАТЕЛЯМИ ==========
+
+export const whatsappUserQueries = {
+  /**
+   * Создать или обновить WhatsApp пользователя
+   */
+  createOrUpdate: (userData) => {
+    const db = getDatabase();
+    
+    // Проверяем, существует ли пользователь
+    const existing = db.prepare('SELECT * FROM whatsapp_users WHERE phone_number = ?').get(userData.phone_number);
+    
+    if (existing) {
+      // Обновляем существующего пользователя
+      const stmt = db.prepare(`
+        UPDATE whatsapp_users SET
+          phone_number_clean = ?,
+          first_name = ?,
+          last_name = ?,
+          country = ?,
+          language = ?,
+          last_message_at = CURRENT_TIMESTAMP,
+          message_count = message_count + 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE phone_number = ?
+      `);
+      return stmt.run(
+        userData.phone_number_clean || null,
+        userData.first_name || null,
+        userData.last_name || null,
+        userData.country || null,
+        userData.language || 'ru',
+        userData.phone_number
+      );
+    } else {
+      // Создаем нового пользователя
+      const stmt = db.prepare(`
+        INSERT INTO whatsapp_users (
+          phone_number, phone_number_clean, first_name, last_name,
+          country, language, last_message_at, message_count, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1, 1)
+      `);
+      return stmt.run(
+        userData.phone_number,
+        userData.phone_number_clean || null,
+        userData.first_name || null,
+        userData.last_name || null,
+        userData.country || null,
+        userData.language || 'ru'
+      );
+    }
+  },
+
+  /**
+   * Получить WhatsApp пользователя по номеру телефона
+   */
+  getByPhone: (phoneNumber) => {
+    const db = getDatabase();
+    const stmt = db.prepare('SELECT * FROM whatsapp_users WHERE phone_number = ?');
+    return stmt.get(phoneNumber);
+  },
+
+  /**
+   * Получить всех WhatsApp пользователей (с пагинацией)
+   */
+  getAll: (limit = 100, offset = 0) => {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT * FROM whatsapp_users 
+      ORDER BY last_message_at DESC, created_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    return stmt.all(limit, offset);
+  },
+
+  /**
+   * Получить количество всех WhatsApp пользователей
+   */
+  getCount: () => {
+    const db = getDatabase();
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM whatsapp_users');
+    const result = stmt.get();
+    return result ? result.count : 0;
+  },
+
+  /**
+   * Получить активных WhatsApp пользователей
+   */
+  getActive: (limit = 100, offset = 0) => {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT * FROM whatsapp_users 
+      WHERE is_active = 1 
+      ORDER BY last_message_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    return stmt.all(limit, offset);
+  },
+
+  /**
+   * Поиск WhatsApp пользователей по имени, телефону или стране
+   */
+  search: (query, limit = 100, offset = 0) => {
+    const db = getDatabase();
+    const searchTerm = `%${query}%`;
+    const stmt = db.prepare(`
+      SELECT * FROM whatsapp_users 
+      WHERE 
+        phone_number LIKE ? OR 
+        phone_number_clean LIKE ? OR 
+        first_name LIKE ? OR 
+        last_name LIKE ? OR 
+        country LIKE ?
+      ORDER BY last_message_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    return stmt.all(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, limit, offset);
+  },
+
+  /**
+   * Обновить статус активности пользователя
+   */
+  updateActiveStatus: (phoneNumber, isActive) => {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      UPDATE whatsapp_users 
+      SET is_active = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE phone_number = ?
+    `);
+    return stmt.run(isActive ? 1 : 0, phoneNumber);
+  },
+
+  /**
+   * Удалить WhatsApp пользователя
+   */
+  delete: (phoneNumber) => {
+    const db = getDatabase();
+    const stmt = db.prepare('DELETE FROM whatsapp_users WHERE phone_number = ?');
+    return stmt.run(phoneNumber);
   }
 };
 

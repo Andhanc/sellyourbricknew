@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
 import { initDatabase, closeDatabase, getDatabase } from './database/database.js';
-import { userQueries, documentQueries, notificationQueries, administratorQueries } from './database/database.js';
+import { userQueries, documentQueries, notificationQueries, administratorQueries, whatsappUserQueries } from './database/database.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import multer from 'multer';
@@ -2078,6 +2079,616 @@ app.get('/api/auth/whatsapp/user-info', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Не удалось получить информацию о пользователе WhatsApp'
+    });
+  }
+});
+
+// ========== РОУТЫ ДЛЯ WHATSAPP ПОЛЬЗОВАТЕЛЕЙ ==========
+
+/**
+ * POST /api/whatsapp/users - Создать или обновить WhatsApp пользователя
+ */
+app.post('/api/whatsapp/users', (req, res) => {
+  try {
+    const { phone_number, phone_number_clean, first_name, last_name, country, language } = req.body;
+
+    if (!phone_number) {
+      return res.status(400).json({
+        success: false,
+        error: 'Номер телефона обязателен'
+      });
+    }
+
+    const result = whatsappUserQueries.createOrUpdate({
+      phone_number,
+      phone_number_clean,
+      first_name,
+      last_name,
+      country,
+      language: language || 'ru'
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: result.lastInsertRowid || null,
+        message: 'Пользователь сохранен'
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения WhatsApp пользователя:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// URL бота для рассылки
+const BOT_URL = process.env.BOT_URL || 'http://localhost:3001';
+
+// Кэш для переводов
+const translationCache = new Map();
+
+/**
+ * Простая функция для определения языка текста
+ * @param {string} text - Текст для анализа
+ * @returns {string} - Код языка (ru, en, и т.д.)
+ */
+function detectLanguage(text) {
+  if (!text || text.trim() === '') return 'en';
+  
+  const textLower = text.toLowerCase();
+  
+  // Простая эвристика для определения языка
+  // Кириллица - русский
+  if (/[а-яё]/.test(text)) {
+    return 'ru';
+  }
+  
+  // Арабские символы
+  if (/[\u0600-\u06FF]/.test(text)) {
+    return 'ar';
+  }
+  
+  // Китайские символы
+  if (/[\u4e00-\u9fff]/.test(text)) {
+    return 'zh';
+  }
+  
+  // Японские символы
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) {
+    return 'ja';
+  }
+  
+  // Корейские символы
+  if (/[\uac00-\ud7a3]/.test(text)) {
+    return 'ko';
+  }
+  
+  // По умолчанию считаем английским
+  return 'en';
+}
+
+/**
+ * Функция для перевода текста на другой язык
+ * Использует MyMemory Translation API (бесплатный)
+ * @param {string} text - Текст для перевода
+ * @param {string} targetLang - Целевой язык (ru, en, es, de, fr, it, pt, pl, tr, uk)
+ * @param {string} sourceLang - Исходный язык (по умолчанию 'auto' для автоопределения)
+ * @returns {Promise<string>} - Переведенный текст
+ */
+async function translateText(text, targetLang, sourceLang = 'auto') {
+  // Если текст пустой, возвращаем исходный текст
+  if (!text || text.trim() === '') {
+    console.log(`  ℹ️ Пропуск перевода: текст пустой`);
+    return text;
+  }
+  
+  // Определяем исходный язык, если указан 'auto'
+  let detectedSourceLang = sourceLang;
+  if (sourceLang === 'auto') {
+    detectedSourceLang = detectLanguage(text);
+    console.log(`  🔍 Автоопределение языка: ${detectedSourceLang}`);
+  }
+  
+  // Если языки совпадают, возвращаем исходный текст
+  if (targetLang === detectedSourceLang) {
+    console.log(`  ℹ️ Пропуск перевода: языки совпадают (${targetLang})`);
+    return text;
+  }
+
+  // Проверяем кэш (используем определенный язык для ключа кэша)
+  const cacheKey = `${detectedSourceLang}-${targetLang}-${text}`;
+  if (translationCache.has(cacheKey)) {
+    console.log(`  💾 Перевод из кэша для ${targetLang}`);
+    return translationCache.get(cacheKey);
+  }
+
+  try {
+    // Маппинг языков для API (MyMemory поддерживает более 100 языков)
+    const langMap = {
+      'ru': 'ru',
+      'en': 'en',
+      'es': 'es',
+      'de': 'de',
+      'fr': 'fr',
+      'it': 'it',
+      'pt': 'pt',
+      'pl': 'pl',
+      'tr': 'tr',
+      'uk': 'uk',
+      'ar': 'ar', // Арабский
+      'zh': 'zh', // Китайский
+      'ja': 'ja', // Японский
+      'ko': 'ko', // Корейский
+      'hi': 'hi', // Хинди
+      'th': 'th', // Тайский
+      'vi': 'vi', // Вьетнамский
+      'id': 'id', // Индонезийский
+      'cs': 'cs', // Чешский
+      'nl': 'nl', // Голландский
+      'sv': 'sv', // Шведский
+      'no': 'no', // Норвежский
+      'da': 'da', // Датский
+      'fi': 'fi', // Финский
+      'el': 'el', // Греческий
+      'he': 'he', // Иврит
+      'ro': 'ro', // Румынский
+      'hu': 'hu', // Венгерский
+      'bg': 'bg', // Болгарский
+      'hr': 'hr', // Хорватский
+      'sk': 'sk', // Словацкий
+      'sl': 'sl', // Словенский
+      'sr': 'sr', // Сербский
+      'et': 'et', // Эстонский
+      'lv': 'lv', // Латышский
+      'lt': 'lt'  // Литовский
+    };
+
+    const targetLangCode = langMap[targetLang] || targetLang;
+    const sourceLangCode = langMap[detectedSourceLang] || detectedSourceLang;
+
+    console.log(`  🔄 Запрос к API перевода: ${sourceLangCode} -> ${targetLangCode}`);
+    
+    // Используем MyMemory Translation API
+    const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLangCode}|${targetLangCode}`;
+    
+    const response = await axios.get(apiUrl, {
+      timeout: 10000
+    });
+
+    console.log(`  📥 Ответ API:`, {
+      status: response.status,
+      responseStatus: response.data?.responseStatus,
+      hasData: !!response.data?.responseData,
+      translatedText: response.data?.responseData?.translatedText?.substring(0, 50)
+    });
+
+    if (response.data && response.data.responseStatus === 200 && response.data.responseData && response.data.responseData.translatedText) {
+      const translatedText = response.data.responseData.translatedText;
+      
+      // Сохраняем в кэш (ограничиваем размер кэша до 1000 записей)
+      if (translationCache.size > 1000) {
+        const firstKey = translationCache.keys().next().value;
+        translationCache.delete(firstKey);
+      }
+      translationCache.set(cacheKey, translatedText);
+      
+      console.log(`  ✅ Перевод успешен: "${text.substring(0, 30)}..." -> "${translatedText.substring(0, 30)}..."`);
+      return translatedText;
+    } else {
+      console.warn(`  ⚠️ Перевод не удался:`, {
+        responseStatus: response.data?.responseStatus,
+        responseData: response.data?.responseData,
+        fullResponse: JSON.stringify(response.data).substring(0, 200)
+      });
+      return text;
+    }
+  } catch (error) {
+    console.error(`  ❌ Ошибка перевода:`, {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data
+    });
+    // В случае ошибки возвращаем исходный текст
+    return text;
+  }
+}
+
+/**
+ * GET /api/whatsapp/status - Проверка статуса WhatsApp клиента (через бот)
+ */
+app.get('/api/whatsapp/status', async (req, res) => {
+  try {
+    // Проверяем статус через бот
+    const botResponse = await axios.get(`${BOT_URL}/api/status`, {
+      timeout: 5000
+    }).catch(() => null);
+
+    if (botResponse && botResponse.data) {
+      const botData = botResponse.data;
+      return res.json({
+        success: true,
+        ready: botData.ready,
+        state: botData.ready ? 'READY' : 'NOT_READY',
+        message: botData.message || (botData.ready ? 'WhatsApp клиент готов к работе' : 'WhatsApp клиент не готов')
+      });
+    } else {
+      return res.json({
+        success: false,
+        ready: false,
+        state: 'BOT_NOT_AVAILABLE',
+        message: 'Бот недоступен. Убедитесь, что бот запущен на порту 3001.'
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      ready: false,
+      state: 'ERROR',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/whatsapp/broadcast - Рассылка сообщений выбранным пользователям
+ * Автоматически переводит сообщения на язык каждого пользователя
+ */
+app.post('/api/whatsapp/broadcast', async (req, res) => {
+  try {
+    // Логируем входящий запрос для диагностики
+    console.log('📥 POST /api/whatsapp/broadcast - Получен запрос:', {
+      hasMessage: !!req.body.message,
+      messageType: typeof req.body.message,
+      messageValue: req.body.message,
+      messageLength: req.body.message ? String(req.body.message).length : 0,
+      hasPhoneNumbers: !!req.body.phoneNumbers,
+      phoneNumbersCount: req.body.phoneNumbers ? req.body.phoneNumbers.length : 0,
+      hasUsers: !!req.body.users,
+      usersCount: req.body.users ? req.body.users.length : 0
+    });
+
+    const { message, phoneNumbers, users } = req.body;
+
+    // Улучшенная валидация сообщения
+    const messageStr = message ? String(message).trim() : '';
+    
+    if (!messageStr || messageStr.length === 0) {
+      console.error('❌ Валидация не прошла: сообщение пустое или отсутствует');
+      return res.status(400).json({
+        success: false,
+        error: 'Сообщение не может быть пустым',
+        debug: {
+          receivedMessage: message,
+          messageType: typeof message,
+          trimmedLength: messageStr.length
+        }
+      });
+    }
+
+    if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходимо выбрать хотя бы одного получателя'
+      });
+    }
+
+    // Если передана информация о пользователях с языками, переводим сообщения
+    let messagesToSend = [];
+    
+    if (users && Array.isArray(users) && users.length === phoneNumbers.length) {
+      console.log('🌍 Начинаем перевод сообщений для', users.length, 'пользователей');
+      console.log('📋 Языки пользователей:', users.map((u, i) => ({
+        phone: phoneNumbers[i],
+        language: u.language || 'ru',
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Без имени'
+      })));
+      
+      // Группируем пользователей по языкам для оптимизации переводов
+      const usersByLanguage = {};
+      users.forEach((user, index) => {
+        const lang = user.language || 'ru';
+        console.log(`  👤 Пользователь ${index + 1}: язык = ${lang}, телефон = ${phoneNumbers[index]}`);
+        if (!usersByLanguage[lang]) {
+          usersByLanguage[lang] = [];
+        }
+        usersByLanguage[lang].push({
+          phoneNumber: phoneNumbers[index],
+          user: user
+        });
+      });
+
+      console.log(`📊 Группировка по языкам:`, Object.keys(usersByLanguage).map(lang => ({
+        language: lang,
+        usersCount: usersByLanguage[lang].length
+      })));
+
+      // Переводим сообщение для каждого языка
+      // ВАЖНО: Всегда переводим на язык пользователя, даже если это русский
+      // API автоматически определит исходный язык сообщения
+      const translationPromises = Object.entries(usersByLanguage).map(async ([lang, langUsers]) => {
+        let translatedMessage = messageStr;
+        
+        console.log(`🌐 Обработка языка: ${lang}, пользователей: ${langUsers.length}`);
+        console.log(`  🔄 Начинаем перевод с 'auto' на '${lang}'...`);
+        console.log(`  📝 Исходное сообщение: "${messageStr.substring(0, 50)}..."`);
+        
+        try {
+          // Всегда переводим на язык пользователя, используя автоопределение исходного языка
+          translatedMessage = await translateText(messageStr, lang, 'auto');
+          
+          if (translatedMessage === messageStr) {
+            console.warn(`  ⚠️ Перевод вернул оригинальный текст для языка ${lang} (возможно, сообщение уже на этом языке)`);
+          } else {
+            console.log(`  ✅ Переведено на ${lang}:`, translatedMessage.substring(0, 50) + '...');
+          }
+        } catch (translateError) {
+          console.error(`  ❌ Ошибка перевода на ${lang}:`, translateError.message);
+          translatedMessage = messageStr;
+        }
+
+        // Добавляем сообщения для всех пользователей этого языка
+        const messages = langUsers.map(({ phoneNumber }) => {
+          const msg = {
+            phoneNumber: phoneNumber,
+            message: translatedMessage
+          };
+          console.log(`  📝 Создано сообщение для ${phoneNumber}:`, msg.message.substring(0, 30) + '...');
+          return msg;
+        });
+        
+        return messages;
+      });
+
+      const translatedMessages = await Promise.all(translationPromises);
+      messagesToSend = translatedMessages.flat();
+      
+      console.log(`✅ Подготовлено ${messagesToSend.length} сообщений для отправки`);
+      console.log('📋 Структура messagesToSend:', JSON.stringify(messagesToSend, null, 2));
+    } else {
+      // Если информация о языках не передана, отправляем оригинальное сообщение всем
+      console.log('⚠️ Информация о языках пользователей не передана, отправляем оригинальное сообщение');
+      messagesToSend = phoneNumbers.map(phoneNumber => ({
+        phoneNumber,
+        message: messageStr
+      }));
+      console.log('📋 Структура messagesToSend (без языков):', JSON.stringify(messagesToSend, null, 2));
+    }
+
+    // Перенаправляем запрос на бот с переведенными сообщениями
+    // Бот ожидает формат: { message: string, phoneNumbers: string[] }
+    // Но нам нужно отправить разные сообщения разным пользователям
+    // Поэтому отправляем сообщения группами по языкам или по одному
+    try {
+      console.log('🔄 Начинаем обработку сообщений для отправки боту...');
+      let totalSent = 0;
+      let totalFailed = 0;
+      const results = [];
+
+      // Группируем сообщения по тексту (одинаковые сообщения отправляем одним запросом)
+      const messagesByText = {};
+      console.log('📦 Группируем сообщения по тексту...');
+      
+      messagesToSend.forEach((item, index) => {
+        console.log(`  Элемент ${index}:`, item);
+        const phoneNumber = item.phoneNumber || item.phone;
+        const message = item.message || item.text;
+        
+        if (!phoneNumber || !message) {
+          console.error(`❌ Неверная структура элемента ${index}:`, item);
+          return;
+        }
+        
+        if (!messagesByText[message]) {
+          messagesByText[message] = [];
+        }
+        messagesByText[message].push(phoneNumber);
+      });
+
+      console.log(`📤 Отправляем ${Object.keys(messagesByText).length} групп сообщений`);
+      console.log('📋 Группы сообщений:', Object.keys(messagesByText).map(msg => ({
+        message: msg.substring(0, 50) + '...',
+        count: messagesByText[msg].length
+      })));
+
+      // Отправляем каждую группу сообщений отдельным запросом
+      for (const [messageText, phoneNumbersForMessage] of Object.entries(messagesByText)) {
+        try {
+          const requestBody = {
+            message: messageText,
+            phoneNumbers: phoneNumbersForMessage
+          };
+
+          console.log(`📤 Отправка группы сообщений боту:`, {
+            messageLength: messageText.length,
+            messagePreview: messageText.substring(0, 100),
+            phoneNumbersCount: phoneNumbersForMessage.length,
+            phoneNumbers: phoneNumbersForMessage,
+            requestBody: requestBody
+          });
+
+          const botResponse = await axios.post(`${BOT_URL}/api/broadcast`, requestBody, {
+            timeout: 300000, // 5 минут таймаут для больших рассылок
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const botData = botResponse.data;
+          
+          if (botData.success) {
+            totalSent += botData.results?.sent || phoneNumbersForMessage.length;
+            totalFailed += botData.results?.failed || 0;
+            results.push({
+              message: messageText.substring(0, 50) + '...',
+              sent: botData.results?.sent || phoneNumbersForMessage.length,
+              failed: botData.results?.failed || 0
+            });
+          } else {
+            totalFailed += phoneNumbersForMessage.length;
+            results.push({
+              message: messageText.substring(0, 50) + '...',
+              sent: 0,
+              failed: phoneNumbersForMessage.length,
+              error: botData.error
+            });
+          }
+        } catch (groupError) {
+          console.error(`❌ Ошибка отправки группы сообщений:`, {
+            error: groupError.message,
+            response: groupError.response?.data,
+            status: groupError.response?.status,
+            requestBody: {
+              message: messageText.substring(0, 50) + '...',
+              phoneNumbersCount: phoneNumbersForMessage.length
+            }
+          });
+          totalFailed += phoneNumbersForMessage.length;
+          results.push({
+            message: messageText.substring(0, 50) + '...',
+            sent: 0,
+            failed: phoneNumbersForMessage.length,
+            error: groupError.response?.data?.error || groupError.message
+          });
+        }
+      }
+
+      const botData = {
+        success: totalFailed === 0,
+        message: totalFailed === 0 
+          ? `Рассылка успешно отправлена ${totalSent} получателям`
+          : `Отправлено ${totalSent} из ${totalSent + totalFailed}, ошибок: ${totalFailed}`,
+        results: {
+          sent: totalSent,
+          failed: totalFailed,
+          total: totalSent + totalFailed
+        },
+        details: results
+      };
+
+      // Обновляем статистику отправки в базе данных
+      try {
+        for (let i = 0; i < phoneNumbers.length; i++) {
+          const phoneNumber = phoneNumbers[i];
+          const user = users && users[i] ? users[i] : null;
+          
+          let chatId = phoneNumber;
+          if (!chatId.includes('@')) {
+            const digits = String(phoneNumber).replace(/\D/g, '');
+            if (digits) {
+              chatId = `${digits}@c.us`;
+              whatsappUserQueries.createOrUpdate({
+                phone_number: chatId,
+                phone_number_clean: digits,
+                country: user?.country || null,
+                language: user?.language || 'ru',
+                first_name: user?.firstName || null,
+                last_name: user?.lastName || null
+              });
+            }
+          }
+        }
+      } catch (dbError) {
+        console.warn('⚠️ Ошибка обновления статистики в БД:', dbError.message);
+      }
+
+      return res.json(botData);
+    } catch (fetchError) {
+      console.error('❌ Общая ошибка рассылки:', {
+        error: fetchError.message,
+        response: fetchError.response?.data,
+        status: fetchError.response?.status,
+        statusText: fetchError.response?.statusText
+      });
+      const errorMessage = fetchError.response?.data?.error || fetchError.message || 'Бот недоступен';
+      return res.status(fetchError.response?.status || 503).json({
+        success: false,
+        error: errorMessage.includes('ECONNREFUSED') || errorMessage.includes('timeout')
+          ? 'Бот недоступен. Убедитесь, что бот запущен на порту 3001.'
+          : errorMessage,
+        debug: fetchError.response?.data
+      });
+    }
+  } catch (error) {
+    console.error('Ошибка рассылки сообщений:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Не удалось выполнить рассылку'
+    });
+  }
+});
+
+/**
+ * GET /api/whatsapp/users - Получить всех WhatsApp пользователей
+ */
+app.get('/api/whatsapp/users', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search || '';
+    const roleFilter = req.query.role || 'all';
+    const statusFilter = req.query.status || 'all';
+
+    let users;
+    
+    // Если есть поисковый запрос
+    if (search) {
+      users = whatsappUserQueries.search(search, limit, offset);
+    } else {
+      users = whatsappUserQueries.getAll(limit, offset);
+    }
+
+    // Фильтрация по статусу (активные/неактивные)
+    let filteredUsers = users;
+    if (statusFilter === 'active') {
+      filteredUsers = users.filter(u => u.is_active === 1);
+    } else if (statusFilter === 'blocked') {
+      filteredUsers = users.filter(u => u.is_active === 0);
+    }
+
+    // Форматируем данные для фронтенда
+    const formattedUsers = filteredUsers.map(user => {
+      const formatted = {
+        id: user.id,
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
+        email: '', // WhatsApp пользователи не имеют email
+        phone: user.phone_number_clean || user.phone_number || '',
+        phoneFull: user.phone_number || '',
+        role: 'buyer', // По умолчанию покупатель
+        status: user.is_active === 1 ? 'active' : 'blocked',
+        verified: false, // WhatsApp пользователи не верифицированы через документы
+        country: user.country || '',
+        language: user.language || 'ru', // Язык пользователя (важно для перевода!)
+        lastMessageAt: user.last_message_at || null,
+        messageCount: user.message_count || 0,
+        createdAt: user.created_at || null
+      };
+      
+      // Логируем язык пользователя для отладки
+      if (user.language && user.language !== 'ru') {
+        console.log(`  🌍 Пользователь ${formatted.phone}: язык = ${formatted.language}`);
+      }
+      
+      return formatted;
+    });
+
+    const totalCount = whatsappUserQueries.getCount();
+
+    res.json({
+      success: true,
+      data: formattedUsers,
+      total: totalCount,
+      limit,
+      offset
+    });
+  } catch (error) {
+    console.error('Ошибка получения WhatsApp пользователей:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

@@ -10,6 +10,7 @@ import UsersList from '../components/admin/UsersList';
 import Moderation from '../components/admin/Moderation';
 import ObjectsList from '../components/admin/ObjectsList';
 import AdminChat from '../components/admin/AdminChat';
+import WhatsApp from '../components/admin/WhatsApp';
 import AccessManagement from '../components/admin/AccessManagement';
 import { mockBusinessInfo } from '../data/mockData';
 import { clearUserData } from '../services/authService';
@@ -57,6 +58,7 @@ const AdminPanelPage = () => {
     moderation: 'Модерация',
     chat: 'Чат',
     objects: 'Объекты',
+    whatsapp: 'WhatsApp',
     access_management: 'Доступы'
   };
 
@@ -73,6 +75,7 @@ const AdminPanelPage = () => {
       moderation: adminPermissions.can_access_moderation,
       chat: adminPermissions.can_access_chat,
       objects: adminPermissions.can_access_objects,
+      whatsapp: adminPermissions.can_access_whatsapp,
       access_management: adminPermissions.can_access_access_management
     };
 
@@ -128,6 +131,8 @@ const AdminPanelPage = () => {
         return <AdminChat />;
       case 'objects':
         return <ObjectsList />;
+      case 'whatsapp':
+        return <WhatsApp />;
       case 'access_management':
         return <AccessManagement />;
       default:
