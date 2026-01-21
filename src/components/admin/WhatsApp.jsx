@@ -14,33 +14,7 @@ const getLanguageName = (langCode) => {
     'pt': 'Португальский',
     'pl': 'Польский',
     'tr': 'Турецкий',
-    'uk': 'Украинский',
-    'ar': 'Арабский',
-    'zh': 'Китайский',
-    'ja': 'Японский',
-    'ko': 'Корейский',
-    'hi': 'Хинди',
-    'th': 'Тайский',
-    'vi': 'Вьетнамский',
-    'id': 'Индонезийский',
-    'cs': 'Чешский',
-    'nl': 'Голландский',
-    'sv': 'Шведский',
-    'no': 'Норвежский',
-    'da': 'Датский',
-    'fi': 'Финский',
-    'el': 'Греческий',
-    'he': 'Иврит',
-    'ro': 'Румынский',
-    'hu': 'Венгерский',
-    'bg': 'Болгарский',
-    'hr': 'Хорватский',
-    'sk': 'Словацкий',
-    'sl': 'Словенский',
-    'sr': 'Сербский',
-    'et': 'Эстонский',
-    'lv': 'Латышский',
-    'lt': 'Литовский'
+    'uk': 'Украинский'
   };
   return names[langCode] || langCode || 'Не указан';
 };
@@ -161,25 +135,9 @@ const WhatsApp = () => {
   const selectedCount = selectedUsers.size;
   const totalCount = filteredUsers.length;
 
-  // Получаем языки выбранных пользователей
-  const selectedUsersLanguages = useMemo(() => {
-    const languages = filteredUsers
-      .filter(user => selectedUsers.has(user.id))
-      .map(user => user.language || 'ru');
-    return [...new Set(languages)].sort();
-  }, [filteredUsers, selectedUsers]);
-
   // Функция отправки рассылки
   const handleSendBroadcast = async () => {
-    const trimmedMessage = message ? String(message).trim() : '';
-    
-    if (!trimmedMessage || trimmedMessage.length === 0) {
-      setError('Пожалуйста, введите сообщение для рассылки');
-      return;
-    }
-
-    if (selectedCount === 0) {
-      setError('Пожалуйста, выберите хотя бы одного получателя');
+    if (!message.trim() || selectedCount === 0) {
       return;
     }
 
@@ -188,75 +146,35 @@ const WhatsApp = () => {
     setError(null);
 
     try {
-      // Получаем выбранных пользователей с их данными (включая язык)
-      const selectedUsersData = filteredUsers
+      // Получаем номера телефонов выбранных пользователей
+      const selectedPhoneNumbers = filteredUsers
         .filter(user => selectedUsers.has(user.id))
         .map(user => {
           // Используем phoneFull (с @c.us) если есть, иначе phone, иначе создаем из phone
-          let phoneNumber = '';
           if (user.phoneFull) {
-            phoneNumber = user.phoneFull;
-          } else if (user.phone) {
+            return user.phoneFull;
+          }
+          if (user.phone) {
             // Если phone не содержит @c.us, добавляем его
             const digits = String(user.phone).replace(/\D/g, '');
-            phoneNumber = digits ? `${digits}@c.us` : '';
+            return digits ? `${digits}@c.us` : '';
           }
-
-          return {
-            phoneNumber,
-            user: {
-              id: user.id,
-              firstName: user.firstName || '',
-              lastName: user.lastName || '',
-              language: user.language || 'ru', // Язык пользователя (по умолчанию русский)
-              country: user.country || '',
-              phone: phoneNumber
-            }
-          };
+          return '';
         })
-        .filter(item => item.phoneNumber); // Убираем пользователей без номера телефона
-
-      // Извлекаем номера телефонов и данные пользователей
-      const selectedPhoneNumbers = selectedUsersData.map(item => item.phoneNumber);
-      const usersData = selectedUsersData.map(item => item.user);
-
-      const messageToSend = trimmedMessage;
-      
-      console.log('📤 Отправка рассылки:', {
-        message: messageToSend,
-        messageLength: messageToSend.length,
-        recipientsCount: selectedPhoneNumbers.length,
-        languages: [...new Set(usersData.map(u => u.language))]
-      });
-
-      const requestBody = {
-        message: messageToSend,
-        phoneNumbers: selectedPhoneNumbers,
-        users: usersData // Отправляем информацию о пользователях с языками
-      };
-
-      console.log('📦 Тело запроса:', {
-        ...requestBody,
-        message: requestBody.message.substring(0, 100) + (requestBody.message.length > 100 ? '...' : '')
-      });
+        .filter(phone => phone); // Убираем пустые значения
 
       const response = await fetch('/api/whatsapp/broadcast', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          message: message.trim(),
+          phoneNumbers: selectedPhoneNumbers
+        })
       });
 
-      const responseText = await response.text();
-      let data;
-      
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Ошибка парсинга ответа:', parseError, 'Ответ:', responseText);
-        throw new Error('Неверный формат ответа от сервера');
-      }
+      const data = await response.json();
 
       if (data.success) {
         setSendResult({
@@ -269,14 +187,11 @@ const WhatsApp = () => {
         setSelectAll(false);
         setMessage('');
       } else {
-        console.error('Ошибка от сервера:', data);
         setSendResult({
           success: false,
           message: data.error || 'Ошибка при отправке рассылки',
-          results: data.results,
-          debug: data.debug
+          results: data.results
         });
-        setError(data.error || 'Ошибка при отправке рассылки');
       }
     } catch (err) {
       console.error('Ошибка отправки рассылки:', err);
@@ -335,52 +250,23 @@ const WhatsApp = () => {
             <label className="message-label">
               <FiSend className="label-icon" />
               Сообщение для рассылки
-              <span style={{ 
-                fontSize: '0.85rem', 
-                fontWeight: 'normal', 
-                color: '#6b7280',
-                marginLeft: '8px'
-              }}>
-                (будет автоматически переведено на язык каждого получателя)
-              </span>
             </label>
             <textarea
               className="message-textarea"
               placeholder="Введите текст сообщения, которое будет отправлено выбранным пользователям..."
-              value={message || ''}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                setError(null); // Очищаем ошибку при вводе
-              }}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               rows={12}
             />
-            {error && (
-              <div style={{
-                marginTop: '0.5rem',
-                padding: '0.75rem',
-                background: '#fee2e2',
-                border: '1px solid #fecaca',
-                borderRadius: '6px',
-                color: '#dc2626',
-                fontSize: '0.875rem'
-              }}>
-                ⚠️ {error}
-                {sendResult?.debug && (
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#991b1b' }}>
-                    <strong>Отладка:</strong> {JSON.stringify(sendResult.debug)}
-                  </div>
-                )}
-              </div>
-            )}
             <div className="message-footer">
               <span className="message-counter">
-                {(message || '').length} / 1000 символов
+                {message.length} / 1000 символов
               </span>
               <button 
                 className="btn-send" 
-                disabled={!message || !String(message).trim() || selectedCount === 0 || sending || !whatsappStatus.ready}
+                disabled={!message.trim() || selectedCount === 0 || sending || !whatsappStatus.ready}
                 onClick={handleSendBroadcast}
-                title={!whatsappStatus.ready ? 'WhatsApp клиент не готов. Проверьте статус выше.' : (!message || !String(message).trim() ? 'Введите сообщение' : selectedCount === 0 ? 'Выберите получателей' : '')}
+                title={!whatsappStatus.ready ? 'WhatsApp клиент не готов. Проверьте статус выше.' : ''}
               >
                 {sending ? (
                   <>
@@ -422,7 +308,7 @@ const WhatsApp = () => {
             )}
           </div>
 
-            <div className="stats-section">
+          <div className="stats-section">
             <div className="stat-card">
               <div className="stat-icon stat-icon--selected">
                 <FiUsers />
@@ -442,53 +328,6 @@ const WhatsApp = () => {
               </div>
             </div>
           </div>
-
-          {selectedCount > 0 && (
-            <div className="languages-preview">
-              <div style={{ 
-                background: 'white', 
-                padding: '1rem', 
-                borderRadius: '8px', 
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-                marginTop: '1rem'
-              }}>
-                <div style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '600', 
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  🌍 Сообщение будет переведено на языки:
-                </div>
-                <div style={{ 
-                  display: 'flex', 
-                  flexWrap: 'wrap', 
-                  gap: '0.5rem',
-                  fontSize: '0.875rem'
-                }}>
-                  {selectedUsersLanguages.length > 0 ? (
-                    selectedUsersLanguages.map(lang => (
-                      <span 
-                        key={lang}
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          background: '#f0fdf4',
-                          color: '#166534',
-                          borderRadius: '12px',
-                          fontWeight: '500',
-                          border: '1px solid #bbf7d0'
-                        }}
-                      >
-                        {getLanguageName(lang)}
-                      </span>
-                    ))
-                  ) : (
-                    <span style={{ color: '#6b7280' }}>Русский (по умолчанию)</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Правая колонка - Список пользователей и фильтры */}
