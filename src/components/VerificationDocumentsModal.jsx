@@ -7,35 +7,46 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 const VerificationDocumentsModal = ({ isOpen, onClose, userId, onComplete }) => {
   const [documents, setDocuments] = useState({
     passport: null,
+    selfie: null,
     passportWithFace: null
   });
   
   const [uploaded, setUploaded] = useState({
     passport: false,
+    selfie: false,
     passportWithFace: false
   });
 
   const [uploading, setUploading] = useState({
     passport: false,
+    selfie: false,
     passportWithFace: false
   });
 
   const [errors, setErrors] = useState({});
 
   const passportRef = useRef(null);
+  const selfieRef = useRef(null);
   const passportWithFaceRef = useRef(null);
 
   const documentTypes = [
     {
       key: 'passport',
-      label: 'Паспорт',
+      label: 'Фото паспорта',
       ref: passportRef,
       description: 'Загрузите фото или скан паспорта (разворот с фото)',
       documentType: 'passport'
     },
     {
+      key: 'selfie',
+      label: 'Ваше селфи',
+      ref: selfieRef,
+      description: 'Загрузите ваше селфи',
+      documentType: 'selfie'
+    },
+    {
       key: 'passportWithFace',
-      label: 'Паспорт + лицо',
+      label: 'Селфи с паспортом рядом с лицом',
       ref: passportWithFaceRef,
       description: 'Загрузите фото, где вы держите паспорт рядом с лицом (селфи с паспортом)',
       documentType: 'passport_with_face'
@@ -186,7 +197,7 @@ const VerificationDocumentsModal = ({ isOpen, onClose, userId, onComplete }) => 
                 
                 <div className="verification-documents-modal__item-header">
                   <div className="verification-documents-modal__item-icon">
-                    {doc.key === 'passportWithFace' ? (
+                    {doc.key === 'passportWithFace' || doc.key === 'selfie' ? (
                       <FiCamera size={32} />
                     ) : (
                       <FiFile size={32} />

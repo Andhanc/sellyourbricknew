@@ -1786,43 +1786,20 @@ function MainPage() {
   }
 
   const handlePropertyClick = (category, propertyId, isClassic = false, hasTimer = false, property = null) => {
-    // Дополнительная проверка: если передан объект, проверяем его напрямую
-    // Это гарантирует правильное определение наличия таймера
-    const actuallyHasTimer = property 
-      ? (property.isAuction === true && property.endTime != null && property.endTime !== '')
-      : hasTimer
+    // Если объект не передан, пытаемся найти его в массивах
+    let propertyToNavigate = property
     
-    // Если у объекта есть таймер (endTime), перенаправляем на страницу аукциона с фильтром категории
-    if (actuallyHasTimer === true) {
-      const categoryMap = {
-        'apartment': 'Apartment',
-        'villa': 'Villa',
-        'flat': 'Flat',
-        'townhouse': 'Townhouse',
-        'recommended': null, // для recommended и nearby используем tag из объекта
-        'nearby': null
-      }
-      
-      const mappedCategory = categoryMap[category]
-      if (mappedCategory) {
-        window.location.href = `/auction?category=${mappedCategory}&filter=auction#properties-grid`
-        return
-      }
-      
-      // Для recommended и nearby нужно найти объект и использовать его tag
+    if (!propertyToNavigate) {
+      // Ищем объект в recommendedProperties и nearbyProperties
       const allProperties = [...recommendedProperties, ...nearbyProperties]
-      const foundProperty = allProperties.find(p => p.id === propertyId)
-      if (foundProperty && foundProperty.tag) {
-        window.location.href = `/auction?category=${foundProperty.tag}&filter=auction#properties-grid`
-        return
-      }
+      propertyToNavigate = allProperties.find(p => p.id === propertyId)
     }
     
-    // Для объектов без таймера переходим на страницу объекта
-    // Передаем объект через state, если он передан
+    // Все объекты переходят на страницу объекта
+    // PropertyDetailPage сама определит, какую страницу показывать (аукционную или классическую)
     const search = isClassic ? '?classic=1' : ''
-    if (property) {
-      navigate(`/property/${propertyId}${search}`, { state: { property } })
+    if (propertyToNavigate) {
+      navigate(`/property/${propertyId}${search}`, { state: { property: propertyToNavigate } })
     } else {
       navigate(`/property/${propertyId}${search}`)
     }
@@ -2565,6 +2542,11 @@ function MainPage() {
                           alt={apartment.name}
                           className="property-image"
                         />
+                        {index % 2 === 1 && apartment.isAuction && apartment.endTime && (
+                          <div className="property-buy-now-overlay">
+                            <span>Купить сейчас</span>
+                          </div>
+                        )}
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -2727,6 +2709,11 @@ function MainPage() {
                           alt={villa.name}
                           className="property-image"
                         />
+                        {index % 2 === 1 && villa.isAuction && villa.endTime && (
+                          <div className="property-buy-now-overlay">
+                            <span>Купить сейчас</span>
+                          </div>
+                        )}
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -2889,6 +2876,11 @@ function MainPage() {
                           alt={flat.name}
                           className="property-image"
                         />
+                        {index % 2 === 1 && flat.isAuction && flat.endTime && (
+                          <div className="property-buy-now-overlay">
+                            <span>Купить сейчас</span>
+                          </div>
+                        )}
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -3051,6 +3043,11 @@ function MainPage() {
                           alt={townhouse.name}
                           className="property-image"
                         />
+                        {index % 2 === 1 && townhouse.isAuction && townhouse.endTime && (
+                          <div className="property-buy-now-overlay">
+                            <span>Купить сейчас</span>
+                          </div>
+                        )}
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -3316,6 +3313,11 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
+                    {index % 2 === 1 && property.isAuction && property.endTime && (
+                      <div className="property-buy-now-overlay">
+                        <span>Купить сейчас</span>
+                      </div>
+                    )}
                     <button
                       type="button"
                       className={`property-favorite ${
@@ -3416,6 +3418,11 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
+                    {index % 2 === 1 && property.isAuction && property.endTime && (
+                      <div className="property-buy-now-overlay">
+                        <span>Купить сейчас</span>
+                      </div>
+                    )}
                     <button
                       type="button"
                       className={`property-favorite ${

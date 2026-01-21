@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { FiClock } from 'react-icons/fi'
 import './CountdownTimer.css'
 
 const CountdownTimer = ({ endTime }) => {
@@ -35,11 +34,19 @@ const CountdownTimer = ({ endTime }) => {
     return () => clearInterval(timer)
   }, [endTime])
 
+  const days = timeLeft.days
+
+  let statusClass = 'timer-short'
+  if (days > 28) {
+    statusClass = 'timer-long'
+  } else if (days > 14) {
+    statusClass = 'timer-medium'
+  }
+
+  const isCritical = days < 7
+
   return (
-    <div className="countdown-timer">
-      <div className="timer-icon-wrapper">
-        <FiClock className="timer-icon" />
-      </div>
+    <div className={`countdown-timer ${statusClass} ${isCritical ? 'timer-critical' : ''}`}>
       <div className="timer-segments">
         <div className="timer-segment">
           <span className="timer-value">{String(timeLeft.days).padStart(2, '0')}</span>

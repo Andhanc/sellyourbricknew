@@ -33,6 +33,17 @@ const NearestAuctionCard = ({ auction }) => {
     return () => clearInterval(interval);
   }, [auction.end_date]);
 
+  const days = timeLeft.days;
+
+  let statusClass = 'timer-short';
+  if (days > 28) {
+    statusClass = 'timer-long';
+  } else if (days > 14) {
+    statusClass = 'timer-medium';
+  }
+
+  const isCritical = days < 7;
+
   const getTypeLabel = (type) => {
     const types = {
       apartment: 'Квартира',
@@ -46,7 +57,7 @@ const NearestAuctionCard = ({ auction }) => {
     <div className="nearest-auction-card">
       <div className="nearest-auction-header">
         <div className="nearest-auction-title">Самый ближайший аукцион</div>
-        <div className="nearest-auction-timer">
+        <div className={`nearest-auction-timer ${statusClass} ${isCritical ? 'timer-critical' : ''}`}>
           <div className="timer-item">
             <div className="timer-value">{String(timeLeft.days).padStart(2, '0')}</div>
             <div className="timer-label">дней</div>

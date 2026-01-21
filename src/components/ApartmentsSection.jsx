@@ -15,7 +15,7 @@ const apartmentsData = [
     location: 'Costa Adeje, Tenerife',
     price: 8500372,
     currentBid: 8000000,
-    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 30 дней (зелёный)
     images: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'],
     isAuction: true,
     beds: 2,
@@ -28,7 +28,7 @@ const apartmentsData = [
     location: 'Playa de las Américas, Tenerife',
     price: 25748010,
     currentBid: 24000000,
-    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 22 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 22 дня (жёлто-оранжевый)
     images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'],
     isAuction: false,
     beds: 3,
@@ -41,7 +41,7 @@ const apartmentsData = [
     location: 'Los Cristianos, Tenerife',
     price: 28078032,
     currentBid: 26000000,
-    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 13 дней (красный, > 7)
     images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80'],
     isAuction: true,
     beds: 1,
@@ -54,7 +54,7 @@ const apartmentsData = [
     location: 'Puerto de la Cruz, Tenerife',
     price: 4441729,
     currentBid: 4200000,
-    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 9 дней (красный, > 7)
     images: ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80'],
     isAuction: false,
     beds: 2,
@@ -67,7 +67,7 @@ const apartmentsData = [
     location: 'Santa Cruz de Tenerife, Tenerife',
     price: 12345678,
     currentBid: 11500000,
-    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 6 дней (красный, мигающий)
     images: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'],
     isAuction: true,
     beds: 2,
@@ -80,7 +80,7 @@ const apartmentsData = [
     location: 'La Laguna, Tenerife',
     price: 9876543,
     currentBid: 9500000,
-    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 3 дня (красный, мигающий)
     images: ['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80'],
     isAuction: false,
     beds: 3,

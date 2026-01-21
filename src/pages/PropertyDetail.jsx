@@ -1,21 +1,35 @@
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { properties } from '../data/properties'
 import CountdownTimer from '../components/CountdownTimer'
 import { FiX } from 'react-icons/fi'
+import { IoLocationOutline } from 'react-icons/io5'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import './PropertyDetail.css'
+
+// Фикс для иконок Leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
 
 const PropertyDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [isLoading, setIsLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [bidAmount, setBidAmount] = useState('')
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
   const historyPanelRef = useRef(null)
 
-  // Ищем объект по ID
-  const property = properties.find(p => {
+  // Получаем объект из state (если передан из MainPage) или ищем в properties
+  const propertyFromState = location.state?.property
+  const propertyFromData = properties.find(p => {
     // Пробуем разные варианты сравнения
     const propertyId = p.id
     const paramId = parseInt(id, 10)
@@ -27,6 +41,20 @@ const PropertyDetail = () => {
     
     return isMatch
   })
+  
+  const property = propertyFromState || propertyFromData
+
+  // Нормализуем данные объекта для совместимости с разными форматами
+  const normalizedProperty = property ? {
+    ...property,
+    title: property.title || property.name || 'Объект недвижимости',
+    area: property.area || property.sqft,
+    rooms: property.rooms || property.beds,
+    images: property.images || (property.image ? [property.image] : []),
+    currentBid: property.currentBid || property.price,
+    price: property.price || property.currentBid,
+    coordinates: property.coordinates || [28.1000, -16.7200] // базовые координаты, как на макете
+  } : null
 
   useEffect(() => {
     // Небольшая задержка для имитации загрузки
@@ -39,13 +67,13 @@ const PropertyDetail = () => {
   
   // Логируем для отладки
   useEffect(() => {
-    if (property) {
-      console.log('Property found:', property.id, property.title)
+    if (normalizedProperty) {
+      console.log('Property found:', normalizedProperty.id, normalizedProperty.title)
     } else if (id) {
       console.error('Property not found for ID:', id, 'Type:', typeof id)
       console.log('Available properties:', properties.map(p => ({ id: p.id, title: p.title })))
     }
-  }, [id, property])
+  }, [id, normalizedProperty])
 
   // Закрытие панели истории при клике вне её
   useEffect(() => {
@@ -82,7 +110,7 @@ const PropertyDetail = () => {
     )
   }
 
-  if (!property) {
+  if (!normalizedProperty) {
     console.error('Property not found. ID:', id, 'Available IDs:', properties.map(p => p.id))
     return (
       <div className="property-detail">
@@ -104,7 +132,7 @@ const PropertyDetail = () => {
 
   const handleBid = (e) => {
     e.preventDefault()
-    if (bidAmount && parseFloat(bidAmount) > property.currentBid) {
+    if (bidAmount && parseFloat(bidAmount) > normalizedProperty.currentBid) {
       alert(`Ставка ${formatPrice(parseFloat(bidAmount))} принята!`)
       setBidAmount('')
     } else {
@@ -116,8 +144,8 @@ const PropertyDetail = () => {
   const generateBidHistory = () => {
     const history = []
     const now = new Date()
-    const startPrice = property.currentBid * 0.7 // Начальная цена (70% от текущей)
-    const priceStep = (property.currentBid - startPrice) / 10
+    const startPrice = normalizedProperty.currentBid * 0.7 // Начальная цена (70% от текущей)
+    const priceStep = (normalizedProperty.currentBid - startPrice) / 10
     const countries = ['Россия', 'Германия', 'Франция', 'Великобритания', 'США', 'Канада', 'Испания', 'Италия', 'Швейцария', 'ОАЭ']
     
     for (let i = 10; i >= 1; i--) {
@@ -134,7 +162,7 @@ const PropertyDetail = () => {
     return history.reverse() // От старых к новым
   }
 
-  const bidHistory = property ? generateBidHistory() : []
+  const bidHistory = normalizedProperty ? generateBidHistory() : []
   const lastFiveBids = bidHistory.slice(-5).reverse() // Последние 5, от новых к старым
 
   // Форматирование времени для истории
@@ -196,7 +224,7 @@ const PropertyDetail = () => {
           <div className="detail-nav">
             <Link to="/">Результаты поиска</Link>
             <span> / </span>
-            <span>{property.title}</span>
+            <span>{normalizedProperty.title}</span>
           </div>
         </div>
 
@@ -205,8 +233,8 @@ const PropertyDetail = () => {
             <div className="detail-images">
               <div className="main-image">
                 <img 
-                  src={property.images[selectedImage]} 
-                  alt={property.title}
+                  src={normalizedProperty.images[selectedImage]} 
+                  alt={normalizedProperty.title}
                 />
                 <div className="image-controls">
                   <button 
@@ -218,19 +246,19 @@ const PropertyDetail = () => {
                   </button>
                   <button 
                     className="image-btn"
-                    onClick={() => setSelectedImage(Math.min(property.images.length - 1, selectedImage + 1))}
-                    disabled={selectedImage === property.images.length - 1}
+                    onClick={() => setSelectedImage(Math.min(normalizedProperty.images.length - 1, selectedImage + 1))}
+                    disabled={selectedImage === normalizedProperty.images.length - 1}
                   >
                     →
                   </button>
                 </div>
               </div>
               <div className="image-thumbnails">
-                {property.images.map((img, index) => (
+                {normalizedProperty.images.map((img, index) => (
                   <img
                     key={index}
                     src={img}
-                    alt={`${property.title} ${index + 1}`}
+                    alt={`${normalizedProperty.title} ${index + 1}`}
                     className={selectedImage === index ? 'active' : ''}
                     onClick={() => setSelectedImage(index)}
                   />
@@ -239,50 +267,85 @@ const PropertyDetail = () => {
             </div>
 
             <div className="detail-main">
-              <h1 className="detail-title">{property.title}</h1>
-              <p className="detail-location">{property.location}</p>
-              
-              <div className="detail-specs">
-                <div className="spec-item">
-                  <span className="spec-label">Площадь:</span>
-                  <span className="spec-value">{property.area} м²</span>
-                </div>
-                <div className="spec-item">
-                  <span className="spec-label">Комнат:</span>
-                  <span className="spec-value">{property.rooms || 'Студия'}</span>
-                </div>
-                <div className="spec-item">
-                  <span className="spec-label">Этаж:</span>
-                  <span className="spec-value">{property.floor}</span>
-                </div>
-                <div className="spec-item">
-                  <span className="spec-label">Продавец:</span>
-                  <span className="spec-value">{property.seller}</span>
-                </div>
-                <div className="spec-item">
-                  <span className="spec-label">ID:</span>
-                  <span className="spec-value">{property.sellerId}</span>
-                </div>
+              <h1 className="detail-title">{normalizedProperty.title}</h1>
+              <div className="detail-location">
+                <IoLocationOutline size={18} />
+                <span>{normalizedProperty.location}</span>
               </div>
+              
+              {/* Объединенный блок с параметрами, описанием и картой */}
+              <div className="detail-info-with-map">
+                <div className="detail-info-content">
+                  <div className="detail-specs">
+                    <div className="spec-item">
+                      <span className="spec-label">Площадь:</span>
+                      <span className="spec-value">{normalizedProperty.area} м²</span>
+                    </div>
+                    <div className="spec-item">
+                      <span className="spec-label">Комнат:</span>
+                      <span className="spec-value">{normalizedProperty.rooms || 'Студия'}</span>
+                    </div>
+                    {normalizedProperty.floor && (
+                    <div className="spec-item">
+                      <span className="spec-label">Этаж:</span>
+                      <span className="spec-value">{normalizedProperty.floor}</span>
+                    </div>
+                    )}
+                    {normalizedProperty.seller && (
+                    <div className="spec-item">
+                      <span className="spec-label">Продавец:</span>
+                      <span className="spec-value">{normalizedProperty.seller}</span>
+                    </div>
+                    )}
+                    {normalizedProperty.sellerId && (
+                    <div className="spec-item">
+                      <span className="spec-label">ID:</span>
+                      <span className="spec-value">{normalizedProperty.sellerId}</span>
+                    </div>
+                    )}
+                  </div>
 
-              <div className="detail-description">
-                <h3>Описание</h3>
-                <p>{property.description}</p>
+                  <div className="detail-description">
+                    <h3>Описание</h3>
+                    <p>{normalizedProperty.description}</p>
+                  </div>
+                </div>
+
+                {/* Карта */}
+                {normalizedProperty.coordinates && (
+                  <div className="detail-map">
+                    <div className="detail-map-container">
+                      <MapContainer
+                        center={normalizedProperty.coordinates}
+                        zoom={15}
+                        style={{ height: '100%', width: '100%', borderRadius: '12px' }}
+                        scrollWheelZoom={true}
+                        zoomControl={true}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={normalizedProperty.coordinates} />
+                      </MapContainer>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="detail-sidebar">
             <div className="auction-info">
-              <div className="auction-status active">
+              <div className="auction-status active glass-panel glass-panel--pill">
                 Активный аукцион в процессе
               </div>
               
-              <CountdownTimer endTime={property.endTime} />
+              <CountdownTimer endTime={normalizedProperty.endTime} />
 
-              <div className="current-bid">
+              <div className="current-bid glass-panel">
                 <div className="bid-label">Текущая ставка</div>
-                <div className="bid-amount">{formatPrice(property.currentBid)}</div>
+                <div className="bid-amount">{formatPrice(normalizedProperty.currentBid)}</div>
               </div>
 
               <form onSubmit={handleBid} className="bid-form">
@@ -292,23 +355,23 @@ const PropertyDetail = () => {
                     type="number"
                     value={bidAmount}
                     onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder={`Минимум ${formatPrice(property.currentBid + (property.currentBid * 0.05))}`}
-                    min={property.currentBid + (property.currentBid * 0.05)}
+                    placeholder={`Минимум ${formatPrice(normalizedProperty.currentBid + (normalizedProperty.currentBid * 0.05))}`}
+                    min={normalizedProperty.currentBid + (normalizedProperty.currentBid * 0.05)}
                     step="1000"
                   />
                 </div>
-                <button type="submit" className="btn btn-bid">
+                <button type="submit" className="btn btn-bid glass-button">
                   Сделать ставку сейчас
                 </button>
               </form>
 
-              <div className="bid-warning">
+              <div className="bid-warning glass-panel glass-panel--warning">
                 Все ставки и продажи финальные и не подлежат отмене.
               </div>
 
               <button 
                 type="button"
-                className="btn btn-bid-history"
+                className="btn btn-bid-history glass-button glass-button--secondary"
                 onClick={() => setIsBidHistoryOpen(true)}
               >
                 История ставок

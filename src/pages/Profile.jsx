@@ -25,10 +25,11 @@ const Profile = () => {
   })
   const fileInputRef = useRef(null)
   const passportInputRef = useRef(null)
+  const selfieInputRef = useRef(null)
   const passportWithFaceInputRef = useRef(null)
   const [userId, setUserId] = useState(null)
-  const [uploading, setUploading] = useState({ passport: false, passportWithFace: false })
-  const [userDocuments, setUserDocuments] = useState({ passport: null, passportWithFace: null, selfie: null })
+  const [uploading, setUploading] = useState({ passport: false, selfie: false, passportWithFace: false })
+  const [userDocuments, setUserDocuments] = useState({ passport: null, selfie: null, passportWithFace: null })
   const [verificationStatus, setVerificationStatus] = useState(null)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
   const [documentsCompleted, setDocumentsCompleted] = useState(false)
@@ -87,7 +88,15 @@ const Profile = () => {
       const formData = new FormData()
       formData.append('document_photo', file)
       formData.append('user_id', String(userId))
-      formData.append('document_type', type === 'passport' ? 'passport' : 'passport_with_face')
+      
+      // Определяем тип документа
+      let documentType = 'passport'
+      if (type === 'selfie') {
+        documentType = 'selfie'
+      } else if (type === 'passportWithFace') {
+        documentType = 'passport_with_face'
+      }
+      formData.append('document_type', documentType)
       
       console.log('📤 Загрузка документа:', {
         type,
@@ -118,9 +127,17 @@ const Profile = () => {
             verification_status: data.data.verification_status || 'pending',
             created_at: data.data.created_at
           }
+          // Определяем ключ для сохранения документа
+          let docKey = 'passport'
+          if (documentType === 'selfie') {
+            docKey = 'selfie'
+          } else if (documentType === 'passport_with_face') {
+            docKey = 'passportWithFace'
+          }
+          
           setUserDocuments(prev => ({
             ...prev,
-            [type === 'passport' ? 'passport' : 'passportWithFace']: newDoc
+            [docKey]: newDoc
           }))
           // Перезагружаем документы пользователя для синхронизации
           await loadUserDocuments(userId)
@@ -177,7 +194,8 @@ const Profile = () => {
   // Проверяем заполненность документов
   const isDocumentsComplete = () => {
     // Приоритет userDocuments (более актуальные данные, загружаются при открытии страницы)
-    const hasDocumentsFromState = !!(userDocuments.passport || userDocuments.passportWithFace)
+    // Проверяем наличие всех трех документов
+    const hasDocumentsFromState = !!(userDocuments.passport && userDocuments.selfie && userDocuments.passportWithFace)
     if (hasDocumentsFromState) return true
     
     // Если userDocuments пусты, проверяем verificationStatus
