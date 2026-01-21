@@ -1269,24 +1269,38 @@ export const whatsappUserQueries = {
     
     if (existing) {
       // Обновляем существующего пользователя
+      // ВАЖНО: Если язык уже был определен ранее (не 'ru' по умолчанию), сохраняем его
+      // Обновляем язык только если передан новый язык И существующий язык был 'ru' (по умолчанию)
+      const existingLanguage = existing.language || 'ru';
+      const newLanguage = userData.language || 'ru';
+      
+      // Если существующий язык не 'ru' (был определен ранее), сохраняем его
+      // Если существующий язык 'ru' и передан новый язык, обновляем
+      const languageToSave = (existingLanguage !== 'ru') 
+        ? existingLanguage  // Сохраняем существующий определенный язык
+        : newLanguage;      // Или используем новый, если существующий был 'ru'
+      
       const stmt = db.prepare(`
         UPDATE whatsapp_users SET
-          phone_number_clean = ?,
-          first_name = ?,
-          last_name = ?,
-          country = ?,
+          phone_number_clean = COALESCE(?, phone_number_clean),
+          first_name = COALESCE(?, first_name),
+          last_name = COALESCE(?, last_name),
+          country = COALESCE(?, country),
           language = ?,
           last_message_at = CURRENT_TIMESTAMP,
           message_count = message_count + 1,
           updated_at = CURRENT_TIMESTAMP
         WHERE phone_number = ?
       `);
+      
+      console.log(`🔄 Обновление пользователя ${userData.phone_number}: существующий язык=${existingLanguage}, новый язык=${newLanguage}, сохраняем=${languageToSave}`);
+      
       return stmt.run(
         userData.phone_number_clean || null,
         userData.first_name || null,
         userData.last_name || null,
         userData.country || null,
-        userData.language || 'ru',
+        languageToSave,
         userData.phone_number
       );
     } else {
@@ -1396,3 +1410,4 @@ export const whatsappUserQueries = {
     return stmt.run(phoneNumber);
   }
 };
+
