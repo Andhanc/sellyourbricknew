@@ -1396,4 +1396,3 @@ export const whatsappUserQueries = {
     return stmt.run(phoneNumber);
   }
 };
-

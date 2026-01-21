@@ -4,8 +4,8 @@ import PropertyDetail from './PropertyDetail'
 import PropertyDetailClassic from './PropertyDetailClassic'
 
 // Обёртка над страницей объекта:
-// - аукционные объекты (isAuction !== false) рендерятся через текущую страницу аукциона
-// - неаукционные (isAuction === false) — через классическую страницу без таймера
+// - аукционные объекты (isAuction === true и есть endTime) рендерятся через PropertyDetail (с таймером)
+// - неаукционные (isAuction === false или нет endTime) — через PropertyDetailClassic (без таймера)
 const PropertyDetailPage = () => {
   const { id } = useParams()
   const location = useLocation()
@@ -19,12 +19,16 @@ const PropertyDetailPage = () => {
   const searchParams = new URLSearchParams(location.search)
   const isClassicFromQuery = searchParams.get('classic') === '1'
 
+  // Определяем, является ли объект аукционным
+  const isAuction = property && property.isAuction === true && property.endTime != null && property.endTime !== ''
+
   // Если объект передан из state или найден в properties и он неаукционный
-  if (property && (property.isAuction === false || isClassicFromQuery || !property.endTime)) {
+  if (property && (!isAuction || isClassicFromQuery)) {
     return <PropertyDetailClassic property={property} />
   }
 
-  // Для аукционных и случая, когда объект не найден, оставляем текущее поведение
+  // Для аукционных объектов используем PropertyDetail (с таймером)
+  // Если объект не найден, PropertyDetail покажет сообщение об ошибке
   return <PropertyDetail />
 }
 

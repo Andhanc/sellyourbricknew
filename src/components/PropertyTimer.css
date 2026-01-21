@@ -2,10 +2,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: #fff3cd;
-  border-radius: 8px;
-  border: 1px solid #ffc107;
+  padding: 6px 12px;
+  background: transparent;
+  border-radius: 999px;
+  border: 2px solid #d1d5db; /* базовая серая обводка, перекрашивается по статусу */
 }
 
 .property-timer.compact {
@@ -19,9 +19,9 @@
 }
 
 .property-timer-overlay .property-timer.compact {
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  background: transparent;
+  border: none; /* убираем дублирующуюся обводку */
+  box-shadow: none;
 }
 
 .timer-compact-content {
@@ -32,7 +32,7 @@
 }
 
 .timer-icon-svg {
-  color: #ffffff;
+  color: #111827;
   flex-shrink: 0;
   width: 18px;
   height: 18px;
@@ -40,18 +40,24 @@
 }
 
 .property-timer-overlay .timer-icon-svg {
-  color: #ffffff;
+  color: #111827;
 }
 
 .timer-compact-time {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(40, 40, 40, 0.95);
-  padding: 8px 14px;
-  border-radius: 8px;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid #d1d5db; /* базовая серая обводка, перекрашивается по статусу */
   width: fit-content;
   min-width: fit-content;
+}
+
+/* для полноразмерного таймера оставляем только внешнюю обводку, без второй рамки внутри */
+.property-timer:not(.compact) .timer-compact-time {
+  border-width: 0;
 }
 
 .time-unit {
@@ -65,7 +71,7 @@
 }
 
 .timer-separator {
-  color: #ffffff !important;
+  color: inherit;
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
@@ -73,9 +79,9 @@
 }
 
 .property-timer-overlay .timer-compact-time {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  backdrop-filter: none;
+  border: 1px solid #e5e7eb;
 }
 
 .property-timer-overlay .time-unit {
@@ -86,18 +92,17 @@
 .time-value {
   font-size: 19px;
   font-weight: 700;
-  color: white;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .property-timer-overlay .time-value {
-  color: white;
+  color: #111827;
 }
 
 .time-label {
   font-size: 11px;
-  color: white;
+  color: #374151; /* более тёмный цвет для обозначений д/ч/м/с */
   font-weight: 500;
   line-height: 1;
   text-transform: uppercase;
@@ -105,7 +110,7 @@
 }
 
 .property-timer-overlay .time-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: #6b7280;
 }
 
 .timer-icon {
@@ -120,6 +125,67 @@
 
 .timer-compact-label {
   font-size: 11px;
-  color: #856404;
+  color: #374151;
+}
+
+/* Цвета цифр и обводки в зависимости от оставшихся дней (ТОЛЬКО для некритичных таймеров).
+   Для критического (`timer-critical`) цветом управляет анимация, поэтому исключаем его. */
+.property-timer.timer-long:not(.timer-critical) .time-value,
+.property-timer.timer-long:not(.timer-critical) .timer-compact-time {
+  color: #16a34a;
+}
+.property-timer.timer-long:not(.timer-critical),
+.property-timer.compact.timer-long:not(.timer-critical) .timer-compact-time {
+  border-color: #16a34a;
+}
+
+.property-timer.timer-medium:not(.timer-critical) .time-value,
+.property-timer.timer-medium:not(.timer-critical) .timer-compact-time {
+  color: #f97316;
+}
+.property-timer.timer-medium:not(.timer-critical),
+.property-timer.compact.timer-medium:not(.timer-critical) .timer-compact-time {
+  border-color: #f97316;
+}
+
+.property-timer.timer-short:not(.timer-critical) .time-value,
+.property-timer.timer-short:not(.timer-critical) .timer-compact-time {
+  color: #dc2626;
+}
+.property-timer.timer-short:not(.timer-critical),
+.property-timer.compact.timer-short:not(.timer-critical) .timer-compact-time {
+  border-color: #dc2626;
+}
+
+/* мигающий режим при оставшихся < 7 дней */
+@keyframes property-timer-blink {
+  0%, 100% {
+    color: #111827;   /* тёмные цифры в неактивной фазе */
+  }
+  50% {
+    color: #dc2626;   /* красные цифры в активной фазе */
+  }
+}
+
+@keyframes property-timer-shadow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+    border-color: #111827; /* тёмная обводка в неактивной фазе */
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgba(220, 38, 38, 0.7);
+    border-color: #dc2626; /* красная обводка в активной фазе */
+  }
+}
+
+/* все цифры мигают одновременно — анимация вешается на общий контейнер
+   компактного таймера (цвет + тень синхронно) */
+.property-timer.compact.timer-critical .timer-compact-time {
+  animation: property-timer-blink 1s infinite, property-timer-shadow 1s infinite;
+}
+
+/* для полноразмерного таймера мигает только тень и цвет обводки */
+.property-timer.timer-critical:not(.compact) {
+  animation: property-timer-shadow 1s infinite;
 }
 

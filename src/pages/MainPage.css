@@ -1047,6 +1047,69 @@
   fill: #ff4444;
 }
 
+.property-buy-now-overlay {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.28), rgba(148, 163, 184, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 24px 55px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  z-index: 3;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.property-buy-now-overlay:hover {
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.35), rgba(148, 163, 184, 0.25));
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.35);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.property-buy-now-overlay:hover::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: shine-expand 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes shine-expand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+  }
+}
+
+.property-buy-now-overlay span {
+  position: relative;
+  z-index: 1;
+}
+
 .property-favorite.active:hover svg {
   color: #ff2222;
   fill: #ff2222;
@@ -3808,6 +3871,8 @@
     height: 100%;
     overflow: hidden;
     border-radius: 50%;
+    position: relative;
+    z-index: 1;
   }
 
   .new-header__avatar-img {
@@ -3828,6 +3893,8 @@
     color: #ffffff;
     border-radius: 50%;
   }
+
+  /* без дополнительного спец-эффекта для аватара */
 
   .new-header__profile-indicator {
     position: absolute;

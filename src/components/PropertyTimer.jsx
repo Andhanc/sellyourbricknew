@@ -34,12 +34,23 @@ const PropertyTimer = ({ endTime, compact = false }) => {
     return () => clearInterval(timer)
   }, [endTime])
 
+  const days = timeLeft.days
+
+  let statusClass = 'timer-short'
+  if (days > 28) {
+    statusClass = 'timer-long'
+  } else if (days > 14) {
+    statusClass = 'timer-medium'
+  }
+
+  const isCritical = days < 7
+
   if (compact) {
     const hasDays = timeLeft.days > 0
     const hasHours = timeLeft.hours > 0
     
     return (
-      <div className="property-timer compact">
+      <div className={`property-timer compact ${statusClass} ${isCritical ? 'timer-critical' : ''}`}>
         <div className="timer-compact-time">
           <svg className="timer-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
@@ -66,7 +77,7 @@ const PropertyTimer = ({ endTime, compact = false }) => {
   }
 
   return (
-    <div className="property-timer">
+    <div className={`property-timer ${statusClass} ${isCritical ? 'timer-critical' : ''}`}>
       <div className="timer-compact-time">
         {String(timeLeft.days).padStart(2, '0')}д {String(timeLeft.hours).padStart(2, '0')}ч {String(timeLeft.minutes).padStart(2, '0')}м {String(timeLeft.seconds).padStart(2, '0')}с
       </div>

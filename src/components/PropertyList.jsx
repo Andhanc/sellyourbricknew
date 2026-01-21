@@ -204,6 +204,11 @@ const PropertyList = () => {
                     alt={property.title}
                     className="property-image"
                   />
+                  {property.endTime && property.isAuction && (
+                    <div className="property-buy-now-overlay">
+                      <span>Купить сейчас</span>
+                    </div>
+                  )}
                   <button 
                     className={`property-favorite ${favorites.has(property.id) ? 'active' : ''}`}
                     onClick={(e) => {
@@ -283,17 +288,7 @@ const PropertyList = () => {
                   )}
                   <div className="property-actions" onClick={(e) => e.stopPropagation()}>
                     <button 
-                      className="btn btn-secondary"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        navigate(`/property/${property.id}`)
-                      }}
-                    >
-                      Открыть
-                    </button>
-                    <button 
-                      className="btn btn-primary"
+                      className="btn btn-primary btn-liquid-glass"
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
