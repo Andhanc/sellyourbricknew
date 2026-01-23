@@ -248,18 +248,25 @@ const ClerkAuthHandler = () => {
         console.log('ClerkAuthHandler: Cleaned OAuth params from URL')
       }
       
-      // Определяем куда редиректить в зависимости от роли пользователя
-      // Используем роль из clerkUserData, которая уже была сохранена выше
-      const savedUserRole = clerkUserData.role || localStorage.getItem('userRole') || 'buyer'
-      const redirectPath = (savedUserRole === 'seller' || savedUserRole === 'owner') ? '/owner' : '/profile'
-      
-      // Навигация на правильную страницу в зависимости от роли
-      if (window.location.pathname !== redirectPath) {
-        console.log('ClerkAuthHandler: Navigating to', redirectPath, 'for role:', savedUserRole)
-        navigate(redirectPath, { replace: true })
+      // Редиректим только если это реальный OAuth редирект, а не обычное обновление страницы
+      // Проверяем наличие OAuth параметров или недавний OAuth редирект
+      if (hasOAuthParams || oauthRedirectStarted || wasOnClerkDomain) {
+        // Определяем куда редиректить в зависимости от роли пользователя
+        // Используем роль из clerkUserData, которая уже была сохранена выше
+        const savedUserRole = clerkUserData.role || localStorage.getItem('userRole') || 'buyer'
+        const redirectPath = (savedUserRole === 'seller' || savedUserRole === 'owner') ? '/owner' : '/profile'
+        
+        // Навигация на правильную страницу в зависимости от роли
+        if (window.location.pathname !== redirectPath) {
+          console.log('ClerkAuthHandler: OAuth redirect detected, navigating to', redirectPath, 'for role:', savedUserRole)
+          navigate(redirectPath, { replace: true })
+        } else {
+          // Если уже на правильной странице, обновляем данные без перезагрузки
+          console.log('ClerkAuthHandler: Already on correct page after OAuth, data should update automatically')
+        }
       } else {
-        // Если уже на правильной странице, обновляем данные без перезагрузки
-        console.log('ClerkAuthHandler: Already on correct page, data should update automatically')
+        // Это обычное обновление страницы, не делаем редирект
+        console.log('ClerkAuthHandler: Normal page refresh, no redirect needed. Current path:', window.location.pathname)
       }
     } else if ((!isSignedIn && !session) && (hasOAuthParams || oauthRedirectStarted || wasOnClerkDomain) && !hasProcessed) {
       // Если есть OAuth параметры или был запущен OAuth редирект, но пользователь не авторизован, ждем и проверяем повторно

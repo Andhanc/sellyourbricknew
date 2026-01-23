@@ -3551,6 +3551,8 @@
     cursor: pointer;
     white-space: nowrap;
     line-height: 1;
+    text-decoration: none;
+    display: inline-block;
     position: relative;
     z-index: 1;
     transition: background-color 0.2s ease;
@@ -3560,10 +3562,28 @@
     background: rgba(17, 24, 39, 0.05);
   }
 
-  .new-header__filter-btn--active {
-    background: rgba(255, 255, 255, 0.5);
-    color: #111827;
-    font-weight: 500;
+  .new-header__filter-btn--active,
+  a.new-header__filter-btn.active,
+  a.new-header__filter-btn.new-header__filter-btn--active {
+    background: rgba(255, 255, 255, 0.5) !important;
+    color: #111827 !important;
+    font-weight: 500 !important;
+  }
+  
+  /* Убеждаемся, что ссылки выглядят как кнопки */
+  a.new-header__filter-btn {
+    text-decoration: none !important;
+    color: #111827 !important;
+    display: inline-block;
+  }
+  
+  a.new-header__filter-btn:hover {
+    text-decoration: none !important;
+    color: #111827 !important;
+  }
+  
+  a.new-header__filter-btn:visited {
+    color: #111827 !important;
   }
 
   /* Адаптивное скрытие фильтров с плавным переходом справа налево */

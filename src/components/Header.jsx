@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link, NavLink } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
 import {
   FiBell,
@@ -326,13 +326,6 @@ const Header = () => {
           <div className="new-header__filters">
             <button
               type="button"
-              className={`new-header__filter-btn ${location.pathname === '/' ? 'new-header__filter-btn--active' : ''}`}
-              onClick={() => navigate('/')}
-            >
-              <span>Главная</span>
-            </button>
-            <button
-              type="button"
               className={`new-header__filter-btn ${location.pathname === '/chat' ? 'new-header__filter-btn--active' : ''}`}
               onClick={() => navigate('/chat')}
             >
@@ -344,6 +337,13 @@ const Header = () => {
               onClick={() => navigate('/favorites')}
             >
               <span>{t('favorites')}</span>
+            </button>
+            <button
+              type="button"
+              className={`new-header__filter-btn ${location.pathname === '/chat' ? 'new-header__filter-btn--active' : ''}`}
+              onClick={() => navigate('/chat')}
+            >
+              <span>{t('aiAssistant') || 'Умный помощник'}</span>
             </button>
             <button
               type="button"
@@ -387,18 +387,18 @@ const Header = () => {
             ) : (
               <>
                 <button 
+                  type="button"
+                  className="new-header__auction-btn"
+                  onClick={() => navigate('/')}
+                >
+                  Главная
+                </button>
+                <button 
                   className="new-header__search-btn"
                   onClick={() => setIsSearchOpen(true)}
                   aria-label="Открыть поиск"
                 >
                   <FiSearch size={20} />
-                </button>
-                <button 
-                  type="button"
-                  className="new-header__auction-btn"
-                  onClick={() => navigate('/')}
-                >
-                  {t('auction')}
                 </button>
                 <button 
                   className={`new-header__user-btn ${isLoggedIn ? 'new-header__user-btn--avatar' : ''}`}

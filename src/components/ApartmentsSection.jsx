@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useUser } from '@clerk/clerk-react'
 import { FiHeart } from 'react-icons/fi'
 import { FaHeart as FaHeartSolid } from 'react-icons/fa'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
+import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
 import './PropertyList.css'
 
@@ -92,6 +94,7 @@ const apartmentsData = [
 function ApartmentsSection() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const { user, isLoaded: userLoaded } = useUser()
   const [favoriteProperties, setFavoriteProperties] = useState(() => {
     const initialFavorites = new Map()
     apartmentsData.forEach((property) => {
@@ -108,9 +111,37 @@ function ApartmentsSection() {
   }
 
   const toggleFavorite = (propertyId) => {
+    // Проверяем авторизацию через Clerk или старую систему
+    const isClerkAuth = user && userLoaded
+    const isOldAuth = isAuthenticated()
+    const key = `apartment-${propertyId}`
+    const isFavorite = favoriteProperties.get(key)
+    
+    // Разрешаем удаление из избранного без авторизации, но добавление требует авторизации
+    if (!isFavorite && !isClerkAuth && !isOldAuth) {
+      alert('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное')
+      return
+    }
+    
     setFavoriteProperties((prev) => {
       const updated = new Map(prev)
-      updated.set(`apartment-${propertyId}`, !prev.get(`apartment-${propertyId}`))
+      updated.set(key, !prev.get(key))
+      
+      // Сохраняем в localStorage
+      const savedFavorites = localStorage.getItem('favoriteProperties')
+      let favoritesMap = new Map()
+      if (savedFavorites) {
+        try {
+          const parsed = JSON.parse(savedFavorites)
+          favoritesMap = new Map(Object.entries(parsed))
+        } catch (e) {
+          console.error('Ошибка:', e)
+        }
+      }
+      favoritesMap.set(key, !isFavorite)
+      const obj = Object.fromEntries(favoritesMap)
+      localStorage.setItem('favoriteProperties', JSON.stringify(obj))
+      
       return updated
     })
   }

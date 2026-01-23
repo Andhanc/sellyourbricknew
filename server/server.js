@@ -2726,6 +2726,280 @@ app.delete('/api/admin/administrators/:id', (req, res) => {
   }
 });
 
+/**
+ * ============================================
+ * API ENDPOINTS ДЛЯ НЕДВИЖИМОСТИ
+ * ============================================
+ */
+
+/**
+ * POST /api/properties - Создать новое объявление о недвижимости
+ */
+app.post('/api/properties', upload.fields([
+  { name: 'ownership_document', maxCount: 1 },
+  { name: 'no_debts_document', maxCount: 1 }
+]), (req, res) => {
+  try {
+    const db = getDatabase();
+    const {
+      user_id,
+      property_type,
+      title,
+      description,
+      price,
+      currency = 'USD',
+      is_auction = 0,
+      auction_start_date,
+      auction_end_date,
+      auction_starting_price,
+      area,
+      rooms,
+      bedrooms,
+      bathrooms,
+      floor,
+      total_floors,
+      year_built,
+      location,
+      balcony = 0,
+      parking = 0,
+      elevator = 0,
+      land_area,
+      garage = 0,
+      pool = 0,
+      garden = 0,
+      commercial_type,
+      business_hours,
+      renovation,
+      condition,
+      heating,
+      water_supply,
+      sewerage,
+      electricity = 0,
+      internet = 0,
+      security = 0,
+      furniture = 0,
+      photos,
+      videos,
+      additional_documents,
+      test_drive_data
+    } = req.body;
+
+    if (!user_id || !property_type || !title) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать user_id, property_type и title' 
+      });
+    }
+
+    // Обработка загруженных документов
+    let ownershipDocumentPath = null;
+    let noDebtsDocumentPath = null;
+
+    if (req.files) {
+      if (req.files['ownership_document'] && req.files['ownership_document'][0]) {
+        ownershipDocumentPath = `/uploads/${req.files['ownership_document'][0].filename}`;
+      }
+      if (req.files['no_debts_document'] && req.files['no_debts_document'][0]) {
+        noDebtsDocumentPath = `/uploads/${req.files['no_debts_document'][0].filename}`;
+      }
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO properties (
+        user_id, property_type, title, description, price, currency,
+        is_auction, auction_start_date, auction_end_date, auction_starting_price,
+        area, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
+        balcony, parking, elevator, land_area, garage, pool, garden,
+        commercial_type, business_hours, renovation, condition, heating,
+        water_supply, sewerage, electricity, internet, security, furniture,
+        photos, videos, additional_documents, ownership_document, no_debts_document,
+        test_drive_data, moderation_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      user_id, property_type, title, description || null, price || null, currency,
+      is_auction ? 1 : 0, auction_start_date || null, auction_end_date || null, auction_starting_price || null,
+      area || null, rooms || null, bedrooms || null, bathrooms || null, floor || null, total_floors || null, year_built || null, location || null,
+      balcony ? 1 : 0, parking ? 1 : 0, elevator ? 1 : 0, land_area || null, garage ? 1 : 0, pool ? 1 : 0, garden ? 1 : 0,
+      commercial_type || null, business_hours || null, renovation || null, condition || null, heating || null,
+      water_supply || null, sewerage || null, electricity ? 1 : 0, internet ? 1 : 0, security ? 1 : 0, furniture ? 1 : 0,
+      photos ? JSON.stringify(photos) : null,
+      videos ? JSON.stringify(videos) : null,
+      additional_documents ? JSON.stringify(additional_documents) : null,
+      ownershipDocumentPath, noDebtsDocumentPath,
+      test_drive_data ? JSON.stringify(test_drive_data) : null,
+      'pending'
+    );
+
+    const propertyId = result.lastInsertRowid;
+    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyId);
+
+    res.json({ 
+      success: true, 
+      data: property,
+      message: 'Объявление успешно отправлено на модерацию' 
+    });
+  } catch (error) {
+    console.error('Ошибка при создании объявления:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/properties/pending - Получить все объявления на модерации
+ */
+app.get('/api/properties/pending', (req, res) => {
+  try {
+    const db = getDatabase();
+    const properties = db.prepare(`
+      SELECT 
+        p.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number,
+        u.role
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.moderation_status = 'pending'
+      ORDER BY p.created_at DESC
+    `).all();
+
+    // Парсим JSON поля
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      if (formatted.photos) {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      }
+      if (formatted.videos) {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      }
+      if (formatted.additional_documents) {
+        try {
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
+        } catch (e) {
+          formatted.additional_documents = [];
+        }
+      }
+      if (formatted.test_drive_data) {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
+        }
+      }
+      return formatted;
+    });
+
+    res.json({ success: true, data: formattedProperties });
+  } catch (error) {
+    console.error('Ошибка при получении объявлений на модерации:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/properties/:id/approve - Одобрить объявление
+ */
+app.put('/api/properties/:id/approve', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+    const { reviewed_by } = req.body;
+
+    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(id);
+    if (!property) {
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+
+    db.prepare(`
+      UPDATE properties 
+      SET moderation_status = 'approved',
+          reviewed_by = ?,
+          reviewed_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(reviewed_by || 'admin', id);
+
+    // Создаем уведомление для пользователя
+    try {
+      notificationQueries.create({
+        user_id: property.user_id,
+        type: 'property_approved',
+        title: 'Объявление одобрено',
+        message: `Ваше объявление "${property.title}" было одобрено и опубликовано.`,
+        data: JSON.stringify({ property_id: id })
+      });
+    } catch (notifError) {
+      console.warn('Не удалось создать уведомление:', notifError);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Объявление одобрено' 
+    });
+  } catch (error) {
+    console.error('Ошибка при одобрении объявления:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/properties/:id/reject - Отклонить объявление
+ */
+app.put('/api/properties/:id/reject', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+    const { reviewed_by, rejection_reason } = req.body;
+
+    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(id);
+    if (!property) {
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+
+    db.prepare(`
+      UPDATE properties 
+      SET moderation_status = 'rejected',
+          reviewed_by = ?,
+          reviewed_at = CURRENT_TIMESTAMP,
+          rejection_reason = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(reviewed_by || 'admin', rejection_reason || null, id);
+
+    // Создаем уведомление для пользователя
+    try {
+      notificationQueries.create({
+        user_id: property.user_id,
+        type: 'property_rejected',
+        title: 'Объявление отклонено',
+        message: `Ваше объявление "${property.title}" было отклонено.${rejection_reason ? ' Причина: ' + rejection_reason : ''}`,
+        data: JSON.stringify({ property_id: id, rejection_reason })
+      });
+    } catch (notifError) {
+      console.warn('Не удалось создать уведомление:', notifError);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Объявление отклонено' 
+    });
+  } catch (error) {
+    console.error('Ошибка при отклонении объявления:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Обработка ошибок БД
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);

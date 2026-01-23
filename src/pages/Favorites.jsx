@@ -310,14 +310,6 @@ const Favorites = () => {
                         e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
                       }}
                     />
-                    {auction.endTime && (
-                      <div className="favorite-card-timer">
-                        <PropertyTimer 
-                          endTime={typeof auction.endTime === 'string' ? auction.endTime : auction.endTime.toISOString()} 
-                          compact={true} 
-                        />
-                      </div>
-                    )}
                     <button
                       className="favorite-card-heart active"
                       onClick={(e) => {
@@ -338,6 +330,14 @@ const Favorites = () => {
                     </button>
                   </div>
                   <div className="favorite-card-content">
+                    {auction.endTime && (
+                      <div className="favorite-card-timer">
+                        <PropertyTimer 
+                          endTime={typeof auction.endTime === 'string' ? auction.endTime : auction.endTime.toISOString()} 
+                          compact={true} 
+                        />
+                      </div>
+                    )}
                     <h3 className="favorite-card-title">
                       {auction.name || auction.title}
                     </h3>

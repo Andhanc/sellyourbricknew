@@ -13,7 +13,7 @@
   margin: 0 auto;
   width: 100%;
   padding: 40px 24px;
-  background: #fff;
+  background: #F5F5F5;
 }
 
 .favorites-header {
@@ -97,11 +97,9 @@
 }
 
 .favorite-card-timer {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  z-index: 2;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .favorite-card-heart {

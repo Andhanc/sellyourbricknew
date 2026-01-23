@@ -4,13 +4,11 @@ import './DocumentsModal.css'
 
 const DocumentsModal = ({ isOpen, onClose, onComplete }) => {
   const [documents, setDocuments] = useState({
-    passport: null,
     ownership: null,
     noDebts: null
   })
 
   const [uploadedFiles, setUploadedFiles] = useState({
-    passport: false,
     ownership: false,
     noDebts: false
   })
@@ -30,8 +28,8 @@ const DocumentsModal = ({ isOpen, onClose, onComplete }) => {
   }
 
   const handleComplete = () => {
-    if (!uploadedFiles.passport || !uploadedFiles.ownership || !uploadedFiles.noDebts) {
-      alert('Пожалуйста, загрузите все три документа')
+    if (!uploadedFiles.ownership || !uploadedFiles.noDebts) {
+      alert('Пожалуйста, загрузите все необходимые документы')
       return
     }
     onComplete(documents)
@@ -52,11 +50,6 @@ const DocumentsModal = ({ isOpen, onClose, onComplete }) => {
 
   const documentTypes = [
     {
-      key: 'passport',
-      label: 'Паспорт',
-      description: 'Загрузите фото или скан паспорта'
-    },
-    {
       key: 'ownership',
       label: 'Право собственности',
       description: 'Загрузите документ о праве собственности'
@@ -76,7 +69,7 @@ const DocumentsModal = ({ isOpen, onClose, onComplete }) => {
         </button>
         
         <div className="documents-modal__content">
-          <h2 className="documents-modal__title">Шаг 3: Загрузка документов</h2>
+          <h2 className="documents-modal__title">Загрузка документов</h2>
           <p className="documents-modal__subtitle">
             Пожалуйста, загрузите все необходимые документы для публикации объявления
           </p>

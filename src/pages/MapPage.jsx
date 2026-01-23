@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useUser } from '@clerk/clerk-react'
 import { properties } from '../data/properties'
+import { isAuthenticated } from '../services/authService'
 import './MapPage.css'
 
 const MapPage = () => {
+  const { user, isLoaded: userLoaded } = useUser()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [favorites, setFavorites] = useState(new Set())
@@ -283,6 +286,18 @@ const MapPage = () => {
                         className={`map-favorite ${favorites.has(property.id) ? 'active' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation()
+                          
+                          // Проверяем авторизацию через Clerk или старую систему
+                          const isClerkAuth = user && userLoaded
+                          const isOldAuth = isAuthenticated()
+                          const isFavorite = favorites.has(property.id)
+                          
+                          // Разрешаем удаление из избранного без авторизации, но добавление требует авторизации
+                          if (!isFavorite && !isClerkAuth && !isOldAuth) {
+                            alert('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное')
+                            return
+                          }
+                          
                           const newFavorites = new Set(favorites)
                           if (newFavorites.has(property.id)) {
                             newFavorites.delete(property.id)
