@@ -2,7 +2,7 @@
 .footer {
   background: #ffffff;
   color: #6b7280;
-  padding: 40px 0 32px;
+  padding: 40px 0 5px;
   margin-top: 40px;
   font-family: 'Montserrat', sans-serif;
   border-top: 1px solid #e5e7eb;
@@ -94,13 +94,23 @@
   text-decoration: underline;
 }
 
+/* Обертка для нижней полосы и селектора языка */
+.footer__bottom-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 /* Нижняя полоса */
 .footer__bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 30px;
+  flex-wrap: nowrap;
+  flex: 1;
+  margin-top: 20px;
 }
 
 .footer__brand {
@@ -161,6 +171,7 @@ body.admin-panel-active .footer .footer__brand-text {
 .footer__bottom-links {
   display: flex;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .footer__bottom-link {
@@ -176,10 +187,32 @@ body.admin-panel-active .footer .footer__brand-text {
   text-decoration: underline;
 }
 
+/* QR-код WhatsApp */
+.footer__whatsapp-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.footer__qr-image {
+  width: 130px;
+  height: 130px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  padding: 4px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  bottom: 42px;
+}
+
+
 .footer__store-buttons {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .footer__store-btn {
@@ -221,18 +254,22 @@ body.admin-panel-active .footer .footer__brand-text {
   height: 18px;
 }
 
-.footer__store-icon--rustore,
-.footer__store-icon--appgallery {
+.footer__store-icon--email {
   width: 18px;
   height: 18px;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #111827;
-  font-size: 10px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #ffffff;
+}
+
+.footer__store-icon--whatsapp {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #25D366;
 }
 
 .footer__store-icon-text {
@@ -262,13 +299,15 @@ body.admin-panel-active .footer .footer__brand-text {
 .footer__language-selector {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .footer__language-selector-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
   background: #ffffff;
@@ -278,8 +317,8 @@ body.admin-panel-active .footer .footer__brand-text {
   font-weight: 500;
   color: #111827;
   font-family: 'Montserrat', sans-serif;
-  min-width: 120px;
-  justify-content: space-between;
+  min-width: auto;
+  justify-content: center;
 }
 
 .footer__language-selector-btn:hover {
@@ -317,7 +356,6 @@ body.admin-panel-active .footer .footer__brand-text {
 .footer__language-dropdown {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 0;
   right: 0;
   background: #ffffff;
   border: 1px solid #d1d5db;
@@ -325,12 +363,13 @@ body.admin-panel-active .footer .footer__brand-text {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   z-index: 1000;
-  min-width: 160px;
+  min-width: 60px;
 }
 
 .footer__language-option {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   width: 100%;
   padding: 10px 12px;
@@ -342,7 +381,7 @@ body.admin-panel-active .footer .footer__brand-text {
   font-weight: 400;
   color: #111827;
   font-family: 'Montserrat', sans-serif;
-  text-align: left;
+  text-align: center;
   position: relative;
 }
 
@@ -391,7 +430,7 @@ body.admin-panel-active .footer .footer__brand-text {
 
 /* Компактный футер для админ-панели */
 body.admin-panel-active .footer {
-  padding: 24px 0 20px;
+  padding: 24px 0 5px;
   margin-top: 20px;
 }
 
@@ -440,20 +479,28 @@ body.admin-panel-active .footer .footer__description-text {
   margin-left: 15%;
 }
 
+body.admin-panel-active .footer .footer__bottom-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 body.admin-panel-active .footer .footer__bottom {
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-start;
   align-items: center;
+  flex: 1;
+  margin-top: 20px;
+  margin-left: 80px;
 }
 
 body.admin-panel-active .footer .footer__brand {
   flex-shrink: 0;
-  order: 1;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 80px;
 }
 
 body.admin-panel-active .footer .footer__brand-icon {
@@ -467,30 +514,40 @@ body.admin-panel-active .footer .footer__brand-icon {
   padding: 6px;
   box-sizing: border-box;
   flex-shrink: 0;
-  margin-left: 13.5rem;
+  margin-left: 205px;
 }
 
 body.admin-panel-active .footer .footer__brand-text {
   font-size: 18px;
 }
 
+
 body.admin-panel-active .footer .footer__bottom-links {
   gap: 12px;
   flex-shrink: 0;
-  order: 2;
-  margin-left: 10%;
-}
-
-body.admin-panel-active .footer .footer__bottom-link {
-  font-size: 11px;
 }
 
 body.admin-panel-active .footer .footer__store-buttons {
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
-  order: 3;
-  margin-left: auto;
 }
+
+body.admin-panel-active .footer .footer__whatsapp-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 40px;
+}
+
+body.admin-panel-active .footer .footer__qr-image {
+  width: 110px;
+  height: 110px;
+  position: relative;
+  bottom: 37px;
+}
+
+
 
 body.admin-panel-active .footer .footer__store-btn {
   padding: 6px 10px;
@@ -516,15 +573,19 @@ body.admin-panel-active .footer .footer__store-name {
 }
 
 body.admin-panel-active .footer .footer__language-selector {
+  position: relative;
   flex-shrink: 0;
-  order: 4;
-  margin-left: 16px;
+  display: flex;
+  align-items: center;
+  margin-left: 40px;
 }
 
+
 body.admin-panel-active .footer .footer__language-selector-btn {
-  padding: 6px 10px;
+  padding: 6px 8px;
   font-size: 12px;
-  min-width: 100px;
+  min-width: auto;
+  gap: 4px;
 }
 
 body.admin-panel-active .footer .footer__language-flag {
@@ -592,15 +653,41 @@ body.admin-panel-active .footer .footer__bottom {
     gap: 30px;
   }
 
-  .footer__bottom {
+  .footer__bottom-wrapper {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 20px;
   }
+
+  .footer__bottom {
+    flex-direction: row;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .footer__language-selector {
+    position: relative;
+    align-self: center;
+  }
+
+  .footer__whatsapp-qr {
+    margin: 0;
+  }
+
+  .footer__qr-image {
+    width: 100px;
+    height: 100px;
+    bottom: 30px;
+  }
+
 
   .footer__store-buttons {
     flex-wrap: wrap;
     width: 100%;
+    justify-content: center;
   }
 
   .footer__language-selector {
@@ -619,7 +706,7 @@ body.admin-panel-active .footer .footer__bottom {
   
   /* Компактный футер в админ-панели на мобильных */
   body.admin-panel-active .footer {
-    padding: 20px 0 16px;
+    padding: 20px 0 5px;
   }
   
   body.admin-panel-active .footer .footer__container {

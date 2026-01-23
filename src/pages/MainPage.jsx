@@ -51,7 +51,7 @@ import LoginModal from '../components/LoginModal'
 import VerificationSuccessNotification from '../components/VerificationSuccessNotification'
 import '../components/PropertyList.css'
 import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
-import { getUserData, clearUserData } from '../services/authService'
+import { getUserData, clearUserData, isAuthenticated } from '../services/authService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -227,7 +227,7 @@ const apartmentsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 8000000,
-    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 100 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 100 дней (зеленый - от 3 месяцев)
     beds: 2,
     baths: 1,
     sqft: 850,
@@ -253,7 +253,7 @@ const apartmentsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 24000000,
-    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 75 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 75 дней (оранжевый - от 2 до 3 месяцев)
     beds: 3,
     baths: 2,
     sqft: 1200,
@@ -279,7 +279,7 @@ const apartmentsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 26000000,
-    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 45 дней (красный - от 1 до 2 месяцев)
     beds: 1,
     baths: 1,
     sqft: 650,
@@ -306,7 +306,7 @@ const apartmentsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 4200000,
-    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 20 дней (красный мигающий - меньше 1 месяца)
     beds: 2,
     baths: 1,
     sqft: 950,
@@ -332,7 +332,7 @@ const apartmentsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 68000000,
-    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 95 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 95 дней (зеленый - от 3 месяцев)
     beds: 4,
     baths: 3,
     sqft: 1800,
@@ -358,7 +358,7 @@ const apartmentsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 38500000,
-    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 15 дней (красный мигающий - меньше 1 месяца)
     beds: 3,
     baths: 2,
     sqft: 1400,
@@ -389,7 +389,7 @@ const villasData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 11000000,
-    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 70 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 70 дней (оранжевый - от 2 до 3 месяцев)
     beds: 4,
     baths: 3,
     sqft: 2500,
@@ -415,7 +415,7 @@ const villasData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 17500000,
-    endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 13 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000 + 13 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 25 дней (красный мигающий - меньше 1 месяца)
     beds: 5,
     baths: 4,
     sqft: 3200,
@@ -441,7 +441,7 @@ const villasData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 21000000,
-    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 50 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 50 дней (красный - от 1 до 2 месяцев)
     beds: 6,
     baths: 5,
     sqft: 4000,
@@ -467,7 +467,7 @@ const villasData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 9000000,
-    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 105 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 105 дней (зеленый - от 3 месяцев)
     beds: 3,
     baths: 2,
     sqft: 2000,
@@ -493,7 +493,7 @@ const villasData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 33000000,
-    endTime: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000 + 18 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 65 * 24 * 60 * 60 * 1000 + 18 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 65 дней (оранжевый - от 2 до 3 месяцев)
     beds: 7,
     baths: 6,
     sqft: 5000,
@@ -519,7 +519,7 @@ const villasData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 26500000,
-    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 35 дней (красный - от 1 до 2 месяцев)
     beds: 5,
     baths: 4,
     sqft: 3500,
@@ -548,7 +548,7 @@ const flatsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 11800000,
-    endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 92 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 92 дня (зеленый - от 3 месяцев)
     beds: 2,
     baths: 1,
     sqft: 65,
@@ -574,7 +574,7 @@ const flatsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 8000000,
-    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 80 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 80 дней (оранжевый - от 2 до 3 месяцев)
     beds: 1,
     baths: 1,
     sqft: 42,
@@ -626,7 +626,7 @@ const flatsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 6500000,
-    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 40 дней (красный - от 1 до 2 месяцев)
     beds: 3,
     baths: 2,
     sqft: 95,
@@ -652,7 +652,7 @@ const flatsData = [
     hasSamolyot: false,
     isAuction: true,
     currentBid: 14500000,
-    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
+    endTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 10 дней (красный мигающий - меньше 1 месяца)
     beds: 2,
     baths: 2,
     sqft: 75,
@@ -1468,6 +1468,15 @@ function MainPage() {
   }
 
   const toggleFavorite = (category, id) => {
+    // Проверяем авторизацию через Clerk или старую систему
+    const isClerkAuth = user && userLoaded
+    const isOldAuth = isAuthenticated()
+    
+    if (!isClerkAuth && !isOldAuth) {
+      alert('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное')
+      return
+    }
+    
     const key = `${category}-${id}`
     setFavoriteProperties((prev) => {
       const updated = new Map(prev)

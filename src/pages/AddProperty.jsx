@@ -14,15 +14,17 @@ import {
   FiChevronDown,
   FiLink,
   FiVideo,
-  FiFileText
+  FiFileText,
+  FiCheck,
+  FiFile
 } from 'react-icons/fi'
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import PropertyPreviewModal from '../components/PropertyPreviewModal'
 import DateRangePicker from '../components/DateRangePicker'
-import TestDriveModal from '../components/TestDriveModal'
-import DocumentsModal from '../components/DocumentsModal'
+import SellerVerificationModal from '../components/SellerVerificationModal'
+import { getUserData } from '../services/authService'
 import './AddProperty.css'
 
 const AddProperty = () => {
@@ -30,18 +32,26 @@ const AddProperty = () => {
   const fileInputRef = useRef(null)
   const videoInputRef = useRef(null)
   const documentInputRef = useRef(null)
+  const ownershipInputRef = useRef(null)
+  const noDebtsInputRef = useRef(null)
   
   const [photos, setPhotos] = useState([])
   const [videos, setVideos] = useState([])
   const [additionalDocuments, setAdditionalDocuments] = useState([])
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
+  const [requiredDocuments, setRequiredDocuments] = useState({
+    ownership: null,
+    noDebts: null
+  })
+  const [uploadedDocuments, setUploadedDocuments] = useState({
+    ownership: false,
+    noDebts: false
+  })
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [showCarousel, setShowCarousel] = useState(false)
-  const [showVideoCarousel, setShowVideoCarousel] = useState(false)
+  const [mediaItems, setMediaItems] = useState([]) // Объединенный массив фото и видео
   const [showPreview, setShowPreview] = useState(false)
-  const [showTestDriveModal, setShowTestDriveModal] = useState(false)
-  const [showDocumentsModal, setShowDocumentsModal] = useState(false)
-  const [testDriveData, setTestDriveData] = useState(null)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [userId, setUserId] = useState(null)
   const [showVideoLinkModal, setShowVideoLinkModal] = useState(false)
   const [videoLink, setVideoLink] = useState('')
   const [isTranslating, setIsTranslating] = useState(false)
@@ -152,9 +162,6 @@ const AddProperty = () => {
 
   const handleRemovePhoto = (id) => {
     setPhotos(photos.filter(photo => photo.id !== id))
-    if (currentPhotoIndex >= photos.length - 1) {
-      setCurrentPhotoIndex(Math.max(0, photos.length - 2))
-    }
   }
 
   // Функция для получения YouTube ID из URL
@@ -344,6 +351,113 @@ const AddProperty = () => {
     setShowPreview(true)
   }
 
+  const handlePublish = async () => {
+    if (!formData.title || photos.length === 0) {
+      alert('Пожалуйста, заполните заголовок и загрузите хотя бы одно фото')
+      return
+    }
+    if (!uploadedDocuments.ownership || !uploadedDocuments.noDebts) {
+      alert('Пожалуйста, загрузите все необходимые документы')
+      return
+    }
+    if (!userId) {
+      alert('Ошибка: пользователь не авторизован. Пожалуйста, войдите в систему.')
+      return
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
+      
+      // Подготавливаем данные для отправки
+      const formDataToSend = new FormData()
+      
+      // Основные данные
+      formDataToSend.append('user_id', userId)
+      formDataToSend.append('property_type', formData.propertyType)
+      formDataToSend.append('title', formData.title)
+      formDataToSend.append('description', formData.description || '')
+      formDataToSend.append('price', formData.price || '')
+      formDataToSend.append('currency', currency)
+      formDataToSend.append('is_auction', formData.isAuction ? '1' : '0')
+      formDataToSend.append('auction_start_date', formData.auctionStartDate || '')
+      formDataToSend.append('auction_end_date', formData.auctionEndDate || '')
+      formDataToSend.append('auction_starting_price', formData.auctionStartingPrice || '')
+      
+      // Общие характеристики
+      formDataToSend.append('area', formData.area || '')
+      formDataToSend.append('rooms', formData.rooms || '')
+      formDataToSend.append('bedrooms', formData.bedrooms || '')
+      formDataToSend.append('bathrooms', formData.bathrooms || '')
+      formDataToSend.append('floor', formData.floor || '')
+      formDataToSend.append('total_floors', formData.totalFloors || '')
+      formDataToSend.append('year_built', formData.yearBuilt || '')
+      formDataToSend.append('location', formData.location || '')
+      
+      // Дополнительные поля
+      formDataToSend.append('balcony', formData.balcony ? '1' : '0')
+      formDataToSend.append('parking', formData.parking ? '1' : '0')
+      formDataToSend.append('elevator', formData.elevator ? '1' : '0')
+      formDataToSend.append('land_area', formData.landArea || '')
+      formDataToSend.append('garage', formData.garage ? '1' : '0')
+      formDataToSend.append('pool', formData.pool ? '1' : '0')
+      formDataToSend.append('garden', formData.garden ? '1' : '0')
+      formDataToSend.append('commercial_type', formData.commercialType || '')
+      formDataToSend.append('business_hours', formData.businessHours || '')
+      formDataToSend.append('renovation', formData.renovation || '')
+      formDataToSend.append('condition', formData.condition || '')
+      formDataToSend.append('heating', formData.heating || '')
+      formDataToSend.append('water_supply', formData.waterSupply || '')
+      formDataToSend.append('sewerage', formData.sewerage || '')
+      formDataToSend.append('electricity', formData.electricity ? '1' : '0')
+      formDataToSend.append('internet', formData.internet ? '1' : '0')
+      formDataToSend.append('security', formData.security ? '1' : '0')
+      formDataToSend.append('furniture', formData.furniture ? '1' : '0')
+      
+      // Медиа (JSON)
+      formDataToSend.append('photos', JSON.stringify(photos.map(p => p.url)))
+      formDataToSend.append('videos', JSON.stringify(videos))
+      formDataToSend.append('additional_documents', JSON.stringify(additionalDocuments.map(doc => ({
+        name: doc.name,
+        url: doc.url,
+        type: doc.type
+      }))))
+      
+      
+      // Документы
+      if (requiredDocuments.ownership) {
+        formDataToSend.append('ownership_document', requiredDocuments.ownership)
+      }
+      if (requiredDocuments.noDebts) {
+        formDataToSend.append('no_debts_document', requiredDocuments.noDebts)
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/properties`, {
+        method: 'POST',
+        body: formDataToSend
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        alert('Объявление успешно отправлено на модерацию!')
+        navigate('/owner')
+      } else {
+        alert(data.error || 'Ошибка при отправке объявления')
+      }
+    } catch (error) {
+      console.error('Ошибка при отправке объявления:', error)
+      alert('Произошла ошибка при отправке объявления. Попробуйте еще раз.')
+    }
+  }
+
+  // Получаем userId при монтировании компонента
+  useEffect(() => {
+    const userData = getUserData()
+    if (userData.isLoggedIn && userData.id) {
+      setUserId(userData.id)
+    }
+  }, [])
+
   const handleSubmit = (e) => {
     e.preventDefault()
     // Валидация основных полей
@@ -351,15 +465,25 @@ const AddProperty = () => {
       alert('Пожалуйста, заполните заголовок и загрузите хотя бы одно фото')
       return
     }
-    // Открываем второй шаг (модальное окно тест-драйва)
-    setShowTestDriveModal(true)
+    // Проверяем документы перед публикацией
+    if (!uploadedDocuments.ownership || !uploadedDocuments.noDebts) {
+      alert('Пожалуйста, загрузите все необходимые документы')
+      return
+    }
+    // Проверяем, что userId есть
+    if (!userId) {
+      alert('Ошибка: пользователь не авторизован. Пожалуйста, войдите в систему.')
+      return
+    }
+    // Открываем модальное окно верификации
+    setShowVerificationModal(true)
   }
 
-  const handleTestDriveNext = (data) => {
-    setTestDriveData(data)
-    setShowTestDriveModal(false)
-    // Открываем третий шаг (модальное окно документов)
-    setShowDocumentsModal(true)
+  const handleVerificationComplete = () => {
+    // После завершения верификации сразу публикуем объявление
+    // Пользователь уже отправлен на модерацию через верификацию
+    // Теперь отправляем объект недвижимости на модерацию
+    handlePublish()
   }
 
   const translateText = async (text, targetLang) => {
@@ -432,35 +556,47 @@ const AddProperty = () => {
     }
   }
 
-  const handleDocumentsComplete = (documents) => {
-    // Здесь будет логика сохранения объявления со всеми данными
-    console.log('Объявление сохранено:', { 
-      ...formData, 
-      photos,
-      videos,
-      additionalDocuments,
-      testDrive: testDriveData,
-      documents
-    })
-    alert('Объявление успешно опубликовано!')
-    setShowDocumentsModal(false)
-    navigate('/owner')
+  const handleRequiredDocumentChange = (type, e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setRequiredDocuments(prev => ({
+        ...prev,
+        [type]: file
+      }))
+      setUploadedDocuments(prev => ({
+        ...prev,
+        [type]: true
+      }))
+    }
+    e.target.value = ''
   }
 
-  const nextPhoto = () => {
-    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length)
+  const handleRemoveRequiredDocument = (type) => {
+    setRequiredDocuments(prev => ({
+      ...prev,
+      [type]: null
+    }))
+    setUploadedDocuments(prev => ({
+      ...prev,
+      [type]: false
+    }))
   }
 
-  const prevPhoto = () => {
-    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
+  // Обновляем объединенный массив медиа при изменении фото или видео
+  useEffect(() => {
+    const items = [
+      ...photos.map(photo => ({ ...photo, mediaType: 'photo' })),
+      ...videos.map(video => ({ ...video, mediaType: 'video' }))
+    ]
+    setMediaItems(items)
+  }, [photos, videos])
+
+  const nextMedia = () => {
+    setCurrentMediaIndex((prev) => (prev + 1) % mediaItems.length)
   }
 
-  const nextVideo = () => {
-    setCurrentVideoIndex((prev) => (prev + 1) % videos.length)
-  }
-
-  const prevVideo = () => {
-    setCurrentVideoIndex((prev) => (prev - 1 + videos.length) % videos.length)
+  const prevMedia = () => {
+    setCurrentMediaIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length)
   }
 
   return (
@@ -511,43 +647,99 @@ const AddProperty = () => {
               onClick={() => setFormData(prev => ({ ...prev, propertyType: 'commercial' }))}
             >
               <PiWarehouse size={32} />
-              <span>Коммерческая</span>
+              <span>Апартаменты</span>
             </button>
           </div>
         </section>
 
         {formData.propertyType && (
           <form onSubmit={handleSubmit} className="add-property-form">
-            {/* Загрузка фото */}
+            {/* Фото/Видео Объекта */}
             <section className="form-section">
-            <h2 className="section-title">Фотографии (до 10 шт.)</h2>
-            <div className="photos-upload-area">
-              {photos.length < 10 && (
-                <div 
-                  className="photo-upload-box"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FiUpload size={20} />
-                  <p>Добавить фото</p>
-                  <span>{photos.length}/10</span>
+              <h2 className="section-title">Фото/Видео Объекта</h2>
+              
+              {/* Первая строка - три квадратика для загрузки */}
+              <div className="media-upload-buttons">
+                {photos.length < 10 && (
+                  <div 
+                    className="media-upload-box"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FiUpload size={24} />
+                    <p>Добавить фото</p>
+                    <span>{photos.length}/10</span>
+                  </div>
+                )}
+                {videos.length < 3 && (
+                  <>
+                    <div 
+                      className="media-upload-box"
+                      onClick={() => videoInputRef.current?.click()}
+                    >
+                      <FiUpload size={24} />
+                      <p>Загрузить видео</p>
+                      <span className="upload-hint">до 1 минуты</span>
+                      <span>{videos.length}/3</span>
+                    </div>
+                    <div 
+                      className="media-upload-box media-upload-box--link"
+                      onClick={() => setShowVideoLinkModal(true)}
+                    >
+                      <FiLink size={24} />
+                      <p>Добавить ссылку</p>
+                      <span className="upload-hint">YouTube / Google Drive</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {/* Вторая строка - загруженные медиа */}
+              {(photos.length > 0 || videos.length > 0) && (
+                <div className="media-grid">
+                  {photos.map((photo, index) => (
+                    <div key={photo.id} className="photo-item">
+                      <img src={photo.url} alt={`Фото ${index + 1}`} />
+                      <button
+                        type="button"
+                        className="photo-remove"
+                        onClick={() => handleRemovePhoto(photo.id)}
+                      >
+                        <FiX size={16} />
+                      </button>
+                      <div className="photo-number">{index + 1}</div>
+                    </div>
+                  ))}
+                  {videos.map((video, index) => (
+                    <div key={video.id} className="photo-item">
+                      {video.type === 'youtube' && video.thumbnail ? (
+                        <img 
+                          src={video.thumbnail} 
+                          alt="YouTube видео"
+                          className="video-thumbnail"
+                        />
+                      ) : video.type === 'googledrive' ? (
+                        <div className="video-preview">
+                          <FiVideo size={32} />
+                          <span className="video-type-badge">Google Drive</span>
+                        </div>
+                      ) : (
+                        <video 
+                          src={video.url} 
+                          className="video-preview-element"
+                          muted
+                        />
+                      )}
+                      <button
+                        type="button"
+                        className="photo-remove"
+                        onClick={() => handleRemoveVideo(video.id)}
+                      >
+                        <FiX size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
-              
-              <div className="photos-grid">
-                {photos.map((photo, index) => (
-                  <div key={photo.id} className="photo-item">
-                    <img src={photo.url} alt={`Фото ${index + 1}`} />
-                    <button
-                      type="button"
-                      className="photo-remove"
-                      onClick={() => handleRemovePhoto(photo.id)}
-                    >
-                      <FiX size={16} />
-                    </button>
-                    <div className="photo-number">{index + 1}</div>
-                  </div>
-                ))}
-              </div>
               
               <input
                 ref={fileInputRef}
@@ -557,77 +749,6 @@ const AddProperty = () => {
                 onChange={handlePhotoUpload}
                 style={{ display: 'none' }}
               />
-            </div>
-            
-            {photos.length > 0 && (
-            <button
-              type="button"
-              className="view-carousel-btn"
-              onClick={() => setShowCarousel(true)}
-            >
-              <FiEye size={16} />
-              Просмотреть карусель
-            </button>
-            )}
-          </section>
-
-          {/* Загрузка видео */}
-          <section className="form-section">
-            <h2 className="section-title">Видео (до 3 шт.)</h2>
-            <div className="photos-upload-area">
-              {videos.length < 3 && (
-                <>
-                  <div 
-                    className="photo-upload-box"
-                    onClick={() => videoInputRef.current?.click()}
-                  >
-                    <FiUpload size={20} />
-                    <p>Загрузить видео</p>
-                    <span className="upload-hint">до 1 минуты</span>
-                    <span>{videos.length}/3</span>
-                  </div>
-                  <div 
-                    className="photo-upload-box photo-upload-box--link"
-                    onClick={() => setShowVideoLinkModal(true)}
-                  >
-                    <FiLink size={20} />
-                    <p>Добавить ссылку</p>
-                    <span className="upload-hint">YouTube / Google Drive</span>
-                  </div>
-                </>
-              )}
-              
-              <div className="photos-grid">
-                {videos.map((video, index) => (
-                  <div key={video.id} className="photo-item">
-                    {video.type === 'youtube' && video.thumbnail ? (
-                      <img 
-                        src={video.thumbnail} 
-                        alt="YouTube видео"
-                        className="video-thumbnail"
-                      />
-                    ) : video.type === 'googledrive' ? (
-                      <div className="video-preview">
-                        <FiVideo size={32} />
-                        <span className="video-type-badge">Google Drive</span>
-                      </div>
-                    ) : (
-                      <video 
-                        src={video.url} 
-                        className="video-preview-element"
-                        muted
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="photo-remove"
-                      onClick={() => handleRemoveVideo(video.id)}
-                    >
-                      <FiX size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
               
               <input
                 ref={videoInputRef}
@@ -637,19 +758,21 @@ const AddProperty = () => {
                 onChange={handleVideoUpload}
                 style={{ display: 'none' }}
               />
-            </div>
-            
-            {videos.length > 0 && (
-              <button
-                type="button"
-                className="view-carousel-btn"
-                onClick={() => setShowVideoCarousel(true)}
-              >
-                <FiEye size={16} />
-                Просмотреть карусель
-              </button>
-            )}
-          </section>
+              
+              {(photos.length > 0 || videos.length > 0) && (
+                <button
+                  type="button"
+                  className="view-carousel-btn"
+                  onClick={() => {
+                    setCurrentMediaIndex(0)
+                    setShowCarousel(true)
+                  }}
+                >
+                  <FiEye size={16} />
+                  Просмотреть карусель
+                </button>
+              )}
+            </section>
 
           {/* Заголовок */}
           <section className="form-section">
@@ -1354,6 +1477,107 @@ const AddProperty = () => {
             </section>
           )}
 
+          {/* Загрузка документов */}
+          <section className="form-section">
+            <h2 className="section-title">Загрузка документов</h2>
+            
+            <div className="documents-upload-list">
+              {/* Право собственности */}
+              <div className="document-upload-item">
+                <div className="document-upload-header">
+                  <div className="document-upload-info">
+                    <h3 className="document-upload-title">
+                      Право собственности
+                    </h3>
+                    <p className="document-upload-description">
+                      Загрузите документ о праве собственности
+                    </p>
+                  </div>
+                  {uploadedDocuments.ownership && (
+                    <div className="document-upload-check">
+                      <FiCheck size={20} />
+                    </div>
+                  )}
+                </div>
+
+                {!uploadedDocuments.ownership ? (
+                  <label className="document-upload-label">
+                    <input
+                      type="file"
+                      ref={ownershipInputRef}
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleRequiredDocumentChange('ownership', e)}
+                      style={{ display: 'none' }}
+                    />
+                    <FiUpload size={24} />
+                    <span>Загрузить файл</span>
+                  </label>
+                ) : (
+                  <div className="document-upload-file-info">
+                    <FiFile size={20} />
+                    <span className="document-upload-file-name">
+                      {requiredDocuments.ownership?.name || 'Файл загружен'}
+                    </span>
+                    <button
+                      type="button"
+                      className="document-upload-remove"
+                      onClick={() => handleRemoveRequiredDocument('ownership')}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Справка об отсутствии долгов */}
+              <div className="document-upload-item">
+                <div className="document-upload-header">
+                  <div className="document-upload-info">
+                    <h3 className="document-upload-title">
+                      Справка об отсутствии долгов
+                    </h3>
+                    <p className="document-upload-description">
+                      Загрузите справку об отсутствии задолженностей
+                    </p>
+                  </div>
+                  {uploadedDocuments.noDebts && (
+                    <div className="document-upload-check">
+                      <FiCheck size={20} />
+                    </div>
+                  )}
+                </div>
+
+                {!uploadedDocuments.noDebts ? (
+                  <label className="document-upload-label">
+                    <input
+                      type="file"
+                      ref={noDebtsInputRef}
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleRequiredDocumentChange('noDebts', e)}
+                      style={{ display: 'none' }}
+                    />
+                    <FiUpload size={24} />
+                    <span>Загрузить файл</span>
+                  </label>
+                ) : (
+                  <div className="document-upload-file-info">
+                    <FiFile size={20} />
+                    <span className="document-upload-file-name">
+                      {requiredDocuments.noDebts?.name || 'Файл загружен'}
+                    </span>
+                    <button
+                      type="button"
+                      className="document-upload-remove"
+                      onClick={() => handleRemoveRequiredDocument('noDebts')}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
           {/* Дополнительные документы */}
           <section className="form-section">
             <h2 className="section-title">Дополнительные документы</h2>
@@ -1422,8 +1646,8 @@ const AddProperty = () => {
         )}
       </div>
 
-      {/* Карусель фото */}
-      {showCarousel && photos.length > 0 && (
+      {/* Объединенная карусель фото и видео */}
+      {showCarousel && mediaItems.length > 0 && (
         <div className="carousel-overlay" onClick={() => setShowCarousel(false)}>
           <div className="carousel-container" onClick={(e) => e.stopPropagation()}>
             <button 
@@ -1432,89 +1656,72 @@ const AddProperty = () => {
             >
               <FiX size={24} />
             </button>
-            <button 
-              className="carousel-nav carousel-nav--prev"
-              onClick={prevPhoto}
-            >
-              <FiChevronLeft size={24} />
-            </button>
-            <div className="carousel-image-wrapper">
-              <img 
-                src={photos[currentPhotoIndex].url} 
-                alt={`Фото ${currentPhotoIndex + 1}`}
-                className="carousel-image"
-              />
-              <div className="carousel-counter">
-                {currentPhotoIndex + 1} / {photos.length}
-              </div>
-            </div>
-            <button 
-              className="carousel-nav carousel-nav--next"
-              onClick={nextPhoto}
-            >
-              <FiChevronRight size={24} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Карусель видео */}
-      {showVideoCarousel && videos.length > 0 && (
-        <div className="carousel-overlay" onClick={() => setShowVideoCarousel(false)}>
-          <div className="carousel-container" onClick={(e) => e.stopPropagation()}>
-            <button 
-              className="carousel-close"
-              onClick={() => setShowVideoCarousel(false)}
-            >
-              <FiX size={24} />
-            </button>
-            {videos.length > 1 && (
+            {mediaItems.length > 1 && (
               <>
                 <button 
                   className="carousel-nav carousel-nav--prev"
-                  onClick={prevVideo}
+                  onClick={prevMedia}
                 >
                   <FiChevronLeft size={24} />
                 </button>
                 <button 
                   className="carousel-nav carousel-nav--next"
-                  onClick={nextVideo}
+                  onClick={nextMedia}
                 >
                   <FiChevronRight size={24} />
                 </button>
               </>
             )}
-            <div className="carousel-video-wrapper">
-              {videos[currentVideoIndex].type === 'youtube' && videos[currentVideoIndex].videoId ? (
-                <iframe
-                  src={`https://www.youtube.com/embed/${videos[currentVideoIndex].videoId}`}
-                  title={`YouTube видео ${currentVideoIndex + 1}`}
-                  className="carousel-video"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : videos[currentVideoIndex].type === 'googledrive' && videos[currentVideoIndex].videoId ? (
-                <iframe
-                  src={`https://drive.google.com/file/d/${videos[currentVideoIndex].videoId}/preview`}
-                  title={`Google Drive видео ${currentVideoIndex + 1}`}
-                  className="carousel-video"
-                  frameBorder="0"
-                  allowFullScreen
-                />
-              ) : videos[currentVideoIndex].type === 'file' && videos[currentVideoIndex].url ? (
-                <video
-                  src={videos[currentVideoIndex].url}
-                  controls
-                  className="carousel-video-file"
-                  autoPlay
-                >
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
-              ) : null}
-              <div className="carousel-counter">
-                {currentVideoIndex + 1} / {videos.length}
-              </div>
+            <div className="carousel-media-wrapper">
+              {mediaItems[currentMediaIndex].mediaType === 'photo' ? (
+                <>
+                  <div className="carousel-image-wrapper">
+                    <img 
+                      src={mediaItems[currentMediaIndex].url} 
+                      alt={`Фото ${currentMediaIndex + 1}`}
+                      className="carousel-image"
+                    />
+                  </div>
+                  <div className="carousel-counter">
+                    {currentMediaIndex + 1} / {mediaItems.length}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="carousel-video-wrapper">
+                    {mediaItems[currentMediaIndex].type === 'youtube' && mediaItems[currentMediaIndex].videoId ? (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${mediaItems[currentMediaIndex].videoId}`}
+                        title={`YouTube видео ${currentMediaIndex + 1}`}
+                        className="carousel-video"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : mediaItems[currentMediaIndex].type === 'googledrive' && mediaItems[currentMediaIndex].videoId ? (
+                      <iframe
+                        src={`https://drive.google.com/file/d/${mediaItems[currentMediaIndex].videoId}/preview`}
+                        title={`Google Drive видео ${currentMediaIndex + 1}`}
+                        className="carousel-video"
+                        frameBorder="0"
+                        allowFullScreen
+                      />
+                    ) : mediaItems[currentMediaIndex].type === 'file' && mediaItems[currentMediaIndex].url ? (
+                      <video
+                        src={mediaItems[currentMediaIndex].url}
+                        controls
+                        className="carousel-video-file"
+                        autoPlay
+                      >
+                        Ваш браузер не поддерживает воспроизведение видео.
+                      </video>
+                    ) : null}
+                  </div>
+                  <div className="carousel-counter">
+                    {currentMediaIndex + 1} / {mediaItems.length}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1577,17 +1784,13 @@ const AddProperty = () => {
         </div>
       )}
 
-      <TestDriveModal
-        isOpen={showTestDriveModal}
-        onClose={() => setShowTestDriveModal(false)}
-        onNext={handleTestDriveNext}
+      <SellerVerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        userId={userId}
+        onComplete={handleVerificationComplete}
       />
 
-      <DocumentsModal
-        isOpen={showDocumentsModal}
-        onClose={() => setShowDocumentsModal(false)}
-        onComplete={handleDocumentsComplete}
-      />
     </div>
   )
 }

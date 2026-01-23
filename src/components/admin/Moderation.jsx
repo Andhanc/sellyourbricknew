@@ -171,23 +171,28 @@ const Moderation = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [pendingProperties, setPendingProperties] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Загрузка документов на верификацию
   useEffect(() => {
     if (activeTab === 'users') {
       loadPendingDocuments();
+    } else if (activeTab === 'properties') {
+      loadPendingProperties();
     }
   }, [activeTab]);
 
   // Автообновление каждые 5 секунд
   useEffect(() => {
-    if (activeTab === 'users') {
-      const interval = setInterval(() => {
+    const interval = setInterval(() => {
+      if (activeTab === 'users') {
         loadPendingDocuments();
-      }, 5000);
-      return () => clearInterval(interval);
-    }
+      } else if (activeTab === 'properties') {
+        loadPendingProperties();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
   }, [activeTab]);
 
   const loadPendingDocuments = async () => {
@@ -268,77 +273,156 @@ const Moderation = () => {
     });
   }, [activeTab, searchQuery, pendingDocuments]);
 
-  const filteredProperties = useMemo(() => {
-    if (activeTab !== 'properties') return [];
-    return mockPropertiesForModeration.filter(property => {
-      return (
-        property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        property.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        property.ownerName.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    });
-  }, [activeTab, searchQuery]);
-
-  const handleApprove = async (userId) => {
+  const loadPendingProperties = async () => {
+    setLoading(true);
     try {
-      const adminId = localStorage.getItem('userId') || 'admin';
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reviewed_by: adminId
-        })
-      });
-
+      const response = await fetch(`${API_BASE_URL}/properties/pending`);
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          alert('Пользователь одобрен и верифицирован. Ему отправлено уведомление.');
-          // Перезагружаем список документов
-          loadPendingDocuments();
-          setSelectedUser(null);
+        if (data.success && data.data) {
+          setPendingProperties(data.data);
+        } else {
+          setPendingProperties([]);
         }
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.error || 'Ошибка при одобрении пользователя');
+        console.error('Ошибка загрузки объявлений на модерации');
+        setPendingProperties([]);
       }
     } catch (error) {
-      console.error('Ошибка при одобрении пользователя:', error);
-      alert('Ошибка при одобрении пользователя');
+      console.error('Ошибка загрузки объявлений на модерации:', error);
+      setPendingProperties([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReject = async (userId, rejectionReason) => {
+  const filteredProperties = useMemo(() => {
+    if (activeTab !== 'properties') return [];
+    return pendingProperties.filter(property => {
+      const ownerName = `${property.first_name || ''} ${property.last_name || ''}`.toLowerCase();
+      return (
+        (property.title && property.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (property.location && property.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        ownerName.includes(searchQuery.toLowerCase()) ||
+        (property.email && property.email.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    });
+  }, [activeTab, searchQuery, pendingProperties]);
+
+  const handleApprove = async (type, id) => {
     try {
       const adminId = localStorage.getItem('userId') || 'admin';
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/reject`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reviewed_by: adminId,
-          rejection_reason: rejectionReason
-        })
-      });
+      
+      if (type === 'properties') {
+        // Одобрение недвижимости
+        const response = await fetch(`${API_BASE_URL}/properties/${id}/approve`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reviewed_by: adminId
+          })
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          alert('Пользователь отклонен. Ему отправлено уведомление.');
-          // Перезагружаем список документов
-          loadPendingDocuments();
-          setSelectedUser(null);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            alert('Объявление одобрено. Владельцу отправлено уведомление.');
+            loadPendingProperties();
+            setSelectedProperty(null);
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.error || 'Ошибка при одобрении объявления');
         }
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.error || 'Ошибка при отклонении пользователя');
+        // Одобрение пользователя
+        const response = await fetch(`${API_BASE_URL}/users/${id}/approve`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reviewed_by: adminId
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            alert('Пользователь одобрен и верифицирован. Ему отправлено уведомление.');
+            loadPendingDocuments();
+            setSelectedUser(null);
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.error || 'Ошибка при одобрении пользователя');
+        }
       }
     } catch (error) {
-      console.error('Ошибка при отклонении пользователя:', error);
-      alert('Ошибка при отклонении пользователя');
+      console.error('Ошибка при одобрении:', error);
+      alert('Ошибка при одобрении');
+    }
+  };
+
+  const handleReject = async (type, id, rejectionReason) => {
+    try {
+      const adminId = localStorage.getItem('userId') || 'admin';
+      
+      if (type === 'properties') {
+        // Отклонение недвижимости
+        const response = await fetch(`${API_BASE_URL}/properties/${id}/reject`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reviewed_by: adminId,
+            rejection_reason: rejectionReason
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            alert('Объявление отклонено. Владельцу отправлено уведомление.');
+            loadPendingProperties();
+            setSelectedProperty(null);
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.error || 'Ошибка при отклонении объявления');
+        }
+      } else {
+        // Отклонение пользователя
+        const response = await fetch(`${API_BASE_URL}/users/${id}/reject`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reviewed_by: adminId,
+            rejection_reason: rejectionReason
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            alert('Пользователь отклонен. Ему отправлено уведомление.');
+            loadPendingDocuments();
+            setSelectedUser(null);
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.error || 'Ошибка при отклонении пользователя');
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при отклонении:', error);
+      alert('Ошибка при отклонении');
     }
   };
 
@@ -382,7 +466,7 @@ const Moderation = () => {
         property={selectedProperty}
         onBack={() => setSelectedProperty(null)}
         onApprove={() => handleApprove('properties', selectedProperty.id)}
-        onReject={() => handleReject('properties', selectedProperty.id)}
+        onReject={(reason) => handleReject('properties', selectedProperty.id, reason)}
       />
     );
   }
@@ -505,58 +589,69 @@ const Moderation = () => {
 
       {activeTab === 'properties' && (
         <div className="moderation-content">
-          {filteredProperties.length === 0 ? (
+          {loading ? (
+            <div className="moderation-empty">
+              <p>Загрузка...</p>
+            </div>
+          ) : filteredProperties.length === 0 ? (
             <div className="moderation-empty">
               <p>Нет объектов недвижимости на модерации</p>
             </div>
           ) : (
             <div className="moderation-list">
-              {filteredProperties.map(property => (
-                <div 
-                  key={property.id} 
-                  className="moderation-card"
-                  onClick={() => setSelectedProperty(property)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="moderation-card__image">
-                    {getTypeIcon(property.type)}
-                  </div>
-
-                  <div className="moderation-card__info">
-                    <div className="moderation-card__header">
-                      <h3>{property.title}</h3>
+              {filteredProperties.map(property => {
+                const ownerName = `${property.first_name || ''} ${property.last_name || ''}`.trim() || 'Не указано';
+                return (
+                  <div 
+                    key={property.id} 
+                    className="moderation-card"
+                    onClick={() => setSelectedProperty(property)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="moderation-card__image">
+                      {getTypeIcon(property.property_type)}
                     </div>
-                    <p className="moderation-card__location">{property.location}</p>
 
-                    <div className="moderation-card__meta">
-                      <div className="moderation-meta-item">
-                        <span className="moderation-label">Тип:</span>
-                        <span className="moderation-value">{getTypeLabel(property.type)}</span>
+                    <div className="moderation-card__info">
+                      <div className="moderation-card__header">
+                        <h3>{property.title}</h3>
                       </div>
-                      <div className="moderation-meta-item">
-                        <span className="moderation-label">Цена:</span>
-                        <span className="moderation-value moderation-value--price">
-                          {property.price.toLocaleString('ru-RU')} $
-                        </span>
-                      </div>
-                      <div className="moderation-meta-item">
-                        <span className="moderation-label">Владелец:</span>
-                        <span className="moderation-value">{property.ownerName}</span>
-                      </div>
-                      <div className="moderation-meta-item">
-                        <span className="moderation-label">Дата подачи:</span>
-                        <span className="moderation-value">
-                          {new Date(property.submittedDate).toLocaleDateString('ru-RU')}
-                        </span>
-                      </div>
-                      <div className="moderation-meta-item">
-                        <span className="moderation-label">Фотографий:</span>
-                        <span className="moderation-value">{property.images}</span>
+                      <p className="moderation-card__location">{property.location || 'Не указано'}</p>
+
+                      <div className="moderation-card__meta">
+                        <div className="moderation-meta-item">
+                          <span className="moderation-label">Тип:</span>
+                          <span className="moderation-value">{getTypeLabel(property.property_type)}</span>
+                        </div>
+                        {property.price && (
+                          <div className="moderation-meta-item">
+                            <span className="moderation-label">Цена:</span>
+                            <span className="moderation-value moderation-value--price">
+                              {property.price.toLocaleString('ru-RU')} {property.currency || 'USD'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="moderation-meta-item">
+                          <span className="moderation-label">Владелец:</span>
+                          <span className="moderation-value">{ownerName}</span>
+                        </div>
+                        <div className="moderation-meta-item">
+                          <span className="moderation-label">Дата подачи:</span>
+                          <span className="moderation-value">
+                            {new Date(property.created_at).toLocaleDateString('ru-RU')}
+                          </span>
+                        </div>
+                        {property.photos && Array.isArray(property.photos) && (
+                          <div className="moderation-meta-item">
+                            <span className="moderation-label">Фотографий:</span>
+                            <span className="moderation-value">{property.photos.length}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

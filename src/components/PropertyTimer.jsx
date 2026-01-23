@@ -36,14 +36,20 @@ const PropertyTimer = ({ endTime, compact = false }) => {
 
   const days = timeLeft.days
 
-  let statusClass = 'timer-short'
-  if (days > 28) {
-    statusClass = 'timer-long'
-  } else if (days > 14) {
-    statusClass = 'timer-medium'
+  // Логика цветов таймера (в днях):
+  // Зеленый: от 90 дней и больше (от 3 месяцев)
+  // Оранжевый: от 60 до 90 дней (от 2 до 3 месяцев)
+  // Красный: от 30 до 60 дней (от 1 до 2 месяцев)
+  // Красный мигающий: меньше 30 дней (меньше 1 месяца)
+  let statusClass = 'timer-short' // По умолчанию красный
+  if (days >= 90) {
+    statusClass = 'timer-long' // Зеленый: от 3 месяцев и больше
+  } else if (days >= 60) {
+    statusClass = 'timer-medium' // Оранжевый: от 2 до 3 месяцев
   }
+  // Для дней < 60 остается 'timer-short' (красный)
 
-  const isCritical = days < 7
+  const isCritical = days < 30 // Красный мигающий: меньше 1 месяца
 
   if (compact) {
     const hasDays = timeLeft.days > 0

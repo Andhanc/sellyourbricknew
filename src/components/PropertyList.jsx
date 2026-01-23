@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useUser } from '@clerk/clerk-react'
 import { MdBed } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import { properties } from '../data/properties'
+import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
 import './PropertyList.css'
 
 const PropertyList = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, isLoaded: userLoaded } = useUser()
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [propertyType, setPropertyType] = useState('все')
@@ -214,8 +217,19 @@ const PropertyList = () => {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
+                      
+                      // Проверяем авторизацию через Clerk или старую систему
+                      const isClerkAuth = user && userLoaded
+                      const isOldAuth = isAuthenticated()
+                      const isFavorite = favorites.has(property.id)
+                      
+                      // Разрешаем удаление из избранного без авторизации, но добавление требует авторизации
+                      if (!isFavorite && !isClerkAuth && !isOldAuth) {
+                        alert('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное')
+                        return
+                      }
+                      
                       const newFavorites = new Set(favorites)
-                      const isFavorite = newFavorites.has(property.id)
                       
                       if (isFavorite) {
                         newFavorites.delete(property.id)

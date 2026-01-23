@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useUser } from '@clerk/clerk-react'
 import {
   FiArrowLeft,
   FiShare2,
@@ -10,6 +11,7 @@ import {
 import { FaHeart as FaHeartSolid } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { isAuthenticated } from '../services/authService'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './PropertyDetailClassic.css'
@@ -26,6 +28,7 @@ L.Icon.Default.mergeOptions({
 // Ожидает объект из массива properties.js
 function PropertyDetailClassic({ property, onBack }) {
   const { t } = useTranslation()
+  const { user, isLoaded: userLoaded } = useUser()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const thumbnailScrollRef = useRef(null)
 
@@ -85,6 +88,16 @@ function PropertyDetailClassic({ property, onBack }) {
   const [isFavorite, setIsFavorite] = useState(false)
 
   const handleToggleFavorite = () => {
+    // Проверяем авторизацию через Clerk или старую систему
+    const isClerkAuth = user && userLoaded
+    const isOldAuth = isAuthenticated()
+    
+    // Разрешаем удаление из избранного без авторизации, но добавление требует авторизации
+    if (!isFavorite && !isClerkAuth && !isOldAuth) {
+      alert('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное')
+      return
+    }
+    
     setIsFavorite((prev) => !prev)
   }
 

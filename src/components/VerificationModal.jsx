@@ -19,6 +19,8 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
   const [cameraType, setCameraType] = useState(null) // 'passport', 'selfie', 'selfieWithPassport'
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [animationClass, setAnimationClass] = useState('')
+  const [hintModalOpen, setHintModalOpen] = useState(false)
+  const [hintStep, setHintStep] = useState(1)
 
   const fileInputRef = useRef(null)
   const cameraRef = useRef(null)
@@ -172,6 +174,56 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
     }
   }
 
+  const openHintModal = (step) => {
+    setHintStep(step)
+    setHintModalOpen(true)
+  }
+
+  const closeHintModal = () => {
+    setHintModalOpen(false)
+  }
+
+  // Данные для подсказок по шагам
+  const hintData = {
+    1: {
+      title: 'Шаг 1: Паспорт',
+      description: 'Для верификации необходимо загрузить фотографию паспорта. Убедитесь, что:',
+      requirements: [
+        'Паспорт полностью виден в кадре',
+        'Все данные четко читаемы (серия, номер, ФИО, дата рождения)',
+        'Фото сделано при хорошем освещении',
+        'Паспорт открыт на странице с фотографией и основными данными',
+        'Нет бликов и теней, которые закрывают информацию'
+      ],
+      exampleText: 'Пример правильного фото паспорта:'
+    },
+    2: {
+      title: 'Шаг 2: Селфи',
+      description: 'Сделайте селфи для подтверждения вашей личности. Важно:',
+      requirements: [
+        'Ваше лицо полностью видно и занимает большую часть кадра',
+        'Хорошее освещение лица (без теней)',
+        'Вы смотрите прямо в камеру',
+        'Нет солнцезащитных очков, масок или других предметов, закрывающих лицо',
+        'Фон нейтральный, не отвлекает внимание'
+      ],
+      exampleText: 'Пример правильного селфи:'
+    },
+    3: {
+      title: 'Шаг 3: Селфи с паспортом',
+      description: 'Сделайте селфи, держа паспорт рядом с лицом. Это необходимо для подтверждения, что паспорт принадлежит вам. Убедитесь, что:',
+      requirements: [
+        'И ваше лицо, и паспорт четко видны в одном кадре',
+        'Паспорт открыт на странице с фотографией',
+        'Вы держите паспорт рядом с лицом (не закрывая его)',
+        'Данные в паспорте читаемы',
+        'Хорошее освещение для лица и паспорта',
+        'Вы смотрите прямо в камеру'
+      ],
+      exampleText: 'Пример правильного селфи с паспортом:'
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -216,147 +268,189 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
           <div className="verification-modal__content">
             {currentStep === 1 && (
               <div className="verification-step">
-                <div className="verification-step__icon">📄</div>
-                <h2 className="verification-step__title">Шаг 1: Паспорт</h2>
-                <p className="verification-step__description">
-                  Загрузите или сфотографируйте ваш паспорт. Убедитесь, что все данные четко видны.
-                </p>
-                
                 {previews.passport ? (
-                  <div className="verification-step__preview">
+                  <div className="verification-step__preview verification-step__preview--image-only">
                     <img src={previews.passport} alt="Паспорт" />
                     <button 
-                      className="verification-step__retake"
+                      className="verification-step__change"
                       onClick={() => {
                         setPhotos(prev => ({ ...prev, passport: null }))
                         setPreviews(prev => ({ ...prev, passport: null }))
                       }}
                     >
-                      Загрузить заново
+                      Изменить фото
                     </button>
                   </div>
                 ) : (
-                  <div className="verification-step__actions">
-                    <button 
-                      className="verification-step__btn verification-step__btn--primary"
-                      onClick={() => openCamera('passport')}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                      Сфотографировать
-                    </button>
-                    <button 
-                      className="verification-step__btn verification-step__btn--secondary"
-                      onClick={() => openFileUpload('passport')}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Загрузить из файлов
-                    </button>
-                  </div>
+                  <>
+                    <div className="verification-step__icon">📄</div>
+                    <div className="verification-step__title-wrapper">
+                      <h2 className="verification-step__title">Шаг 1: Паспорт</h2>
+                      <button 
+                        className="verification-step__hint-btn"
+                        onClick={() => openHintModal(1)}
+                        aria-label="Подсказка"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="verification-step__description">
+                      Загрузите или сфотографируйте ваш паспорт. Убедитесь, что все данные четко видны.
+                    </p>
+                    <div className="verification-step__actions">
+                      <button 
+                        className="verification-step__btn verification-step__btn--primary"
+                        onClick={() => openCamera('passport')}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        Сфотографировать
+                      </button>
+                      <button 
+                        className="verification-step__btn verification-step__btn--secondary"
+                        onClick={() => openFileUpload('passport')}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Загрузить из файлов
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )}
 
             {currentStep === 2 && (
               <div className="verification-step">
-                <div className="verification-step__icon">📷</div>
-                <h2 className="verification-step__title">Шаг 2: Селфи</h2>
-                <p className="verification-step__description">
-                  Сделайте селфи. Убедитесь, что ваше лицо четко видно и хорошо освещено.
-                </p>
-                
                 {previews.selfie ? (
-                  <div className="verification-step__preview">
+                  <div className="verification-step__preview verification-step__preview--image-only">
                     <img src={previews.selfie} alt="Селфи" />
                     <button 
-                      className="verification-step__retake"
+                      className="verification-step__change"
                       onClick={() => {
                         setPhotos(prev => ({ ...prev, selfie: null }))
                         setPreviews(prev => ({ ...prev, selfie: null }))
                       }}
                     >
-                      Переснять
+                      Изменить фото
                     </button>
                   </div>
                 ) : (
-                  <div className="verification-step__actions">
-                    <button 
-                      className="verification-step__btn verification-step__btn--primary"
-                      onClick={() => openCamera('selfie')}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                      Сделать селфи
-                    </button>
-                    <button 
-                      className="verification-step__btn verification-step__btn--secondary"
-                      onClick={() => openFileUpload('selfie')}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Загрузить из файлов
-                    </button>
-                  </div>
+                  <>
+                    <div className="verification-step__icon">📷</div>
+                    <div className="verification-step__title-wrapper">
+                      <h2 className="verification-step__title">Шаг 2: Селфи</h2>
+                      <button 
+                        className="verification-step__hint-btn"
+                        onClick={() => openHintModal(2)}
+                        aria-label="Подсказка"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="verification-step__description">
+                      Сделайте селфи. Убедитесь, что ваше лицо четко видно и хорошо освещено.
+                    </p>
+                    <div className="verification-step__actions">
+                      <button 
+                        className="verification-step__btn verification-step__btn--primary"
+                        onClick={() => openCamera('selfie')}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        Сделать селфи
+                      </button>
+                      <button 
+                        className="verification-step__btn verification-step__btn--secondary"
+                        onClick={() => openFileUpload('selfie')}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Загрузить из файлов
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )}
 
             {currentStep === 3 && (
               <div className="verification-step">
-                <div className="verification-step__icon">📸</div>
-                <h2 className="verification-step__title">Шаг 3: Селфи с паспортом</h2>
-                <p className="verification-step__description">
-                  Сделайте селфи с паспортом рядом с лицом. Убедитесь, что и ваше лицо, и паспорт четко видны.
-                </p>
-                
                 {previews.selfieWithPassport ? (
-                  <div className="verification-step__preview">
+                  <div className="verification-step__preview verification-step__preview--image-only">
                     <img src={previews.selfieWithPassport} alt="Селфи с паспортом" />
                     <button 
-                      className="verification-step__retake"
+                      className="verification-step__change"
                       onClick={() => {
                         setPhotos(prev => ({ ...prev, selfieWithPassport: null }))
                         setPreviews(prev => ({ ...prev, selfieWithPassport: null }))
                       }}
                     >
-                      Переснять
+                      Изменить фото
                     </button>
                   </div>
                 ) : (
-                  <div className="verification-step__actions">
-                    <button 
-                      className="verification-step__btn verification-step__btn--primary"
-                      onClick={() => openCamera('selfieWithPassport')}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                      Сделать селфи с паспортом
-                    </button>
-                    <button 
-                      className="verification-step__btn verification-step__btn--secondary"
-                      onClick={() => openFileUpload('selfieWithPassport')}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Загрузить из файлов
-                    </button>
-                  </div>
+                  <>
+                    <div className="verification-step__icon">📸</div>
+                    <div className="verification-step__title-wrapper">
+                      <h2 className="verification-step__title">Шаг 3: Селфи с паспортом</h2>
+                      <button 
+                        className="verification-step__hint-btn"
+                        onClick={() => openHintModal(3)}
+                        aria-label="Подсказка"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="verification-step__description">
+                      Сделайте селфи с паспортом рядом с лицом. Убедитесь, что и ваше лицо, и паспорт четко видны.
+                    </p>
+                    <div className="verification-step__actions">
+                      <button 
+                        className="verification-step__btn verification-step__btn--primary"
+                        onClick={() => openCamera('selfieWithPassport')}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        Сделать селфи с паспортом
+                      </button>
+                      <button 
+                        className="verification-step__btn verification-step__btn--secondary"
+                        onClick={() => openFileUpload('selfieWithPassport')}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Загрузить из файлов
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -424,6 +518,15 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
           }}
         />
       )}
+
+      {hintModalOpen && (
+        <VerificationHintModal
+          isOpen={hintModalOpen}
+          onClose={closeHintModal}
+          step={hintStep}
+          data={hintData[hintStep]}
+        />
+      )}
       
       <input
         ref={fileInputRef}
@@ -437,6 +540,75 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
         }}
       />
     </>
+  )
+}
+
+// Компонент модального окна с подсказкой
+const VerificationHintModal = ({ isOpen, onClose, step, data }) => {
+  if (!isOpen || !data) return null
+
+  // Примеры фото
+  const exampleImages = {
+    1: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Pasport_RF.jpg/330px-Pasport_RF.jpg',
+    2: 'https://pechater.ru/wp-content/uploads/2019/08/foto-ot-pechaterfoto-foto-s-retushyu.jpg',
+    3: 'https://www.computerra.ru/wp-content/uploads/2015/06/1e7fcc548a024256a091661587173216.jpg'
+  }
+
+  return (
+    <div className="verification-hint-modal-overlay" onClick={onClose}>
+      <div 
+        className="verification-hint-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="verification-hint-modal__close" onClick={onClose}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
+
+        <div className="verification-hint-modal__content">
+          <h2 className="verification-hint-modal__title">{data.title}</h2>
+          
+          <p className="verification-hint-modal__description">{data.description}</p>
+
+          <div className="verification-hint-modal__requirements">
+            <h3 className="verification-hint-modal__requirements-title">Требования:</h3>
+            <ul className="verification-hint-modal__requirements-list">
+              {data.requirements.map((req, index) => (
+                <li key={index} className="verification-hint-modal__requirements-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="verification-hint-modal__check-icon">
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {req}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="verification-hint-modal__example">
+            <p className="verification-hint-modal__example-text">{data.exampleText}</p>
+            <div className="verification-hint-modal__example-image">
+              <img 
+                src={exampleImages[step]} 
+                alt="Пример фото"
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                  e.target.nextSibling.style.display = 'block'
+                }}
+              />
+              <div className="verification-hint-modal__placeholder" style={{ display: 'none' }}>
+                <svg width="200" height="150" viewBox="0 0 200 150" fill="none">
+                  <rect width="200" height="150" fill="#f5f5f5"/>
+                  <path d="M80 60H120V90H80V60Z" fill="#ddd"/>
+                  <path d="M70 100H130M70 110H130" stroke="#ddd" strokeWidth="2"/>
+                  <text x="100" y="130" textAnchor="middle" fill="#999" fontSize="14">Пример фото</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
