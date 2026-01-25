@@ -17,7 +17,8 @@ import {
   FiFileText,
   FiCheck,
   FiFile,
-  FiThumbsUp
+  FiThumbsUp,
+  FiClock
 } from 'react-icons/fi'
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
 import { MdBed, MdOutlineBathtub, MdLightbulb } from 'react-icons/md'
@@ -27,7 +28,9 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import PropertyPreviewModal from '../components/PropertyPreviewModal'
 import DateRangePicker from '../components/DateRangePicker'
+import AuctionPeriodPicker from '../components/AuctionPeriodPicker'
 import SellerVerificationModal from '../components/SellerVerificationModal'
+import CountrySelect from '../components/CountrySelect'
 import { getUserData } from '../services/authService'
 import './AddProperty.css'
 
@@ -61,6 +64,7 @@ const AddProperty = () => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [showCarousel, setShowCarousel] = useState(false)
   const [mediaItems, setMediaItems] = useState([]) // Объединенный массив фото и видео
+  const [photosMediaIndex, setPhotosMediaIndex] = useState(0) // Индекс для карусели на странице загрузки фотографий
   const [showPreview, setShowPreview] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [userId, setUserId] = useState(null)
@@ -68,19 +72,37 @@ const AddProperty = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showVideoLinkModal, setShowVideoLinkModal] = useState(false)
   const [videoLink, setVideoLink] = useState('')
+  const [showPhotoLinkModal, setShowPhotoLinkModal] = useState(false)
+  const [photoLink, setPhotoLink] = useState('')
   const [isTranslating, setIsTranslating] = useState(false)
   const [translations, setTranslations] = useState(null)
   const [showTranslations, setShowTranslations] = useState(false)
   const [currency, setCurrency] = useState('USD')
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(null) // 'price' или 'auction' или null
-  const [currentStep, setCurrentStep] = useState('type-selection') // 'type-selection', 'test-drive-question', 'property-name', 'location', 'form'
+  const [currentStep, setCurrentStep] = useState('type-selection') // 'type-selection', 'test-drive-question', 'property-name', 'location', 'details', 'amenities', 'photos', 'documents', 'price', 'form'
   const [showHint1, setShowHint1] = useState(true)
   const [showHint2, setShowHint2] = useState(true)
   const [addressSearch, setAddressSearch] = useState('')
   const [addressSuggestions, setAddressSuggestions] = useState([])
+  const [bedrooms, setBedrooms] = useState([
+    { id: 1, name: 'Спальня 1', beds: [] },
+    { id: 2, name: 'Гостиная', beds: [] },
+    { id: 3, name: 'Другие помещения', beds: [] }
+  ])
+  const [guests, setGuests] = useState(0)
+  const [areaUnit, setAreaUnit] = useState('square_meters')
+  const [selectedBedroom, setSelectedBedroom] = useState(null)
+  const [showBedModal, setShowBedModal] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedCoordinates, setSelectedCoordinates] = useState(null)
   const [mapCenter, setMapCenter] = useState([55.7558, 37.6173]) // Москва по умолчанию
+  const [citySearch, setCitySearch] = useState('')
+  const [citySuggestions, setCitySuggestions] = useState([])
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false)
+  const citySearchRef = useRef(null)
+  const citySearchTimeoutRef = useRef(null)
+  const [isCitySearching, setIsCitySearching] = useState(false)
+  const [isAddressSearching, setIsAddressSearching] = useState(false)
   
   const currencies = [
     { code: 'USD', symbol: '$', name: 'Доллар США' },
@@ -173,12 +195,12 @@ const AddProperty = () => {
       return
     }
 
-    files.forEach(file => {
+    files.forEach((file, index) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader()
         reader.onloadend = () => {
           setPhotos(prev => [...prev, {
-            id: Date.now() + Math.random(),
+            id: Date.now() + Math.random() + index,
             url: reader.result,
             file: file
           }])
@@ -186,6 +208,7 @@ const AddProperty = () => {
         reader.readAsDataURL(file)
       }
     })
+    e.target.value = ''
   }
 
   const handleRemovePhoto = (id) => {
@@ -268,7 +291,7 @@ const AddProperty = () => {
       return
     }
 
-    files.forEach((file) => {
+    files.forEach((file, index) => {
       if (!file.type.startsWith('video/')) {
         alert(`Файл ${file.name} не является видео`)
         return
@@ -356,11 +379,47 @@ const AddProperty = () => {
     setAdditionalDocuments(additionalDocuments.filter(doc => doc.id !== id))
   }
 
+  // Функция для форматирования числа с запятыми
+  const formatNumberWithCommas = (value) => {
+    // Убираем все нецифровые символы
+    const numericValue = value.toString().replace(/\D/g, '')
+    if (!numericValue) return ''
+    // Форматируем с запятыми каждые 3 цифры
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+
+  // Функция для удаления запятых из числа
+  const removeCommas = (value) => {
+    return value.toString().replace(/,/g, '')
+  }
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }))
+  }
+
+  // Обработчик для поля цены с форматированием
+  const handlePriceChange = (e) => {
+    const value = e.target.value
+    // Сохраняем числовое значение без запятых
+    const numericValue = removeCommas(value)
+    setFormData(prev => ({
+      ...prev,
+      price: numericValue
+    }))
+  }
+
+  // Обработчик для стартовой цены аукциона с форматированием
+  const handleAuctionPriceChange = (e) => {
+    const value = e.target.value
+    // Сохраняем числовое значение без запятых
+    const numericValue = removeCommas(value)
+    setFormData(prev => ({
+      ...prev,
+      auctionStartingPrice: numericValue
     }))
   }
 
@@ -521,10 +580,104 @@ const AddProperty = () => {
       console.log('✅ Данные от сервера:', data)
       
       if (data.success) {
+        // Конвертируем файлы документов в base64 для сохранения в localStorage
+        const convertFileToBase64 = (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result)
+            reader.onerror = reject
+            reader.readAsDataURL(file)
+          })
+        }
+        
+        // Сохраняем данные формы объекта в localStorage для отправки в админку
+        const propertyData = {
+          userId: userId,
+          propertyType: formData.propertyType,
+          title: formData.title,
+          description: formData.description || '',
+          price: formData.price,
+          currency: currency,
+          isAuction: formData.isAuction,
+          testDrive: formData.testDrive,
+          auctionStartDate: formData.auctionStartDate,
+          auctionEndDate: formData.auctionEndDate,
+          auctionStartingPrice: formData.auctionStartingPrice,
+          area: formData.area,
+          rooms: formData.rooms,
+          bedrooms: formData.bedrooms,
+          bathrooms: formData.bathrooms,
+          floor: formData.floor,
+          totalFloors: formData.totalFloors,
+          yearBuilt: formData.yearBuilt,
+          location: formData.location,
+          address: formData.address,
+          apartment: formData.apartment,
+          country: formData.country,
+          city: formData.city,
+          coordinates: formData.coordinates,
+          balcony: formData.balcony,
+          parking: formData.parking,
+          elevator: formData.elevator,
+          landArea: formData.landArea,
+          garage: formData.garage,
+          pool: formData.pool,
+          garden: formData.garden,
+          commercialType: formData.commercialType,
+          businessHours: formData.businessHours,
+          renovation: formData.renovation,
+          condition: formData.condition,
+          heating: formData.heating,
+          waterSupply: formData.waterSupply,
+          sewerage: formData.sewerage,
+          electricity: formData.electricity,
+          internet: formData.internet,
+          security: formData.security,
+          furniture: formData.furniture,
+          feature1: formData.feature1,
+          feature2: formData.feature2,
+          feature3: formData.feature3,
+          feature4: formData.feature4,
+          feature5: formData.feature5,
+          feature6: formData.feature6,
+          feature7: formData.feature7,
+          feature8: formData.feature8,
+          feature9: formData.feature9,
+          feature10: formData.feature10,
+          feature11: formData.feature11,
+          feature12: formData.feature12,
+          photos: photos.map(p => p.url),
+          videos: videos,
+          additionalDocuments: additionalDocuments,
+          ownershipDocument: null,
+          noDebtsDocument: null,
+          ownershipDocumentName: requiredDocuments.ownership ? requiredDocuments.ownership.name : null,
+          noDebtsDocumentName: requiredDocuments.noDebts ? requiredDocuments.noDebts.name : null,
+          userProfileData: userProfileData,
+          submittedAt: new Date().toISOString(),
+          status: 'pending'
+        }
+        
+        // Конвертируем файлы документов в base64
+        if (requiredDocuments.ownership) {
+          propertyData.ownershipDocument = await convertFileToBase64(requiredDocuments.ownership)
+        }
+        if (requiredDocuments.noDebts) {
+          propertyData.noDebtsDocument = await convertFileToBase64(requiredDocuments.noDebts)
+        }
+        
+        // Получаем существующие данные объектов из localStorage
+        const existingProperties = JSON.parse(localStorage.getItem('pendingProperties') || '[]')
+        existingProperties.push(propertyData)
+        localStorage.setItem('pendingProperties', JSON.stringify(existingProperties))
+        
         // Закрываем модальное окно верификации
         setShowVerificationModal(false)
+        
         // Показываем модальное окно об успешной отправке
+        setIsSubmitting(false)
         setShowSuccessModal(true)
+        
         return true
       } else {
         throw new Error(data.error || 'Ошибка при отправке объявления')
@@ -574,16 +727,12 @@ const AddProperty = () => {
   }
 
   const handleVerificationComplete = async () => {
-    // После завершения верификации сразу публикуем объявление
-    // Пользователь уже отправлен на модерацию через верификацию
-    // Теперь отправляем объект недвижимости на модерацию
-    const success = await handlePublish()
-    if (!success) {
-      // Если отправка не удалась, оставляем модальное окно верификации открытым
-      // чтобы пользователь мог попробовать еще раз
-      return
-    }
-    // Если успешно, модальное окно закроется в handlePublish через setShowSuccessModal
+    // После завершения верификации сохраняем флаг в localStorage
+    // Форма объекта будет отправлена при повторном нажатии на "Продолжить"
+    localStorage.setItem('verificationSubmitted', 'true')
+    // Закрываем модальное окно верификации
+    setShowVerificationModal(false)
+    return true
   }
 
   const translateText = async (text, targetLang) => {
@@ -752,29 +901,93 @@ const AddProperty = () => {
     setCurrentStep('location')
   }
 
-  // Поиск адреса через Nominatim API
+  // Поиск адреса через Nominatim API с учетом города
   const searchAddress = async (query) => {
-    if (!query || query.length < 3) {
+    if (!query || query.length < 2) {
       setAddressSuggestions([])
       setShowSuggestions(false)
+      setIsAddressSearching(false)
       return
     }
 
+    setIsAddressSearching(true)
     try {
+      let searchQuery = query.trim()
+      
+      // Если указан город, добавляем его в запрос
+      if (formData.city) {
+        const cityName = formData.city.split(',')[0].trim() // Берем только название города
+        searchQuery = `${query.trim()}, ${cityName}`
+        
+        // Если также указана страна, добавляем и её
+        if (formData.country) {
+          searchQuery = `${query.trim()}, ${cityName}, ${formData.country}`
+        }
+      } else if (formData.country) {
+        // Если указана только страна
+        searchQuery = `${query.trim()}, ${formData.country}`
+      }
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=ru`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=10&accept-language=ru&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'PropertyListingApp/1.0'
+          }
+        }
       )
+      
+      if (!response.ok) {
+        console.error('Ошибка API:', response.status)
+        return
+      }
+      
       const data = await response.json()
-      setAddressSuggestions(data)
-      setShowSuggestions(true)
+      
+      // Фильтруем результаты по городу, если город указан
+      let addresses = data
+      if (formData.city) {
+        const cityName = formData.city.split(',')[0].trim().toLowerCase()
+        addresses = data.filter(item => {
+          const address = item.address || {}
+          const displayName = item.display_name || ''
+          
+          // Проверяем город в адресе или в display_name
+          const itemCity = (address.city || address.town || address.village || '').toLowerCase()
+          const itemCityInName = displayName.toLowerCase().includes(cityName)
+          
+          return itemCity === cityName || itemCityInName
+        })
+        
+        // Если после фильтрации нет результатов, показываем все
+        if (addresses.length === 0 && data.length > 0) {
+          addresses = data
+        }
+      }
+      
+      // Сортируем по важности
+      addresses.sort((a, b) => (b.importance || 0) - (a.importance || 0))
+      
+      // Ограничиваем до 10 результатов
+      addresses = addresses.slice(0, 10)
+      
+      setAddressSuggestions(addresses)
+      setShowSuggestions(addresses.length > 0)
+      // Сбрасываем загрузку только после установки результатов
+      setTimeout(() => {
+        setIsAddressSearching(false)
+      }, 100)
     } catch (error) {
       console.error('Ошибка поиска адреса:', error)
+      setAddressSuggestions([])
+      setShowSuggestions(false)
+      setIsAddressSearching(false)
     }
   }
 
   // Debounce для поиска адреса
   useEffect(() => {
-    if (addressSearch.length < 3) {
+    if (addressSearch.length < 2) {
       setAddressSuggestions([])
       setShowSuggestions(false)
       return
@@ -782,10 +995,145 @@ const AddProperty = () => {
 
     const timeoutId = setTimeout(() => {
       searchAddress(addressSearch)
-    }, 500)
+    }, 200)
 
     return () => clearTimeout(timeoutId)
-  }, [addressSearch])
+  }, [addressSearch, formData.city, formData.country])
+
+  // Поиск городов через Nominatim API
+  const searchCity = async (query, country = '') => {
+    if (!query || query.length < 2) {
+      setCitySuggestions([])
+      setShowCitySuggestions(false)
+      setIsCitySearching(false)
+      return
+    }
+
+    setIsCitySearching(true)
+    try {
+      let searchQuery = query.trim()
+      let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=20&accept-language=ru&addressdetails=1`
+      
+      // Если выбрана страна, добавляем её в запрос
+      if (country) {
+        searchQuery = `${query.trim()}, ${country}`
+        url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=20&accept-language=ru&addressdetails=1`
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'PropertyListingApp/1.0'
+        }
+      })
+      
+      if (!response.ok) {
+        console.error('Ошибка API:', response.status)
+        return
+      }
+      
+      const data = await response.json()
+      
+      if (!data || data.length === 0) {
+        setCitySuggestions([])
+        setShowCitySuggestions(false)
+        return
+      }
+      
+      // Более мягкая фильтрация - принимаем все результаты, которые похожи на города
+      let cities = data.filter(item => {
+        const type = item.type || ''
+        const classType = item.class || ''
+        const importance = item.importance || 0
+        
+        // Проверяем, что это город или населенный пункт (более широкий список)
+        const isCity = type === 'city' || 
+                      type === 'town' || 
+                      type === 'administrative' ||
+                      classType === 'place' ||
+                      type === 'village' ||
+                      type === 'hamlet' ||
+                      type === 'locality' ||
+                      type === 'suburb'
+        
+        // Очень мягкий порог важности
+        return isCity && importance > 0.05
+      })
+      
+      // Если после фильтрации нет результатов, используем все данные
+      if (cities.length === 0) {
+        cities = data
+      }
+      
+      // Если выбрана страна, дополнительно фильтруем по стране в адресе (более мягкая проверка)
+      if (country && cities.length > 0) {
+        const filteredByCountry = cities.filter(item => {
+          const address = item.address || {}
+          const itemCountry = address.country || ''
+          const displayName = item.display_name || ''
+          
+          // Проверяем страну в адресе или в display_name
+          return itemCountry.toLowerCase().includes(country.toLowerCase()) || 
+                 country.toLowerCase().includes(itemCountry.toLowerCase()) ||
+                 displayName.toLowerCase().includes(country.toLowerCase())
+        })
+        
+        // Если есть результаты с фильтрацией по стране, используем их, иначе используем все
+        if (filteredByCountry.length > 0) {
+          cities = filteredByCountry
+        }
+      }
+      
+      // Сортируем по важности (более важные города первыми)
+      cities.sort((a, b) => (b.importance || 0) - (a.importance || 0))
+      
+      // Ограничиваем до 10 результатов
+      cities = cities.slice(0, 10)
+      
+      setCitySuggestions(cities)
+      setShowCitySuggestions(cities.length > 0)
+      // Сбрасываем загрузку только после установки результатов
+      setTimeout(() => {
+        setIsCitySearching(false)
+      }, 100)
+    } catch (error) {
+      console.error('Ошибка поиска города:', error)
+      setCitySuggestions([])
+      setShowCitySuggestions(false)
+      setIsCitySearching(false)
+    }
+  }
+
+  // Обновление поиска при изменении страны (основной поиск в onChange)
+  useEffect(() => {
+    // Обновляем поиск только при изменении страны, если уже есть введенный текст
+    if (citySearch && citySearch.length >= 2 && formData.country) {
+      const timeoutId = setTimeout(() => {
+        searchCity(citySearch, formData.country)
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [formData.country])
+
+  // Обработчик выбора города
+  const handleCitySelect = (city) => {
+    // Заполняем поле полным адресом из подсказки
+    const fullAddress = city.display_name
+    setCitySearch(fullAddress)
+    // Сохраняем только название города в formData.city
+    const cityName = fullAddress.split(',')[0].trim()
+    setFormData(prev => ({ ...prev, city: cityName }))
+    setShowCitySuggestions(false)
+    setIsCitySearching(false) // Сбрасываем состояние загрузки
+    // Устанавливаем подсказки, чтобы показать галочку
+    setCitySuggestions([city])
+  }
+
+  // Синхронизация citySearch с formData.city при изменении извне (только если citySearch пустой)
+  useEffect(() => {
+    if (!citySearch && formData.city) {
+      setCitySearch(formData.city)
+    }
+  }, [])
 
   // Обработчик выбора адреса из предложений
   const handleAddressSelect = (suggestion) => {
@@ -798,6 +1146,9 @@ const AddProperty = () => {
     setSelectedCoordinates(coords)
     setMapCenter(coords)
     setShowSuggestions(false)
+    setIsAddressSearching(false) // Сбрасываем состояние загрузки
+    // Устанавливаем подсказки, чтобы показать галочку
+    setAddressSuggestions([suggestion])
     
     // Извлекаем страну и город из адреса
     const addressParts = suggestion.address || {}
@@ -825,13 +1176,324 @@ const AddProperty = () => {
     return null
   }
 
-  // Обработчик перехода к форме после заполнения местоположения
+  // Обработчик перехода к подробной информации после заполнения местоположения
   const handleLocationContinue = () => {
     if (!formData.address) {
       alert('Пожалуйста, введите адрес')
       return
     }
-    setCurrentStep('form')
+    setCurrentStep('details')
+  }
+
+  // Обработчик перехода к удобствам после заполнения подробной информации
+  const handleDetailsContinue = () => {
+    // Сохраняем данные о спальнях в formData
+    setFormData(prev => ({
+      ...prev,
+      bedrooms: bedrooms.filter(b => getTotalBedsCount(b.beds) > 0).length
+    }))
+    setCurrentStep('amenities')
+  }
+
+  // Обработчик перехода к загрузке фотографий после заполнения удобств
+  const handleAmenitiesContinue = () => {
+    setCurrentStep('photos')
+    // Обновляем объединенный массив медиа при переходе на страницу фотографий
+    updateMediaItems()
+  }
+
+  // Функция для обновления объединенного массива медиа
+  const updateMediaItems = () => {
+    const allMedia = [
+      ...photos.map(photo => ({ ...photo, mediaType: 'photo' })),
+      ...videos.map(video => ({ ...video, mediaType: 'video' }))
+    ]
+    setMediaItems(allMedia)
+    if (allMedia.length > 0 && photosMediaIndex >= allMedia.length) {
+      setPhotosMediaIndex(0)
+    }
+  }
+
+  // Обновляем mediaItems при изменении photos или videos
+  useEffect(() => {
+    if (currentStep === 'photos') {
+      const allMedia = [
+        ...photos.map(photo => ({ ...photo, mediaType: 'photo' })),
+        ...videos.map(video => ({ ...video, mediaType: 'video' }))
+      ]
+      setMediaItems(allMedia)
+      // Корректируем индекс, если он выходит за границы
+      if (allMedia.length > 0) {
+        setPhotosMediaIndex(prev => {
+          if (prev >= allMedia.length) {
+            return allMedia.length - 1
+          }
+          // Если индекс валидный, оставляем его, иначе переходим на последний элемент
+          return prev < 0 ? 0 : prev
+        })
+      } else {
+        setPhotosMediaIndex(0)
+      }
+    }
+  }, [photos, videos, currentStep])
+
+  // Навигация по карусели на странице фотографий
+  const handleNextMedia = () => {
+    const allMedia = [
+      ...photos.map(photo => ({ ...photo, mediaType: 'photo' })),
+      ...videos.map(video => ({ ...video, mediaType: 'video' }))
+    ]
+    if (allMedia.length > 0) {
+      setPhotosMediaIndex((prev) => (prev + 1) % allMedia.length)
+    }
+  }
+
+  const handlePrevMedia = () => {
+    const allMedia = [
+      ...photos.map(photo => ({ ...photo, mediaType: 'photo' })),
+      ...videos.map(video => ({ ...video, mediaType: 'video' }))
+    ]
+    if (allMedia.length > 0) {
+      setPhotosMediaIndex((prev) => (prev - 1 + allMedia.length) % allMedia.length)
+    }
+  }
+
+  // Обработчик перехода к форме после загрузки фотографий
+  const handlePhotosContinue = () => {
+    if (photos.length === 0) {
+      alert('Пожалуйста, загрузите хотя бы одно фото')
+      return
+    }
+    setCurrentStep('documents')
+  }
+
+  // Обработчик перехода к цене после загрузки документов
+  const handleDocumentsContinue = () => {
+    setCurrentStep('price')
+  }
+
+  // Обработчик перехода к форме после указания цены
+  const handlePriceContinue = async () => {
+    if (!formData.price || formData.price <= 0) {
+      alert('Пожалуйста, укажите минимальную цену продажи')
+      return
+    }
+    if (formData.isAuction) {
+      if (!formData.auctionStartDate || !formData.auctionEndDate) {
+        alert('Пожалуйста, укажите период проведения аукциона')
+        return
+      }
+      if (!formData.auctionStartingPrice || formData.auctionStartingPrice <= 0) {
+        alert('Пожалуйста, укажите стартовую цену аукциона')
+        return
+      }
+    }
+    
+    // Проверяем статус верификации пользователя
+    let isUserVerified = false
+    if (userId) {
+      try {
+        // Используем относительный путь через proxy для лучшей совместимости
+        // Если VITE_API_BASE_URL не установлен, используем '/api' который работает через vite proxy
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+        
+        // Создаем AbortController для таймаута (совместимость с браузерами)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 секунд таймаут
+        
+        const verificationResponse = await fetch(`${API_BASE_URL}/users/${userId}/verification-status`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (verificationResponse.ok) {
+          const verificationData = await verificationResponse.json()
+          if (verificationData.success && verificationData.data) {
+            isUserVerified = verificationData.data.isVerified === true
+            console.log('✅ Статус верификации получен:', isUserVerified)
+          }
+        } else {
+          console.warn('⚠️ Не удалось получить статус верификации, статус ответа:', verificationResponse.status)
+        }
+      } catch (error) {
+        // Если ошибка подключения, логируем но продолжаем работу
+        if (error.name === 'AbortError') {
+          console.warn('⚠️ Таймаут при проверке статуса верификации. Продолжаем с проверкой localStorage.')
+        } else if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('CONNECTION_REFUSED') || error.message.includes('NetworkError'))) {
+          console.warn('⚠️ Сервер недоступен при проверке статуса верификации. Продолжаем с проверкой localStorage.')
+        } else {
+          console.error('❌ Ошибка при проверке статуса верификации:', error)
+        }
+        // При ошибке считаем что пользователь не верифицирован (безопаснее)
+        // Продолжаем проверку флага verificationSubmitted в localStorage
+      }
+    }
+    
+    // Если пользователь уже верифицирован, пропускаем верификацию и сразу отправляем объявление
+    if (isUserVerified) {
+      await handlePublish()
+      // Модальное окно покажется из handlePublish, навигация произойдет при закрытии модального окна
+      return
+    }
+    
+    // Проверяем, была ли верификация отправлена
+    const verificationData = localStorage.getItem('verificationSubmitted')
+    if (verificationData === 'true') {
+      // Если верификация уже отправлена, отправляем форму объекта на модерацию
+      const success = await handlePublish()
+      if (success) {
+        // Очищаем флаг верификации
+        localStorage.removeItem('verificationSubmitted')
+        // Модальное окно покажется из handlePublish, навигация произойдет при закрытии модального окна
+      }
+    } else {
+      // Если верификация еще не отправлена, открываем модальное окно верификации
+      setShowVerificationModal(true)
+    }
+  }
+
+  // Обработчик drag and drop для фотографий
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+    if (imageFiles.length > 0) {
+      const remainingSlots = 10 - photos.length
+      if (imageFiles.length > remainingSlots) {
+        alert(`Можно загрузить максимум ${remainingSlots} фото`)
+        return
+      }
+      imageFiles.forEach(file => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setPhotos(prev => [...prev, {
+            id: Date.now() + Math.random(),
+            url: reader.result,
+            file: file
+          }])
+        }
+        reader.readAsDataURL(file)
+      })
+    }
+  }
+
+  // Функция для получения текста типа кровати
+  const getBedTypeLabel = (bedType) => {
+    const labels = {
+      'twin': 'односпальная кровать',
+      'full': 'двуспальная кровать',
+      'queen': 'кровать размера queen',
+      'king': 'кровать размера king',
+      'sofa': 'диван',
+      'none': 'кроватей'
+    }
+    return labels[bedType] || 'кровать'
+  }
+
+  // Функция для получения размера кровати
+  const getBedSize = (bedType) => {
+    const sizes = {
+      'twin': '35-51 дюймов шириной',
+      'full': '52-59 дюймов шириной',
+      'queen': '60-70 дюймов шириной',
+      'king': '71-81 дюймов шириной'
+    }
+    return sizes[bedType] || ''
+  }
+
+  // Подсчет общего количества кроватей в спальне
+  const getTotalBedsCount = (beds) => {
+    return beds.reduce((total, bed) => total + bed.count, 0)
+  }
+
+  // Получение текста для отображения кроватей
+  const getBedsDisplayText = (beds) => {
+    const total = getTotalBedsCount(beds)
+    if (total === 0) return '0 кроватей'
+    
+    const bedTypes = beds.filter(b => b.count > 0)
+    if (bedTypes.length === 1) {
+      const bed = bedTypes[0]
+      return `${bed.count} ${getBedTypeLabel(bed.type)}`
+    }
+    return `${total} кроватей`
+  }
+
+  // Открытие модального окна для редактирования кроватей
+  const handleEditBedroom = (bedroom) => {
+    setSelectedBedroom(bedroom)
+    setShowBedModal(true)
+  }
+
+  // Сохранение изменений кроватей
+  const handleSaveBeds = (bedroomId, beds) => {
+    setBedrooms(bedrooms.map(b => 
+      b.id === bedroomId ? { ...b, beds: beds } : b
+    ))
+    setShowBedModal(false)
+    setSelectedBedroom(null)
+  }
+
+  // Изменение количества кроватей определенного типа
+  const handleBedCountChange = (bedType, delta) => {
+    if (!selectedBedroom) return
+    
+    const currentBeds = [...selectedBedroom.beds]
+    const bedIndex = currentBeds.findIndex(b => b.type === bedType)
+    
+    if (bedIndex >= 0) {
+      const newCount = Math.max(0, currentBeds[bedIndex].count + delta)
+      if (newCount === 0) {
+        currentBeds.splice(bedIndex, 1)
+      } else {
+        currentBeds[bedIndex].count = newCount
+      }
+    } else if (delta > 0) {
+      currentBeds.push({ type: bedType, count: 1 })
+    }
+    
+    setSelectedBedroom({ ...selectedBedroom, beds: currentBeds })
+  }
+
+  // Получение количества кроватей определенного типа
+  const getBedCount = (bedType) => {
+    if (!selectedBedroom) return 0
+    const bed = selectedBedroom.beds.find(b => b.type === bedType)
+    return bed ? bed.count : 0
+  }
+
+  // Добавление новой спальни
+  const handleAddBedroom = () => {
+    const bedroomNumber = bedrooms.filter(b => b.name.startsWith('Спальня')).length + 1
+    const newBedroom = {
+      id: Date.now(),
+      name: `Спальня ${bedroomNumber}`,
+      beds: []
+    }
+    setBedrooms([...bedrooms, newBedroom])
+  }
+
+  // Удаление спальни
+  const handleRemoveBedroom = (id) => {
+    setBedrooms(bedrooms.filter(b => b.id !== id))
   }
 
   return (
@@ -850,7 +1512,11 @@ const AddProperty = () => {
               } else if (currentStep === 'location') {
                 setCurrentStep('property-name')
               } else if (currentStep === 'form') {
-                setCurrentStep('location')
+                setCurrentStep('price')
+              } else if (currentStep === 'price') {
+                setCurrentStep('documents')
+              } else if (currentStep === 'documents') {
+                setCurrentStep('photos')
               } else {
                 navigate('/owner')
               }
@@ -1111,26 +1777,90 @@ const AddProperty = () => {
               
               <div className="property-location-input-group">
                 <label className="property-location-label">Страна</label>
-                <input
-                  type="text"
-                  name="country"
+                <CountrySelect
                   value={formData.country}
-                  onChange={handleInputChange}
-                  className="property-location-input"
-                  placeholder="Страна"
+                  onChange={(countryName) => {
+                    setFormData(prev => ({ ...prev, country: countryName }))
+                    // Обновляем поиск города при изменении страны
+                    if (citySearch) {
+                      searchCity(citySearch, countryName)
+                    }
+                  }}
+                  placeholder="Выберите страну"
+                  className="property-location-country-select"
                 />
               </div>
 
               <div className="property-location-input-group">
                 <label className="property-location-label">Город</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="property-location-input"
-                  placeholder="Город"
-                />
+                <div className="property-location-search-wrapper">
+                  <input
+                    type="text"
+                    ref={citySearchRef}
+                    value={citySearch}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setCitySearch(value)
+                      // Сохраняем только название города в formData.city
+                      const cityName = value.split(',')[0].trim()
+                      setFormData(prev => ({ ...prev, city: cityName }))
+                      
+                      // Очищаем предыдущий timeout
+                      if (citySearchTimeoutRef.current) {
+                        clearTimeout(citySearchTimeoutRef.current)
+                      }
+                      
+                      // Если введено 2+ символа, запускаем поиск с минимальной задержкой
+                      if (value.length >= 2) {
+                        citySearchTimeoutRef.current = setTimeout(() => {
+                          searchCity(value, formData.country)
+                        }, 100)
+                      } else {
+                        setCitySuggestions([])
+                        setShowCitySuggestions(false)
+                        setIsCitySearching(false)
+                      }
+                    }}
+                    onFocus={() => {
+                      // Всегда показываем подсказки, если они есть
+                      if (citySuggestions.length > 0) {
+                        setShowCitySuggestions(true)
+                      }
+                      // Если есть текст, но нет подсказок, запускаем поиск
+                      if (citySearch && citySearch.length >= 2 && citySuggestions.length === 0) {
+                        searchCity(citySearch, formData.country)
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowCitySuggestions(false), 200)
+                    }}
+                    className="property-location-input property-location-input--with-icon"
+                    placeholder="Введите город"
+                  />
+                  <div className="property-location-input-icon">
+                    {isCitySearching ? (
+                      <FiLoader className="spinner" size={18} />
+                    ) : (citySearch.length >= 2 && (citySuggestions.length > 0 || citySearch.includes(','))) ? (
+                      <FiCheck size={18} />
+                    ) : (citySearch.length >= 2 && citySuggestions.length === 0 && !citySearch.includes(',')) ? (
+                      <FiLoader className="spinner" size={18} />
+                    ) : null}
+                  </div>
+                  {showCitySuggestions && citySuggestions.length > 0 && (
+                    <div className="property-location-suggestions">
+                      {citySuggestions.map((city, index) => (
+                        <div
+                          key={index}
+                          className="property-location-suggestion-item"
+                          onClick={() => handleCitySelect(city)}
+                        >
+                          <FiMapPin size={16} />
+                          <span>{city.display_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="property-location-input-group">
@@ -1139,18 +1869,44 @@ const AddProperty = () => {
                   <input
                     type="text"
                     value={addressSearch}
-                    onChange={(e) => setAddressSearch(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setAddressSearch(value)
+                      // Если введено 2+ символа и указан город, сразу запускаем поиск
+                      if (value.length >= 2 && formData.city) {
+                        searchAddress(value)
+                      } else {
+                        setAddressSuggestions([])
+                        setShowSuggestions(false)
+                        setIsAddressSearching(false)
+                      }
+                    }}
                     onFocus={() => {
                       if (addressSuggestions.length > 0) {
                         setShowSuggestions(true)
+                      } else if (addressSearch && addressSearch.length >= 2 && formData.city) {
+                        // Если есть текст, но нет подсказок, запускаем поиск
+                        searchAddress(addressSearch)
                       }
                     }}
                     onBlur={() => {
                       setTimeout(() => setShowSuggestions(false), 200)
                     }}
-                    className="property-location-input"
-                    placeholder="Введите адрес"
+                    className="property-location-input property-location-input--with-icon"
+                    placeholder={formData.city ? "Введите адрес" : "Сначала выберите город"}
+                    disabled={!formData.city}
                   />
+                  {formData.city && (
+                    <div className="property-location-input-icon">
+                      {isAddressSearching ? (
+                        <FiLoader className="spinner" size={18} />
+                      ) : (addressSearch.length >= 2 && (addressSuggestions.length > 0 || addressSearch.includes(','))) ? (
+                        <FiCheck size={18} />
+                      ) : (addressSearch.length >= 2 && addressSuggestions.length === 0 && !addressSearch.includes(',')) ? (
+                        <FiLoader className="spinner" size={18} />
+                      ) : null}
+                    </div>
+                  )}
                   {showSuggestions && addressSuggestions.length > 0 && (
                     <div className="property-location-suggestions">
                       {addressSuggestions.map((suggestion, index) => (
@@ -1224,6 +1980,1121 @@ const AddProperty = () => {
                   <MapUpdater center={selectedCoordinates || mapCenter} zoom={selectedCoordinates ? 15 : 10} />
                 </MapContainer>
               )}
+            </div>
+          </div>
+        ) : currentStep === 'details' ? (
+          /* Экран подробной информации */
+          <div className="property-details-screen">
+            <div className="property-details-main">
+              <h2 className="property-details-title">
+                Подробная информация
+              </h2>
+              
+              <div className="property-details-content-scrollable">
+                {/* Блок "Where can people sleep?" */}
+                <div className="sleep-areas-section">
+                  <h3 className="sleep-areas-title">Где могут спать люди?</h3>
+                  <div className="sleep-areas-list">
+                    {bedrooms.map((bedroom, index) => (
+                      <div 
+                        key={bedroom.id} 
+                        className="sleep-area-item"
+                        onClick={() => handleEditBedroom(bedroom)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="sleep-area-content">
+                          <div className="sleep-area-name">{bedroom.name}</div>
+                          <div className="sleep-area-beds">
+                            {getBedsDisplayText(bedroom.beds)}
+                          </div>
+                        </div>
+                        {bedroom.name.startsWith('Спальня') && (
+                          <button
+                            type="button"
+                            className="sleep-area-remove-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleRemoveBedroom(bedroom.id)
+                            }}
+                          >
+                            <FiX size={18} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="add-bedroom-btn"
+                    onClick={handleAddBedroom}
+                  >
+                    <span className="add-bedroom-icon">+</span>
+                    Добавить спальню
+                  </button>
+                </div>
+
+                {/* Блок "Количество этажей" */}
+                <div className="floors-section">
+                  <h3 className="floors-title">Количество этажей</h3>
+                  <div className="number-input-control">
+                    <button
+                      type="button"
+                      className="number-input-btn number-input-btn--minus"
+                      onClick={() => handleDetailChange('totalFloors', Math.max(0, (formData.totalFloors || 0) - 1))}
+                      disabled={(formData.totalFloors || 0) === 0}
+                    >
+                      <span className="number-input-icon">−</span>
+                    </button>
+                    <span className="number-input-value">{formData.totalFloors || 0}</span>
+                    <button
+                      type="button"
+                      className="number-input-btn number-input-btn--plus"
+                      onClick={() => handleDetailChange('totalFloors', (formData.totalFloors || 0) + 1)}
+                    >
+                      <span className="number-input-icon">+</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Блок "How many bathrooms are there?" */}
+                <div className="bathrooms-section">
+                  <h3 className="bathrooms-title">Сколько ванных комнат?</h3>
+                  <div className="number-input-control">
+                    <button
+                      type="button"
+                      className="number-input-btn number-input-btn--minus"
+                      onClick={() => handleDetailChange('bathrooms', Math.max(0, (formData.bathrooms || 0) - 1))}
+                      disabled={(formData.bathrooms || 0) === 0}
+                    >
+                      <span className="number-input-icon">−</span>
+                    </button>
+                    <span className="number-input-value">{formData.bathrooms || 0}</span>
+                    <button
+                      type="button"
+                      className="number-input-btn number-input-btn--plus"
+                      onClick={() => handleDetailChange('bathrooms', (formData.bathrooms || 0) + 1)}
+                    >
+                      <span className="number-input-icon">+</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Блок "How big is this apartment?" */}
+                <div className="apartment-size-section">
+                  <h3 className="apartment-size-title">Какой размер у этой квартиры?</h3>
+                  <label className="apartment-size-label">Размер квартиры – необязательно</label>
+                  <div className="apartment-size-input-group">
+                    <input
+                      type="number"
+                      value={formData.area}
+                      onChange={(e) => handleDetailChange('area', e.target.value)}
+                      className="apartment-size-input"
+                      placeholder="0"
+                      min="0"
+                    />
+                    <select
+                      value={areaUnit}
+                      onChange={(e) => setAreaUnit(e.target.value)}
+                      className="apartment-size-unit"
+                    >
+                      <option value="square_meters">квадратные метры</option>
+                      <option value="square_feet">квадратные футы</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="property-details-actions">
+                <button
+                  type="button"
+                  className="property-details-back-btn"
+                  onClick={() => setCurrentStep('location')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-details-continue-btn"
+                  onClick={handleDetailsContinue}
+                >
+                  Продолжить
+                </button>
+              </div>
+            </div>
+
+            {/* Модальное окно для редактирования кроватей */}
+            {showBedModal && selectedBedroom && (
+              <div className="bed-modal-overlay" onClick={() => setShowBedModal(false)}>
+                <div className="bed-modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="bed-modal-header">
+                    <h3 className="bed-modal-title">Какие кровати есть в этом помещении?</h3>
+                    <button
+                      type="button"
+                      className="bed-modal-close"
+                      onClick={() => setShowBedModal(false)}
+                    >
+                      <FiX size={20} />
+                    </button>
+                  </div>
+                  
+                  <div className="bed-types-list">
+                    {['twin', 'full', 'queen', 'king'].map((bedType) => (
+                      <div key={bedType} className="bed-type-item">
+                        <div className="bed-type-info">
+                          <MdBed size={24} className="bed-type-icon" />
+                          <div className="bed-type-details">
+                            <div className="bed-type-name">
+                              {bedType === 'twin' ? 'Односпальная кровать' :
+                               bedType === 'full' ? 'Двуспальная кровать' :
+                               bedType === 'queen' ? 'Кровать размера Queen' :
+                               'Кровать размера King'}
+                            </div>
+                            <div className="bed-type-size">{getBedSize(bedType)}</div>
+                          </div>
+                        </div>
+                        <div className="bed-type-control">
+                          <button
+                            type="button"
+                            className="bed-count-btn bed-count-btn--minus"
+                            onClick={() => handleBedCountChange(bedType, -1)}
+                            disabled={getBedCount(bedType) === 0}
+                          >
+                            <span className="bed-count-icon">−</span>
+                          </button>
+                          <span className="bed-count-value">{getBedCount(bedType)}</span>
+                          <button
+                            type="button"
+                            className="bed-count-btn bed-count-btn--plus"
+                            onClick={() => handleBedCountChange(bedType, 1)}
+                          >
+                            <span className="bed-count-icon">+</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bed-modal-footer">
+                    <button
+                      type="button"
+                      className="bed-modal-save-btn"
+                      onClick={() => handleSaveBeds(selectedBedroom.id, selectedBedroom.beds)}
+                    >
+                      Сохранить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : currentStep === 'amenities' ? (
+          /* Экран удобств */
+          <div className="property-amenities-screen">
+            <div className="property-amenities-main">
+              <h2 className="property-amenities-title">
+                Дополнительные удобства и особенности
+              </h2>
+              
+              <div className="property-amenities-content-scrollable">
+                {/* Парковка и гараж */}
+                <div className="amenities-category">
+                  <h4 className="amenities-category-title">Парковка и гараж</h4>
+                  <div className="amenities-list">
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.garage || false}
+                        onChange={(e) => handleDetailChange('garage', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Гараж</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.parking || false}
+                        onChange={(e) => handleDetailChange('parking', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Парковочное место</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature1 || false}
+                        onChange={(e) => handleDetailChange('feature1', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Подземная парковка</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Мебель и техника */}
+                <div className="amenities-category">
+                  <h4 className="amenities-category-title">Мебель и техника</h4>
+                  <div className="amenities-list">
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature2 || false}
+                        onChange={(e) => handleDetailChange('feature2', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Кухонная мебель</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.furniture || false}
+                        onChange={(e) => handleDetailChange('furniture', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Встроенная мебель</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature3 || false}
+                        onChange={(e) => handleDetailChange('feature3', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Стиральная машина</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature4 || false}
+                        onChange={(e) => handleDetailChange('feature4', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Посудомоечная машина</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.electricity || false}
+                        onChange={(e) => handleDetailChange('electricity', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Кондиционер</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Коммуникации и безопасность */}
+                <div className="amenities-category">
+                  <h4 className="amenities-category-title">Коммуникации и безопасность</h4>
+                  <div className="amenities-list">
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.internet || false}
+                        onChange={(e) => handleDetailChange('internet', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Интернет</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.security || false}
+                        onChange={(e) => handleDetailChange('security', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Охрана</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature5 || false}
+                        onChange={(e) => handleDetailChange('feature5', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Домофон</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature6 || false}
+                        onChange={(e) => handleDetailChange('feature6', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Видеонаблюдение</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Дополнительные помещения */}
+                <div className="amenities-category">
+                  <h4 className="amenities-category-title">Дополнительные помещения</h4>
+                  <div className="amenities-list">
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.balcony || false}
+                        onChange={(e) => handleDetailChange('balcony', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Балкон</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature7 || false}
+                        onChange={(e) => handleDetailChange('feature7', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Лоджия</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature8 || false}
+                        onChange={(e) => handleDetailChange('feature8', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Кладовая</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.elevator || false}
+                        onChange={(e) => handleDetailChange('elevator', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Лифт</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Дополнительные удобства */}
+                <div className="amenities-category">
+                  <h4 className="amenities-category-title">Дополнительные удобства</h4>
+                  <div className="amenities-list">
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.pool || false}
+                        onChange={(e) => handleDetailChange('pool', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Бассейн</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.garden || false}
+                        onChange={(e) => handleDetailChange('garden', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Сад</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature9 || false}
+                        onChange={(e) => handleDetailChange('feature9', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Терраса</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature10 || false}
+                        onChange={(e) => handleDetailChange('feature10', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Камин</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature11 || false}
+                        onChange={(e) => handleDetailChange('feature11', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Мансарда</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="property-amenities-actions">
+                <button
+                  type="button"
+                  className="property-amenities-back-btn"
+                  onClick={() => setCurrentStep('details')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-amenities-continue-btn"
+                  onClick={handleAmenitiesContinue}
+                >
+                  Продолжить
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : currentStep === 'photos' ? (
+          /* Экран загрузки фотографий */
+          <div className="property-photos-screen">
+            <div className="property-photos-main">
+              <h2 className="property-photos-title">
+                Как выглядит ваше место?
+              </h2>
+              
+              <p className="property-photos-description">
+                Загрузите минимум 10 фотографий вашей недвижимости. Чем больше вы загрузите, тем больше вероятность продать недвижимость. Вы можете добавить больше позже.
+              </p>
+
+              {/* Большой блок для drag and drop и отображения медиа */}
+              <div 
+                className={`photos-upload-area ${isDragging ? 'photos-upload-area--dragging' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {mediaItems.length === 0 ? (
+                  <div className="photos-upload-placeholder">
+                    <div className="photos-upload-icon">
+                      <FiUpload size={48} />
+                    </div>
+                    <p className="photos-upload-text">Перетащите файлы сюда или</p>
+                    <button
+                      type="button"
+                      className="photos-upload-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <FiUpload size={20} />
+                      Загрузить фотографии
+                    </button>
+                    <p className="photos-upload-hint">jpg/jpeg или png, максимум 47MB каждый</p>
+                  </div>
+                ) : (
+                  <div className="photos-carousel-container">
+                    {/* Кнопка назад */}
+                    {mediaItems.length > 1 && (
+                      <button
+                        type="button"
+                        className="photos-carousel-nav photos-carousel-nav--prev"
+                        onClick={handlePrevMedia}
+                      >
+                        <FiChevronLeft size={24} />
+                      </button>
+                    )}
+
+                    {/* Текущее медиа */}
+                    {mediaItems.length > 0 && photosMediaIndex >= 0 && photosMediaIndex < mediaItems.length && mediaItems[photosMediaIndex] && (
+                      <div className="photos-carousel-item">
+                        {(() => {
+                          const currentMedia = mediaItems[photosMediaIndex]
+                          if (!currentMedia) return null
+                          
+                          if (currentMedia.mediaType === 'photo') {
+                            return (
+                              <img 
+                                src={currentMedia.url} 
+                                alt={`Фото ${photosMediaIndex + 1}`}
+                                className="photos-carousel-image"
+                              />
+                            )
+                          } else if (currentMedia.type === 'youtube' && currentMedia.videoId) {
+                            return (
+                              <iframe
+                                src={`https://www.youtube.com/embed/${currentMedia.videoId}`}
+                                title={`YouTube видео ${photosMediaIndex + 1}`}
+                                className="photos-carousel-video"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            )
+                          } else if (currentMedia.type === 'googledrive') {
+                            return (
+                              <div className="photos-carousel-video-placeholder">
+                                <FiVideo size={48} />
+                                <span className="video-type-badge">Google Drive</span>
+                              </div>
+                            )
+                          } else {
+                            return (
+                              <video 
+                                src={currentMedia.url} 
+                                className="photos-carousel-video"
+                                controls
+                              />
+                            )
+                          }
+                        })()}
+                        
+                        {/* Кнопка удаления */}
+                        {mediaItems[photosMediaIndex] && (
+                          <button
+                            type="button"
+                            className="photos-carousel-remove"
+                            onClick={() => {
+                              const currentItem = mediaItems[photosMediaIndex]
+                              if (!currentItem) return
+                              
+                              if (currentItem.mediaType === 'photo') {
+                                handleRemovePhoto(currentItem.id)
+                              } else {
+                                handleRemoveVideo(currentItem.id)
+                              }
+                              // Индекс будет автоматически скорректирован в useEffect
+                            }}
+                          >
+                            <FiX size={20} />
+                          </button>
+                        )}
+
+                        {/* Номер медиа */}
+                        <div className="photos-carousel-number">
+                          {photosMediaIndex + 1} / {mediaItems.length}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Кнопка вперед */}
+                    {mediaItems.length > 1 && (
+                      <button
+                        type="button"
+                        className="photos-carousel-nav photos-carousel-nav--next"
+                        onClick={handleNextMedia}
+                      >
+                        <FiChevronRight size={24} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Кнопки для загрузки фото, видео и ссылок */}
+              <div className="photos-additional-options">
+                {photos.length < 10 && (
+                  <button
+                    type="button"
+                    className="photos-option-btn photos-option-btn--photo"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FiUpload size={20} />
+                    Добавить фото
+                    <span className="photos-option-count">{photos.length}/10</span>
+                  </button>
+                )}
+                {videos.length < 3 && (
+                  <>
+                    <button
+                      type="button"
+                      className="photos-option-btn photos-option-btn--video"
+                      onClick={() => videoInputRef.current?.click()}
+                    >
+                      <FiVideo size={20} />
+                      Загрузить видео
+                      <span className="photos-option-hint">до 1 минуты</span>
+                      <span className="photos-option-count">{videos.length}/3</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="photos-option-btn photos-option-btn--link"
+                      onClick={() => setShowVideoLinkModal(true)}
+                    >
+                      <FiLink size={20} />
+                      Добавить ссылку
+                      <span className="photos-option-hint">YouTube / Google Drive</span>
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="property-photos-actions">
+                <button
+                  type="button"
+                  className="property-photos-back-btn"
+                  onClick={() => setCurrentStep('amenities')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-photos-continue-btn"
+                  onClick={handlePhotosContinue}
+                  disabled={photos.length === 0}
+                >
+                  Продолжить
+                </button>
+              </div>
+
+              {/* Скрытые input для загрузки файлов */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                accept="image/jpeg,image/jpg,image/png"
+                multiple
+                style={{ display: 'none' }}
+              />
+              <input
+                type="file"
+                ref={videoInputRef}
+                onChange={handleVideoUpload}
+                accept="video/*"
+                multiple
+                style={{ display: 'none' }}
+              />
+
+              {/* Модальное окно для добавления ссылки на видео */}
+              {showVideoLinkModal && (
+                <div className="video-link-modal-overlay" onClick={() => setShowVideoLinkModal(false)}>
+                  <div className="video-link-modal" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="video-link-modal-close"
+                      onClick={() => setShowVideoLinkModal(false)}
+                    >
+                      <FiX size={20} />
+                    </button>
+                    <h3 className="video-link-modal-title">Добавить ссылку на видео</h3>
+                    <p className="video-link-modal-subtitle">
+                      Вставьте ссылку на видео с YouTube или Google Drive
+                    </p>
+                    <input
+                      type="text"
+                      className="video-link-input"
+                      placeholder="https://youtube.com/watch?v=... или https://drive.google.com/file/d/..."
+                      value={videoLink}
+                      onChange={(e) => setVideoLink(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleVideoLinkSubmit()
+                        }
+                      }}
+                    />
+                    <div className="video-link-modal-actions">
+                      <button
+                        type="button"
+                        className="video-link-modal-cancel"
+                        onClick={() => {
+                          setShowVideoLinkModal(false)
+                          setVideoLink('')
+                        }}
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        className="video-link-modal-submit"
+                        onClick={handleVideoLinkSubmit}
+                      >
+                        Добавить
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : currentStep === 'documents' ? (
+          /* Экран загрузки документов на собственность */
+          <div className="property-documents-screen">
+            <div className="property-documents-main">
+              <h2 className="property-documents-title">
+                Документы на собственность
+              </h2>
+              
+              <p className="property-documents-description">
+                Загрузите документы, подтверждающие право собственности на недвижимость. Это поможет быстрее продать вашу недвижимость.
+              </p>
+
+              {/* Блок для обязательных документов */}
+              <div className="documents-required-section">
+                <h3 className="documents-section-title">Обязательные документы</h3>
+                
+                {/* Документ о праве собственности */}
+                <div className="document-upload-item">
+                  <div className="document-upload-info">
+                    <div className="document-upload-icon">
+                      <FiFileText size={24} />
+                    </div>
+                    <div className="document-upload-text">
+                      <h4 className="document-upload-title">Документ о праве собственности</h4>
+                      <p className="document-upload-hint">PDF или изображение (JPG, PNG)</p>
+                    </div>
+                  </div>
+                  <div className="document-upload-action">
+                    {requiredDocuments.ownership ? (
+                      <div className="document-uploaded">
+                        <FiCheck size={20} />
+                        <span>{requiredDocuments.ownership.name}</span>
+                        <button
+                          type="button"
+                          className="document-remove-btn"
+                          onClick={() => {
+                            setRequiredDocuments(prev => ({ ...prev, ownership: null }))
+                            setUploadedDocuments(prev => ({ ...prev, ownership: false }))
+                          }}
+                        >
+                          <FiX size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="document-upload-btn"
+                        onClick={() => ownershipInputRef.current?.click()}
+                      >
+                        <FiUpload size={18} />
+                        Загрузить
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Документ об отсутствии долгов */}
+                <div className="document-upload-item">
+                  <div className="document-upload-info">
+                    <div className="document-upload-icon">
+                      <FiFileText size={24} />
+                    </div>
+              <div className="document-upload-text">
+                      <h4 className="document-upload-title">Справка об отсутствии долгов</h4>
+                      <p className="document-upload-hint">PDF или изображение (JPG, PNG)</p>
+                    </div>
+                  </div>
+                  <div className="document-upload-action">
+                    {requiredDocuments.noDebts ? (
+                      <div className="document-uploaded">
+                        <FiCheck size={20} />
+                        <span>{requiredDocuments.noDebts.name}</span>
+                        <button
+                          type="button"
+                          className="document-remove-btn"
+                          onClick={() => {
+                            setRequiredDocuments(prev => ({ ...prev, noDebts: null }))
+                            setUploadedDocuments(prev => ({ ...prev, noDebts: false }))
+                          }}
+                        >
+                          <FiX size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="document-upload-btn"
+                        onClick={() => noDebtsInputRef.current?.click()}
+                      >
+                        <FiUpload size={18} />
+                        Загрузить
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Блок для дополнительных документов */}
+              <div className="documents-additional-section">
+                <h3 className="documents-section-title">Дополнительные документы</h3>
+                <p className="documents-section-hint">Вы можете загрузить дополнительные документы, которые помогут покупателю принять решение</p>
+                
+                {/* Drag and drop область для дополнительных документов */}
+                <div 
+                  className={`documents-upload-area ${isDragging ? 'documents-upload-area--dragging' : ''}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setIsDragging(false)
+                    const files = Array.from(e.dataTransfer.files)
+                    const validFiles = files.filter(file => 
+                      file.type === 'application/pdf' || file.type.startsWith('image/')
+                    )
+                    if (validFiles.length > 0) {
+                      handleDocumentUpload({ target: { files: validFiles } })
+                    }
+                  }}
+                >
+                  {additionalDocuments.length === 0 ? (
+                    <div className="documents-upload-placeholder">
+                      <div className="documents-upload-icon">
+                        <FiFileText size={48} />
+                      </div>
+                      <p className="documents-upload-text">Перетащите документы сюда или</p>
+                      <button
+                        type="button"
+                        className="documents-upload-btn"
+                        onClick={() => documentInputRef.current?.click()}
+                      >
+                        <FiUpload size={20} />
+                        Загрузить документы
+                      </button>
+                      <p className="documents-upload-hint">PDF или изображения (JPG, PNG)</p>
+                    </div>
+                  ) : (
+                    <div className="documents-list-horizontal">
+                      {additionalDocuments.map((doc) => (
+                        <div key={doc.id} className="document-preview-item">
+                          {doc.type === 'pdf' ? (
+                            <div className="document-preview-pdf">
+                              <FiFileText size={32} />
+                              <span className="document-type-badge">PDF</span>
+                            </div>
+                          ) : (
+                            <img src={doc.url} alt={doc.name} className="document-preview-image" />
+                          )}
+                          <button
+                            type="button"
+                            className="document-preview-remove"
+                            onClick={() => handleRemoveDocument(doc.id)}
+                          >
+                            <FiX size={16} />
+                          </button>
+                          <div className="document-preview-name" title={doc.name}>
+                            {doc.name}
+                          </div>
+                        </div>
+                      ))}
+                      {additionalDocuments.length < 10 && (
+                        <div
+                          className="document-preview-add"
+                          onClick={() => documentInputRef.current?.click()}
+                        >
+                          <FiUpload size={24} />
+                          <span>Добавить</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Скрытые input для загрузки документов */}
+              <input
+                type="file"
+                ref={ownershipInputRef}
+                accept="application/pdf,image/jpeg,image/jpg,image/png"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    setRequiredDocuments(prev => ({ ...prev, ownership: file }))
+                    setUploadedDocuments(prev => ({ ...prev, ownership: true }))
+                  }
+                  e.target.value = ''
+                }}
+                style={{ display: 'none' }}
+              />
+              <input
+                type="file"
+                ref={noDebtsInputRef}
+                accept="application/pdf,image/jpeg,image/jpg,image/png"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    setRequiredDocuments(prev => ({ ...prev, noDebts: file }))
+                    setUploadedDocuments(prev => ({ ...prev, noDebts: true }))
+                  }
+                  e.target.value = ''
+                }}
+                style={{ display: 'none' }}
+              />
+              <input
+                type="file"
+                ref={documentInputRef}
+                multiple
+                accept="application/pdf,image/*"
+                onChange={handleDocumentUpload}
+                style={{ display: 'none' }}
+              />
+
+              <div className="property-documents-actions">
+                <button
+                  type="button"
+                  className="property-documents-back-btn"
+                  onClick={() => setCurrentStep('photos')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-documents-continue-btn"
+                  onClick={handleDocumentsContinue}
+                >
+                  Продолжить
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : currentStep === 'price' ? (
+          /* Экран цены и аукциона */
+          <div className="property-price-screen">
+            <div className="property-price-main">
+              <h2 className="property-price-title">
+                Укажите стоимость
+              </h2>
+              
+              <p className="property-price-description">
+                Укажите минимальную цену продажи вашей недвижимости. Вы также можете выставить объект на аукцион.
+              </p>
+
+              {/* Блок цены */}
+              <div className="price-input-section">
+                <label className="price-input-label">
+                  Минимальная цена продажи
+                </label>
+                <div className="price-input-wrapper-large">
+                  <div className="currency-selector">
+                    <button
+                      type="button"
+                      className="currency-button"
+                      onClick={() => setShowCurrencyDropdown(showCurrencyDropdown === 'price' ? null : 'price')}
+                    >
+                      <span className="currency-symbol">{currencies.find(c => c.code === currency)?.symbol || '$'}</span>
+                      <FiChevronDown className="currency-chevron" size={14} />
+                    </button>
+                    {showCurrencyDropdown === 'price' && (
+                      <div className="currency-dropdown">
+                        {currencies.map((curr) => (
+                          <button
+                            key={curr.code}
+                            type="button"
+                            className={`currency-option ${currency === curr.code ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setCurrency(curr.code)
+                              setShowCurrencyDropdown(null)
+                            }}
+                          >
+                            <span className="currency-option-symbol">{curr.symbol}</span>
+                            <span className="currency-option-name">{curr.name}</span>
+                            <span className="currency-option-code">({curr.code})</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    name="price"
+                    value={formData.price ? formatNumberWithCommas(formData.price) : ''}
+                    onChange={handlePriceChange}
+                    className="price-input-large"
+                    placeholder="0"
+                    inputMode="numeric"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Блок аукциона */}
+              <div className="auction-toggle-section">
+                <div className="auction-toggle-wrapper">
+                  <input
+                    type="checkbox"
+                    id="isAuction"
+                    name="isAuction"
+                    checked={formData.isAuction}
+                    onChange={handleInputChange}
+                    className="auction-toggle-checkbox"
+                  />
+                  <label htmlFor="isAuction" className="auction-toggle-label">
+                    <div className="auction-toggle-icon">
+                      <FiDollarSign size={20} />
+                    </div>
+                    <div className="auction-toggle-text">
+                      <span className="auction-toggle-title">Выставить объект на аукцион</span>
+                      <span className="auction-toggle-hint">Позволяет покупателям делать ставки</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Поля аукциона (показываются при включении) */}
+              {formData.isAuction && (
+                <div className="auction-fields-section">
+                  <div className="auction-date-range">
+                    <AuctionPeriodPicker
+                      label="Период проведения аукциона"
+                      startDate={formData.auctionStartDate}
+                      endDate={formData.auctionEndDate}
+                      onStartDateChange={(date) => setFormData(prev => ({ ...prev, auctionStartDate: date }))}
+                      onEndDateChange={(date) => setFormData(prev => ({ ...prev, auctionEndDate: date }))}
+                    />
+                  </div>
+                  
+                  <div className="auction-starting-price">
+                    <label className="auction-starting-price-label">
+                      Стартовая цена продажи
+                    </label>
+                    <div className="bid-step-input-wrapper-large">
+                      <div className="currency-selector">
+                        <button
+                          type="button"
+                          className="currency-button"
+                          onClick={() => setShowCurrencyDropdown(showCurrencyDropdown === 'auction' ? null : 'auction')}
+                        >
+                          <span className="currency-symbol">{currencies.find(c => c.code === currency)?.symbol || '$'}</span>
+                          <FiChevronDown className="currency-chevron" size={14} />
+                        </button>
+                        {showCurrencyDropdown === 'auction' && (
+                          <div className="currency-dropdown">
+                            {currencies.map((curr) => (
+                              <button
+                                key={curr.code}
+                                type="button"
+                                className={`currency-option ${currency === curr.code ? 'active' : ''}`}
+                                onClick={() => {
+                                  setCurrency(curr.code)
+                                  setShowCurrencyDropdown(null)
+                                }}
+                              >
+                                <span className="currency-option-symbol">{curr.symbol}</span>
+                                <span className="currency-option-name">{curr.name}</span>
+                                <span className="currency-option-code">({curr.code})</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        name="auctionStartingPrice"
+                        value={formData.auctionStartingPrice ? formatNumberWithCommas(formData.auctionStartingPrice) : ''}
+                        onChange={handleAuctionPriceChange}
+                        className="price-input-large"
+                        placeholder="0"
+                        inputMode="numeric"
+                        required={formData.isAuction}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="property-price-actions">
+                <button
+                  type="button"
+                  className="property-price-back-btn"
+                  onClick={() => setCurrentStep('documents')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-price-continue-btn"
+                  onClick={handlePriceContinue}
+                >
+                  Продолжить
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -1432,498 +3303,6 @@ const AddProperty = () => {
             )}
           </section>
 
-          {/* Подробная информация */}
-          <section className="form-section">
-            <h2 className="section-title">Подробная информация</h2>
-            <div className="details-grid">
-              {/* Общие поля */}
-              <div className="detail-field">
-                <label className="detail-label">
-                  <BiArea size={18} />
-                  Площадь (м²)
-                </label>
-                <input
-                  type="number"
-                  value={formData.area}
-                  onChange={(e) => handleDetailChange('area', e.target.value)}
-                  className="detail-input"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-              
-              <div className="detail-field">
-                <label className="detail-label">
-                  <MdBed size={18} />
-                  Спальные места
-                </label>
-                <input
-                  type="number"
-                  value={formData.bedrooms}
-                  onChange={(e) => handleDetailChange('bedrooms', e.target.value)}
-                  className="detail-input"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-              
-              <div className="detail-field">
-                <label className="detail-label">Количество комнат</label>
-                <input
-                  type="number"
-                  value={formData.rooms}
-                  onChange={(e) => handleDetailChange('rooms', e.target.value)}
-                  className="detail-input"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-              
-              <div className="detail-field">
-                <label className="detail-label">
-                  <MdOutlineBathtub size={18} />
-                  Санузлы
-                </label>
-                <input
-                  type="number"
-                  value={formData.bathrooms}
-                  onChange={(e) => handleDetailChange('bathrooms', e.target.value)}
-                  className="detail-input"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-              
-              {(formData.propertyType === 'apartment' || formData.propertyType === 'commercial') && (
-                <>
-                  <div className="detail-field">
-                    <label className="detail-label">Этаж</label>
-                    <input
-                      type="number"
-                      value={formData.floor}
-                      onChange={(e) => handleDetailChange('floor', e.target.value)}
-                      className="detail-input"
-                      placeholder="0"
-                    />
-                  </div>
-                  
-                  <div className="detail-field">
-                    <label className="detail-label">Всего этажей</label>
-                    <input
-                      type="number"
-                      value={formData.totalFloors}
-                      onChange={(e) => handleDetailChange('totalFloors', e.target.value)}
-                      className="detail-input"
-                      placeholder="0"
-                    />
-                  </div>
-                </>
-              )}
-              
-              <div className="detail-field">
-                <label className="detail-label">Год постройки</label>
-                <input
-                  type="number"
-                  value={formData.yearBuilt}
-                  onChange={(e) => handleDetailChange('yearBuilt', e.target.value)}
-                  className="detail-input"
-                  placeholder="2024"
-                  min="1900"
-                  max="2024"
-                />
-              </div>
-              
-              <div className="detail-field detail-field--full">
-                <label className="detail-label">
-                  <FiMapPin size={18} />
-                  Локация
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => handleDetailChange('location', e.target.value)}
-                  className="detail-input"
-                  placeholder="Адрес или район"
-                />
-              </div>
-            </div>
-            
-            {/* Две колонки: слева чекбоксы, справа выпадающие списки */}
-            <div className="two-columns-layout">
-              {/* Левая колонка: все чекбоксы */}
-              <div className="checkboxes-column">
-                <div className="checkboxes-section">
-                {/* Первый ряд: 3 чекбокса + количество комнат */}
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature1"
-                    checked={formData.feature1}
-                    onChange={(e) => handleDetailChange('feature1', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature1" className="detail-checkbox-label">Особенность 1</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature2"
-                    checked={formData.feature2}
-                    onChange={(e) => handleDetailChange('feature2', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature2" className="detail-checkbox-label">Особенность 2</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature3"
-                    checked={formData.feature3}
-                    onChange={(e) => handleDetailChange('feature3', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature3" className="detail-checkbox-label">Особенность 3</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="garage"
-                    checked={formData.garage}
-                    onChange={(e) => handleDetailChange('garage', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="garage" className="detail-checkbox-label">Гараж</label>
-                </div>
-
-                {/* Второй ряд: 4 чекбокса */}
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature4"
-                    checked={formData.feature4}
-                    onChange={(e) => handleDetailChange('feature4', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature4" className="detail-checkbox-label">Особенность 4</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature5"
-                    checked={formData.feature5}
-                    onChange={(e) => handleDetailChange('feature5', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature5" className="detail-checkbox-label">Особенность 5</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature6"
-                    checked={formData.feature6}
-                    onChange={(e) => handleDetailChange('feature6', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature6" className="detail-checkbox-label">Особенность 6</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature7"
-                    checked={formData.feature7}
-                    onChange={(e) => handleDetailChange('feature7', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature7" className="detail-checkbox-label">Особенность 7</label>
-                </div>
-
-                {/* Третий ряд: 4 чекбокса */}
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature8"
-                    checked={formData.feature8}
-                    onChange={(e) => handleDetailChange('feature8', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature8" className="detail-checkbox-label">Особенность 8</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature9"
-                    checked={formData.feature9}
-                    onChange={(e) => handleDetailChange('feature9', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature9" className="detail-checkbox-label">Особенность 9</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature10"
-                    checked={formData.feature10}
-                    onChange={(e) => handleDetailChange('feature10', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature10" className="detail-checkbox-label">Особенность 10</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="feature11"
-                    checked={formData.feature11}
-                    onChange={(e) => handleDetailChange('feature11', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="feature11" className="detail-checkbox-label">Особенность 11</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="pool"
-                    checked={formData.pool}
-                    onChange={(e) => handleDetailChange('pool', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="pool" className="detail-checkbox-label">Бассейн</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="security"
-                    checked={formData.security}
-                    onChange={(e) => handleDetailChange('security', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="security" className="detail-checkbox-label">Охрана</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="furniture"
-                    checked={formData.furniture}
-                    onChange={(e) => handleDetailChange('furniture', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="furniture" className="detail-checkbox-label">Мебель</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="electricity"
-                    checked={formData.electricity}
-                    onChange={(e) => handleDetailChange('electricity', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="electricity" className="detail-checkbox-label">Электричество</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="internet"
-                    checked={formData.internet}
-                    onChange={(e) => handleDetailChange('internet', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="internet" className="detail-checkbox-label">Интернет</label>
-                </div>
-                
-                {/* Чекбоксы для квартиры */}
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="balcony"
-                    checked={formData.balcony}
-                    onChange={(e) => handleDetailChange('balcony', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="balcony" className="detail-checkbox-label">Балкон</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="parking"
-                    checked={formData.parking}
-                    onChange={(e) => handleDetailChange('parking', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="parking" className="detail-checkbox-label">Парковка</label>
-                </div>
-                
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="elevator"
-                    checked={formData.elevator}
-                    onChange={(e) => handleDetailChange('elevator', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="elevator" className="detail-checkbox-label">Лифт</label>
-                </div>
-                
-                {/* Чекбокс для дома/виллы */}
-                <div className="detail-field detail-field--checkbox">
-                  <input
-                    type="checkbox"
-                    id="garden"
-                    checked={formData.garden}
-                    onChange={(e) => handleDetailChange('garden', e.target.checked)}
-                    className="detail-checkbox"
-                  />
-                  <label htmlFor="garden" className="detail-checkbox-label">Сад</label>
-                </div>
-              </div>
-              </div>
-              
-              {/* Правая колонка: все выпадающие списки */}
-              <div className="dropdowns-column">
-                <div className="dropdowns-section">
-                  <div className="detail-field">
-                    <label className="detail-label">Ремонт</label>
-                    <select
-                      value={formData.renovation}
-                      onChange={(e) => handleDetailChange('renovation', e.target.value)}
-                      className="detail-input"
-                    >
-                      <option value="">Выберите</option>
-                      <option value="excellent">Отличный</option>
-                      <option value="good">Хороший</option>
-                      <option value="satisfactory">Удовлетворительный</option>
-                      <option value="needs">Требуется ремонт</option>
-                    </select>
-                  </div>
-                  
-                  <div className="detail-field">
-                    <label className="detail-label">Состояние</label>
-                    <select
-                      value={formData.condition}
-                      onChange={(e) => handleDetailChange('condition', e.target.value)}
-                      className="detail-input"
-                    >
-                      <option value="">Выберите</option>
-                      <option value="new">Новостройка</option>
-                      <option value="excellent">Отличное</option>
-                      <option value="good">Хорошее</option>
-                      <option value="satisfactory">Удовлетворительное</option>
-                    </select>
-                  </div>
-                  
-                  <div className="detail-field">
-                    <label className="detail-label">Отопление</label>
-                    <select
-                      value={formData.heating}
-                      onChange={(e) => handleDetailChange('heating', e.target.value)}
-                      className="detail-input"
-                    >
-                      <option value="">Выберите</option>
-                      <option value="central">Центральное</option>
-                      <option value="individual">Индивидуальное</option>
-                      <option value="gas">Газовое</option>
-                      <option value="electric">Электрическое</option>
-                      <option value="none">Нет</option>
-                    </select>
-                  </div>
-                  
-                  <div className="detail-field">
-                    <label className="detail-label">Водоснабжение</label>
-                    <select
-                      value={formData.waterSupply}
-                      onChange={(e) => handleDetailChange('waterSupply', e.target.value)}
-                      className="detail-input"
-                    >
-                      <option value="">Выберите</option>
-                      <option value="central">Центральное</option>
-                      <option value="well">Скважина</option>
-                      <option value="none">Нет</option>
-                    </select>
-                  </div>
-                  
-                  <div className="detail-field">
-                    <label className="detail-label">Канализация</label>
-                    <select
-                      value={formData.sewerage}
-                      onChange={(e) => handleDetailChange('sewerage', e.target.value)}
-                      className="detail-input"
-                    >
-                      <option value="">Выберите</option>
-                      <option value="central">Центральная</option>
-                      <option value="septic">Септик</option>
-                      <option value="none">Нет</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="details-grid">
-              {/* Поля для дома/виллы */}
-              {(formData.propertyType === 'house' || formData.propertyType === 'villa') && (
-                <>
-                  <div className="detail-field">
-                    <label className="detail-label">Площадь участка (м²)</label>
-                    <input
-                      type="number"
-                      value={formData.landArea}
-                      onChange={(e) => handleDetailChange('landArea', e.target.value)}
-                      className="detail-input"
-                      placeholder="0"
-                      min="0"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Поля для коммерческой */}
-              {formData.propertyType === 'commercial' && (
-                <>
-                  <div className="detail-field">
-                    <label className="detail-label">Тип коммерческой недвижимости</label>
-                    <select
-                      value={formData.commercialType}
-                      onChange={(e) => handleDetailChange('commercialType', e.target.value)}
-                      className="detail-input"
-                    >
-                      <option value="">Выберите тип</option>
-                      <option value="office">Офис</option>
-                      <option value="shop">Магазин</option>
-                      <option value="warehouse">Склад</option>
-                      <option value="restaurant">Ресторан</option>
-                      <option value="other">Другое</option>
-                    </select>
-                  </div>
-                  
-                  <div className="detail-field">
-                    <label className="detail-label">Часы работы</label>
-                    <input
-                      type="text"
-                      value={formData.businessHours}
-                      onChange={(e) => handleDetailChange('businessHours', e.target.value)}
-                      className="detail-input"
-                      placeholder="9:00 - 18:00"
-                    />
-                  </div>
-                </>
-              )}
-
-            </div>
-          </section>
-
           {/* Цена и Аукцион */}
           <section className="form-section">
             <div className="price-auction-wrapper">
@@ -1946,7 +3325,9 @@ const AddProperty = () => {
                             key={curr.code}
                             type="button"
                             className={`currency-option ${currency === curr.code ? 'active' : ''}`}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
                               setCurrency(curr.code)
                               setShowCurrencyDropdown(null)
                             }}
@@ -2378,10 +3759,10 @@ const AddProperty = () => {
                 <path d="M8 12L11 15L16 9" stroke="#0ABAB5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h2 className="success-modal__title">Данные отправлены на верификацию</h2>
+            <h2 className="success-modal__title">Ваш объект отправлен на модерацию</h2>
             <p className="success-modal__message">
-              Ваши документы и объявление о недвижимости успешно отправлены на модерацию. 
-              Вы получите уведомление после проверки.
+              <FiClock style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Ожидайте ответ в течение 48 часов
             </p>
             <button
               className="success-modal__button"

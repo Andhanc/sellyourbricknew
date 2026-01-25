@@ -2406,6 +2406,41 @@ app.put('/api/notifications/:id/view', (req, res) => {
 });
 
 /**
+ * POST /api/notifications - Создать новое уведомление
+ */
+app.post('/api/notifications', (req, res) => {
+  try {
+    const { user_id, type, title, message, data } = req.body;
+    
+    if (!user_id || !type || !title) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать user_id, type и title' 
+      });
+    }
+    
+    const result = notificationQueries.create({
+      user_id: user_id,
+      type: type,
+      title: title,
+      message: message || null,
+      data: data ? JSON.stringify(data) : null,
+      is_read: 0,
+      view_count: 0
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Уведомление создано',
+      id: result.lastInsertRowid 
+    });
+  } catch (error) {
+    console.error('Ошибка при создании уведомления:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * DELETE /api/notifications/:id - Удалить уведомление
  */
 app.delete('/api/notifications/:id', (req, res) => {
@@ -2782,6 +2817,11 @@ app.post('/api/properties', upload.fields([
       total_floors,
       year_built,
       location,
+      address,
+      apartment,
+      country,
+      city,
+      coordinates,
       balcony = 0,
       parking = 0,
       elevator = 0,
@@ -2889,13 +2929,26 @@ app.post('/api/properties', upload.fields([
         water_supply, sewerage, electricity, internet, security, furniture,
         photos, videos, additional_documents, ownership_document, no_debts_document,
         test_drive_data, moderation_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+
+    // Объединяем address, apartment, city, country в location если они переданы
+    let finalLocation = location || '';
+    if (address || apartment || city || country) {
+      const locationParts = [];
+      if (address) locationParts.push(address);
+      if (apartment) locationParts.push(`кв. ${apartment}`);
+      if (city) locationParts.push(city);
+      if (country) locationParts.push(country);
+      if (locationParts.length > 0) {
+        finalLocation = locationParts.join(', ');
+      }
+    }
 
     const result = stmt.run(
       user_id, property_type, title, description || null, price || null, currency,
       is_auction ? 1 : 0, auction_start_date || null, auction_end_date || null, auction_starting_price || null,
-      area || null, rooms || null, bedrooms || null, bathrooms || null, floor || null, total_floors || null, year_built || null, location || null,
+      area || null, rooms || null, bedrooms || null, bathrooms || null, floor || null, total_floors || null, year_built || null, finalLocation || null,
       balcony ? 1 : 0, parking ? 1 : 0, elevator ? 1 : 0, land_area || null, garage ? 1 : 0, pool ? 1 : 0, garden ? 1 : 0,
       commercial_type || null, business_hours || null, renovation || null, condition || null, heating || null,
       water_supply || null, sewerage || null, electricity ? 1 : 0, internet ? 1 : 0, security ? 1 : 0, furniture ? 1 : 0,
@@ -3017,8 +3070,8 @@ app.put('/api/properties/:id/approve', (req, res) => {
       notificationQueries.create({
         user_id: property.user_id,
         type: 'property_approved',
-        title: 'Объявление одобрено',
-        message: `Ваше объявление "${property.title}" было одобрено и опубликовано.`,
+        title: 'Ваш объект прошел верификацию',
+        message: `Ваш объект "${property.title}" прошел верификацию, в скором времени он будет опубликован на платформе`,
         data: JSON.stringify({ property_id: id })
       });
     } catch (notifError) {

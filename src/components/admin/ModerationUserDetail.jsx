@@ -10,7 +10,7 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject, onRefresh }) 
 
   const handleApproveUser = () => {
     if (window.confirm('Вы уверены, что хотите одобрить этого пользователя? Все его документы будут одобрены, и пользователь получит статус верифицированного.')) {
-      onApprove(user.id);
+      onApprove('users', user.id);
     }
   };
 
@@ -18,7 +18,7 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject, onRefresh }) 
     const rejectionReason = prompt('Укажите причину отклонения (необязательно):') || null;
     if (rejectionReason !== null) { // null если пользователь нажал Cancel
       if (window.confirm('Вы уверены, что хотите отклонить этого пользователя? Все его документы будут отклонены.')) {
-        onReject(user.id, rejectionReason);
+        onReject('users', user.id, rejectionReason);
       }
     }
   };
