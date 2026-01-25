@@ -111,11 +111,26 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
       const results = await Promise.all(uploadPromises)
 
       if (results.every(r => r.success)) {
+        // Сохраняем данные верификации в localStorage для отправки в админку
+        const verificationData = {
+          userId: userId,
+          passportPhoto: results[0].data?.document_photo || previews.passport,
+          selfiePhoto: results[1].data?.document_photo || previews.selfie,
+          selfieWithPassportPhoto: results[2].data?.document_photo || previews.selfieWithPassport,
+          submittedAt: new Date().toISOString(),
+          status: 'pending'
+        }
+        
+        // Получаем существующие данные верификации из localStorage
+        const existingVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]')
+        existingVerifications.push(verificationData)
+        localStorage.setItem('pendingVerifications', JSON.stringify(existingVerifications))
+        
         // Отправляем событие для обновления уведомления о верификации
         window.dispatchEvent(new Event('verification-status-update'))
         
         // Вызываем callback для обновления данных в родительском компоненте
-        // Для продавцов onComplete отправит объект и закроет модальное окно
+        // Для продавцов onComplete сохранит флаг и закроет модальное окно
         // Для покупателей показываем alert и закрываем модальное окно
         if (onComplete) {
           await onComplete()

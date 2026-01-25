@@ -201,6 +201,8 @@ const Moderation = () => {
       console.log('🔄 Загрузка документов на верификацию из:', `${API_BASE_URL}/documents/pending`);
       const response = await fetch(`${API_BASE_URL}/documents/pending`);
       
+      let usersList = [];
+      
       if (response.ok) {
         const data = await response.json();
         console.log('📦 Получены данные от API:', data);
@@ -239,20 +241,106 @@ const Moderation = () => {
             });
           });
           
-          const usersList = Object.values(groupedByUser);
+          usersList = Object.values(groupedByUser);
+          // Сортируем по дате создания (новые сверху)
+          usersList.sort((a, b) => {
+            const dateA = a.documents && a.documents.length > 0 
+              ? new Date(a.documents[0].created_at || 0).getTime() 
+              : 0;
+            const dateB = b.documents && b.documents.length > 0 
+              ? new Date(b.documents[0].created_at || 0).getTime() 
+              : 0;
+            return dateB - dateA; // Новые сверху
+          });
           console.log('👥 Сгруппировано пользователей:', usersList.length);
           console.log('👥 Список пользователей:', usersList);
-          
-          setPendingDocuments(usersList);
         } else {
           console.log('⚠️ Нет данных в ответе API');
-          setPendingDocuments([]);
         }
       } else {
         const errorText = await response.text();
         console.error('❌ Ошибка загрузки документов: ответ не успешный', response.status, errorText);
-        setPendingDocuments([]);
       }
+      
+      // Загружаем данные из localStorage (обратный порядок - новые сверху)
+      const localStorageVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]');
+      // Переворачиваем массив чтобы новые были сверху
+      const reversedVerifications = [...localStorageVerifications].reverse();
+      reversedVerifications.forEach((verification, index) => {
+        // Сохраняем оригинальный индекс для правильного удаления
+        const originalIndex = localStorageVerifications.length - 1 - index;
+        const userId = verification.userId;
+        const userLocalId = `local_user_${originalIndex}`;
+        const existingUser = usersList.find(u => u.id === userId || u.id === userLocalId);
+        
+        if (existingUser) {
+          // Добавляем документы к существующему пользователю
+          if (verification.passportPhoto) {
+            existingUser.documents.push({
+              id: `local_passport_${originalIndex}`,
+              document_type: 'passport',
+              document_photo: verification.passportPhoto,
+              verification_status: 'pending',
+              created_at: verification.submittedAt
+            });
+          }
+          if (verification.selfiePhoto) {
+            existingUser.documents.push({
+              id: `local_selfie_${originalIndex}`,
+              document_type: 'selfie',
+              document_photo: verification.selfiePhoto,
+              verification_status: 'pending',
+              created_at: verification.submittedAt
+            });
+          }
+          if (verification.selfieWithPassportPhoto) {
+            existingUser.documents.push({
+              id: `local_selfie_passport_${originalIndex}`,
+              document_type: 'passport_with_face',
+              document_photo: verification.selfieWithPassportPhoto,
+              verification_status: 'pending',
+              created_at: verification.submittedAt
+            });
+          }
+        } else {
+          // Создаем нового пользователя из localStorage
+          // Используем originalIndex для ID, чтобы можно было правильно удалить
+          const userLocalId = `local_user_${originalIndex}`;
+          usersList.push({
+            id: userLocalId,
+            firstName: 'Не указано',
+            lastName: '',
+            email: 'Не указано',
+            phone: 'Не указано',
+            role: 'seller',
+            documents: [
+              ...(verification.passportPhoto ? [{
+                id: `local_passport_${originalIndex}`,
+                document_type: 'passport',
+                document_photo: verification.passportPhoto,
+                verification_status: 'pending',
+                created_at: verification.submittedAt
+              }] : []),
+              ...(verification.selfiePhoto ? [{
+                id: `local_selfie_${originalIndex}`,
+                document_type: 'selfie',
+                document_photo: verification.selfiePhoto,
+                verification_status: 'pending',
+                created_at: verification.submittedAt
+              }] : []),
+              ...(verification.selfieWithPassportPhoto ? [{
+                id: `local_selfie_passport_${originalIndex}`,
+                document_type: 'passport_with_face',
+                document_photo: verification.selfieWithPassportPhoto,
+                verification_status: 'pending',
+                created_at: verification.submittedAt
+              }] : [])
+            ]
+          });
+        }
+      });
+      
+      setPendingDocuments(usersList);
     } catch (error) {
       console.error('❌ Ошибка загрузки документов:', error);
       setPendingDocuments([]);
@@ -264,31 +352,128 @@ const Moderation = () => {
   const filteredUsers = useMemo(() => {
     if (activeTab !== 'users') return [];
     // Используем только реальные данные из API, без моковых
-    return pendingDocuments.filter(user => {
+    const filtered = pendingDocuments.filter(user => {
       const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
       return (
         fullName.includes(searchQuery.toLowerCase()) ||
         (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     });
+    // Сортируем по дате создания (новые сверху)
+    return filtered.sort((a, b) => {
+      const dateA = a.documents && a.documents.length > 0 
+        ? new Date(a.documents[0].created_at || 0).getTime() 
+        : 0;
+      const dateB = b.documents && b.documents.length > 0 
+        ? new Date(b.documents[0].created_at || 0).getTime() 
+        : 0;
+      return dateB - dateA; // Новые сверху
+    });
   }, [activeTab, searchQuery, pendingDocuments]);
 
   const loadPendingProperties = async () => {
     setLoading(true);
     try {
+      let propertiesList = [];
+      
+      // Загружаем данные из API
       const response = await fetch(`${API_BASE_URL}/properties/pending`);
       
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
-          setPendingProperties(data.data);
-        } else {
-          setPendingProperties([]);
+          propertiesList = data.data;
         }
       } else {
         console.error('Ошибка загрузки объявлений на модерации');
-        setPendingProperties([]);
       }
+      
+      // Загружаем данные из localStorage (обратный порядок - новые сверху)
+      const localStorageProperties = JSON.parse(localStorage.getItem('pendingProperties') || '[]');
+      // Переворачиваем массив чтобы новые были сверху
+      const reversedProperties = [...localStorageProperties].reverse();
+      reversedProperties.forEach((property, index) => {
+        // Сохраняем оригинальный индекс для правильного удаления
+        const originalIndex = localStorageProperties.length - 1 - index;
+        propertiesList.push({
+          id: `local_${originalIndex}`,
+          title: property.title,
+          property_type: property.propertyType,
+          price: property.price,
+          currency: property.currency,
+          location: property.location || property.address || '',
+          first_name: property.userProfileData?.first_name || 'Не указано',
+          last_name: property.userProfileData?.last_name || '',
+          email: property.userProfileData?.email || 'Не указано',
+          created_at: property.submittedAt,
+          photos: property.photos || [],
+          description: property.description,
+          area: property.area,
+          rooms: property.rooms,
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          floor: property.floor,
+          total_floors: property.totalFloors,
+          year_built: property.yearBuilt,
+          address: property.address,
+          apartment: property.apartment,
+          country: property.country,
+          city: property.city,
+          coordinates: property.coordinates,
+          balcony: property.balcony,
+          parking: property.parking,
+          elevator: property.elevator,
+          land_area: property.landArea,
+          garage: property.garage,
+          pool: property.pool,
+          garden: property.garden,
+          commercial_type: property.commercialType,
+          business_hours: property.businessHours,
+          renovation: property.renovation,
+          condition: property.condition,
+          heating: property.heating,
+          water_supply: property.waterSupply,
+          sewerage: property.sewerage,
+          electricity: property.electricity,
+          internet: property.internet,
+          security: property.security,
+          furniture: property.furniture,
+          feature1: property.feature1,
+          feature2: property.feature2,
+          feature3: property.feature3,
+          feature4: property.feature4,
+          feature5: property.feature5,
+          feature6: property.feature6,
+          feature7: property.feature7,
+          feature8: property.feature8,
+          feature9: property.feature9,
+          feature10: property.feature10,
+          feature11: property.feature11,
+          feature12: property.feature12,
+          videos: property.videos || [],
+          additional_documents: property.additionalDocuments || [],
+          ownership_document: property.ownershipDocument,
+          no_debts_document: property.noDebtsDocument,
+          ownership_document_name: property.ownershipDocumentName,
+          no_debts_document_name: property.noDebtsDocumentName,
+          phone_number: property.userProfileData?.phone_number || null,
+          is_auction: property.isAuction,
+          test_drive: property.testDrive,
+          auction_start_date: property.auctionStartDate,
+          auction_end_date: property.auctionEndDate,
+          auction_starting_price: property.auctionStartingPrice,
+          isLocalStorage: true // Флаг для идентификации данных из localStorage
+        });
+      });
+      
+      // Сортируем по дате создания (новые сверху)
+      propertiesList.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA; // Новые сверху
+      });
+      
+      setPendingProperties(propertiesList);
     } catch (error) {
       console.error('Ошибка загрузки объявлений на модерации:', error);
       setPendingProperties([]);
@@ -299,7 +484,7 @@ const Moderation = () => {
 
   const filteredProperties = useMemo(() => {
     if (activeTab !== 'properties') return [];
-    return pendingProperties.filter(property => {
+    const filtered = pendingProperties.filter(property => {
       const ownerName = `${property.first_name || ''} ${property.last_name || ''}`.toLowerCase();
       return (
         (property.title && property.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -308,10 +493,108 @@ const Moderation = () => {
         (property.email && property.email.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     });
+    // Сортируем по дате создания (новые сверху)
+    return filtered.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA; // Новые сверху
+    });
   }, [activeTab, searchQuery, pendingProperties]);
 
   const handleApprove = async (type, id) => {
     try {
+      // Проверяем, является ли это элементом из localStorage
+      if (typeof id === 'string' && id.startsWith('local_')) {
+        // Это элемент из localStorage - удаляем его и создаем уведомление
+        if (type === 'properties') {
+          const localStorageProperties = JSON.parse(localStorage.getItem('pendingProperties') || '[]');
+          const index = parseInt(id.replace('local_', ''));
+          if (index >= 0 && index < localStorageProperties.length) {
+            const property = localStorageProperties[index];
+            const propertyTitle = property.title || 'Объект недвижимости';
+            const propertyUserId = property.userId;
+            
+            // Создаем уведомление для пользователя
+            try {
+              // Пытаемся найти числовой ID пользователя в БД
+              let dbUserId = propertyUserId;
+              
+              // Если userId - это строка (Clerk ID), пытаемся найти пользователя по email
+              if (propertyUserId && isNaN(parseInt(propertyUserId)) && property.userProfileData?.email) {
+                const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(property.userProfileData.email.toLowerCase())}`);
+                if (emailResponse.ok) {
+                  const emailData = await emailResponse.json();
+                  if (emailData.success && emailData.data) {
+                    dbUserId = emailData.data.id;
+                  }
+                }
+              }
+              
+              // Если нашли числовой ID, создаем уведомление
+              if (dbUserId && !isNaN(parseInt(dbUserId))) {
+                const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    user_id: parseInt(dbUserId),
+                    type: 'property_approved',
+                    title: 'Ваш объект прошел верификацию',
+                    message: `Ваш объект "${propertyTitle}" прошел верификацию, в скором времени он будет опубликован на платформе`,
+                    data: { property_title: propertyTitle }
+                  })
+                });
+                
+                if (notificationResponse.ok) {
+                  console.log('✅ Уведомление создано для пользователя:', dbUserId);
+                } else {
+                  console.warn('⚠️ Не удалось создать уведомление:', await notificationResponse.text());
+                }
+              } else {
+                console.warn('⚠️ Не удалось определить ID пользователя для создания уведомления');
+              }
+            } catch (notifError) {
+              console.error('❌ Ошибка при создании уведомления:', notifError);
+            }
+            
+            // Удаляем объект из localStorage
+            localStorageProperties.splice(index, 1);
+            localStorage.setItem('pendingProperties', JSON.stringify(localStorageProperties));
+            alert('Объявление одобрено и удалено из списка модерации.');
+            loadPendingProperties();
+            setSelectedProperty(null);
+          }
+        } else {
+          // Для пользователей из localStorage
+          const localStorageVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]');
+          // ID может быть local_user_${index} или просто userId из API
+          let index = -1;
+          if (id.startsWith('local_user_')) {
+            index = parseInt(id.replace('local_user_', ''));
+          } else if (id.startsWith('local_')) {
+            // Старый формат - просто индекс
+            index = parseInt(id.replace('local_', ''));
+          } else {
+            // Ищем по userId (если это реальный ID пользователя из API)
+            index = localStorageVerifications.findIndex(v => (v.userId || '').toString() === id.toString());
+          }
+          if (index >= 0 && index < localStorageVerifications.length) {
+            localStorageVerifications.splice(index, 1);
+            localStorage.setItem('pendingVerifications', JSON.stringify(localStorageVerifications));
+            alert('Пользователь одобрен и удален из списка модерации.');
+            loadPendingDocuments();
+            setSelectedUser(null);
+          } else {
+            console.warn('Не удалось найти пользователя в localStorage с ID:', id);
+            alert('Пользователь не найден в localStorage. Возможно, он уже был обработан.');
+            loadPendingDocuments();
+            setSelectedUser(null);
+          }
+        }
+        return;
+      }
+      
       const adminId = localStorage.getItem('userId') || 'admin';
       
       if (type === 'properties') {
@@ -369,6 +652,38 @@ const Moderation = () => {
 
   const handleReject = async (type, id, rejectionReason) => {
     try {
+      // Проверяем, является ли это элементом из localStorage
+      if (typeof id === 'string' && id.startsWith('local_')) {
+        // Это элемент из localStorage - просто удаляем его
+        if (type === 'properties') {
+          const localStorageProperties = JSON.parse(localStorage.getItem('pendingProperties') || '[]');
+          const index = parseInt(id.replace('local_', ''));
+          // Удаляем элемент (учитываем что массив перевернут)
+          const reversedIndex = localStorageProperties.length - 1 - index;
+          if (reversedIndex >= 0 && reversedIndex < localStorageProperties.length) {
+            localStorageProperties.splice(reversedIndex, 1);
+            localStorage.setItem('pendingProperties', JSON.stringify(localStorageProperties));
+            alert('Объявление отклонено и удалено из списка модерации.');
+            loadPendingProperties();
+            setSelectedProperty(null);
+          }
+        } else {
+          // Для пользователей из localStorage
+          const localStorageVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]');
+          const index = parseInt(id.replace('local_', ''));
+          // Удаляем элемент (учитываем что массив перевернут)
+          const reversedIndex = localStorageVerifications.length - 1 - index;
+          if (reversedIndex >= 0 && reversedIndex < localStorageVerifications.length) {
+            localStorageVerifications.splice(reversedIndex, 1);
+            localStorage.setItem('pendingVerifications', JSON.stringify(localStorageVerifications));
+            alert('Пользователь отклонен и удален из списка модерации.');
+            loadPendingDocuments();
+            setSelectedUser(null);
+          }
+        }
+        return;
+      }
+      
       const adminId = localStorage.getItem('userId') || 'admin';
       
       if (type === 'properties') {
