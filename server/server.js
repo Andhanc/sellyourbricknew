@@ -112,7 +112,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB максимум
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10MB максимум для файлов
+    fieldSize: 50 * 1024 * 1024, // 50MB максимум для текстовых полей (JSON с большими массивами URL)
+    fieldNameSize: 100, // Максимальная длина имени поля
+    fields: 100, // Максимальное количество полей
+    files: 20 // Максимальное количество файлов
+  }
 });
 
 // Статическая папка для загрузок
@@ -2740,7 +2746,23 @@ app.post('/api/properties', upload.fields([
   { name: 'no_debts_document', maxCount: 1 }
 ]), (req, res) => {
   try {
+    console.log('📥 Получен запрос на создание объявления');
+    console.log('📋 Body:', req.body);
+    console.log('📁 Files:', req.files);
+    
     const db = getDatabase();
+    
+    // Проверяем существование таблицы properties
+    try {
+      db.prepare('SELECT 1 FROM properties LIMIT 1').get();
+    } catch (tableError) {
+      console.error('❌ Таблица properties не существует:', tableError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Таблица properties не существует. Необходимо выполнить миграцию БД.' 
+      });
+    }
+    
     const {
       user_id,
       property_type,
@@ -2784,11 +2806,64 @@ app.post('/api/properties', upload.fields([
       test_drive_data
     } = req.body;
 
+    // Парсим JSON-строки для медиа
+    let parsedPhotos = [];
+    let parsedVideos = [];
+    let parsedAdditionalDocuments = [];
+    
+    try {
+      if (photos && typeof photos === 'string') {
+        parsedPhotos = JSON.parse(photos);
+      } else if (Array.isArray(photos)) {
+        parsedPhotos = photos;
+      }
+      
+      if (videos && typeof videos === 'string') {
+        parsedVideos = JSON.parse(videos);
+      } else if (Array.isArray(videos)) {
+        parsedVideos = videos;
+      }
+      
+      if (additional_documents && typeof additional_documents === 'string') {
+        parsedAdditionalDocuments = JSON.parse(additional_documents);
+      } else if (Array.isArray(additional_documents)) {
+        parsedAdditionalDocuments = additional_documents;
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Ошибка парсинга JSON для медиа:', parseError.message);
+    }
+
     if (!user_id || !property_type || !title) {
       return res.status(400).json({ 
         success: false, 
         error: 'Необходимо указать user_id, property_type и title' 
       });
+    }
+
+    // Обновляем данные пользователя из профиля, если они переданы
+    // Это нужно для синхронизации данных профиля с данными пользователя при отправке объекта
+    try {
+      const user = userQueries.getById(user_id);
+      if (user) {
+        // Обновляем данные пользователя, если они были переданы в запросе
+        const updateData = {};
+        if (req.body.first_name) updateData.first_name = req.body.first_name;
+        if (req.body.last_name) updateData.last_name = req.body.last_name;
+        if (req.body.email) updateData.email = req.body.email;
+        if (req.body.phone_number) updateData.phone_number = req.body.phone_number;
+        if (req.body.country) updateData.country = req.body.country;
+        if (req.body.address) updateData.address = req.body.address;
+        if (req.body.passport_series) updateData.passport_series = req.body.passport_series;
+        if (req.body.passport_number) updateData.passport_number = req.body.passport_number;
+        if (req.body.identification_number) updateData.identification_number = req.body.identification_number;
+        
+        if (Object.keys(updateData).length > 0) {
+          userQueries.update(user_id, updateData);
+          console.log('✅ Данные пользователя обновлены при отправке объекта');
+        }
+      }
+    } catch (userUpdateError) {
+      console.warn('⚠️ Не удалось обновить данные пользователя:', userUpdateError.message);
     }
 
     // Обработка загруженных документов
@@ -2824,9 +2899,9 @@ app.post('/api/properties', upload.fields([
       balcony ? 1 : 0, parking ? 1 : 0, elevator ? 1 : 0, land_area || null, garage ? 1 : 0, pool ? 1 : 0, garden ? 1 : 0,
       commercial_type || null, business_hours || null, renovation || null, condition || null, heating || null,
       water_supply || null, sewerage || null, electricity ? 1 : 0, internet ? 1 : 0, security ? 1 : 0, furniture ? 1 : 0,
-      photos ? JSON.stringify(photos) : null,
-      videos ? JSON.stringify(videos) : null,
-      additional_documents ? JSON.stringify(additional_documents) : null,
+      parsedPhotos.length > 0 ? JSON.stringify(parsedPhotos) : null,
+      parsedVideos.length > 0 ? JSON.stringify(parsedVideos) : null,
+      parsedAdditionalDocuments.length > 0 ? JSON.stringify(parsedAdditionalDocuments) : null,
       ownershipDocumentPath, noDebtsDocumentPath,
       test_drive_data ? JSON.stringify(test_drive_data) : null,
       'pending'
@@ -2835,14 +2910,21 @@ app.post('/api/properties', upload.fields([
     const propertyId = result.lastInsertRowid;
     const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyId);
 
+    console.log('✅ Объявление успешно создано с ID:', propertyId);
+
     res.json({ 
       success: true, 
       data: property,
       message: 'Объявление успешно отправлено на модерацию' 
     });
   } catch (error) {
-    console.error('Ошибка при создании объявления:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ Ошибка при создании объявления:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Ошибка при создании объявления',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

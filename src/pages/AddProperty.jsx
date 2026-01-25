@@ -16,16 +16,28 @@ import {
   FiVideo,
   FiFileText,
   FiCheck,
-  FiFile
+  FiFile,
+  FiThumbsUp
 } from 'react-icons/fi'
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
-import { MdBed, MdOutlineBathtub } from 'react-icons/md'
+import { MdBed, MdOutlineBathtub, MdLightbulb } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import PropertyPreviewModal from '../components/PropertyPreviewModal'
 import DateRangePicker from '../components/DateRangePicker'
 import SellerVerificationModal from '../components/SellerVerificationModal'
 import { getUserData } from '../services/authService'
 import './AddProperty.css'
+
+// Фикс для иконок Leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
 
 const AddProperty = () => {
   const navigate = useNavigate()
@@ -52,6 +64,8 @@ const AddProperty = () => {
   const [showPreview, setShowPreview] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [userId, setUserId] = useState(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showVideoLinkModal, setShowVideoLinkModal] = useState(false)
   const [videoLink, setVideoLink] = useState('')
   const [isTranslating, setIsTranslating] = useState(false)
@@ -59,6 +73,14 @@ const AddProperty = () => {
   const [showTranslations, setShowTranslations] = useState(false)
   const [currency, setCurrency] = useState('USD')
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(null) // 'price' или 'auction' или null
+  const [currentStep, setCurrentStep] = useState('type-selection') // 'type-selection', 'test-drive-question', 'property-name', 'location', 'form'
+  const [showHint1, setShowHint1] = useState(true)
+  const [showHint2, setShowHint2] = useState(true)
+  const [addressSearch, setAddressSearch] = useState('')
+  const [addressSuggestions, setAddressSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedCoordinates, setSelectedCoordinates] = useState(null)
+  const [mapCenter, setMapCenter] = useState([55.7558, 37.6173]) // Москва по умолчанию
   
   const currencies = [
     { code: 'USD', symbol: '$', name: 'Доллар США' },
@@ -69,6 +91,7 @@ const AddProperty = () => {
   
   const [formData, setFormData] = useState({
     propertyType: '', // Сначала выбираем тип
+    testDrive: null, // null, true или false
     title: '',
     description: '',
     price: '',
@@ -85,6 +108,11 @@ const AddProperty = () => {
     totalFloors: '',
     yearBuilt: '',
     location: '',
+    address: '',
+    apartment: '',
+    country: '',
+    city: '',
+    coordinates: null, // [lat, lng]
     // Дополнительные поля для квартиры
     balcony: false,
     parking: false,
@@ -354,60 +382,99 @@ const AddProperty = () => {
   const handlePublish = async () => {
     if (!formData.title || photos.length === 0) {
       alert('Пожалуйста, заполните заголовок и загрузите хотя бы одно фото')
-      return
+      return false
     }
     if (!uploadedDocuments.ownership || !uploadedDocuments.noDebts) {
       alert('Пожалуйста, загрузите все необходимые документы')
-      return
+      return false
     }
     if (!userId) {
       alert('Ошибка: пользователь не авторизован. Пожалуйста, войдите в систему.')
-      return
+      return false
     }
 
+    setIsSubmitting(true)
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
+      
+      // Загружаем данные пользователя из профиля
+      let userProfileData = null
+      try {
+        const userResponse = await fetch(`${API_BASE_URL}/users/${userId}`)
+        if (userResponse.ok) {
+          const userData = await userResponse.json()
+          if (userData.success && userData.data) {
+            userProfileData = userData.data
+            console.log('✅ Данные пользователя загружены из профиля:', userProfileData)
+          }
+        }
+      } catch (userError) {
+        console.warn('⚠️ Не удалось загрузить данные пользователя из профиля:', userError)
+      }
       
       // Подготавливаем данные для отправки
       const formDataToSend = new FormData()
       
       // Основные данные
-      formDataToSend.append('user_id', userId)
+      formDataToSend.append('user_id', String(userId))
       formDataToSend.append('property_type', formData.propertyType)
       formDataToSend.append('title', formData.title)
+      
+      // Данные пользователя из профиля (если загружены)
+      if (userProfileData) {
+        if (userProfileData.first_name) formDataToSend.append('first_name', userProfileData.first_name)
+        if (userProfileData.last_name) formDataToSend.append('last_name', userProfileData.last_name)
+        if (userProfileData.email) formDataToSend.append('email', userProfileData.email)
+        if (userProfileData.phone_number) formDataToSend.append('phone_number', userProfileData.phone_number)
+        if (userProfileData.country) formDataToSend.append('country', userProfileData.country)
+        if (userProfileData.address) formDataToSend.append('address', userProfileData.address)
+        if (userProfileData.passport_series) formDataToSend.append('passport_series', userProfileData.passport_series)
+        if (userProfileData.passport_number) formDataToSend.append('passport_number', userProfileData.passport_number)
+        if (userProfileData.identification_number) formDataToSend.append('identification_number', userProfileData.identification_number)
+      }
       formDataToSend.append('description', formData.description || '')
-      formDataToSend.append('price', formData.price || '')
+      if (formData.price) formDataToSend.append('price', String(formData.price))
       formDataToSend.append('currency', currency)
       formDataToSend.append('is_auction', formData.isAuction ? '1' : '0')
-      formDataToSend.append('auction_start_date', formData.auctionStartDate || '')
-      formDataToSend.append('auction_end_date', formData.auctionEndDate || '')
-      formDataToSend.append('auction_starting_price', formData.auctionStartingPrice || '')
+      if (formData.testDrive !== null) {
+        formDataToSend.append('test_drive', formData.testDrive ? '1' : '0')
+      }
+      if (formData.auctionStartDate) formDataToSend.append('auction_start_date', formData.auctionStartDate)
+      if (formData.auctionEndDate) formDataToSend.append('auction_end_date', formData.auctionEndDate)
+      if (formData.auctionStartingPrice) formDataToSend.append('auction_starting_price', String(formData.auctionStartingPrice))
       
       // Общие характеристики
-      formDataToSend.append('area', formData.area || '')
-      formDataToSend.append('rooms', formData.rooms || '')
-      formDataToSend.append('bedrooms', formData.bedrooms || '')
-      formDataToSend.append('bathrooms', formData.bathrooms || '')
-      formDataToSend.append('floor', formData.floor || '')
-      formDataToSend.append('total_floors', formData.totalFloors || '')
-      formDataToSend.append('year_built', formData.yearBuilt || '')
-      formDataToSend.append('location', formData.location || '')
+      if (formData.area) formDataToSend.append('area', String(formData.area))
+      if (formData.rooms) formDataToSend.append('rooms', String(formData.rooms))
+      if (formData.bedrooms) formDataToSend.append('bedrooms', String(formData.bedrooms))
+      if (formData.bathrooms) formDataToSend.append('bathrooms', String(formData.bathrooms))
+      if (formData.floor) formDataToSend.append('floor', String(formData.floor))
+      if (formData.totalFloors) formDataToSend.append('total_floors', String(formData.totalFloors))
+      if (formData.yearBuilt) formDataToSend.append('year_built', String(formData.yearBuilt))
+      if (formData.location) formDataToSend.append('location', formData.location)
+      if (formData.address) formDataToSend.append('address', formData.address)
+      if (formData.apartment) formDataToSend.append('apartment', formData.apartment)
+      if (formData.country) formDataToSend.append('country', formData.country)
+      if (formData.city) formDataToSend.append('city', formData.city)
+      if (formData.coordinates) {
+        formDataToSend.append('coordinates', JSON.stringify(formData.coordinates))
+      }
       
       // Дополнительные поля
       formDataToSend.append('balcony', formData.balcony ? '1' : '0')
       formDataToSend.append('parking', formData.parking ? '1' : '0')
       formDataToSend.append('elevator', formData.elevator ? '1' : '0')
-      formDataToSend.append('land_area', formData.landArea || '')
+      if (formData.landArea) formDataToSend.append('land_area', String(formData.landArea))
       formDataToSend.append('garage', formData.garage ? '1' : '0')
       formDataToSend.append('pool', formData.pool ? '1' : '0')
       formDataToSend.append('garden', formData.garden ? '1' : '0')
-      formDataToSend.append('commercial_type', formData.commercialType || '')
-      formDataToSend.append('business_hours', formData.businessHours || '')
-      formDataToSend.append('renovation', formData.renovation || '')
-      formDataToSend.append('condition', formData.condition || '')
-      formDataToSend.append('heating', formData.heating || '')
-      formDataToSend.append('water_supply', formData.waterSupply || '')
-      formDataToSend.append('sewerage', formData.sewerage || '')
+      if (formData.commercialType) formDataToSend.append('commercial_type', formData.commercialType)
+      if (formData.businessHours) formDataToSend.append('business_hours', formData.businessHours)
+      if (formData.renovation) formDataToSend.append('renovation', formData.renovation)
+      if (formData.condition) formDataToSend.append('condition', formData.condition)
+      if (formData.heating) formDataToSend.append('heating', formData.heating)
+      if (formData.waterSupply) formDataToSend.append('water_supply', formData.waterSupply)
+      if (formData.sewerage) formDataToSend.append('sewerage', formData.sewerage)
       formDataToSend.append('electricity', formData.electricity ? '1' : '0')
       formDataToSend.append('internet', formData.internet ? '1' : '0')
       formDataToSend.append('security', formData.security ? '1' : '0')
@@ -422,7 +489,6 @@ const AddProperty = () => {
         type: doc.type
       }))))
       
-      
       // Документы
       if (requiredDocuments.ownership) {
         formDataToSend.append('ownership_document', requiredDocuments.ownership)
@@ -431,22 +497,50 @@ const AddProperty = () => {
         formDataToSend.append('no_debts_document', requiredDocuments.noDebts)
       }
       
+      console.log('📤 Отправка объявления на сервер...')
+      
       const response = await fetch(`${API_BASE_URL}/properties`, {
         method: 'POST',
         body: formDataToSend
       })
       
-      const data = await response.json()
+      console.log('📥 Ответ сервера:', response.status, response.statusText)
       
-      if (response.ok && data.success) {
-        alert('Объявление успешно отправлено на модерацию!')
-        navigate('/owner')
+      if (!response.ok) {
+        let errorText = 'Неизвестная ошибка'
+        try {
+          errorText = await response.text()
+          console.error('❌ Ошибка сервера:', errorText)
+        } catch (e) {
+          console.error('❌ Не удалось прочитать ответ сервера')
+        }
+        throw new Error(`Ошибка сервера: ${response.status} - ${errorText}`)
+      }
+      
+      const data = await response.json()
+      console.log('✅ Данные от сервера:', data)
+      
+      if (data.success) {
+        // Закрываем модальное окно верификации
+        setShowVerificationModal(false)
+        // Показываем модальное окно об успешной отправке
+        setShowSuccessModal(true)
+        return true
       } else {
-        alert(data.error || 'Ошибка при отправке объявления')
+        throw new Error(data.error || 'Ошибка при отправке объявления')
       }
     } catch (error) {
-      console.error('Ошибка при отправке объявления:', error)
-      alert('Произошла ошибка при отправке объявления. Попробуйте еще раз.')
+      console.error('❌ Ошибка при отправке объявления:', error)
+      setIsSubmitting(false)
+      // Показываем более детальное сообщение об ошибке
+      if (error.message.includes('Field value too long')) {
+        alert('Ошибка: Размер данных слишком большой. Попробуйте уменьшить количество фото или размер файлов.')
+      } else if (error.message.includes('ERR_CONNECTION_RESET') || error.message.includes('Failed to fetch')) {
+        alert('Ошибка соединения с сервером. Проверьте, что сервер запущен и попробуйте еще раз.')
+      } else {
+        alert(`Произошла ошибка при отправке объявления: ${error.message}`)
+      }
+      return false
     }
   }
 
@@ -479,11 +573,17 @@ const AddProperty = () => {
     setShowVerificationModal(true)
   }
 
-  const handleVerificationComplete = () => {
+  const handleVerificationComplete = async () => {
     // После завершения верификации сразу публикуем объявление
     // Пользователь уже отправлен на модерацию через верификацию
     // Теперь отправляем объект недвижимости на модерацию
-    handlePublish()
+    const success = await handlePublish()
+    if (!success) {
+      // Если отправка не удалась, оставляем модальное окно верификации открытым
+      // чтобы пользователь мог попробовать еще раз
+      return
+    }
+    // Если успешно, модальное окно закроется в handlePublish через setShowSuccessModal
   }
 
   const translateText = async (text, targetLang) => {
@@ -599,13 +699,162 @@ const AddProperty = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length)
   }
 
+  // Функция для получения иконки типа недвижимости
+  const getPropertyTypeIcon = (type) => {
+    switch (type) {
+      case 'house':
+        return <FiHome size={64} />
+      case 'apartment':
+        return <PiBuildingApartment size={64} />
+      case 'villa':
+        return <PiBuildings size={64} />
+      case 'commercial':
+        return <PiWarehouse size={64} />
+      default:
+        return <FiHome size={64} />
+    }
+  }
+
+  // Функция для получения названия типа недвижимости
+  const getPropertyTypeName = (type) => {
+    switch (type) {
+      case 'house':
+        return 'Дом'
+      case 'apartment':
+        return 'Квартира'
+      case 'villa':
+        return 'Вилла'
+      case 'commercial':
+        return 'Апартаменты'
+      default:
+        return 'Недвижимость'
+    }
+  }
+
+  // Обработчик выбора типа недвижимости
+  const handlePropertyTypeSelect = (type) => {
+    setFormData(prev => ({ ...prev, propertyType: type }))
+    setCurrentStep('test-drive-question')
+  }
+
+  // Обработчик ответа на вопрос о тест-драйве
+  const handleTestDriveAnswer = (answer) => {
+    setFormData(prev => ({ ...prev, testDrive: answer }))
+    setCurrentStep('property-name')
+  }
+
+  // Обработчик перехода к форме после заполнения названия
+  const handlePropertyNameContinue = () => {
+    if (!formData.title) {
+      alert('Пожалуйста, введите название объекта')
+      return
+    }
+    setCurrentStep('location')
+  }
+
+  // Поиск адреса через Nominatim API
+  const searchAddress = async (query) => {
+    if (!query || query.length < 3) {
+      setAddressSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=ru`
+      )
+      const data = await response.json()
+      setAddressSuggestions(data)
+      setShowSuggestions(true)
+    } catch (error) {
+      console.error('Ошибка поиска адреса:', error)
+    }
+  }
+
+  // Debounce для поиска адреса
+  useEffect(() => {
+    if (addressSearch.length < 3) {
+      setAddressSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchAddress(addressSearch)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [addressSearch])
+
+  // Обработчик выбора адреса из предложений
+  const handleAddressSelect = (suggestion) => {
+    const address = suggestion.display_name
+    const lat = parseFloat(suggestion.lat)
+    const lng = parseFloat(suggestion.lon)
+    const coords = [lat, lng]
+    
+    setAddressSearch(address)
+    setSelectedCoordinates(coords)
+    setMapCenter(coords)
+    setShowSuggestions(false)
+    
+    // Извлекаем страну и город из адреса
+    const addressParts = suggestion.address || {}
+    const country = addressParts.country || ''
+    const city = addressParts.city || addressParts.town || addressParts.village || ''
+    
+    setFormData(prev => ({
+      ...prev,
+      address: address,
+      location: address,
+      coordinates: coords,
+      country: country,
+      city: city
+    }))
+  }
+
+  // Компонент для обновления центра карты
+  const MapUpdater = ({ center, zoom = 15 }) => {
+    const map = useMap()
+    useEffect(() => {
+      if (center && center.length === 2 && !isNaN(center[0]) && !isNaN(center[1])) {
+        map.setView(center, zoom, { animate: true, duration: 0.5 })
+      }
+    }, [center, zoom, map])
+    return null
+  }
+
+  // Обработчик перехода к форме после заполнения местоположения
+  const handleLocationContinue = () => {
+    if (!formData.address) {
+      alert('Пожалуйста, введите адрес')
+      return
+    }
+    setCurrentStep('form')
+  }
+
   return (
     <div className="add-property-page">
       <div className="add-property-container">
         <div className="add-property-header">
           <button 
             className="back-btn"
-            onClick={() => navigate('/owner')}
+            onClick={() => {
+              if (currentStep === 'test-drive-question') {
+                setCurrentStep('type-selection')
+                setFormData(prev => ({ ...prev, propertyType: '' }))
+              } else if (currentStep === 'property-name') {
+                setCurrentStep('test-drive-question')
+                setFormData(prev => ({ ...prev, testDrive: null }))
+              } else if (currentStep === 'location') {
+                setCurrentStep('property-name')
+              } else if (currentStep === 'form') {
+                setCurrentStep('location')
+              } else {
+                navigate('/owner')
+              }
+            }}
           >
             <FiChevronLeft size={20} />
             Назад
@@ -613,46 +862,371 @@ const AddProperty = () => {
           <h1 className="page-title">Добавить объявление</h1>
         </div>
 
-        {/* Выбор типа недвижимости */}
-        <section className="form-section">
-          <h2 className="section-title">Выберите тип недвижимости</h2>
-          <div className="property-type-selector">
-            <button
-              type="button"
-              className={`property-type-card ${formData.propertyType === 'apartment' ? 'property-type-card--active' : ''}`}
-              onClick={() => setFormData(prev => ({ ...prev, propertyType: 'apartment' }))}
-            >
-              <PiBuildingApartment size={32} />
-              <span>Квартира</span>
-            </button>
-            <button
-              type="button"
-              className={`property-type-card ${formData.propertyType === 'house' ? 'property-type-card--active' : ''}`}
-              onClick={() => setFormData(prev => ({ ...prev, propertyType: 'house' }))}
-            >
-              <FiHome size={32} />
-              <span>Дом</span>
-            </button>
-            <button
-              type="button"
-              className={`property-type-card ${formData.propertyType === 'villa' ? 'property-type-card--active' : ''}`}
-              onClick={() => setFormData(prev => ({ ...prev, propertyType: 'villa' }))}
-            >
-              <PiBuildings size={32} />
-              <span>Вилла</span>
-            </button>
-            <button
-              type="button"
-              className={`property-type-card ${formData.propertyType === 'commercial' ? 'property-type-card--active' : ''}`}
-              onClick={() => setFormData(prev => ({ ...prev, propertyType: 'commercial' }))}
-            >
-              <PiWarehouse size={32} />
-              <span>Апартаменты</span>
-            </button>
-          </div>
-        </section>
+        {currentStep === 'type-selection' ? (
+          /* Экран выбора типа недвижимости */
+          <div className="property-type-selection-screen">
+            <div className="property-type-selection-header">
+              <h2 className="property-type-selection-title">
+                Разместите вашу недвижимость на платформе и начните принимать гостей в кратчайшие сроки!
+              </h2>
+              <p className="property-type-selection-subtitle">
+                Для начала выберите тип недвижимости, которую вы хотите разместить
+              </p>
+            </div>
+            
+            <div className="property-type-cards-container">
+              <div 
+                className="property-type-card-large"
+                onClick={() => handlePropertyTypeSelect('house')}
+              >
+                <div className="property-type-card-icon">
+                  <FiHome size={48} />
+                </div>
+                <h3 className="property-type-card-title">Дом</h3>
+                <p className="property-type-card-description">
+                  Недвижимость, такая как дома, коттеджи, загородные дома и т.д.
+                </p>
+                <button 
+                  type="button"
+                  className="property-type-card-button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePropertyTypeSelect('house')
+                  }}
+                >
+                  Опишите ваш объект
+                </button>
+              </div>
 
-        {formData.propertyType && (
+              <div 
+                className="property-type-card-large"
+                onClick={() => handlePropertyTypeSelect('apartment')}
+              >
+                <div className="property-type-card-icon">
+                  <PiBuildingApartment size={48} />
+                </div>
+                <h3 className="property-type-card-title">Квартира</h3>
+                <p className="property-type-card-description">
+                  Меблированные и самообслуживаемые помещения, где гости арендуют всю площадь.
+                </p>
+                <button 
+                  type="button"
+                  className="property-type-card-button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePropertyTypeSelect('apartment')
+                  }}
+                >
+                  Опишите ваш объект
+                </button>
+              </div>
+
+              <div 
+                className="property-type-card-large"
+                onClick={() => handlePropertyTypeSelect('villa')}
+              >
+                <div className="property-type-card-icon">
+                  <PiBuildings size={48} />
+                </div>
+                <h3 className="property-type-card-title">Вилла</h3>
+                <p className="property-type-card-description">
+                  Роскошные загородные дома с большими участками и современными удобствами.
+                </p>
+                <button 
+                  type="button"
+                  className="property-type-card-button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePropertyTypeSelect('villa')
+                  }}
+                >
+                  Опишите ваш объект
+                </button>
+              </div>
+
+              <div 
+                className="property-type-card-large"
+                onClick={() => handlePropertyTypeSelect('commercial')}
+              >
+                <div className="property-type-card-icon">
+                  <PiWarehouse size={48} />
+                </div>
+                <h3 className="property-type-card-title">Апартаменты</h3>
+                <p className="property-type-card-description">
+                  Современные апартаменты с полным набором удобств для комфортного проживания.
+                </p>
+                <button 
+                  type="button"
+                  className="property-type-card-button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePropertyTypeSelect('commercial')
+                  }}
+                >
+                  Опишите ваш объект
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : currentStep === 'test-drive-question' ? (
+          /* Экран вопроса о тест-драйве */
+          <div className="test-drive-question-screen">
+            <div className="test-drive-question-content">
+              <div className="test-drive-property-icon">
+                {getPropertyTypeIcon(formData.propertyType)}
+              </div>
+              <h2 className="test-drive-question-title">
+                Планируете ли вы проводить тест-драйв вашей недвижимости?
+              </h2>
+              <p className="test-drive-question-description">
+                Покупатель может снять недвижимость на некоторое время с последующим правом покупки
+              </p>
+              <div className="test-drive-buttons">
+                <button
+                  type="button"
+                  className="test-drive-button test-drive-button--yes"
+                  onClick={() => handleTestDriveAnswer(true)}
+                >
+                  Да, планирую
+                </button>
+                <button
+                  type="button"
+                  className="test-drive-button test-drive-button--no"
+                  onClick={() => handleTestDriveAnswer(false)}
+                >
+                  Нет, не планирую
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : currentStep === 'property-name' ? (
+          /* Экран ввода названия и описания */
+          <div className="property-name-screen">
+            <div className="property-name-main">
+              <h2 className="property-name-title">
+                Какое название у вашего объекта?
+              </h2>
+              
+              <div className="property-name-input-group">
+                <label className="property-name-label">Название объекта</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="property-name-input"
+                  placeholder="Новая квартира"
+                />
+              </div>
+
+              <div className="property-name-input-group">
+                <label className="property-name-label">Описание</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="property-name-textarea"
+                  placeholder="Опишите ваш объект недвижимости"
+                  rows="6"
+                />
+              </div>
+
+              <div className="property-name-actions">
+                <button
+                  type="button"
+                  className="property-name-back-btn"
+                  onClick={() => setCurrentStep('test-drive-question')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-name-continue-btn"
+                  onClick={handlePropertyNameContinue}
+                >
+                  Продолжить
+                </button>
+              </div>
+            </div>
+
+            <div className="property-name-hints">
+              {showHint1 && (
+                <div className="property-name-hint-card">
+                  <div className="property-name-hint-header">
+                    <div className="property-name-hint-icon property-name-hint-icon--thumbs">
+                      <FiThumbsUp size={20} />
+                    </div>
+                    <h3 className="property-name-hint-title">
+                      Что следует учитывать при выборе названия?
+                    </h3>
+                    <button
+                      type="button"
+                      className="property-name-hint-close"
+                      onClick={() => setShowHint1(false)}
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
+                  <ul className="property-name-hint-list">
+                    <li>Сделайте его коротким и запоминающимся</li>
+                    <li>Избегайте аббревиатур</li>
+                    <li>Придерживайтесь фактов</li>
+                  </ul>
+                </div>
+              )}
+
+              {showHint2 && (
+                <div className="property-name-hint-card">
+                  <div className="property-name-hint-header">
+                    <div className="property-name-hint-icon property-name-hint-icon--bulb">
+                      <MdLightbulb size={20} />
+                    </div>
+                    <h3 className="property-name-hint-title">
+                      Зачем нужно называть недвижимость?
+                    </h3>
+                    <button
+                      type="button"
+                      className="property-name-hint-close"
+                      onClick={() => setShowHint2(false)}
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
+                  <p className="property-name-hint-text">
+                    Название будет заголовком вашего объявления. Оно должно быть конкретным, 
+                    видимым для всех и не должно содержать адрес.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : currentStep === 'location' ? (
+          /* Экран ввода местоположения */
+          <div className="property-location-screen">
+            <div className="property-location-main">
+              <h2 className="property-location-title">
+                Где находится ваша недвижимость?
+              </h2>
+              
+              <div className="property-location-input-group">
+                <label className="property-location-label">Страна</label>
+                <input
+                  type="text"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  className="property-location-input"
+                  placeholder="Страна"
+                />
+              </div>
+
+              <div className="property-location-input-group">
+                <label className="property-location-label">Город</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  className="property-location-input"
+                  placeholder="Город"
+                />
+              </div>
+
+              <div className="property-location-input-group">
+                <label className="property-location-label">Адрес</label>
+                <div className="property-location-search-wrapper">
+                  <input
+                    type="text"
+                    value={addressSearch}
+                    onChange={(e) => setAddressSearch(e.target.value)}
+                    onFocus={() => {
+                      if (addressSuggestions.length > 0) {
+                        setShowSuggestions(true)
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowSuggestions(false), 200)
+                    }}
+                    className="property-location-input"
+                    placeholder="Введите адрес"
+                  />
+                  {showSuggestions && addressSuggestions.length > 0 && (
+                    <div className="property-location-suggestions">
+                      {addressSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="property-location-suggestion-item"
+                          onClick={() => handleAddressSelect(suggestion)}
+                        >
+                          <FiMapPin size={16} />
+                          <span>{suggestion.display_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="property-location-input-group">
+                <label className="property-location-label">
+                  Номер дома (необязательно)
+                </label>
+                <input
+                  type="text"
+                  name="apartment"
+                  value={formData.apartment}
+                  onChange={handleInputChange}
+                  className="property-location-input"
+                  placeholder="Номер дома"
+                />
+              </div>
+
+              <div className="property-location-actions">
+                <button
+                  type="button"
+                  className="property-location-back-btn"
+                  onClick={() => setCurrentStep('property-name')}
+                >
+                  <FiChevronLeft size={16} />
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className="property-location-continue-btn"
+                  onClick={handleLocationContinue}
+                >
+                  Продолжить
+                </button>
+              </div>
+            </div>
+
+            <div className="property-location-map">
+              {typeof window !== 'undefined' && (
+                <MapContainer
+                  key={selectedCoordinates ? `map-${selectedCoordinates[0]}-${selectedCoordinates[1]}` : 'map-default'}
+                  center={selectedCoordinates || mapCenter}
+                  zoom={selectedCoordinates ? 15 : 10}
+                  style={{ height: '100%', width: '100%', borderRadius: '12px', minHeight: '500px' }}
+                  scrollWheelZoom={true}
+                  zoomControl={true}
+                  whenReady={(map) => {
+                    map.target.invalidateSize()
+                  }}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  {selectedCoordinates && selectedCoordinates.length === 2 && (
+                    <Marker key={`marker-${selectedCoordinates[0]}-${selectedCoordinates[1]}`} position={selectedCoordinates} />
+                  )}
+                  <MapUpdater center={selectedCoordinates || mapCenter} zoom={selectedCoordinates ? 15 : 10} />
+                </MapContainer>
+              )}
+            </div>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit} className="add-property-form">
             {/* Фото/Видео Объекта */}
             <section className="form-section">
@@ -1790,6 +2364,37 @@ const AddProperty = () => {
         userId={userId}
         onComplete={handleVerificationComplete}
       />
+
+      {/* Модальное окно об успешной отправке */}
+      {showSuccessModal && (
+        <div className="success-modal-overlay" onClick={() => {
+          setShowSuccessModal(false)
+          navigate('/owner')
+        }}>
+          <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="success-modal__icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="#0ABAB5" strokeWidth="2"/>
+                <path d="M8 12L11 15L16 9" stroke="#0ABAB5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h2 className="success-modal__title">Данные отправлены на верификацию</h2>
+            <p className="success-modal__message">
+              Ваши документы и объявление о недвижимости успешно отправлены на модерацию. 
+              Вы получите уведомление после проверки.
+            </p>
+            <button
+              className="success-modal__button"
+              onClick={() => {
+                setShowSuccessModal(false)
+                navigate('/owner')
+              }}
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )

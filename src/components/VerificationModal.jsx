@@ -114,14 +114,18 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
         // Отправляем событие для обновления уведомления о верификации
         window.dispatchEvent(new Event('verification-status-update'))
         
-        alert('Все фотографии успешно отправлены на модерацию!')
-        
         // Вызываем callback для обновления данных в родительском компоненте
+        // Для продавцов onComplete отправит объект и закроет модальное окно
+        // Для покупателей показываем alert и закрываем модальное окно
         if (onComplete) {
-          onComplete()
+          await onComplete()
+          // Если onComplete не закрыл модальное окно (для покупателей), закрываем здесь
+          // Для продавцов модальное окно закроется в SellerVerificationModal
+        } else {
+          // Если нет onComplete (старый код), показываем alert и закрываем
+          alert('Все фотографии успешно отправлены на модерацию!')
+          onClose()
         }
-        
-        onClose()
       } else {
         const errors = results.filter(r => !r.success).map(r => r.error).join(', ')
         alert(`Ошибка при загрузке: ${errors}`)
