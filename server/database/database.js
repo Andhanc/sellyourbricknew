@@ -329,6 +329,33 @@ export function initDatabase() {
         console.warn('⚠️ Не удалось создать таблицу администраторов:', adminError.message);
       }
 
+      // Создаем таблицу недвижимости, если её нет
+      try {
+        const propertiesTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='properties'").get();
+        if (!propertiesTable) {
+          console.log('🔄 Создание таблицы недвижимости...');
+          const propertiesSql = readFileSync(join(__dirname, 'add_properties_table.sql'), 'utf8');
+          db.exec(propertiesSql);
+          console.log('✅ Таблица недвижимости создана');
+        }
+      } catch (propertiesError) {
+        console.warn('⚠️ Не удалось создать таблицу недвижимости:', propertiesError.message);
+        // Если файл миграции не найден, создаем таблицу напрямую
+        if (propertiesError.code === 'ENOENT') {
+          try {
+            const initSql = readFileSync(join(__dirname, 'init.sql'), 'utf8');
+            // Извлекаем только часть с таблицей properties
+            const propertiesMatch = initSql.match(/CREATE TABLE IF NOT EXISTS properties[\s\S]*?\);[\s\S]*?CREATE INDEX IF NOT EXISTS idx_properties[\s\S]*?;/g);
+            if (propertiesMatch) {
+              db.exec(propertiesMatch[0]);
+              console.log('✅ Таблица недвижимости создана из init.sql');
+            }
+          } catch (fallbackError) {
+            console.warn('⚠️ Не удалось создать таблицу недвижимости из init.sql:', fallbackError.message);
+          }
+        }
+      }
+
       // Создаем таблицу WhatsApp пользователей, если её нет
       try {
         const whatsappUsersTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='whatsapp_users'").get();

@@ -29,6 +29,7 @@ import QuickAddCard from '../components/QuickAddCard'
 import FileUploadModal from '../components/FileUploadModal'
 import PropertyCalculatorModal from '../components/PropertyCalculatorModal'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
+import CountrySelect, { countries as countryList } from '../components/CountrySelect'
 import { getUserData, saveUserData, logout, clearUserData } from '../services/authService'
 import './OwnerDashboard.css'
 
@@ -113,17 +114,19 @@ const OwnerDashboard = () => {
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false)
   const [selectedPropertyForHistory, setSelectedPropertyForHistory] = useState(null)
   const [ownerProfile, setOwnerProfile] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    username: '',
+    password: '',
     phone: '',
     country: '',
-    address: '',
-    passportSeries: '',
-    passportNumber: '',
-    passportId: ''
+    countryFlag: ''
   })
+  const [showPassword, setShowPassword] = useState(false)
   const [isProfileEditing, setIsProfileEditing] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [originalProfile, setOriginalProfile] = useState(null) // Сохраняем исходные данные профиля
   const [verificationStatus, setVerificationStatus] = useState(null)
   const [showVerificationSuccess, setShowVerificationSuccess] = useState(false)
   const [userId, setUserId] = useState(null)
@@ -141,16 +144,22 @@ const OwnerDashboard = () => {
       // Подтягиваем данные пользователя из локального хранилища
       const userData = getUserData()
       if (userData && userData.isLoggedIn) {
+        // Парсим имя из полного имени
+        const fullName = userData.name || 'Пользователь'
+        const nameParts = fullName.split(' ').filter(Boolean)
+        const firstName = nameParts[0] || ''
+        const lastName = nameParts.slice(1).join(' ') || ''
+        
         setOwnerProfile(prev => ({
           ...prev,
-          name: userData.name || 'Пользователь',
+          firstName: firstName,
+          lastName: lastName,
           email: userData.email || '',
+          username: userData.username || '',
+          password: '', // Пароль не храним в открытом виде
           phone: userData.phoneFormatted || userData.phone || '',
-          passportSeries: userData.passportSeries || '',
-          passportNumber: userData.passportNumber || '',
-          passportId: userData.passportId || '',
           country: userData.country || '',
-          address: userData.address || ''
+          countryFlag: userData.countryFlag || ''
         }))
 
         // Дополнительно загружаем актуальные данные из БД (если есть ID)
@@ -162,19 +171,17 @@ const OwnerDashboard = () => {
               const result = await response.json()
               if (result.success && result.data) {
                 const dbUser = result.data
+                // Находим флаг страны
+                const selectedCountry = countryList.find(c => c.name === dbUser.country)
                 setOwnerProfile(prev => ({
                   ...prev,
-                  name:
-                    prev.name ||
-                    `${dbUser.first_name || ''} ${dbUser.last_name || ''}`.trim() ||
-                    'Пользователь',
+                  firstName: prev.firstName || dbUser.first_name || '',
+                  lastName: prev.lastName || dbUser.last_name || '',
                   email: prev.email || dbUser.email || '',
+                  username: prev.username || dbUser.username || '',
                   phone: prev.phone || dbUser.phone_number || '',
-                  passportSeries: prev.passportSeries || dbUser.passport_series || '',
-                  passportNumber: prev.passportNumber || dbUser.passport_number || '',
-                  passportId: prev.passportId || dbUser.identification_number || '',
                   country: prev.country || dbUser.country || '',
-                  address: prev.address || dbUser.address || ''
+                  countryFlag: selectedCountry ? selectedCountry.flag : prev.countryFlag || ''
                 }))
               }
             }
@@ -413,6 +420,43 @@ const OwnerDashboard = () => {
     }))
   }
 
+  // Проверяем, есть ли несохраненные изменения
+  const hasUnsavedChanges = () => {
+    if (!isProfileEditing || !originalProfile) return false
+    
+    // Исключаем пароль из сравнения, так как он не сохраняется в исходных данных
+    const fieldsToCompare = ['firstName', 'lastName', 'email', 'username', 'phone', 'country', 'countryFlag']
+    
+    return fieldsToCompare.some(field => {
+      return ownerProfile[field] !== originalProfile[field]
+    }) || (ownerProfile.password && ownerProfile.password.trim() !== '')
+  }
+
+  // Обработчик закрытия панели профиля с проверкой изменений
+  const handleCloseProfilePanel = () => {
+    if (hasUnsavedChanges()) {
+      const shouldClose = window.confirm(
+        'У вас есть несохраненные изменения. Вы уверены, что хотите закрыть панель? Все несохраненные изменения будут потеряны.\n\n' +
+        'Для сохранения изменений нажмите "Сохранить".\n' +
+        'Для отмены изменений нажмите "Отмена".'
+      )
+      
+      if (!shouldClose) {
+        return // Не закрываем панель
+      }
+      
+      // Восстанавливаем исходные данные
+      if (originalProfile) {
+        setOwnerProfile({ ...originalProfile, password: '' })
+      }
+      setIsProfileEditing(false)
+      setShowPassword(false)
+      setOriginalProfile(null)
+    }
+    
+    setIsProfilePanelOpen(false)
+  }
+
 
   const handleProfileSave = async () => {
     try {
@@ -424,23 +468,19 @@ const OwnerDashboard = () => {
         return
       }
 
-      // Парсим ФИО во имя и фамилию для БД
-      const fullName = (ownerProfile.name || '').trim()
-      const nameParts = fullName.split(' ').filter(Boolean)
-      const firstName = nameParts[0] || ''
-      const lastName = nameParts.slice(1).join(' ') || ''
-
       // Подготавливаем данные для отправки в БД
       const updateData = {
-        first_name: firstName || null,
-        last_name: lastName || null,
+        first_name: ownerProfile.firstName || null,
+        last_name: ownerProfile.lastName || null,
         email: ownerProfile.email || null,
+        username: ownerProfile.username || null,
         phone_number: ownerProfile.phone || null,
-        country: ownerProfile.country || null,
-        address: ownerProfile.address || null,
-        passport_series: ownerProfile.passportSeries || null,
-        passport_number: ownerProfile.passportNumber || null,
-        identification_number: ownerProfile.passportId || null
+        country: ownerProfile.country || null
+      }
+      
+      // Если пароль указан, добавляем его в данные обновления
+      if (ownerProfile.password && ownerProfile.password.trim() !== '') {
+        updateData.password = ownerProfile.password
       }
 
       console.log('💾 Сохранение данных профиля в БД:', {
@@ -474,19 +514,22 @@ const OwnerDashboard = () => {
 
       console.log('✅ Данные успешно сохранены в БД:', result.data)
 
-      // Обновляем данные в localStorage (как у покупателя)
+      // Обновляем данные в localStorage
+      const fullName = `${ownerProfile.firstName || ''} ${ownerProfile.lastName || ''}`.trim() || userData.name
       const updatedUserData = {
         ...userData,
-        name: fullName || userData.name,
+        name: fullName,
+        firstName: ownerProfile.firstName || userData.firstName,
+        lastName: ownerProfile.lastName || userData.lastName,
         email: ownerProfile.email || userData.email,
+        username: ownerProfile.username || userData.username,
         phone: ownerProfile.phone || userData.phone,
         phoneFormatted: ownerProfile.phone || userData.phoneFormatted,
         country: ownerProfile.country || userData.country,
-        address: ownerProfile.address || userData.address,
-        passportSeries: ownerProfile.passportSeries,
-        passportNumber: ownerProfile.passportNumber,
-        passportId: ownerProfile.passportId
+        countryFlag: ownerProfile.countryFlag || userData.countryFlag
       }
+      
+      // Пароль не сохраняем в localStorage в открытом виде
 
       saveUserData(updatedUserData, userData.loginMethod || 'whatsapp')
       
@@ -495,6 +538,14 @@ const OwnerDashboard = () => {
       
       // Отправляем событие для обновления статуса верификации
       window.dispatchEvent(new Event('verification-status-update'))
+      
+      // Обновляем исходные данные после успешного сохранения (до очистки пароля)
+      const savedProfile = { ...ownerProfile, password: '' }
+      setOriginalProfile(savedProfile)
+      
+      // Очищаем пароль после сохранения
+      setOwnerProfile(prev => ({ ...prev, password: '' }))
+      setShowPassword(false)
       
       // Выходим из режима редактирования после успешного сохранения
       setIsProfileEditing(false)
@@ -656,7 +707,7 @@ const OwnerDashboard = () => {
         <div className="owner-dashboard__header-content">
           <div className="owner-dashboard__header-left">
             <h1 className="owner-dashboard__title">
-              {ownerProfile.name || 'Ваш кабинет продавца'}
+              {`${ownerProfile.firstName || ''} ${ownerProfile.lastName || ''}`.trim() || 'Ваш кабинет продавца'}
             </h1>
             <p className="owner-dashboard__subtitle">Управление вашей недвижимостью</p>
           </div>
@@ -1125,7 +1176,7 @@ const OwnerDashboard = () => {
       <WelcomeModal 
         isOpen={showWelcomeModal}
         onClose={handleWelcomeClose}
-        userName={ownerProfile.name || 'Ваш кабинет продавца'}
+        userName={`${ownerProfile.firstName || ''} ${ownerProfile.lastName || ''}`.trim() || 'Ваш кабинет продавца'}
       />
 
       {/* Модальное окно загрузки файла */}
@@ -1156,7 +1207,7 @@ const OwnerDashboard = () => {
         <>
           <div 
             className="owner-sidebar-backdrop"
-            onClick={() => setIsProfilePanelOpen(false)}
+            onClick={handleCloseProfilePanel}
           />
           <div className="owner-sidebar-panel owner-sidebar-panel--profile">
             <div className="owner-sidebar-panel__content">
@@ -1165,43 +1216,13 @@ const OwnerDashboard = () => {
                 <button 
                   type="button" 
                   className="owner-sidebar-panel__close"
-                  onClick={() => setIsProfilePanelOpen(false)}
+                  onClick={handleCloseProfilePanel}
                   aria-label="Закрыть профиль"
                 >
                   <FiX size={20} />
                 </button>
               </div>
               <div className="owner-sidebar-panel__body">
-                {/* Блок статуса верификации */}
-                {verificationStatus && (
-                  <div className="owner-profile-section owner-profile-section--verification-top">
-                    <h4 className="owner-profile-section__title">Верификация</h4>
-                    <p
-                      className={`owner-profile-section__value ${
-                        verificationStatus.isVerified
-                          ? 'owner-profile-section__value--success'
-                          : verificationStatus.isReady
-                          ? 'owner-profile-section__value--warning'
-                          : 'owner-profile-section__value--warning'
-                      }`}
-                    >
-                      {verificationStatus.isVerified
-                        ? 'Верифицирован'
-                        : verificationStatus.isReady
-                        ? 'Готов к верификации'
-                        : 'Не верифицирован'}
-                    </p>
-                    {!verificationStatus.isVerified && (
-                      <button
-                        className="owner-profile-section__button owner-profile-section__button--primary"
-                        onClick={handleStartVerification}
-                      >
-                        Пройти верификацию
-                      </button>
-                    )}
-                  </div>
-                )}
-
                 {/* Кнопки редактирования профиля */}
                 <div className="owner-profile-section owner-profile-section--actions">
                   <div className="owner-profile-actions">
@@ -1215,20 +1236,32 @@ const OwnerDashboard = () => {
                           {isSavingProfile ? 'Сохранение...' : 'Сохранить'}
                         </button>
                         <button
-                          type="button"
-                          className="owner-profile-section__button"
-                          onClick={() => setIsProfileEditing(false)}
-                          disabled={isSavingProfile}
-                          style={{ marginLeft: 8 }}
-                        >
-                          Отмена
-                        </button>
+                        type="button"
+                        className="owner-profile-section__button"
+                        onClick={() => {
+                          // Восстанавливаем исходные данные при отмене
+                          if (originalProfile) {
+                            setOwnerProfile({ ...originalProfile, password: '' })
+                          }
+                          setIsProfileEditing(false)
+                          setShowPassword(false)
+                          setOriginalProfile(null)
+                        }}
+                        disabled={isSavingProfile}
+                        style={{ marginLeft: 8 }}
+                      >
+                        Отмена
+                      </button>
                       </>
                     ) : (
                       <button
                         type="button"
                         className="owner-profile-section__button"
-                        onClick={() => setIsProfileEditing(true)}
+                        onClick={() => {
+                          // Сохраняем исходные данные перед началом редактирования
+                          setOriginalProfile({ ...ownerProfile })
+                          setIsProfileEditing(true)
+                        }}
                       >
                         Редактировать профиль
                       </button>
@@ -1237,169 +1270,62 @@ const OwnerDashboard = () => {
                 </div>
 
                 <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">ФИО</h4>
+                  <h4 className="owner-profile-section__title">Имя</h4>
                   <input
                     type="text"
                     className="owner-profile-section__value-input"
-                    value={ownerProfile.name}
-                    onChange={(e) => handleProfileFieldChange('name', e.target.value)}
-                    placeholder="Введите ФИО"
+                    value={ownerProfile.firstName}
+                    onChange={(e) => handleProfileFieldChange('firstName', e.target.value)}
+                    placeholder="Введите имя"
                     disabled={!isProfileEditing}
                   />
                 </div>
                 <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">Паспортные данные</h4>
-                  <div className="owner-profile-passport">
-                    <div className="owner-profile-passport-row">
-                      <span className="owner-profile-passport-label">Серия</span>
-                      <input
-                        type="text"
-                        className="owner-profile-section__value-input"
-                        value={ownerProfile.passportSeries}
-                        onChange={(e) => handleProfileFieldChange('passportSeries', e.target.value)}
-                        placeholder="Серия паспорта"
-                        disabled={!isProfileEditing}
-                      />
+                  <h4 className="owner-profile-section__title">Фамилия</h4>
+                  <input
+                    type="text"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.lastName}
+                    onChange={(e) => handleProfileFieldChange('lastName', e.target.value)}
+                    placeholder="Введите фамилию"
+                    disabled={!isProfileEditing}
+                  />
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Страна</h4>
+                  {isProfileEditing ? (
+                    <CountrySelect
+                      value={ownerProfile.country}
+                      onChange={(countryName) => {
+                        // Находим страну в списке для получения флага
+                        const selectedCountry = countryList.find(c => c.name === countryName)
+                        handleProfileFieldChange('country', countryName)
+                        if (selectedCountry) {
+                          handleProfileFieldChange('countryFlag', selectedCountry.flag)
+                        }
+                      }}
+                      placeholder="Выберите страну"
+                    />
+                  ) : (
+                    <div className="owner-profile-section__value">
+                      {(() => {
+                        const selectedCountry = countryList.find(c => c.name === ownerProfile.country)
+                        return ownerProfile.country ? (
+                          <>
+                            {selectedCountry && <span style={{ marginRight: '6px' }}>{selectedCountry.flag}</span>}
+                            {ownerProfile.country}
+                          </>
+                        ) : (
+                          'Не указана'
+                        )
+                      })()}
                     </div>
-                    <div className="owner-profile-passport-row">
-                      <span className="owner-profile-passport-label">Номер</span>
-                      <input
-                        type="text"
-                        className="owner-profile-section__value-input"
-                        value={ownerProfile.passportNumber}
-                        onChange={(e) => handleProfileFieldChange('passportNumber', e.target.value)}
-                        placeholder="Номер паспорта"
-                        disabled={!isProfileEditing}
-                      />
-                    </div>
-                    <div className="owner-profile-passport-row">
-                      <span className="owner-profile-passport-label">Идентификационный номер</span>
-                      <input
-                        type="text"
-                        className="owner-profile-section__value-input"
-                        value={ownerProfile.passportId}
-                        onChange={(e) => handleProfileFieldChange('passportId', e.target.value)}
-                        placeholder="Идентификационный номер"
-                        disabled={!isProfileEditing}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Подписка</h4>
                   <p className="owner-profile-section__value">Базовая</p>
                   <button className="owner-profile-section__button">Изменить подписку</button>
-                </div>
-                <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">Документы</h4>
-                  <p className="owner-profile-section__subtitle">Загрузите документы для верификации</p>
-                  
-                  <input
-                    ref={passportInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      if (e.target.files[0]) {
-                        handleDocumentUpload('passport', e.target.files[0])
-                      }
-                    }}
-                  />
-                  <input
-                    ref={passportWithFaceInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      if (e.target.files[0]) {
-                        handleDocumentUpload('passportWithFace', e.target.files[0])
-                      }
-                    }}
-                  />
-
-                  <div className="owner-documents-upload">
-                    {(() => {
-                      const doc = userDocuments.passport
-                      const status = doc?.verification_status || 'none'
-                      const isPending = status === 'pending'
-                      const isApproved = status === 'approved'
-                      const canUpload = !isPending && !uploading.passport && userId
-
-                      return (
-                        <div 
-                          className={`owner-document-card ${isPending ? 'owner-document-pending' : ''} ${isApproved ? 'owner-document-approved' : ''}`}
-                          onClick={() => {
-                            if (canUpload) {
-                              passportInputRef.current?.click()
-                            } else if (isPending) {
-                              alert('Документ уже на рассмотрении')
-                            }
-                          }}
-                          style={{ 
-                            cursor: canUpload ? 'pointer' : 'default',
-                            opacity: uploading.passport ? 0.6 : 1
-                          }}
-                        >
-                          <div className="owner-document-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                          <div className="owner-document-card__content">
-                            <h5 className="owner-document-card__title">Паспорт</h5>
-                            <p className="owner-document-card__status">
-                              {uploading.passport ? 'Загрузка...' : 
-                               isPending ? 'На рассмотрении' :
-                               isApproved ? 'Одобрен' :
-                               'Загрузить фото или скан паспорта'}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })()}
-
-                    {(() => {
-                      const doc = userDocuments.passportWithFace
-                      const status = doc?.verification_status || 'none'
-                      const isPending = status === 'pending'
-                      const isApproved = status === 'approved'
-                      const canUpload = !isPending && !uploading.passportWithFace && userId
-
-                      return (
-                        <div 
-                          className={`owner-document-card ${isPending ? 'owner-document-pending' : ''} ${isApproved ? 'owner-document-approved' : ''}`}
-                          onClick={() => {
-                            if (canUpload) {
-                              passportWithFaceInputRef.current?.click()
-                            } else if (isPending) {
-                              alert('Документ уже на рассмотрении')
-                            }
-                          }}
-                          style={{ 
-                            cursor: canUpload ? 'pointer' : 'default',
-                            opacity: uploading.passportWithFace ? 0.6 : 1
-                          }}
-                        >
-                          <div className="owner-document-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                              <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                          <div className="owner-document-card__content">
-                            <h5 className="owner-document-card__title">Паспорт с лицом</h5>
-                            <p className="owner-document-card__status">
-                              {uploading.passportWithFace ? 'Загрузка...' : 
-                               isPending ? 'На рассмотрении' :
-                               isApproved ? 'Одобрен' :
-                               'Загрузить фото паспорта с лицом'}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </div>
                 </div>
                 <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">Почта</h4>
@@ -1413,6 +1339,67 @@ const OwnerDashboard = () => {
                   />
                 </div>
                 <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Логин</h4>
+                  <input
+                    type="text"
+                    className="owner-profile-section__value-input"
+                    value={ownerProfile.username}
+                    onChange={(e) => handleProfileFieldChange('username', e.target.value)}
+                    placeholder="Введите логин"
+                    disabled={!isProfileEditing}
+                  />
+                </div>
+                <div className="owner-profile-section">
+                  <h4 className="owner-profile-section__title">Пароль</h4>
+                  <div style={{ position: 'relative' }}>
+                    {isProfileEditing ? (
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        className="owner-profile-section__value-input"
+                        value={ownerProfile.password}
+                        onChange={(e) => handleProfileFieldChange('password', e.target.value)}
+                        placeholder="Введите новый пароль"
+                        style={{ paddingRight: '40px' }}
+                      />
+                    ) : (
+                      <div className="owner-profile-section__value" style={{ color: '#666' }}>
+                        ••••••••
+                      </div>
+                    )}
+                    {isProfileEditing && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: '#666'
+                        }}
+                        aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                      >
+                        {showPassword ? (
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M2.5 2.5L17.5 17.5M10 3.75C6.25 3.75 3.33 5.83 1.67 8.33C1.25 8.92 1.25 10.08 1.67 10.67C2.5 11.92 3.75 13.33 5 14.17M10 16.25C13.75 16.25 16.67 14.17 18.33 11.67C18.75 11.08 18.75 9.92 18.33 9.33C17.92 8.75 17.25 8 16.67 7.5M12.5 12.5C12.08 12.92 11.42 13.33 10.67 13.33C9.17 13.33 7.92 12.08 7.92 10.58C7.92 9.83 8.33 9.17 8.75 8.75M10 6.67V3.33" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 3.75C6.25 3.75 3.33 5.83 1.67 8.33C1.25 8.92 1.25 10.08 1.67 10.67C3.33 13.17 6.25 15.25 10 15.25C13.75 15.25 16.67 13.17 18.33 10.67C18.75 10.08 18.75 8.92 18.33 8.33C16.67 5.83 13.75 3.75 10 3.75Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="owner-profile-section">
                   <h4 className="owner-profile-section__title">WhatsApp</h4>
                   <input
                     type="tel"
@@ -1420,28 +1407,6 @@ const OwnerDashboard = () => {
                     value={ownerProfile.phone}
                     onChange={(e) => handleProfileFieldChange('phone', e.target.value)}
                     placeholder="Введите номер телефона"
-                    disabled={!isProfileEditing}
-                  />
-                </div>
-                <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">Страна</h4>
-                  <input
-                    type="text"
-                    className="owner-profile-section__value-input"
-                    value={ownerProfile.country}
-                    onChange={(e) => handleProfileFieldChange('country', e.target.value)}
-                    placeholder="Введите страну"
-                    disabled={!isProfileEditing}
-                  />
-                </div>
-                <div className="owner-profile-section">
-                  <h4 className="owner-profile-section__title">Адрес</h4>
-                  <input
-                    type="text"
-                    className="owner-profile-section__value-input"
-                    value={ownerProfile.address}
-                    onChange={(e) => handleProfileFieldChange('address', e.target.value)}
-                    placeholder="Введите адрес"
                     disabled={!isProfileEditing}
                   />
                 </div>

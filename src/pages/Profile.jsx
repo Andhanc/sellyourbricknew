@@ -4,6 +4,7 @@ import { useUser, useClerk, useAuth } from '@clerk/clerk-react'
 import { getUserData, saveUserData, logout } from '../services/authService'
 import VerificationToast from '../components/VerificationToast'
 import VerificationModal from '../components/VerificationModal'
+import SellerVerificationModal from '../components/SellerVerificationModal'
 import './Profile.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
@@ -17,11 +18,17 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [profileData, setProfileData] = useState({
     name: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     email: '',
     avatar: null,
     country: '',
-    countryFlag: ''
+    countryFlag: '',
+    address: '',
+    passportSeries: '',
+    passportNumber: '',
+    identificationNumber: ''
   })
   const fileInputRef = useRef(null)
   const passportInputRef = useRef(null)
@@ -32,11 +39,43 @@ const Profile = () => {
   const [userDocuments, setUserDocuments] = useState({ passport: null, selfie: null, passportWithFace: null })
   const [verificationStatus, setVerificationStatus] = useState(null)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
+  const [isVerificationFormOpen, setIsVerificationFormOpen] = useState(false)
   const [documentsCompleted, setDocumentsCompleted] = useState(false)
   
   // Используем proxy из vite.config.js или полный URL
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
   
+  // Загрузка данных пользователя из БД
+  const loadUserDataFromDB = async (userId) => {
+    if (!userId) return
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          const user = data.data
+          // Обновляем profileData данными из БД
+          setProfileData(prev => ({
+            ...prev,
+            firstName: user.first_name || '',
+            lastName: user.last_name || '',
+            email: user.email || prev.email,
+            phone: user.phone_number || prev.phone,
+            country: user.country || prev.country,
+            address: user.address || '',
+            passportSeries: user.passport_series || '',
+            passportNumber: user.passport_number || '',
+            identificationNumber: user.identification_number || '',
+            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || prev.name
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных пользователя:', error)
+    }
+  }
+
   // Загрузка документов пользователя
   const loadUserDocuments = async (userId) => {
     if (!userId) return
@@ -435,6 +474,7 @@ const Profile = () => {
             setUserId(dbUserId)
             // Обновляем localStorage с правильным ID
             localStorage.setItem('userId', String(dbUserId))
+            loadUserDataFromDB(dbUserId)
             loadUserDocuments(dbUserId)
             loadVerificationStatus(dbUserId)
           } else {
@@ -443,6 +483,7 @@ const Profile = () => {
             const fallbackId = localStorage.getItem('userId')
             if (fallbackId) {
               setUserId(fallbackId)
+              loadUserDataFromDB(fallbackId)
               loadUserDocuments(fallbackId)
               loadVerificationStatus(fallbackId)
             }
@@ -453,6 +494,7 @@ const Profile = () => {
           const fallbackId = localStorage.getItem('userId')
           if (fallbackId) {
             setUserId(fallbackId)
+            loadUserDataFromDB(fallbackId)
             loadUserDocuments(fallbackId)
             loadVerificationStatus(fallbackId)
           }
@@ -620,14 +662,48 @@ const Profile = () => {
       if (user) {
         // Обновляем данные пользователя в Clerk
         await user.update({
-          firstName: profileData.name.split(' ')[0] || profileData.name,
-          lastName: profileData.name.split(' ').slice(1).join(' ') || '',
+          firstName: profileData.firstName || profileData.name.split(' ')[0] || profileData.name,
+          lastName: profileData.lastName || profileData.name.split(' ').slice(1).join(' ') || '',
         })
         
         // Обновляем email если изменился
         if (profileData.email && profileData.email !== user.primaryEmailAddress?.emailAddress) {
           // Email обновляется через отдельный метод в Clerk
           // Здесь можно добавить логику обновления email
+        }
+      }
+      
+      // Сохраняем данные в БД, если есть userId
+      if (userId) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              first_name: profileData.firstName || profileData.name.split(' ')[0] || profileData.name,
+              last_name: profileData.lastName || profileData.name.split(' ').slice(1).join(' ') || '',
+              email: profileData.email || null,
+              phone_number: profileData.phone ? profileData.phone.replace(/\D/g, '') : null,
+              country: profileData.country || null,
+              address: profileData.address || null,
+              passport_series: profileData.passportSeries || null,
+              passport_number: profileData.passportNumber || null,
+              identification_number: profileData.identificationNumber || null
+            })
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success) {
+              console.log('✅ Данные пользователя обновлены в БД')
+            }
+          } else {
+            console.error('❌ Ошибка обновления данных в БД:', await response.text())
+          }
+        } catch (dbError) {
+          console.error('❌ Ошибка при сохранении в БД:', dbError)
         }
       }
       
@@ -734,16 +810,31 @@ const Profile = () => {
       
       {/* Модальное окно верификации */}
       {userId && (
-        <VerificationModal
-          isOpen={isVerificationModalOpen}
-          onClose={() => setIsVerificationModalOpen(false)}
-          userId={userId}
-          onComplete={async () => {
-            // Обновляем документы пользователя и статус верификации
-            await loadUserDocuments(userId)
-            await loadVerificationStatus(userId)
-          }}
-        />
+        <>
+          <SellerVerificationModal
+            isOpen={isVerificationModalOpen}
+            onClose={() => setIsVerificationModalOpen(false)}
+            userId={userId}
+            onComplete={async () => {
+              // Обновляем документы пользователя и статус верификации
+              await loadUserDocuments(userId)
+              await loadVerificationStatus(userId)
+              return true
+            }}
+          />
+          <VerificationModal
+            isOpen={isVerificationFormOpen}
+            onClose={() => setIsVerificationFormOpen(false)}
+            userId={userId}
+            onComplete={async () => {
+              // Обновляем документы пользователя и статус верификации
+              await loadUserDocuments(userId)
+              await loadVerificationStatus(userId)
+              setIsVerificationFormOpen(false)
+              return true
+            }}
+          />
+        </>
       )}
       
       <div className="profile-container">
@@ -1009,65 +1100,63 @@ const Profile = () => {
 
             <section className="profile-section">
               <div className="section-header">
-                <h2 className="section-title">
-                  Документы
-                  {!isDocumentsComplete() && (
-                    <span className="section-indicator section-indicator--incomplete"></span>
-                  )}
-                </h2>
-                <div className="section-subtitle">Загрузите документы для верификации</div>
-                {documentsCompleted ? (
-                  <div className="section-verification-complete">
-                    <div className="verification-complete__check">
-                      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                        <circle cx="32" cy="32" r="32" fill="url(#checkGradient)"/>
-                        <path d="M20 32L28 40L44 24" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-                        <defs>
-                          <linearGradient id="checkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#0ABAB5" />
-                            <stop offset="100%" stopColor="#089a95" />
-                          </linearGradient>
-                        </defs>
-                      </svg>
+                <h2 className="section-title">Верификация</h2>
+                <div className="section-subtitle">Для публикации объявлений необходимо пройти процедуру верификации</div>
+              </div>
+              <div className="verification-form-container">
+                <div className="verification-form-content">
+                  <div className="verification-form-header">
+                    <h3 className="verification-form-title">
+                      Для публикации объявлений необходимо пройти процедуру верификации
+                    </h3>
+                    <p className="verification-form-subtitle">
+                      Пожалуйста следуйте инструкциям ниже
+                    </p>
+                  </div>
+
+                  <div className="verification-form-info">
+                    <div className="verification-form-info-item">
+                      <div className="verification-form-icon">📄</div>
+                      <div className="verification-form-info-content">
+                        <h3 className="verification-form-info-title">Фото паспорта</h3>
+                        <p className="verification-form-info-description">
+                          Загрузите фото или скан паспорта (разворот с фото)
+                        </p>
+                      </div>
                     </div>
-                    <h3 className="verification-complete__title">Документы загружены!</h3>
-                    <p className="verification-complete__text">
-                      Все фотографии успешно отправлены на модерацию. 
-                      Для завершения верификации необходимо также заполнить ваши данные.
-                    </p>
-                    <Link 
-                      to="/data"
-                      className="verification-complete__button"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                        <path d="M6 8H14M6 12H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                      Перейти к заполнению данных
-                    </Link>
+
+                    <div className="verification-form-info-item">
+                      <div className="verification-form-icon">📷</div>
+                      <div className="verification-form-info-content">
+                        <h3 className="verification-form-info-title">Ваше селфи</h3>
+                        <p className="verification-form-info-description">
+                          Загрузите ваше селфи
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="verification-form-info-item">
+                      <div className="verification-form-icon">📸</div>
+                      <div className="verification-form-info-content">
+                        <h3 className="verification-form-info-title">Селфи с паспортом рядом с лицом</h3>
+                        <p className="verification-form-info-description">
+                          Загрузите фото, где вы держите паспорт рядом с лицом (селфи с паспортом)
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="section-verification-intro">
-                    <p className="verification-intro__text">
-                      Для завершения верификации нужно загрузить 3 фотографии:
-                    </p>
-                    <ul className="verification-intro__list">
-                      <li>📄 Фото паспорта</li>
-                      <li>📷 Ваше селфи</li>
-                      <li>📸 Селфи с паспортом рядом с лицом</li>
-                    </ul>
-                    <button 
-                      className="verification-intro__button"
-                      onClick={() => setIsVerificationModalOpen(true)}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                      Начать верификацию
-                    </button>
-                  </div>
-                )}
+
+                  <button
+                    className="verification-form-btn"
+                    onClick={() => setIsVerificationFormOpen(true)}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                    Начать верификацию
+                  </button>
+                </div>
               </div>
             </section>
           </div>

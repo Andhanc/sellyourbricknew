@@ -1238,6 +1238,39 @@
   color: #9ca3af;
 }
 
+/* Стили для CountrySelect в профиле владельца - убираем бирюзовую обводку и выравниваем размеры */
+.owner-profile-section .country-select {
+  margin-top: 4px;
+}
+
+.owner-profile-section .country-select .country-select__trigger {
+  padding: 8px 12px !important;
+  border: 2px solid #e5e7eb !important;
+  border-radius: 8px;
+  min-height: auto !important;
+  height: auto;
+  font-size: 14px;
+  background: #ffffff;
+}
+
+.owner-profile-section .country-select .country-select__trigger:hover {
+  border-color: #e5e7eb !important;
+  background: #ffffff;
+}
+
+.owner-profile-section .country-select .country-select__trigger--open {
+  border-color: #e5e7eb !important;
+  box-shadow: none !important;
+  background: #ffffff;
+}
+
+.owner-profile-section .country-select .country-select__trigger:focus,
+.owner-profile-section .country-select .country-select__trigger:focus-within {
+  outline: none;
+  border-color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
 .owner-profile-passport {
   display: flex;
   flex-direction: column;

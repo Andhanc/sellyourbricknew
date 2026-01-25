@@ -15,11 +15,17 @@ const SellerVerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
     setShowVerification(true)
   }
 
-  const handleVerificationComplete = () => {
+  const handleVerificationComplete = async () => {
+    // Не закрываем модальное окно сразу, ждем завершения onComplete
     if (onComplete) {
-      onComplete()
+      const success = await onComplete()
+      // Закрываем только после успешного завершения
+      if (success !== false) {
+        onClose()
+      }
+    } else {
+      onClose()
     }
-    onClose()
   }
 
   if (!isOpen) return null
@@ -33,7 +39,11 @@ const SellerVerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
           onClose()
         }}
         userId={userId}
-        onComplete={handleVerificationComplete}
+        onComplete={async () => {
+          // Не показываем alert и не закрываем сразу
+          // Просто вызываем handleVerificationComplete, который отправит объект
+          await handleVerificationComplete()
+        }}
       />
     )
   }

@@ -143,6 +143,40 @@
   line-height: 1.5;
 }
 
+.verification-progress__start-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  margin-top: 1rem;
+  background: #0ABAB5;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(10, 186, 181, 0.3);
+}
+
+.verification-progress__start-btn:hover {
+  background: #089C97;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(10, 186, 181, 0.4);
+}
+
+.verification-progress__start-btn:active {
+  transform: translateY(0);
+}
+
+.verification-progress__start-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
 @media (max-width: 768px) {
   .verification-progress {
     padding: 1rem;
