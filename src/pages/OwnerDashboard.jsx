@@ -104,7 +104,7 @@ const mockOwnerProperties = [
 
 const OwnerDashboard = () => {
   const navigate = useNavigate()
-  const [properties, setProperties] = useState(mockOwnerProperties)
+  const [properties, setProperties] = useState([])
   const [activeTab, setActiveTab] = useState('properties') // 'properties' или 'analytics'
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [showFileUploadModal, setShowFileUploadModal] = useState(false)
@@ -113,6 +113,8 @@ const OwnerDashboard = () => {
   const [isSalesExpanded, setIsSalesExpanded] = useState(false)
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false)
   const [selectedPropertyForHistory, setSelectedPropertyForHistory] = useState(null)
+  const [activeFilter, setActiveFilter] = useState('all') // 'all', 'active', 'pending', 'rejected'
+  const [propertiesLoading, setPropertiesLoading] = useState(false)
   const [ownerProfile, setOwnerProfile] = useState({
     firstName: '',
     lastName: '',
@@ -200,6 +202,8 @@ const OwnerDashboard = () => {
           // При первой загрузке не показываем уведомление (isStatusUpdate = false)
           loadVerificationStatus(userData.id, false)
           loadUserDocuments(userData.id)
+          // Загружаем объявления пользователя
+          loadUserProperties(userData.id)
         }
       }
 
@@ -214,6 +218,125 @@ const OwnerDashboard = () => {
       }
     }
   }, [navigate])
+
+  // Загружаем объявления пользователя
+  const loadUserProperties = async (userId) => {
+    if (!userId) return
+    setPropertiesLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/properties/user/${userId}`)
+      if (response.ok) {
+        const result = await response.json()
+        console.log('📥 Загружены объявления:', result.data?.length || 0)
+        console.log('📥 Первое объявление (для отладки):', result.data?.[0])
+        if (result.success && result.data) {
+          // Преобразуем данные из базы в формат для отображения
+          const formattedProperties = result.data.map(prop => {
+            // Обрабатываем фотографии
+            let imageUrl = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80'
+            
+            // Проверяем и парсим photos, если это строка
+            let photosArray = prop.photos
+            if (typeof photosArray === 'string') {
+              try {
+                photosArray = JSON.parse(photosArray)
+              } catch (e) {
+                console.warn('Ошибка парсинга photos:', e)
+                photosArray = []
+              }
+            }
+            
+            // Если photos - массив и не пустой
+            if (Array.isArray(photosArray) && photosArray.length > 0) {
+              const firstPhoto = photosArray[0]
+              
+              // Получаем базовый URL без /api
+              const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
+              
+              // Обрабатываем строку (URL)
+              if (typeof firstPhoto === 'string') {
+                const photoStr = firstPhoto.trim()
+                
+                // Data URL (base64) - используем как есть
+                if (photoStr.startsWith('data:')) {
+                  imageUrl = photoStr
+                }
+                // Полный HTTP/HTTPS URL - используем как есть
+                else if (photoStr.startsWith('http://') || photoStr.startsWith('https://')) {
+                  imageUrl = photoStr
+                }
+                // Путь начинается с /uploads/ - добавляем базовый URL
+                else if (photoStr.startsWith('/uploads/')) {
+                  imageUrl = `${baseUrl}${photoStr}`
+                }
+                // Путь начинается с uploads/ без слеша - добавляем / и базовый URL
+                else if (photoStr.startsWith('uploads/')) {
+                  imageUrl = `${baseUrl}/${photoStr}`
+                }
+                // Относительный путь - добавляем /uploads/
+                else {
+                  imageUrl = `${baseUrl}/uploads/${photoStr}`
+                }
+              } 
+              // Обрабатываем объект с полем url
+              else if (firstPhoto && typeof firstPhoto === 'object' && firstPhoto.url) {
+                const photoUrl = String(firstPhoto.url).trim()
+                
+                // Data URL (base64) - используем как есть
+                if (photoUrl.startsWith('data:')) {
+                  imageUrl = photoUrl
+                }
+                // Полный HTTP/HTTPS URL - используем как есть
+                else if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+                  imageUrl = photoUrl
+                }
+                // Путь начинается с /uploads/ - добавляем базовый URL
+                else if (photoUrl.startsWith('/uploads/')) {
+                  imageUrl = `${baseUrl}${photoUrl}`
+                }
+                // Путь начинается с uploads/ без слеша - добавляем / и базовый URL
+                else if (photoUrl.startsWith('uploads/')) {
+                  imageUrl = `${baseUrl}/${photoUrl}`
+                }
+                // Относительный путь - добавляем /uploads/
+                else {
+                  imageUrl = `${baseUrl}/uploads/${photoUrl}`
+                }
+              }
+              
+              console.log('🖼️ Обработано фото для объявления:', prop.id, 'URL длина:', imageUrl.length, 'начинается с:', imageUrl.substring(0, 50))
+            } else {
+              console.warn('⚠️ Нет фотографий для объявления:', prop.id, 'photos:', prop.photos, 'photosArray:', photosArray)
+            }
+            
+            return {
+            id: prop.id,
+            title: prop.title || 'Без названия',
+            location: prop.location || 'Не указано',
+            price: prop.price || 0,
+            image: imageUrl,
+            beds: prop.bedrooms || 0,
+            baths: prop.bathrooms || 0,
+            sqft: prop.area || 0,
+            status: prop.moderation_status === 'approved' ? 'active' : 
+                   prop.moderation_status === 'pending' ? 'pending' : 
+                   prop.moderation_status === 'rejected' ? 'rejected' : 'pending',
+            moderationStatus: prop.moderation_status, // Сохраняем оригинальный статус
+            views: 0, // TODO: добавить подсчет просмотров
+            inquiries: 0, // TODO: добавить подсчет запросов
+            publishedDate: prop.created_at || new Date().toISOString(),
+            rejectionReason: prop.rejection_reason || null
+          }
+          })
+          setProperties(formattedProperties)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки объявлений:', error)
+    } finally {
+      setPropertiesLoading(false)
+    }
+  }
 
   // Сохраняем предыдущий статус верификации для отслеживания изменений
   const previousVerificationStatus = useRef(false)
@@ -590,15 +713,34 @@ const OwnerDashboard = () => {
   const totalProperties = properties.length
   const soldProperties = properties.filter(p => p.status === 'sold').length
   const activeProperties = properties.filter(p => p.status === 'active').length
+  const pendingProperties = properties.filter(p => p.status === 'pending').length
+  const rejectedProperties = properties.filter(p => p.status === 'rejected').length
   const totalRevenue = properties
     .filter(p => p.status === 'sold')
-    .reduce((sum, p) => sum + p.price, 0)
-  const totalViews = properties.reduce((sum, p) => sum + p.views, 0)
-  const totalInquiries = properties.reduce((sum, p) => sum + p.inquiries, 0)
+    .reduce((sum, p) => sum + (p.price || 0), 0)
+  const totalViews = properties.reduce((sum, p) => sum + (p.views || 0), 0)
+  const totalInquiries = properties.reduce((sum, p) => sum + (p.inquiries || 0), 0)
 
-  const handleDeleteProperty = (id) => {
+  const handleDeleteProperty = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить это объявление?')) {
-      setProperties(properties.filter(p => p.id !== id))
+      try {
+        const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
+          method: 'DELETE'
+        })
+        if (response.ok) {
+          // Обновляем список объявлений
+          if (userId) {
+            await loadUserProperties(userId)
+          } else {
+            setProperties(properties.filter(p => p.id !== id))
+          }
+        } else {
+          alert('Ошибка при удалении объявления')
+        }
+      } catch (error) {
+        console.error('Ошибка при удалении объявления:', error)
+        alert('Ошибка при удалении объявления')
+      }
     }
   }
 
@@ -614,10 +756,25 @@ const OwnerDashboard = () => {
     const statusConfig = {
       active: { text: 'Активно', class: 'status-badge--active' },
       sold: { text: 'Продано', class: 'status-badge--sold' },
-      pending: { text: 'На модерации', class: 'status-badge--pending' }
+      pending: { text: 'На модерации', class: 'status-badge--pending' },
+      rejected: { text: 'Отклонено', class: 'status-badge--rejected' }
     }
-    const config = statusConfig[status] || statusConfig.active
+    const config = statusConfig[status] || statusConfig.pending
     return <span className={`status-badge ${config.class}`}>{config.text}</span>
+  }
+
+  // Фильтрация объявлений по статусу
+  const getFilteredProperties = () => {
+    if (activeFilter === 'all') {
+      return properties
+    } else if (activeFilter === 'active') {
+      return properties.filter(p => p.status === 'active')
+    } else if (activeFilter === 'pending') {
+      return properties.filter(p => p.status === 'pending')
+    } else if (activeFilter === 'rejected') {
+      return properties.filter(p => p.status === 'rejected')
+    }
+    return properties
   }
 
   const handleExportToExcel = () => {
@@ -849,7 +1006,7 @@ const OwnerDashboard = () => {
             <div className="stat-card__content">
               <h3 className="stat-card__label">Средняя цена</h3>
               <p className="stat-card__value">
-                ${Math.round(properties.reduce((sum, p) => sum + p.price, 0) / totalProperties).toLocaleString('ru-RU')}
+                ${totalProperties > 0 ? Math.round(properties.reduce((sum, p) => sum + (p.price || 0), 0) / totalProperties).toLocaleString('ru-RU') : '0'}
               </p>
               <p className="stat-card__subtext">За объект</p>
             </div>
@@ -889,18 +1046,54 @@ const OwnerDashboard = () => {
               Мои объявления
             </h2>
             <div className="owner-dashboard__filters">
-              <button className="filter-btn filter-btn--active">Все</button>
-              <button className="filter-btn">Активные</button>
-              <button className="filter-btn">Продано</button>
-              <button className="filter-btn">На модерации</button>
+              <button 
+                className={`filter-btn ${activeFilter === 'all' ? 'filter-btn--active' : ''}`}
+                onClick={() => setActiveFilter('all')}
+              >
+                Все
+              </button>
+              <button 
+                className={`filter-btn ${activeFilter === 'active' ? 'filter-btn--active' : ''}`}
+                onClick={() => setActiveFilter('active')}
+              >
+                Активные
+              </button>
+              <button 
+                className={`filter-btn ${activeFilter === 'pending' ? 'filter-btn--active' : ''}`}
+                onClick={() => setActiveFilter('pending')}
+              >
+                На модерации
+              </button>
+              <button 
+                className={`filter-btn ${activeFilter === 'rejected' ? 'filter-btn--active' : ''}`}
+                onClick={() => setActiveFilter('rejected')}
+              >
+                Отклонено
+              </button>
             </div>
           </div>
 
           <div className="properties-list">
-            {properties.map((property) => (
+            {propertiesLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <p>Загрузка объявлений...</p>
+              </div>
+            ) : getFilteredProperties().length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <p>У вас пока нет объявлений</p>
+              </div>
+            ) : (
+              getFilteredProperties().map((property) => (
               <div key={property.id} className="property-card-owner">
                 <div className="property-card-owner__image">
-                  <img src={property.image} alt={property.title} />
+                  <img 
+                    src={property.image} 
+                    alt={property.title}
+                    onError={(e) => {
+                      // Если изображение не загрузилось, используем дефолтное
+                      e.target.src = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80'
+                    }}
+                  />
                   {getStatusBadge(property.status)}
                 </div>
 
@@ -940,6 +1133,12 @@ const OwnerDashboard = () => {
                     <div className="property-card-owner__stat">
                       <span>Опубликовано: {new Date(property.publishedDate).toLocaleDateString('ru-RU')}</span>
                     </div>
+                    {property.rejectionReason && (
+                      <div className="property-card-owner__stat" style={{ color: '#ef4444', fontWeight: 500 }}>
+                        <FiAlertCircle size={14} />
+                        <span>Причина отклонения: {property.rejectionReason}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="property-card-owner__actions">
@@ -976,7 +1175,8 @@ const OwnerDashboard = () => {
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
         )}
@@ -1082,9 +1282,14 @@ const OwnerDashboard = () => {
                       <div className="status-stat-item__indicator status-stat-item__indicator--pending"></div>
                       <div className="status-stat-item__content">
                         <span className="status-stat-item__label">На модерации</span>
-                        <span className="status-stat-item__value">
-                          {properties.filter(p => p.status === 'pending').length}
-                        </span>
+                        <span className="status-stat-item__value">{pendingProperties}</span>
+                      </div>
+                    </div>
+                    <div className="status-stat-item">
+                      <div className="status-stat-item__indicator status-stat-item__indicator--rejected"></div>
+                      <div className="status-stat-item__content">
+                        <span className="status-stat-item__label">Отклонено</span>
+                        <span className="status-stat-item__value">{rejectedProperties}</span>
                       </div>
                     </div>
                   </div>

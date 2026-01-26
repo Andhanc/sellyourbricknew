@@ -48,20 +48,54 @@ function PropertyDetailClassic({ property, onBack }) {
           'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80',
         ]
 
-  // Ровно 6 изображений для галереи: если меньше — дублируем, если больше — берём первые 6
-  const galleryImages =
-    images.length >= 6
-      ? images.slice(0, 6)
-      : Array.from({ length: 6 }, (_, index) => images[index % images.length])
+  // Получаем видео из property
+  let videos = []
+  if (displayProperty.videos && Array.isArray(displayProperty.videos) && displayProperty.videos.length > 0) {
+    videos = displayProperty.videos
+  } else if (displayProperty.videos && typeof displayProperty.videos === 'string') {
+    try {
+      const parsed = JSON.parse(displayProperty.videos)
+      if (Array.isArray(parsed)) {
+        videos = parsed
+      }
+    } catch (e) {
+      console.warn('Ошибка парсинга videos:', e)
+    }
+  }
 
-  const currentImage = galleryImages[currentImageIndex] || galleryImages[0]
+  // Объединяем фото и видео в один массив медиа (БЕЗ дублирования фотографий)
+  const allMedia = [
+    ...images.map((img, idx) => ({ type: 'photo', url: img, index: idx })),
+    ...videos.map((video, idx) => ({ 
+      type: 'video', 
+      url: typeof video === 'string' ? video : (video.url || video.embedUrl || video.videoId),
+      videoId: typeof video === 'object' ? video.videoId : null,
+      videoType: typeof video === 'object' ? video.type : null,
+      thumbnail: typeof video === 'object' ? video.thumbnail : null,
+      index: images.length + idx 
+    }))
+  ]
+
+  // Используем все медиа без дублирования
+  const galleryMedia = allMedia
+
+  const currentMedia = galleryMedia[currentImageIndex] || galleryMedia[0]
+  
+  // Функции для работы с YouTube и Google Drive
+  const getYouTubeEmbedUrl = (videoId) => {
+    return `https://www.youtube.com/embed/${videoId}`
+  }
+  
+  const getGoogleDriveEmbedUrl = (fileId) => {
+    return `https://drive.google.com/file/d/${fileId}/preview`
+  }
 
   const handlePreviousImage = () => {
-    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1))
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : galleryMedia.length - 1))
   }
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0))
+    setCurrentImageIndex((prev) => (prev < galleryMedia.length - 1 ? prev + 1 : 0))
   }
 
   const handleThumbnailClick = (index) => {
@@ -146,12 +180,39 @@ function PropertyDetailClassic({ property, onBack }) {
           {/* Галерея */}
           <div className="property-detail-gallery">
             <div className="property-detail-gallery__main">
-              <img
-                src={currentImage}
-                alt={displayProperty.name}
-                className="property-detail-gallery__main-image"
-              />
-              {galleryImages.length > 1 && (
+              {currentMedia && (
+                currentMedia.type === 'video' ? (
+                  <div style={{ width: '100%', height: '100%', position: 'relative', paddingBottom: '56.25%', backgroundColor: '#000' }}>
+                    <iframe
+                      src={
+                        currentMedia.videoType === 'youtube' 
+                          ? getYouTubeEmbedUrl(currentMedia.videoId || currentMedia.url)
+                          : currentMedia.videoType === 'googledrive'
+                            ? getGoogleDriveEmbedUrl(currentMedia.videoId || currentMedia.url)
+                            : currentMedia.url
+                      }
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        borderRadius: '12px'
+                      }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <img
+                    src={currentMedia.url}
+                    alt={displayProperty.name}
+                    className="property-detail-gallery__main-image"
+                  />
+                )
+              )}
+              {galleryMedia.length > 1 && (
                 <>
                   <button
                     type="button"
@@ -170,7 +231,7 @@ function PropertyDetailClassic({ property, onBack }) {
                     <FiChevronRight size={24} />
                   </button>
                   <div className="property-detail-gallery__counter">
-                    {currentImageIndex + 1} / {galleryImages.length}
+                    {currentImageIndex + 1} / {galleryMedia.length}
                   </div>
                 </>
               )}
@@ -196,10 +257,10 @@ function PropertyDetailClassic({ property, onBack }) {
               </div>
             </div>
 
-            {galleryImages.length > 0 && (
+            {galleryMedia.length > 0 && (
               <div className="property-detail-gallery__thumbnails-wrapper">
                 <div className="property-detail-gallery__thumbnails" ref={thumbnailScrollRef}>
-                  {galleryImages.map((img, index) => (
+                  {galleryMedia.map((media, index) => (
                     <button
                       key={index}
                       type="button"
@@ -210,7 +271,28 @@ function PropertyDetailClassic({ property, onBack }) {
                       }`}
                       onClick={() => handleThumbnailClick(index)}
                     >
-                      <img src={img} alt={`${displayProperty.name} ${index + 1}`} />
+                      {media.type === 'video' ? (
+                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                          {media.thumbnail ? (
+                            <img src={media.thumbnail} alt={`Видео ${index + 1}`} />
+                          ) : (
+                            <div style={{ 
+                              width: '100%', 
+                              height: '100%', 
+                              backgroundColor: '#000', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              color: '#fff',
+                              fontSize: '12px'
+                            }}>
+                              ▶ Видео
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <img src={media.url} alt={`${displayProperty.name} ${index + 1}`} />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -238,39 +320,191 @@ function PropertyDetailClassic({ property, onBack }) {
                 <span>{displayProperty.location}</span>
               </div>
 
+              {displayProperty.price && (
+                <div className="property-detail-sidebar__price" style={{ 
+                  fontSize: '28px', 
+                  fontWeight: 700, 
+                  color: '#000', 
+                  marginTop: '16px',
+                  marginBottom: '16px'
+                }}>
+                  {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : ''}
+                  {displayProperty.price.toLocaleString('ru-RU')}
+                </div>
+              )}
+
               <div className="property-detail-sidebar__features">
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">
                     {t('area') || 'Площадь'}
                   </span>
                   <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.sqft} м²
+                    {displayProperty.sqft || displayProperty.area || 'Не указано'} м²
                   </span>
                 </div>
+                {displayProperty.land_area && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('landArea') || 'Площадь участка'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.land_area} м²
+                    </span>
+                  </div>
+                )}
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">
                     {t('roomsCount') || 'Комнат'}
                   </span>
                   <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.beds ?? 'Студия'}
+                    {displayProperty.beds || displayProperty.rooms || 'Студия'}
                   </span>
                 </div>
-                <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">
-                    {t('floorNumber') || 'Этаж'}
-                  </span>
-                  <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.floor}
-                  </span>
-                </div>
+                {displayProperty.bathrooms && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('bathrooms') || 'Ванных'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.bathrooms}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.floor !== null && displayProperty.floor !== undefined && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('floorNumber') || 'Этаж'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.floor} {displayProperty.total_floors ? `из ${displayProperty.total_floors}` : ''}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.year_built && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('yearBuilt') || 'Год постройки'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.year_built}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.property_type && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('propertyType') || 'Тип недвижимости'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.property_type === 'apartment' ? 'Квартира' :
+                       displayProperty.property_type === 'house' ? 'Дом' :
+                       displayProperty.property_type === 'villa' ? 'Вилла' :
+                       displayProperty.property_type === 'commercial' ? 'Коммерческая' :
+                       displayProperty.property_type}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.renovation && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('renovation') || 'Ремонт'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.renovation}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.condition && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('condition') || 'Состояние'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.condition}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.heating && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('heating') || 'Отопление'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.heating}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.water_supply && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('waterSupply') || 'Водоснабжение'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.water_supply}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.sewerage && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('sewerage') || 'Канализация'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.sewerage}
+                    </span>
+                  </div>
+                )}
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">
                     {t('seller') || 'Продавец'}
                   </span>
                   <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.seller}
+                    {displayProperty.seller || 'Не указано'}
                   </span>
                 </div>
+                {/* Дополнительные характеристики */}
+                {(displayProperty.balcony || displayProperty.parking || displayProperty.elevator || 
+                  displayProperty.garage || displayProperty.pool || displayProperty.garden ||
+                  displayProperty.electricity || displayProperty.internet || displayProperty.security || 
+                  displayProperty.furniture) && (
+                  <div className="property-detail-sidebar__feature" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+                    <span className="property-detail-sidebar__feature-label" style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>
+                      {t('additionalFeatures') || 'Дополнительно'}
+                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {displayProperty.balcony && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Балкон</span>}
+                      {displayProperty.parking && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Парковка</span>}
+                      {displayProperty.elevator && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Лифт</span>}
+                      {displayProperty.garage && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Гараж</span>}
+                      {displayProperty.pool && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Бассейн</span>}
+                      {displayProperty.garden && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Сад</span>}
+                      {displayProperty.electricity && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Электричество</span>}
+                      {displayProperty.internet && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Интернет</span>}
+                      {displayProperty.security && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Охрана</span>}
+                      {displayProperty.furniture && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Мебель</span>}
+                    </div>
+                  </div>
+                )}
+                {displayProperty.commercial_type && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('commercialType') || 'Тип коммерческой недвижимости'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.commercial_type}
+                    </span>
+                  </div>
+                )}
+                {displayProperty.business_hours && (
+                  <div className="property-detail-sidebar__feature">
+                    <span className="property-detail-sidebar__feature-label">
+                      {t('businessHours') || 'Часы работы'}
+                    </span>
+                    <span className="property-detail-sidebar__feature-value">
+                      {displayProperty.business_hours}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="property-detail-sidebar__description">
