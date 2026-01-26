@@ -2964,6 +2964,15 @@ app.post('/api/properties', upload.fields([
     const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyId);
 
     console.log('✅ Объявление успешно создано с ID:', propertyId);
+    console.log('📋 Статус модерации из БД:', property.moderation_status);
+    
+    // Проверяем, что объявление действительно создано с правильным статусом
+    const checkProperty = db.prepare('SELECT id, moderation_status, title FROM properties WHERE id = ?').get(propertyId);
+    console.log('🔍 Проверка объявления в БД:', checkProperty);
+    
+    // Проверяем количество объявлений на модерации
+    const pendingCount = db.prepare('SELECT COUNT(*) as count FROM properties WHERE moderation_status = ?').get('pending');
+    console.log('📊 Всего объявлений на модерации:', pendingCount.count);
 
     res.json({ 
       success: true, 
@@ -2983,10 +2992,13 @@ app.post('/api/properties', upload.fields([
 
 /**
  * GET /api/properties/pending - Получить все объявления на модерации
+ * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе "pending" будет интерпретироваться как ID
  */
 app.get('/api/properties/pending', (req, res) => {
   try {
     const db = getDatabase();
+    console.log('📥 Запрос объявлений на модерации');
+    
     const properties = db.prepare(`
       SELECT 
         p.*,
@@ -3000,6 +3012,12 @@ app.get('/api/properties/pending', (req, res) => {
       WHERE p.moderation_status = 'pending'
       ORDER BY p.created_at DESC
     `).all();
+
+    console.log(`✅ Найдено объявлений на модерации: ${properties.length}`);
+    if (properties.length > 0) {
+      console.log('📋 ID объявлений:', properties.map(p => p.id).join(', '));
+      console.log('📋 Статусы:', properties.map(p => p.moderation_status).join(', '));
+    }
 
     // Парсим JSON поля
     const formattedProperties = properties.map(prop => {
@@ -3038,6 +3056,214 @@ app.get('/api/properties/pending', (req, res) => {
     res.json({ success: true, data: formattedProperties });
   } catch (error) {
     console.error('Ошибка при получении объявлений на модерации:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/properties/pending - Получить все объявления на модерации
+ * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе "pending" будет интерпретироваться как ID
+ */
+app.get('/api/properties/pending', (req, res) => {
+  try {
+    const db = getDatabase();
+    console.log('📥 Запрос объявлений на модерации');
+    
+    const properties = db.prepare(`
+      SELECT 
+        p.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number,
+        u.role
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.moderation_status = 'pending'
+      ORDER BY p.created_at DESC
+    `).all();
+
+    console.log(`✅ Найдено объявлений на модерации: ${properties.length}`);
+    if (properties.length > 0) {
+      console.log('📋 ID объявлений:', properties.map(p => p.id).join(', '));
+      console.log('📋 Статусы:', properties.map(p => p.moderation_status).join(', '));
+    }
+
+    // Парсим JSON поля
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      if (formatted.photos) {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      }
+      if (formatted.videos) {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      }
+      if (formatted.additional_documents) {
+        try {
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
+        } catch (e) {
+          formatted.additional_documents = [];
+        }
+      }
+      if (formatted.test_drive_data) {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
+        }
+      }
+      return formatted;
+    });
+
+    res.json({ success: true, data: formattedProperties });
+  } catch (error) {
+    console.error('Ошибка при получении объявлений на модерации:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/properties/:id - Получить объявление по ID
+ */
+app.get('/api/properties/:id', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+    
+    const property = db.prepare(`
+      SELECT 
+        p.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number,
+        u.role
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = ?
+    `).get(id);
+
+    if (!property) {
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+
+    // Парсим JSON поля
+    const formatted = { ...property };
+    if (formatted.photos) {
+      try {
+        formatted.photos = JSON.parse(formatted.photos);
+      } catch (e) {
+        formatted.photos = [];
+      }
+    } else {
+      formatted.photos = [];
+    }
+    if (formatted.videos) {
+      try {
+        formatted.videos = JSON.parse(formatted.videos);
+      } catch (e) {
+        formatted.videos = [];
+      }
+    } else {
+      formatted.videos = [];
+    }
+    if (formatted.additional_documents) {
+      try {
+        formatted.additional_documents = JSON.parse(formatted.additional_documents);
+      } catch (e) {
+        formatted.additional_documents = [];
+      }
+    } else {
+      formatted.additional_documents = [];
+    }
+    if (formatted.test_drive_data) {
+      try {
+        formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+      } catch (e) {
+        formatted.test_drive_data = null;
+      }
+    }
+
+    res.json({ success: true, data: formatted });
+  } catch (error) {
+    console.error('Ошибка при получении объявления:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/properties/user/:userId - Получить все объявления пользователя
+ */
+app.get('/api/properties/user/:userId', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { userId } = req.params;
+    
+    const properties = db.prepare(`
+      SELECT 
+        p.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number,
+        u.role
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+    `).all(userId);
+
+    // Парсим JSON поля
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      if (formatted.photos) {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      } else {
+        formatted.photos = [];
+      }
+      if (formatted.videos) {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      } else {
+        formatted.videos = [];
+      }
+      if (formatted.additional_documents) {
+        try {
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
+        } catch (e) {
+          formatted.additional_documents = [];
+        }
+      } else {
+        formatted.additional_documents = [];
+      }
+      if (formatted.test_drive_data) {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
+        }
+      }
+      return formatted;
+    });
+
+    res.json({ success: true, data: formattedProperties });
+  } catch (error) {
+    console.error('Ошибка при получении объявлений пользователя:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3131,6 +3357,32 @@ app.put('/api/properties/:id/reject', (req, res) => {
     });
   } catch (error) {
     console.error('Ошибка при отклонении объявления:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/properties/:id - Удалить объявление
+ */
+app.delete('/api/properties/:id', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+
+    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(id);
+    if (!property) {
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+
+    // Удаляем объявление
+    db.prepare('DELETE FROM properties WHERE id = ?').run(id);
+
+    res.json({ 
+      success: true, 
+      message: 'Объявление успешно удалено' 
+    });
+  } catch (error) {
+    console.error('Ошибка при удалении объявления:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

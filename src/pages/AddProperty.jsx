@@ -580,96 +580,10 @@ const AddProperty = () => {
       console.log('✅ Данные от сервера:', data)
       
       if (data.success) {
-        // Конвертируем файлы документов в base64 для сохранения в localStorage
-        const convertFileToBase64 = (file) => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onloadend = () => resolve(reader.result)
-            reader.onerror = reject
-            reader.readAsDataURL(file)
-          })
-        }
-        
-        // Сохраняем данные формы объекта в localStorage для отправки в админку
-        const propertyData = {
-          userId: userId,
-          propertyType: formData.propertyType,
-          title: formData.title,
-          description: formData.description || '',
-          price: formData.price,
-          currency: currency,
-          isAuction: formData.isAuction,
-          testDrive: formData.testDrive,
-          auctionStartDate: formData.auctionStartDate,
-          auctionEndDate: formData.auctionEndDate,
-          auctionStartingPrice: formData.auctionStartingPrice,
-          area: formData.area,
-          rooms: formData.rooms,
-          bedrooms: formData.bedrooms,
-          bathrooms: formData.bathrooms,
-          floor: formData.floor,
-          totalFloors: formData.totalFloors,
-          yearBuilt: formData.yearBuilt,
-          location: formData.location,
-          address: formData.address,
-          apartment: formData.apartment,
-          country: formData.country,
-          city: formData.city,
-          coordinates: formData.coordinates,
-          balcony: formData.balcony,
-          parking: formData.parking,
-          elevator: formData.elevator,
-          landArea: formData.landArea,
-          garage: formData.garage,
-          pool: formData.pool,
-          garden: formData.garden,
-          commercialType: formData.commercialType,
-          businessHours: formData.businessHours,
-          renovation: formData.renovation,
-          condition: formData.condition,
-          heating: formData.heating,
-          waterSupply: formData.waterSupply,
-          sewerage: formData.sewerage,
-          electricity: formData.electricity,
-          internet: formData.internet,
-          security: formData.security,
-          furniture: formData.furniture,
-          feature1: formData.feature1,
-          feature2: formData.feature2,
-          feature3: formData.feature3,
-          feature4: formData.feature4,
-          feature5: formData.feature5,
-          feature6: formData.feature6,
-          feature7: formData.feature7,
-          feature8: formData.feature8,
-          feature9: formData.feature9,
-          feature10: formData.feature10,
-          feature11: formData.feature11,
-          feature12: formData.feature12,
-          photos: photos.map(p => p.url),
-          videos: videos,
-          additionalDocuments: additionalDocuments,
-          ownershipDocument: null,
-          noDebtsDocument: null,
-          ownershipDocumentName: requiredDocuments.ownership ? requiredDocuments.ownership.name : null,
-          noDebtsDocumentName: requiredDocuments.noDebts ? requiredDocuments.noDebts.name : null,
-          userProfileData: userProfileData,
-          submittedAt: new Date().toISOString(),
-          status: 'pending'
-        }
-        
-        // Конвертируем файлы документов в base64
-        if (requiredDocuments.ownership) {
-          propertyData.ownershipDocument = await convertFileToBase64(requiredDocuments.ownership)
-        }
-        if (requiredDocuments.noDebts) {
-          propertyData.noDebtsDocument = await convertFileToBase64(requiredDocuments.noDebts)
-        }
-        
-        // Получаем существующие данные объектов из localStorage
-        const existingProperties = JSON.parse(localStorage.getItem('pendingProperties') || '[]')
-        existingProperties.push(propertyData)
-        localStorage.setItem('pendingProperties', JSON.stringify(existingProperties))
+        // Данные успешно отправлены на сервер
+        // НЕ сохраняем данные в localStorage, так как они уже на сервере
+        // Это предотвращает ошибку QuotaExceededError из-за больших файлов (фото в base64)
+        // Все данные уже сохранены на сервере через API
         
         // Закрываем модальное окно верификации
         setShowVerificationModal(false)

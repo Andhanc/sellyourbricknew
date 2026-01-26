@@ -183,7 +183,7 @@ const Moderation = () => {
     }
   }, [activeTab]);
 
-  // Автообновление каждые 5 секунд
+  // Автообновление каждые 3 минуты (180000 мс)
   useEffect(() => {
     const interval = setInterval(() => {
       if (activeTab === 'users') {
@@ -191,7 +191,7 @@ const Moderation = () => {
       } else if (activeTab === 'properties') {
         loadPendingProperties();
       }
-    }, 5000);
+    }, 180000); // 3 минуты = 180000 миллисекунд
     return () => clearInterval(interval);
   }, [activeTab]);
 
@@ -377,15 +377,21 @@ const Moderation = () => {
       let propertiesList = [];
       
       // Загружаем данные из API
+      console.log('📥 Загрузка объявлений на модерации из API...');
       const response = await fetch(`${API_BASE_URL}/properties/pending`);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Ответ API:', data);
         if (data.success && data.data) {
           propertiesList = data.data;
+          console.log(`✅ Загружено объявлений из API: ${propertiesList.length}`);
+        } else {
+          console.warn('⚠️ API вернул success: false или нет data');
         }
       } else {
-        console.error('Ошибка загрузки объявлений на модерации');
+        const errorText = await response.text().catch(() => 'Неизвестная ошибка');
+        console.error('❌ Ошибка загрузки объявлений на модерации:', response.status, errorText);
       }
       
       // Загружаем данные из localStorage (обратный порядок - новые сверху)
@@ -473,6 +479,7 @@ const Moderation = () => {
         return dateB - dateA; // Новые сверху
       });
       
+      console.log(`📊 Итого объявлений для отображения: ${propertiesList.length}`);
       setPendingProperties(propertiesList);
     } catch (error) {
       console.error('Ошибка загрузки объявлений на модерации:', error);
