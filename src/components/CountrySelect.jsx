@@ -298,7 +298,7 @@ const CountrySelect = ({ value, onChange, placeholder = 'Выберите стр
   const handleToggle = () => {
     setIsOpen(!isOpen);
     if (!isOpen) {
-      // Фокусируемся на поле поиска при открытии
+      // Фокусируемся на главное поле при открытии
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -314,14 +314,37 @@ const CountrySelect = ({ value, onChange, placeholder = 'Выберите стр
         onClick={handleToggle}
       >
         <div className="country-select__value">
-          {selectedCountry ? (
+          {selectedCountry && !searchQuery && (
             <>
-              <span className="country-select__flag">{selectedCountry.flag}</span>
-              <span className="country-select__name">{selectedCountry.name}</span>
+              <span className="country-select__code">{selectedCountry.code}</span>
             </>
-          ) : (
-            <span className="country-select__placeholder">{placeholder}</span>
           )}
+          <input
+            ref={inputRef}
+            type="text"
+            className="country-select__input"
+            placeholder={placeholder}
+            value={
+              isOpen
+                ? searchQuery
+                : selectedCountry
+                  ? selectedCountry.name
+                  : ''
+            }
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setSearchQuery(newValue);
+              if (!isOpen) {
+                setIsOpen(true);
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isOpen) {
+                setIsOpen(true);
+              }
+            }}
+          />
         </div>
         <svg 
           className={`country-select__arrow ${isOpen ? 'country-select__arrow--open' : ''}`}
@@ -342,28 +365,6 @@ const CountrySelect = ({ value, onChange, placeholder = 'Выберите стр
 
       {isOpen && (
         <div className="country-select__dropdown">
-          <div className="country-select__search">
-            <svg 
-              className="country-select__search-icon" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 16 16" 
-              fill="none"
-            >
-              <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 10L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              className="country-select__search-input"
-              placeholder="Поиск страны..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
           <div className="country-select__list">
             {filteredCountries.length > 0 ? (
               filteredCountries.map((country) => (

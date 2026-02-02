@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiX, FiUser, FiMail, FiPhone, FiMapPin, FiShield, FiShieldOff, FiCalendar, FiImage } from 'react-icons/fi';
+import { FiX, FiUser, FiMail, FiPhone, FiMapPin, FiShield, FiShieldOff, FiCalendar, FiImage, FiCreditCard, FiHash } from 'react-icons/fi';
 import './UserDetailModal.css';
 
 const UserDetailModal = ({ isOpen, onClose, userId }) => {
@@ -73,10 +73,38 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
         return { ...doc, document_photo_url: docUrl };
       });
 
+      // Загружаем информацию о привязанной карте из localStorage
+      let cardInfo = null;
+      try {
+        const localStorageVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]');
+        // Ищем данные верификации для этого пользователя
+        const userVerification = localStorageVerifications.find(v => String(v.userId) === String(userId));
+        if (userVerification && userVerification.cardInfo) {
+          cardInfo = userVerification.cardInfo;
+        }
+        // Также проверяем напрямую в cardInfo
+        if (!cardInfo) {
+          const savedCardInfo = localStorage.getItem('cardInfo');
+          if (savedCardInfo) {
+            try {
+              const parsedCardInfo = JSON.parse(savedCardInfo);
+              if (String(parsedCardInfo.userId) === String(userId)) {
+                cardInfo = parsedCardInfo;
+              }
+            } catch (e) {
+              console.warn('Не удалось распарсить данные карты:', e);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Ошибка при загрузке данных карты:', e);
+      }
+
       setUser({
         ...userData,
         user_photo_url: userPhotoUrl,
-        passport_photo_url: passportPhotoUrl
+        passport_photo_url: passportPhotoUrl,
+        cardInfo: cardInfo
       });
       setDocuments(documentsWithUrls);
     } catch (err) {
@@ -276,6 +304,89 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
                 </div>
               </div>
             </div>
+
+            {/* Информация о привязанной карте */}
+            {user.cardInfo && (
+              <div className="user-detail-section">
+                <h3 className="section-title">
+                  <FiCreditCard size={20} />
+                  <span>Привязанная банковская карта</span>
+                </h3>
+                <div className="user-detail-grid">
+                  <div className="user-detail-item">
+                    <div className="detail-label">
+                      <FiCreditCard size={18} />
+                      <span>Номер карты</span>
+                    </div>
+                    <div className="detail-value">{user.cardInfo.maskedCardNumber || 'Не указано'}</div>
+                  </div>
+
+                  {user.cardInfo.last4 && (
+                    <div className="user-detail-item">
+                      <div className="detail-label">
+                        <FiHash size={18} />
+                        <span>Последние 4 цифры</span>
+                      </div>
+                      <div className="detail-value">**** {user.cardInfo.last4}</div>
+                    </div>
+                  )}
+
+                  {user.cardInfo.cardType && (
+                    <div className="user-detail-item">
+                      <div className="detail-label">
+                        <FiCreditCard size={18} />
+                        <span>Тип карты</span>
+                      </div>
+                      <div className="detail-value">
+                        {user.cardInfo.cardType === 'visa' ? 'Visa' : 
+                         user.cardInfo.cardType === 'mastercard' ? 'Mastercard' : 
+                         user.cardInfo.cardType === 'amex' ? 'American Express' : 
+                         user.cardInfo.cardType === 'discover' ? 'Discover' : 
+                         user.cardInfo.cardType}
+                      </div>
+                    </div>
+                  )}
+
+                  {user.cardInfo.expiryDate && (
+                    <div className="user-detail-item">
+                      <div className="detail-label">
+                        <FiCalendar size={18} />
+                        <span>Срок действия</span>
+                      </div>
+                      <div className="detail-value">{user.cardInfo.expiryDate}</div>
+                    </div>
+                  )}
+
+                  {user.cardInfo.cardholderName && (
+                    <div className="user-detail-item">
+                      <div className="detail-label">
+                        <FiUser size={18} />
+                        <span>Имя держателя</span>
+                      </div>
+                      <div className="detail-value">{user.cardInfo.cardholderName}</div>
+                    </div>
+                  )}
+
+                  {user.cardInfo.boundAt && (
+                    <div className="user-detail-item">
+                      <div className="detail-label">
+                        <FiCalendar size={18} />
+                        <span>Дата привязки</span>
+                      </div>
+                      <div className="detail-value">
+                        {new Date(user.cardInfo.boundAt).toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Паспортные данные */}
             <div className="user-detail-section">

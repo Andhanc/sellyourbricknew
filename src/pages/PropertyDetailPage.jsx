@@ -207,7 +207,9 @@ const PropertyDetailPage = () => {
                 is_auction: formattedProperty.is_auction,
                 auction_end_date: formattedProperty.auction_end_date,
                 images_count: formattedProperty.images.length,
-                coordinates: formattedProperty.coordinates
+                coordinates: formattedProperty.coordinates,
+                coordinates_type: typeof formattedProperty.coordinates,
+                coordinates_is_array: Array.isArray(formattedProperty.coordinates)
               })
               setProperty(formattedProperty)
             } else {

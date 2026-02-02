@@ -40,6 +40,10 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject, onRefresh }) 
 
   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Не указано';
 
+  // Отладочная информация
+  console.log('👤 Данные пользователя в ModerationUserDetail:', user);
+  console.log('💳 Данные карты:', user.cardInfo);
+
   return (
     <div className="moderation-user-detail">
       <button className="moderation-user-detail__back" onClick={onBack}>
@@ -105,6 +109,98 @@ const ModerationUserDetail = ({ user, onBack, onApprove, onReject, onRefresh }) 
 
             </div>
           </div>
+
+          {/* Информация о привязанной карте */}
+          {user.cardInfo && (
+            <div className="moderation-user-detail__info-card">
+              <h2 className="moderation-user-detail__info-title">
+                <FiCreditCard size={20} />
+                Привязанная банковская карта
+              </h2>
+              
+              <div className="moderation-user-detail__info-list">
+                <div className="moderation-user-detail__info-row">
+                  <div className="moderation-user-detail__info-label">
+                    <FiCreditCard size={18} />
+                    Номер карты
+                  </div>
+                  <div className="moderation-user-detail__info-value">
+                    {user.cardInfo.maskedCardNumber || 'Не указано'}
+                  </div>
+                </div>
+
+                {user.cardInfo.last4 && (
+                  <div className="moderation-user-detail__info-row">
+                    <div className="moderation-user-detail__info-label">
+                      <FiHash size={18} />
+                      Последние 4 цифры
+                    </div>
+                    <div className="moderation-user-detail__info-value">
+                      **** {user.cardInfo.last4}
+                    </div>
+                  </div>
+                )}
+
+                {user.cardInfo.cardType && (
+                  <div className="moderation-user-detail__info-row">
+                    <div className="moderation-user-detail__info-label">
+                      <FiCreditCard size={18} />
+                      Тип карты
+                    </div>
+                    <div className="moderation-user-detail__info-value">
+                      {user.cardInfo.cardType === 'visa' ? 'Visa' : 
+                       user.cardInfo.cardType === 'mastercard' ? 'Mastercard' : 
+                       user.cardInfo.cardType === 'amex' ? 'American Express' : 
+                       user.cardInfo.cardType === 'discover' ? 'Discover' : 
+                       user.cardInfo.cardType}
+                    </div>
+                  </div>
+                )}
+
+                {user.cardInfo.expiryDate && (
+                  <div className="moderation-user-detail__info-row">
+                    <div className="moderation-user-detail__info-label">
+                      <FiCalendar size={18} />
+                      Срок действия
+                    </div>
+                    <div className="moderation-user-detail__info-value">
+                      {user.cardInfo.expiryDate}
+                    </div>
+                  </div>
+                )}
+
+                {user.cardInfo.cardholderName && (
+                  <div className="moderation-user-detail__info-row">
+                    <div className="moderation-user-detail__info-label">
+                      <FiUser size={18} />
+                      Имя держателя
+                    </div>
+                    <div className="moderation-user-detail__info-value">
+                      {user.cardInfo.cardholderName}
+                    </div>
+                  </div>
+                )}
+
+                {user.cardInfo.boundAt && (
+                  <div className="moderation-user-detail__info-row">
+                    <div className="moderation-user-detail__info-label">
+                      <FiCalendar size={18} />
+                      Дата привязки
+                    </div>
+                    <div className="moderation-user-detail__info-value">
+                      {new Date(user.cardInfo.boundAt).toLocaleDateString('ru-RU', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
 

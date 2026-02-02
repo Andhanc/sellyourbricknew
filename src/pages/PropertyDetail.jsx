@@ -457,7 +457,7 @@ const PropertyDetail = () => {
                 </div>
 
                 {/* Карта */}
-                {normalizedProperty.coordinates && (
+                {normalizedProperty.coordinates && Array.isArray(normalizedProperty.coordinates) && normalizedProperty.coordinates.length === 2 && (
                   <div className="detail-map">
                     <div className="detail-map-container">
                       <MapContainer

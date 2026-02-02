@@ -94,9 +94,9 @@ const MapPage = () => {
           scrollWheelZoom: true
         }).setView([55.7558, 37.6173], 10)
 
-        // Добавление тайлов OpenStreetMap
+        // Добавление тайлов OpenStreetMap с корректной атрибуцией
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
+          attribution: 'Leaflet | © OpenStreetMap contributors',
           maxZoom: 19
         }).addTo(map)
 

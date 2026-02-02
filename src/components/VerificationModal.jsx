@@ -111,6 +111,29 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
       const results = await Promise.all(uploadPromises)
 
       if (results.every(r => r.success)) {
+        // Получаем информацию о привязанной карте, если она есть
+        let cardInfo = null
+        const cardBound = localStorage.getItem('cardBound')
+        if (cardBound === 'true') {
+          const savedCardInfo = localStorage.getItem('cardInfo')
+          if (savedCardInfo) {
+            try {
+              cardInfo = JSON.parse(savedCardInfo)
+              // Проверяем, что карта привязана для этого пользователя
+              if (cardInfo.userId && String(cardInfo.userId) !== String(userId)) {
+                console.warn('⚠️ Данные карты принадлежат другому пользователю')
+                cardInfo = null
+              } else {
+                console.log('💳 Найдены данные карты для пользователя:', cardInfo)
+              }
+            } catch (e) {
+              console.warn('Не удалось распарсить данные карты:', e)
+            }
+          }
+        } else {
+          console.log('ℹ️ Карта не привязана (cardBound !== true)')
+        }
+        
         // Сохраняем данные верификации в localStorage для отправки в админку
         const verificationData = {
           userId: userId,
@@ -118,8 +141,11 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
           selfiePhoto: results[1].data?.document_photo || previews.selfie,
           selfieWithPassportPhoto: results[2].data?.document_photo || previews.selfieWithPassport,
           submittedAt: new Date().toISOString(),
-          status: 'pending'
+          status: 'pending',
+          cardInfo: cardInfo // Добавляем информацию о привязанной карте
         }
+        
+        console.log('📋 Сохранение данных верификации с картой:', verificationData)
         
         // Получаем существующие данные верификации из localStorage
         const existingVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]')

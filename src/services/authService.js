@@ -509,7 +509,7 @@ export const validatePhoneNumber = (phone) => {
  */
 const checkUserExists = async (phone) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/phone/${phone}`, {
+    const response = await fetch(`${API_BASE_URL}/users/phone/${encodeURIComponent(phone)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -523,13 +523,13 @@ const checkUserExists = async (phone) => {
     // 404 - это нормально, пользователь просто не существует
     // Не логируем ошибку для 404
     if (response.status !== 404) {
-      console.warn('Ошибка при проверке пользователя:', response.status, response.statusText)
+      console.warn('⚠️ Ошибка при проверке пользователя:', response.status, response.statusText)
     }
     return null
   } catch (error) {
-    // Игнорируем ошибки сети, не логируем их
+    // Игнорируем ошибки сети, не логируем их как ошибки
     if (import.meta.env.DEV) {
-      console.warn('Не удалось проверить пользователя (возможно, сервер не запущен):', error.message)
+      console.warn('⚠️ Не удалось проверить пользователя (возможно, сервер не запущен):', error.message)
     }
     return null
   }
@@ -589,7 +589,30 @@ export const sendWhatsAppVerificationCode = async (phone) => {
         }
       }
 
-      // Если backend ответил ошибкой, но мы в dev-режиме — покажем код для отладки
+      // Обработка ошибки 503 - WhatsApp клиент не готов
+      if (response.status === 503) {
+        const errorMessage = data.error || 'WhatsApp сервис временно недоступен. Пожалуйста, подождите несколько секунд и попробуйте снова.'
+        console.warn('⚠️ WhatsApp клиент не готов:', errorMessage)
+        
+        // В dev-режиме показываем код для отладки
+        if (import.meta.env.DEV) {
+          console.log(`🔐 В режиме разработки используйте код: ${code}`)
+          return {
+            success: true,
+            message: 'WhatsApp сервис недоступен. В режиме разработки используйте код из консоли.',
+            code,
+            devMode: true,
+            warning: errorMessage
+          }
+        }
+        
+        return {
+          success: false,
+          error: errorMessage
+        }
+      }
+
+      // Если backend ответил другой ошибкой, но мы в dev-режиме — покажем код для отладки
       if (import.meta.env.DEV) {
         console.warn('⚠️ Не удалось отправить код через backend WhatsApp:', data.error || response.statusText)
         console.log(`🔐 В режиме разработки используйте код: ${code}`)

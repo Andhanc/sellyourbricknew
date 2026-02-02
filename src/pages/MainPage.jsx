@@ -234,137 +234,6 @@ const apartmentsData = [
     description:
       'Современная квартира в престижном районе Коста-Адехе. Элитный комплекс с бассейном и инфраструктурой. Рядом лучшие пляжи острова, гольф-поля и рестораны высокой кухни. Идеальное место для инвестиций и отдыха.',
   },
-  {
-    id: 2,
-    name: 'Клубный город на реке Primavera',
-    location: 'Playa de las Américas, Tenerife',
-    price: 25748010,
-    coordinates: [28.1000, -16.7200],
-    owner: { firstName: 'Хуан', lastName: 'Лопес' },
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 24000000,
-    endTime: new Date(Date.now() + 75 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 75 дней (оранжевый - от 2 до 3 месяцев)
-    beds: 3,
-    baths: 2,
-    sqft: 1200,
-    description:
-      'Роскошная квартира в самом центре Плайя-де-лас-Америкас. Шаговую доступность до пляжей, ночных клубов и развлечений. Современный дизайн, все удобства. Отличное место для активного отдыха и жизни на курорте.',
-  },
-  {
-    id: 3,
-    name: 'Slava',
-    location: 'Los Cristianos, Tenerife',
-    price: 28078032,
-    coordinates: [28.0500, -16.7167],
-    owner: { firstName: 'Педро', lastName: 'Санчес' },
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 26000000,
-    endTime: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 45 дней (красный - от 1 до 2 месяцев)
-    beds: 1,
-    baths: 1,
-    sqft: 650,
-    description:
-      'Компактная уютная квартира в Лос-Кристианос. Идеальный вариант для первого жилья или инвестиций. Рядом пляж, магазины и транспортная развязка. Отличное соотношение цены и качества в популярном курортном районе.',
-  },
-  {
-    id: 4,
-    name: 'Пригород Лесное',
-    location: 'Puerto de la Cruz, Tenerife',
-    price: 4441729,
-    coordinates: [28.4167, -16.5500],
-    owner: { firstName: 'Изабель', lastName: 'Фернандес' },
-    image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 4200000,
-    endTime: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 20 дней (красный мигающий - меньше 1 месяца)
-    beds: 2,
-    baths: 1,
-    sqft: 950,
-    description:
-      'Прекрасная квартира в Пуэрто-де-ла-Крус с видом на океан. Исторический район с уникальной архитектурой. Рядом ботанический сад, термальные бассейны и пляжи. Идеально для тех, кто ценит спокойствие и близость к природе.',
-  },
-  {
-    id: 5,
-    name: 'LUZHNIKI COLLECTION',
-    location: 'Santa Cruz de Tenerife, Tenerife',
-    price: 71874000,
-    coordinates: [28.4636, -16.2518],
-    owner: { firstName: 'Мигель', lastName: 'Торрес' },
-    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 68000000,
-    endTime: new Date(Date.now() + 95 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 95 дней (зеленый - от 3 месяцев)
-    beds: 4,
-    baths: 3,
-    sqft: 1800,
-    description:
-      'Элитная квартира в столице Тенерифе - Санта-Крус. Престижный район с развитой инфраструктурой. Рядом деловой центр, культурные достопримечательности и лучшие рестораны. Идеально для бизнеса и постоянного проживания.',
-  },
-  {
-    id: 6,
-    name: 'SHIFT',
-    location: 'La Laguna, Tenerife',
-    price: 40824208,
-    coordinates: [28.4853, -16.3200],
-    owner: { firstName: 'Кармен', lastName: 'Руис' },
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 38500000,
-    endTime: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 15 дней (красный мигающий - меньше 1 месяца)
-    beds: 3,
-    baths: 2,
-    sqft: 1400,
-    description:
-      'Современная квартира в историческом городе Ла-Лагуна, объекте Всемирного наследия ЮНЕСКО. Университетский город с богатой культурой. Рядом старый город, музеи и кафе. Идеально для студентов и любителей истории.',
-  },
 ]
 
 const villasData = [
@@ -396,136 +265,6 @@ const villasData = [
     description:
       'Роскошная вилла в элитном районе Коста-Адехе с панорамным видом на океан. Частный бассейн, террасы, современная кухня. Рядом лучшие пляжи, гольф-клубы и рестораны. Идеальное место для роскошного отдыха и жизни.',
   },
-  {
-    id: 2,
-    name: 'Luxury Beach Villa',
-    location: 'Playa de las Américas, Tenerife',
-    price: 18500000,
-    coordinates: [28.1000, -16.7200],
-    owner: { firstName: 'Анна', lastName: 'Морено' },
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 17500000,
-    endTime: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000 + 13 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 25 дней (красный мигающий - меньше 1 месяца)
-    beds: 5,
-    baths: 4,
-    sqft: 3200,
-    description:
-      'Эксклюзивная вилла на первой линии пляжа в Плайя-де-лас-Америкас. Прямой выход к океану, частный пляж, бассейн с подогревом. Роскошный интерьер, современная техника. Идеально для тех, кто ищет премиум недвижимость.',
-  },
-  {
-    id: 3,
-    name: 'Ocean View Villa',
-    location: 'Los Cristianos, Tenerife',
-    price: 22000000,
-    coordinates: [28.0500, -16.7167],
-    owner: { firstName: 'Луис', lastName: 'Хименес' },
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 21000000,
-    endTime: new Date(Date.now() + 50 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 50 дней (красный - от 1 до 2 месяцев)
-    beds: 6,
-    baths: 5,
-    sqft: 4000,
-    description:
-      'Великолепная вилла с видом на океан в Лос-Кристианос. Просторные террасы, сад, бассейн. Рядом пляжи, рестораны и развлечения. Идеальное место для большой семьи или приема гостей. Прекрасный климат круглый год.',
-  },
-  {
-    id: 4,
-    name: 'Mountain Retreat',
-    location: 'Puerto de la Cruz, Tenerife',
-    price: 9500000,
-    coordinates: [28.4167, -16.5500],
-    owner: { firstName: 'Элена', lastName: 'Васкес' },
-    image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 9000000,
-    endTime: new Date(Date.now() + 105 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 105 дней (зеленый - от 3 месяцев)
-    beds: 3,
-    baths: 2,
-    sqft: 2000,
-    description:
-      'Уютная вилла в горах Пуэрто-де-ла-Крус с видом на вулкан Тейде. Тишина и покой, близость к природе. Рядом термальные источники и ботанический сад. Идеально для тех, кто ищет уединение и спокойствие.',
-  },
-  {
-    id: 5,
-    name: 'Elite Collection Villa',
-    location: 'Santa Cruz de Tenerife, Tenerife',
-    price: 35000000,
-    coordinates: [28.4636, -16.2518],
-    owner: { firstName: 'Роберто', lastName: 'Альварес' },
-    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 33000000,
-    endTime: new Date(Date.now() + 65 * 24 * 60 * 60 * 1000 + 18 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 65 дней (оранжевый - от 2 до 3 месяцев)
-    beds: 7,
-    baths: 6,
-    sqft: 5000,
-    description:
-      'Эксклюзивная вилла в столице Тенерифе - Санта-Крус. Премиум локация с видом на океан и город. Роскошный интерьер, современная архитектура, частный сад и бассейн. Идеально для представительских целей и роскошной жизни.',
-  },
-  {
-    id: 6,
-    name: 'Modern Villa Design',
-    location: 'La Laguna, Tenerife',
-    price: 28000000,
-    coordinates: [28.4853, -16.3200],
-    owner: { firstName: 'София', lastName: 'Рамос' },
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dbe4eb5f3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 26500000,
-    endTime: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 35 дней (красный - от 1 до 2 месяцев)
-    beds: 5,
-    baths: 4,
-    sqft: 3500,
-    description:
-      'Современная вилла в историческом городе Ла-Лагуна. Уникальный дизайн сочетает современность и традиции. Рядом старый город, университет и культурные достопримечательности. Идеально для тех, кто ценит культуру и комфорт.',
-  },
 ]
 
 const flatsData = [
@@ -555,136 +294,6 @@ const flatsData = [
     description:
       'Просторная двухкомнатная квартира в самом центре Москвы. Евроремонт, панорамные окна, вид на парк. Большая гостиная, современная кухня. Вся мебель и техника в отличном состоянии. Парковка во дворе.',
   },
-  {
-    id: 2,
-    name: 'Квартира с видом на Неву',
-    location: 'Санкт-Петербург, Невский проспект, 45',
-    price: 8500000,
-    coordinates: [59.9343, 30.3351],
-    owner: { firstName: 'Мария', lastName: 'Петрова' },
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 8000000,
-    endTime: new Date(Date.now() + 80 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 80 дней (оранжевый - от 2 до 3 месяцев)
-    beds: 1,
-    baths: 1,
-    sqft: 42,
-    description:
-      'Однокомнатная квартира в историческом центре Санкт-Петербурга. Высокие потолки, большие окна, вид на Неву. Квартира полностью отремонтирована, готова к проживанию. Рядом метро, магазины, кафе.',
-  },
-  {
-    id: 3,
-    name: 'Студия в центре Казани',
-    location: 'Казань, ул. Баумана, 12',
-    price: 3200000,
-    coordinates: [55.7986, 49.1064],
-    owner: { firstName: 'Дмитрий', lastName: 'Смирнов' },
-    image: 'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1556912173-67134a4c0d8a?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: false,
-    currentBid: null,
-    endTime: null,
-    beds: 0,
-    baths: 1,
-    sqft: 28,
-    description:
-      'Уютная студия в центре Казани. Идеально подходит для одного человека или пары. Современный ремонт, вся необходимая мебель. Рядом университет, кафе, магазины.',
-  },
-  {
-    id: 4,
-    name: 'Трехкомнатная квартира',
-    location: 'Екатеринбург, ул. Ленина, 50',
-    price: 6800000,
-    coordinates: [56.8431, 60.6454],
-    owner: { firstName: 'Анна', lastName: 'Кузнецова' },
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 6500000,
-    endTime: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 40 дней (красный - от 1 до 2 месяцев)
-    beds: 3,
-    baths: 2,
-    sqft: 95,
-    description:
-      'Трехкомнатная квартира в центре Екатеринбурга. Просторная гостиная, две спальни, современная кухня. Качественный ремонт, вся мебель и техника. Рядом центр, парк, школы.',
-  },
-  {
-    id: 5,
-    name: 'Квартира в новостройке',
-    location: 'Москва, ул. Ленинградский проспект, 45',
-    price: 15200000,
-    coordinates: [55.7934, 37.5364],
-    owner: { firstName: 'Сергей', lastName: 'Волков' },
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 14500000,
-    endTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(), // 10 дней (красный мигающий - меньше 1 месяца)
-    beds: 2,
-    baths: 2,
-    sqft: 75,
-    description:
-      'Двухкомнатная квартира в новостройке. Панорамные окна, вид на парк. Современная планировка, качественный ремонт. Рядом метро, торговый центр, парк.',
-  },
-  {
-    id: 6,
-    name: 'Четырехкомнатная квартира',
-    location: 'Москва, ул. Тверская, 25',
-    price: 18500000,
-    coordinates: [55.7558, 37.6173],
-    owner: { firstName: 'Елена', lastName: 'Соколова' },
-    image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 17500000,
-    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
-    beds: 4,
-    baths: 2,
-    sqft: 120,
-    description:
-      'Просторная четырехкомнатная квартира в престижном районе Москвы. Панорамные окна, вид на центр города. Евроремонт, дизайнерская мебель. Два санузла, большая кухня-гостиная.',
-  },
 ]
 
 const townhousesData = [
@@ -713,136 +322,6 @@ const townhousesData = [
     sqft: 180,
     description:
       'Современный таунхаус в элитном поселке. Два этажа, гараж, участок 6 соток. Камин, терраса, современная техника. Охраняемая территория, детская площадка.',
-  },
-  {
-    id: 2,
-    name: 'Таунхаус с садом',
-    location: 'Ленинградская область, Всеволожск, ул. Центральная, 20',
-    price: 18500000,
-    coordinates: [60.0208, 30.6500],
-    owner: { firstName: 'Ольга', lastName: 'Морозова' },
-    image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 17500000,
-    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
-    beds: 4,
-    baths: 2,
-    sqft: 150,
-    description:
-      'Уютный таунхаус с собственным садом. Два этажа, просторные комнаты, кухня-гостиная. Участок 5 соток, парковка. Рядом лес, тихое место для семейной жизни.',
-  },
-  {
-    id: 3,
-    name: 'Современный таунхаус',
-    location: 'Московская область, Красногорск, ул. Ленина, 8',
-    price: 22000000,
-    coordinates: [55.8314, 37.3115],
-    owner: { firstName: 'Игорь', lastName: 'Лебедев' },
-    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: false,
-    currentBid: null,
-    endTime: null,
-    beds: 3,
-    baths: 2,
-    sqft: 140,
-    description:
-      'Современный таунхаус в новом жилом комплексе. Качественная отделка, современная техника. Два этажа, гараж, небольшой участок. Рядом школа, детский сад, магазины.',
-  },
-  {
-    id: 4,
-    name: 'Таунхаус премиум класса',
-    location: 'Московская область, Мытищи, ул. Мира, 12',
-    price: 28000000,
-    coordinates: [55.9105, 37.7364],
-    owner: { firstName: 'Наталья', lastName: 'Федорова' },
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 26500000,
-    endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
-    beds: 5,
-    baths: 3,
-    sqft: 200,
-    description:
-      'Роскошный таунхаус премиум класса. Три этажа, просторные комнаты, камин, терраса. Участок 8 соток, бассейн, сауна. Охраняемая территория, развитая инфраструктура.',
-  },
-  {
-    id: 5,
-    name: 'Таунхаус у леса',
-    location: 'Московская область, Химки, ул. Лесная, 5',
-    price: 19500000,
-    coordinates: [55.8970, 37.4299],
-    owner: { firstName: 'Андрей', lastName: 'Петров' },
-    image: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 18500000,
-    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
-    beds: 4,
-    baths: 2,
-    sqft: 160,
-    description:
-      'Уютный таунхаус в тихом месте у леса. Два этажа, просторная кухня-гостиная, терраса. Участок 6 соток, парковка. Рядом лес, река, тишина и покой.',
-  },
-  {
-    id: 6,
-    name: 'Элитный таунхаус',
-    location: 'Московская область, Балашиха, ул. Парковая, 10',
-    price: 32000000,
-    coordinates: [55.8094, 37.9581],
-    owner: { firstName: 'Татьяна', lastName: 'Семенова' },
-    image: 'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    ],
-    hasSamolyot: false,
-    isAuction: true,
-    currentBid: 30000000,
-    endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000 + 58 * 60 * 1000 + 53 * 1000).toISOString(),
-    beds: 6,
-    baths: 4,
-    sqft: 250,
-    description:
-      'Эксклюзивный таунхаус в престижном районе. Три этажа, роскошная отделка, дизайнерская мебель. Участок 10 соток, бассейн, баня, гараж на 2 машины. Охраняемая территория, элитная инфраструктура.',
   },
 ]
 
@@ -1253,9 +732,21 @@ function MainPage() {
 
     if (isLoggedIn) {
       loadNotifications()
-      // Обновляем уведомления каждые 5 секунд
-      const interval = setInterval(loadNotifications, 5000)
-      return () => clearInterval(interval)
+      
+      // Обновляем уведомления при фокусе окна (когда пользователь возвращается на страницу)
+      const handleFocus = () => {
+        loadNotifications()
+      }
+      
+      window.addEventListener('focus', handleFocus)
+      
+      // Обновляем уведомления каждые 60 секунд (1 минута) вместо каждых 5 секунд
+      const interval = setInterval(loadNotifications, 60000)
+      
+      return () => {
+        clearInterval(interval)
+        window.removeEventListener('focus', handleFocus)
+      }
     }
   }, [user, userLoaded, isLoggedIn])
 
@@ -1336,10 +827,81 @@ function MainPage() {
   }
 
   // Фильтрованные данные
-  const filteredApartments = useMemo(() => filterBySearch(apartmentsData), [searchQuery])
-  const filteredVillas = useMemo(() => filterBySearch(villasData), [searchQuery])
-  const filteredFlats = useMemo(() => filterBySearch(flatsData), [searchQuery])
-  const filteredTownhouses = useMemo(() => filterBySearch(townhousesData), [searchQuery])
+  // Состояние для одобренных объявлений из API
+  const [approvedProperties, setApprovedProperties] = useState({
+    apartments: [],
+    villas: [],
+    flats: [],
+    houses: []
+  })
+
+  // Загрузка одобренных объявлений без аукциона из API
+  useEffect(() => {
+    const loadApprovedProperties = async () => {
+      try {
+        // Загружаем объявления по типам
+        const types = [
+          { apiType: 'commercial', stateKey: 'apartments' },
+          { apiType: 'villa', stateKey: 'villas' },
+          { apiType: 'apartment', stateKey: 'flats' },
+          { apiType: 'house', stateKey: 'houses' }
+        ]
+
+        const loadedProperties = {
+          apartments: [],
+          villas: [],
+          flats: [],
+          houses: []
+        }
+
+        for (const { apiType, stateKey } of types) {
+          try {
+            const url = `${API_BASE_URL}/properties/approved?type=${apiType}`
+            const response = await fetch(url)
+            if (response.ok) {
+              const data = await response.json()
+              if (data.success && data.data) {
+                loadedProperties[stateKey] = data.data
+              }
+            }
+          } catch (error) {
+            // Тихо игнорируем ошибки загрузки
+          }
+        }
+        setApprovedProperties(loadedProperties)
+      } catch (error) {
+        console.error('❌ Ошибка загрузки одобренных объявлений:', error)
+      }
+    }
+
+    loadApprovedProperties()
+    
+    // Обновляем каждые 5 минут для получения новых одобренных объявлений
+    const interval = setInterval(loadApprovedProperties, 300000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Объединяем статические данные с данными из API
+  const combinedApartments = useMemo(() => {
+    return [...apartmentsData, ...approvedProperties.apartments]
+  }, [approvedProperties.apartments])
+
+  const combinedVillas = useMemo(() => {
+    return [...villasData, ...approvedProperties.villas]
+  }, [approvedProperties.villas])
+
+  const combinedFlats = useMemo(() => {
+    return [...flatsData, ...approvedProperties.flats]
+  }, [approvedProperties.flats])
+
+  const combinedTownhouses = useMemo(() => {
+    return [...townhousesData, ...approvedProperties.houses]
+  }, [approvedProperties.houses])
+
+  const filteredApartments = useMemo(() => filterBySearch(combinedApartments), [searchQuery, combinedApartments])
+  const filteredVillas = useMemo(() => filterBySearch(combinedVillas), [searchQuery, combinedVillas])
+  const filteredFlats = useMemo(() => filterBySearch(combinedFlats), [searchQuery, combinedFlats])
+  const filteredTownhouses = useMemo(() => filterBySearch(combinedTownhouses), [searchQuery, combinedTownhouses])
   const filteredRecommended = useMemo(() => filterBySearch(recommendedProperties), [searchQuery])
   const filteredNearby = useMemo(() => filterBySearch(nearbyProperties), [searchQuery])
 
@@ -3009,17 +2571,17 @@ function MainPage() {
         </div>
       </section>
 
-      {/* Блок "Таунхаусы" */}
+      {/* Блок "Дома" */}
       <section className="apartments-section">
         <div className="apartments-section__container">
           <div 
             className="apartments-section__header"
             onClick={() => {
-              window.location.href = '/auction?category=Townhouse&filter=auction'
+              window.location.href = '/auction?category=House&filter=auction'
             }}
             style={{ cursor: 'pointer' }}
           >
-            <h2 className="apartments-section__title">Таунхаусы</h2>
+            <h2 className="apartments-section__title">Дома</h2>
             <FiArrowRight size={24} className="apartments-section__arrow" />
           </div>
           
@@ -3145,7 +2707,7 @@ function MainPage() {
                     </div>
                   </div>
                   <h3 className="personal-selection__title">ПОДБОРКА</h3>
-                  <h3 className="personal-selection__title">ТАУНХАУСОВ</h3>
+                  <h3 className="personal-selection__title">ДОМОВ</h3>
                   <div className="personal-selection__features">
                     <div className="personal-selection__feature">
                       <FiCheck className="personal-selection__feature-icon" size={18} />

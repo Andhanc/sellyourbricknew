@@ -244,20 +244,22 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
 
           <div className="moderation-property-detail__price">
             {property.price ? `${property.price.toLocaleString('ru-RU')} ${property.currency || 'USD'}` : 'Цена не указана'}
-            {property.is_auction === 1 || property.isAuction ? (
-              <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                <strong>Аукцион:</strong> Да
-                {property.auction_start_date && (
-                  <div>Начало: {new Date(property.auction_start_date).toLocaleDateString('ru-RU')}</div>
-                )}
-                {property.auction_end_date && (
-                  <div>Окончание: {new Date(property.auction_end_date).toLocaleDateString('ru-RU')}</div>
-                )}
-                {property.auction_starting_price && (
-                  <div>Стартовая цена: {property.auction_starting_price.toLocaleString('ru-RU')} {property.currency || 'USD'}</div>
-                )}
-              </div>
-            ) : null}
+            <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
+              <strong>Аукцион:</strong> {property.is_auction === 1 || property.isAuction ? 'Да' : 'Нет'}
+              {(property.is_auction === 1 || property.isAuction) && (
+                <>
+                  {property.auction_start_date && (
+                    <div>Начало: {new Date(property.auction_start_date).toLocaleDateString('ru-RU')}</div>
+                  )}
+                  {property.auction_end_date && (
+                    <div>Окончание: {new Date(property.auction_end_date).toLocaleDateString('ru-RU')}</div>
+                  )}
+                  {property.auction_starting_price && (
+                    <div>Стартовая цена: {property.auction_starting_price.toLocaleString('ru-RU')} {property.currency || 'USD'}</div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {property.description && (

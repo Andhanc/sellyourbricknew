@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FiSearch, FiUser, FiHome, FiShield, FiShieldOff, FiX, FiCheck, FiXCircle } from 'react-icons/fi';
+import { FiSearch, FiUser, FiHome, FiShield, FiShieldOff, FiX, FiCheck, FiXCircle, FiTrash2 } from 'react-icons/fi';
 import { FaBuilding } from 'react-icons/fa';
 import ModerationPropertyDetail from './ModerationPropertyDetail';
 import ModerationUserDetail from './ModerationUserDetail';
@@ -302,11 +302,16 @@ const Moderation = () => {
               created_at: verification.submittedAt
             });
           }
+          // Добавляем информацию о привязанной карте, если она есть
+          if (verification.cardInfo) {
+            console.log('💳 Добавление данных карты к существующему пользователю:', verification.cardInfo);
+            existingUser.cardInfo = verification.cardInfo;
+          }
         } else {
           // Создаем нового пользователя из localStorage
           // Используем originalIndex для ID, чтобы можно было правильно удалить
           const userLocalId = `local_user_${originalIndex}`;
-          usersList.push({
+          const newUser = {
             id: userLocalId,
             firstName: 'Не указано',
             lastName: '',
@@ -336,11 +341,26 @@ const Moderation = () => {
                 created_at: verification.submittedAt
               }] : [])
             ]
-          });
+          };
+          // Добавляем информацию о привязанной карте, если она есть
+          if (verification.cardInfo) {
+            console.log('💳 Добавление данных карты к новому пользователю:', verification.cardInfo);
+            newUser.cardInfo = verification.cardInfo;
+          }
+          usersList.push(newUser);
         }
       });
       
-      setPendingDocuments(usersList);
+      // Фильтруем пользователей - оставляем только тех, у кого есть pending документы
+      const usersWithPendingDocs = usersList.filter(user => {
+        if (!user.documents || user.documents.length === 0) {
+          return false;
+        }
+        // Проверяем, есть ли хотя бы один документ со статусом 'pending'
+        return user.documents.some(doc => doc.verification_status === 'pending');
+      });
+      
+      setPendingDocuments(usersWithPendingDocs);
     } catch (error) {
       console.error('❌ Ошибка загрузки документов:', error);
       setPendingDocuments([]);
@@ -521,48 +541,139 @@ const Moderation = () => {
             const propertyTitle = property.title || 'Объект недвижимости';
             const propertyUserId = property.userId;
             
-            // Создаем уведомление для пользователя
-            try {
-              // Пытаемся найти числовой ID пользователя в БД
-              let dbUserId = propertyUserId;
-              
-              // Если userId - это строка (Clerk ID), пытаемся найти пользователя по email
-              if (propertyUserId && isNaN(parseInt(propertyUserId)) && property.userProfileData?.email) {
-                const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(property.userProfileData.email.toLowerCase())}`);
-                if (emailResponse.ok) {
-                  const emailData = await emailResponse.json();
-                  if (emailData.success && emailData.data) {
-                    dbUserId = emailData.data.id;
-                  }
+            // Пытаемся найти числовой ID пользователя в БД
+            let dbUserId = propertyUserId;
+            
+            // Если userId - это строка (Clerk ID), пытаемся найти пользователя по email
+            if (propertyUserId && isNaN(parseInt(propertyUserId)) && property.userProfileData?.email) {
+              const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(property.userProfileData.email.toLowerCase())}`);
+              if (emailResponse.ok) {
+                const emailData = await emailResponse.json();
+                if (emailData.success && emailData.data) {
+                  dbUserId = emailData.data.id;
                 }
               }
-              
-              // Если нашли числовой ID, создаем уведомление
-              if (dbUserId && !isNaN(parseInt(dbUserId))) {
-                const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
+            }
+            
+            // Если нашли числовой ID, сохраняем объявление в БД
+            if (dbUserId && !isNaN(parseInt(dbUserId))) {
+              try {
+                // Подготавливаем данные для сохранения в БД
+                const propertyData = {
+                  user_id: parseInt(dbUserId),
+                  property_type: property.propertyType || property.property_type || 'house',
+                  title: property.title || '',
+                  description: property.description || '',
+                  price: property.price || 0,
+                  currency: property.currency || 'USD',
+                  is_auction: property.isAuction ? 1 : 0,
+                  auction_start_date: property.auctionStartDate || null,
+                  auction_end_date: property.auctionEndDate || null,
+                  auction_starting_price: property.auctionStartingPrice || null,
+                  area: property.area || null,
+                  rooms: property.rooms || null,
+                  bedrooms: property.bedrooms || null,
+                  bathrooms: property.bathrooms || null,
+                  floor: property.floor || null,
+                  total_floors: property.totalFloors || null,
+                  year_built: property.yearBuilt || null,
+                  location: property.location || property.address || '',
+                  address: property.address || '',
+                  apartment: property.apartment || '',
+                  country: property.country || '',
+                  city: property.city || '',
+                  coordinates: property.coordinates ? JSON.stringify(property.coordinates) : null,
+                  balcony: property.balcony ? 1 : 0,
+                  parking: property.parking ? 1 : 0,
+                  elevator: property.elevator ? 1 : 0,
+                  land_area: property.landArea || null,
+                  garage: property.garage ? 1 : 0,
+                  pool: property.pool ? 1 : 0,
+                  garden: property.garden ? 1 : 0,
+                  commercial_type: property.commercialType || null,
+                  business_hours: property.businessHours || null,
+                  renovation: property.renovation || null,
+                  condition: property.condition || null,
+                  heating: property.heating || null,
+                  water_supply: property.waterSupply || null,
+                  sewerage: property.sewerage || null,
+                  electricity: property.electricity ? 1 : 0,
+                  internet: property.internet ? 1 : 0,
+                  security: property.security ? 1 : 0,
+                  furniture: property.furniture ? 1 : 0,
+                  feature1: property.feature1 ? 1 : 0,
+                  feature2: property.feature2 ? 1 : 0,
+                  feature3: property.feature3 ? 1 : 0,
+                  feature4: property.feature4 ? 1 : 0,
+                  feature5: property.feature5 ? 1 : 0,
+                  feature6: property.feature6 ? 1 : 0,
+                  feature7: property.feature7 ? 1 : 0,
+                  feature8: property.feature8 ? 1 : 0,
+                  feature9: property.feature9 ? 1 : 0,
+                  feature10: property.feature10 ? 1 : 0,
+                  feature11: property.feature11 ? 1 : 0,
+                  feature12: property.feature12 ? 1 : 0,
+                  photos: property.photos ? JSON.stringify(property.photos) : null,
+                  videos: property.videos ? JSON.stringify(property.videos) : null,
+                  additional_documents: property.additionalDocuments ? JSON.stringify(property.additionalDocuments) : null,
+                  ownership_document: property.ownershipDocument || null,
+                  no_debts_document: property.noDebtsDocument || null,
+                  ownership_document_name: property.ownershipDocumentName || null,
+                  no_debts_document_name: property.noDebtsDocumentName || null,
+                  test_drive: property.testDrive ? 1 : 0,
+                  moderation_status: 'approved' // Сразу одобряем
+                };
+
+                // Создаем объявление в БД
+                const createResponse = await fetch(`${API_BASE_URL}/properties`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    user_id: parseInt(dbUserId),
-                    type: 'property_approved',
-                    title: 'Ваш объект прошел верификацию',
-                    message: `Ваш объект "${propertyTitle}" прошел верификацию, в скором времени он будет опубликован на платформе`,
-                    data: { property_title: propertyTitle }
-                  })
+                  body: JSON.stringify(propertyData)
                 });
-                
-                if (notificationResponse.ok) {
-                  console.log('✅ Уведомление создано для пользователя:', dbUserId);
+
+                if (createResponse.ok) {
+                  const createData = await createResponse.json();
+                  if (createData.success) {
+                    console.log('✅ Объявление сохранено в БД:', createData.data?.id);
+                    
+                    // Создаем уведомление для пользователя
+                    try {
+                      const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          user_id: parseInt(dbUserId),
+                          type: 'property_approved',
+                          title: 'Ваш объект прошел верификацию',
+                          message: `Ваш объект "${propertyTitle}" прошел верификацию и опубликован на платформе`,
+                          data: JSON.stringify({ property_id: createData.data?.id, property_title: propertyTitle })
+                        })
+                      });
+                      
+                      if (notificationResponse.ok) {
+                        console.log('✅ Уведомление создано для пользователя:', dbUserId);
+                      } else {
+                        console.warn('⚠️ Не удалось создать уведомление:', await notificationResponse.text());
+                      }
+                    } catch (notifError) {
+                      console.error('❌ Ошибка при создании уведомления:', notifError);
+                    }
+                  } else {
+                    console.warn('⚠️ Не удалось сохранить объявление в БД:', createData.error);
+                  }
                 } else {
-                  console.warn('⚠️ Не удалось создать уведомление:', await notificationResponse.text());
+                  const errorText = await createResponse.text();
+                  console.warn('⚠️ Ошибка при сохранении объявления в БД:', errorText);
                 }
-              } else {
-                console.warn('⚠️ Не удалось определить ID пользователя для создания уведомления');
+              } catch (saveError) {
+                console.error('❌ Ошибка при сохранении объявления в БД:', saveError);
               }
-            } catch (notifError) {
-              console.error('❌ Ошибка при создании уведомления:', notifError);
+            } else {
+              console.warn('⚠️ Не удалось определить ID пользователя для сохранения объявления');
             }
             
             // Удаляем объект из localStorage
@@ -619,6 +730,21 @@ const Moderation = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
+            // Удаляем данные недвижимости из localStorage, если они там есть
+            try {
+              const localStorageProperties = JSON.parse(localStorage.getItem('pendingProperties') || '[]');
+              // Ищем по ID пользователя, так как в localStorage хранится userId
+              const property = localStorageProperties.find(p => {
+                // Проверяем, есть ли в БД недвижимость с таким ID
+                return false; // Если это реальный ID из БД, то в localStorage его не будет
+              });
+              // Если это был элемент из localStorage, он уже удален в блоке выше
+              // Здесь просто обновляем список
+              console.log('✅ Объявление одобрено через API');
+            } catch (e) {
+              console.warn('⚠️ Не удалось проверить localStorage:', e);
+            }
+            
             alert('Объявление одобрено. Владельцу отправлено уведомление.');
             loadPendingProperties();
             setSelectedProperty(null);
@@ -642,6 +768,19 @@ const Moderation = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
+            // Удаляем данные пользователя из localStorage, если они там есть
+            try {
+              const localStorageVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]');
+              const filteredVerifications = localStorageVerifications.filter(v => {
+                // Удаляем если userId совпадает с одобренным ID
+                return String(v.userId) !== String(id);
+              });
+              localStorage.setItem('pendingVerifications', JSON.stringify(filteredVerifications));
+              console.log('✅ Удалены данные пользователя из localStorage');
+            } catch (e) {
+              console.warn('⚠️ Не удалось очистить localStorage:', e);
+            }
+            
             alert('Пользователь одобрен и верифицирован. Ему отправлено уведомление.');
             loadPendingDocuments();
             setSelectedUser(null);
@@ -733,6 +872,18 @@ const Moderation = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
+            // Удаляем данные пользователя из localStorage, если они там есть
+            try {
+              const localStorageVerifications = JSON.parse(localStorage.getItem('pendingVerifications') || '[]');
+              const filteredVerifications = localStorageVerifications.filter(v => {
+                return String(v.userId) !== String(id);
+              });
+              localStorage.setItem('pendingVerifications', JSON.stringify(filteredVerifications));
+              console.log('✅ Удалены данные пользователя из localStorage');
+            } catch (e) {
+              console.warn('⚠️ Не удалось очистить localStorage:', e);
+            }
+            
             alert('Пользователь отклонен. Ему отправлено уведомление.');
             loadPendingDocuments();
             setSelectedUser(null);
@@ -767,6 +918,19 @@ const Moderation = () => {
         return <FaBuilding size={32} />;
       default:
         return <FiHome size={32} />;
+    }
+  };
+
+  const clearLocalStorage = () => {
+    if (window.confirm('Вы уверены, что хотите очистить все данные из localStorage? Это удалит все необработанные верификации и объявления из локального хранилища.')) {
+      localStorage.removeItem('pendingVerifications');
+      localStorage.removeItem('pendingProperties');
+      alert('localStorage очищен. Список модерации обновлен.');
+      if (activeTab === 'users') {
+        loadPendingDocuments();
+      } else {
+        loadPendingProperties();
+      }
     }
   };
 
@@ -840,6 +1004,7 @@ const Moderation = () => {
             <FiX size={18} />
           </button>
         )}
+      
       </div>
 
       {activeTab === 'users' && (
@@ -891,7 +1056,9 @@ const Moderation = () => {
                       <div className="moderation-meta-item">
                         <span className="moderation-label">Регистрация:</span>
                         <span className="moderation-value">
-                          {new Date(user.registrationDate).toLocaleDateString('ru-RU')}
+                          {user.documents && user.documents.length > 0 && user.documents[0].created_at
+                            ? new Date(user.documents[0].created_at).toLocaleDateString('ru-RU')
+                            : 'Не указано'}
                         </span>
                       </div>
                       <div className="moderation-meta-item">
