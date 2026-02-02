@@ -8,7 +8,7 @@ import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
 import './PropertyList.css'
 
-const PropertyList = () => {
+const PropertyList = ({ auctionProperties = null }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isLoaded: userLoaded } = useUser()
@@ -52,9 +52,11 @@ const PropertyList = () => {
         const parsed = JSON.parse(savedFavorites)
         const favoritesMap = new Map(Object.entries(parsed))
         const favoriteIds = new Set()
-        properties.forEach((property) => {
-          if (favoritesMap.get(`property-${property.id}`)) {
-            favoriteIds.add(property.id)
+        // Проверяем все свойства из localStorage, не только текущие
+        favoritesMap.forEach((value, key) => {
+          if (value && key.startsWith('property-')) {
+            const id = key.replace('property-', '')
+            favoriteIds.add(id)
           }
         })
         return favoriteIds
@@ -64,6 +66,27 @@ const PropertyList = () => {
     }
     return new Set()
   })
+  
+  // Обновляем избранное при изменении auctionProperties
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favoriteProperties')
+    if (savedFavorites) {
+      try {
+        const parsed = JSON.parse(savedFavorites)
+        const favoritesMap = new Map(Object.entries(parsed))
+        const favoriteIds = new Set()
+        favoritesMap.forEach((value, key) => {
+          if (value && key.startsWith('property-')) {
+            const id = key.replace('property-', '')
+            favoriteIds.add(id)
+          }
+        })
+        setFavorites(favoriteIds)
+      } catch (e) {
+        console.error('Ошибка при обновлении избранного:', e)
+      }
+    }
+  }, [auctionProperties])
   const [visibleCount, setVisibleCount] = useState(9)
 
   const formatPrice = (price) => {
@@ -73,19 +96,36 @@ const PropertyList = () => {
     return `$${price.toLocaleString('en-US')}`
   }
 
-  const filteredProperties = properties.filter(property => {
+  // Используем переданные аукционные объявления или статические данные
+  const propertiesToUse = auctionProperties || properties
+
+  const filteredProperties = propertiesToUse.filter(property => {
     // Фильтрация по типу недвижимости
     if (propertyType !== 'все') {
-      const titleLower = property.title.toLowerCase()
-      const typeMatch = {
-        'квартира': titleLower.includes('квартир') || titleLower.includes('студи'),
-        'апартаменты': titleLower.includes('апартамент'),
-        'вилла': titleLower.includes('вилл'),
-        'таунхаус': titleLower.includes('таунхаус')
-      }
-      
-      if (!typeMatch[propertyType]) {
-        return false
+      // Если есть property_type из API, используем его
+      if (property.property_type) {
+        const typeMap = {
+          'квартира': ['apartment'],
+          'апартаменты': ['commercial'],
+          'вилла': ['villa'],
+          'таунхаус': ['house']
+        }
+        if (typeMap[propertyType] && !typeMap[propertyType].includes(property.property_type)) {
+          return false
+        }
+      } else {
+        // Иначе используем старую логику по названию
+        const titleLower = property.title.toLowerCase()
+        const typeMatch = {
+          'квартира': titleLower.includes('квартир') || titleLower.includes('студи'),
+          'апартаменты': titleLower.includes('апартамент'),
+          'вилла': titleLower.includes('вилл'),
+          'таунхаус': titleLower.includes('таунхаус')
+        }
+        
+        if (!typeMatch[propertyType]) {
+          return false
+        }
       }
     }
     
@@ -93,8 +133,8 @@ const PropertyList = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       return (
-        property.title.toLowerCase().includes(query) ||
-        property.location.toLowerCase().includes(query)
+        (property.title || property.name || '').toLowerCase().includes(query) ||
+        (property.location || '').toLowerCase().includes(query)
       )
     }
     
@@ -186,7 +226,13 @@ const PropertyList = () => {
         ) : (
           <>
             <div id="properties-grid" className="properties-grid">
-              {filteredProperties.slice(0, visibleCount).map((property) => (
+              {filteredProperties.slice(0, visibleCount).map((property) => {
+                const propertyTitle = property.title || property.name || ''
+                const propertyImages = property.images || (property.image ? [property.image] : [])
+                const propertyImage = propertyImages[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
+                const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                
+                return (
             <div 
               key={property.id} 
               className="property-card"
@@ -196,18 +242,20 @@ const PropertyList = () => {
                   return
                 }
                 console.log('Navigating to property:', property.id)
-                navigate(`/property/${property.id}`)
+                navigate(`/property/${property.id}`, {
+                  state: { property }
+                })
               }}
               style={{ cursor: 'pointer' }}
             >
               <div className="property-link">
                 <div className="property-image-container">
                   <img 
-                    src={property.images[0]} 
-                    alt={property.title}
+                    src={propertyImage} 
+                    alt={propertyTitle}
                     className="property-image"
                   />
-                  {property.endTime && property.isAuction && (
+                  {hasTimer && (
                     <div className="property-buy-now-overlay">
                       <span>Купить сейчас</span>
                     </div>
@@ -265,33 +313,33 @@ const PropertyList = () => {
                   </button>
                 </div>
                 <div className="property-content">
-                  {property.endTime && (
+                  {hasTimer && (
                     <PropertyTimer endTime={property.endTime} compact={true} />
                   )}
-                  <h3 className="property-title">{property.title}</h3>
-                  {!property.endTime && property.description && (
+                  <h3 className="property-title">{propertyTitle}</h3>
+                  {!hasTimer && property.description && (
                     <p className="property-description">{property.description}</p>
                   )}
-                  <p className="property-location">{property.location}</p>
-                  {property.endTime ? (
+                  <p className="property-location">{property.location || ''}</p>
+                  {hasTimer ? (
                     <div className="property-bid-info">
                       <span className="bid-label">Текущая ставка:</span>
-                      <span className="bid-value">{formatPrice(property.currentBid)}</span>
+                      <span className="bid-value">{formatPrice(property.currentBid || property.price || 0)}</span>
                     </div>
                   ) : (
                     <>
-                      <div className="property-price">{formatPrice(property.price)}</div>
+                      <div className="property-price">{formatPrice(property.price || 0)}</div>
                       <div className="property-specs">
-                      {property.rooms && (
+                      {(property.rooms || property.beds) && (
                         <div className="spec-item">
                           <MdBed size={18} />
-                          <span>{property.rooms}</span>
+                          <span>{property.rooms || property.beds}</span>
                         </div>
                       )}
-                      {property.area && (
+                      {(property.area || property.sqft) && (
                         <div className="spec-item">
                           <BiArea size={18} />
-                          <span>{property.area} м²</span>
+                          <span>{property.area || property.sqft} м²</span>
                         </div>
                       )}
                       {property.floor && (
@@ -306,7 +354,9 @@ const PropertyList = () => {
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        navigate(`/property/${property.id}`)
+                        navigate(`/property/${property.id}`, {
+                          state: { property }
+                        })
                       }}
                     >
                       Сделать ставку
@@ -315,7 +365,8 @@ const PropertyList = () => {
                 </div>
               </div>
             </div>
-              ))}
+                )
+              })}
             </div>
 
             {filteredProperties.length > visibleCount && (

@@ -40,12 +40,35 @@
   line-height: 1;
 }
 
+.country-select__code {
+  font-size: 0.9375rem;
+  color: #111827;
+  flex-shrink: 0;
+  line-height: 1.4;
+  margin-right: 0.5rem;
+}
+
 .country-select__name {
   font-size: 0.9375rem;
   color: #111827;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.country-select__input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  color: #111827;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.country-select__input::placeholder {
+  color: #9ca3af;
 }
 
 .country-select__placeholder {

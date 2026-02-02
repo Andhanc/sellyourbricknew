@@ -2,12 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FiChevronDown, FiCheck } from 'react-icons/fi'
-import { FaApple, FaWhatsapp, FaEnvelope } from 'react-icons/fa'
+import { FaApple } from 'react-icons/fa'
 import './Footer.css'
-
-// Импорт QR-кода - файл нужно скопировать из корня проекта в src/img/whatsapp-qr.png
-// Временно используем путь из корня, но лучше скопировать в public/img/whatsapp-qr.png
-const whatsappQrPath = '/6019556644745841501.png'
 
 const Footer = () => {
   const { t, i18n } = useTranslation()
@@ -47,10 +43,6 @@ const Footer = () => {
       window.open('https://play.google.com/store/apps', '_blank')
     } else if (platform === 'ios') {
       window.open('https://apps.apple.com/', '_blank')
-    } else if (platform === 'email') {
-      window.location.href = 'mailto:support@sellyourbrick.com'
-    } else if (platform === 'whatsapp') {
-      window.open('https://wa.me/79991234567', '_blank')
     }
   }
 
@@ -120,122 +112,114 @@ const Footer = () => {
         </div>
 
         {/* Нижняя полоса с логотипом и кнопками, как на скрине */}
-        <div className="footer__bottom-wrapper">
-          <div className="footer__bottom">
-            <div className="footer__brand">
-              <div className="footer__brand-icon">
-                <span className="footer__brand-house" />
+        <div className="footer__bottom">
+          <div className="footer__brand">
+            <div className="footer__brand-icon">
+              <span className="footer__brand-house" />
+            </div>
+            <span className="footer__brand-text">Sellyourbrick</span>
+          </div>
+
+          <div className="footer__bottom-links">
+            <button type="button" className="footer__bottom-link">Мобильная версия сайта</button>
+            <button type="button" className="footer__bottom-link">О приложении</button>
+          </div>
+
+          <div className="footer__store-buttons">
+            <button
+              type="button"
+              className="footer__store-btn"
+              onClick={() => handleDownloadApp('android')}
+              aria-label="Скачать из Google Play"
+            >
+              <div className="footer__store-icon footer__store-icon--google">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5Z" fill="#4285F4"/>
+                  <path d="M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12Z" fill="#EA4335"/>
+                  <path d="M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z" fill="#FBBC04"/>
+                  <path d="M16.81 8.88L20.16 6.51C20.66 6.26 21 5.75 21 5.16V18.84C21 18.25 20.66 17.74 20.16 17.49L16.81 15.12L14.54 12.85L16.81 8.88Z" fill="#34A853"/>
+                </svg>
               </div>
-              <span className="footer__brand-text">Sellyourbrick</span>
-            </div>
+              <div className="footer__store-text">
+                <span className="footer__store-label">Скачать из</span>
+                <span className="footer__store-name">Google Play</span>
+              </div>
+            </button>
 
-            <div className="footer__bottom-links">
-              <button type="button" className="footer__bottom-link">Мобильная версия сайта</button>
-              <button type="button" className="footer__bottom-link">О приложении</button>
-            </div>
+            <button
+              type="button"
+              className="footer__store-btn"
+              onClick={() => handleDownloadApp('ios')}
+              aria-label={`${t('downloadIn')} App Store`}
+            >
+              <div className="footer__store-icon">
+                <FaApple size={18} />
+              </div>
+              <div className="footer__store-text">
+                <span className="footer__store-label">{t('downloadIn')}</span>
+                <span className="footer__store-name">App Store</span>
+              </div>
+            </button>
 
-            <div className="footer__store-buttons">
-              <button
-                type="button"
-                className="footer__store-btn"
-                onClick={() => handleDownloadApp('android')}
-                aria-label="Скачать из Google Play"
-              >
-                <div className="footer__store-icon footer__store-icon--google">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5Z" fill="#4285F4"/>
-                    <path d="M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12Z" fill="#EA4335"/>
-                    <path d="M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z" fill="#FBBC04"/>
-                    <path d="M16.81 8.88L20.16 6.51C20.66 6.26 21 5.75 21 5.16V18.84C21 18.25 20.66 17.74 20.16 17.49L16.81 15.12L14.54 12.85L16.81 8.88Z" fill="#34A853"/>
-                  </svg>
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">Скачать из</span>
-                  <span className="footer__store-name">Google Play</span>
-                </div>
-              </button>
+            <button
+              type="button"
+              className="footer__store-btn"
+              aria-label={`${t('downloadIn')} RuStore`}
+            >
+              <div className="footer__store-icon footer__store-icon--rustore">
+                <span className="footer__store-icon-text">Ru</span>
+              </div>
+              <div className="footer__store-text">
+                <span className="footer__store-label">{t('downloadIn')}</span>
+                <span className="footer__store-name">RuStore</span>
+              </div>
+            </button>
 
-              <button
-                type="button"
-                className="footer__store-btn"
-                onClick={() => handleDownloadApp('ios')}
-                aria-label={`${t('downloadIn')} App Store`}
-              >
-                <div className="footer__store-icon">
-                  <FaApple size={18} />
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">{t('downloadIn')}</span>
-                  <span className="footer__store-name">App Store</span>
-                </div>
-              </button>
+            <button
+              type="button"
+              className="footer__store-btn"
+              aria-label={`${t('downloadIn')} AppGallery`}
+            >
+              <div className="footer__store-icon footer__store-icon--appgallery">
+                <span className="footer__store-icon-text">AG</span>
+              </div>
+              <div className="footer__store-text">
+                <span className="footer__store-label">{t('downloadIn')}</span>
+                <span className="footer__store-name">AppGallery</span>
+              </div>
+            </button>
+          </div>
 
-              <button
-                type="button"
-                className="footer__store-btn"
-                onClick={() => handleDownloadApp('email')}
-                aria-label="Email"
-              >
-                <div className="footer__store-icon footer__store-icon--email">
-                  <FaEnvelope size={18} />
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">Связаться через</span>
-                  <span className="footer__store-name">Email</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="footer__store-btn"
-                onClick={() => handleDownloadApp('whatsapp')}
-                aria-label="WhatsApp"
-              >
-                <div className="footer__store-icon footer__store-icon--whatsapp">
-                  <FaWhatsapp size={18} />
-                </div>
-                <div className="footer__store-text">
-                  <span className="footer__store-label">Связаться через</span>
-                  <span className="footer__store-name">WhatsApp</span>
-                </div>
-              </button>
-            </div>
-
-            {/* QR-код WhatsApp */}
-            <div className="footer__whatsapp-qr">
-              <img src={whatsappQrPath} alt="WhatsApp QR Code" className="footer__qr-image" />
-            </div>
-
-            {/* Селектор языка справа от QR-кода */}
-            <div className="footer__language-selector" ref={languageDropdownRef}>
-              <button
-                type="button"
-                className="footer__language-selector-btn"
-                onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                aria-label="Выбрать язык"
-              >
-                <span className={`footer__language-flag ${currentLanguage.flagClass}`}></span>
-                <FiChevronDown 
-                  size={16} 
-                  className={`footer__language-chevron ${isLanguageDropdownOpen ? 'footer__language-chevron--open' : ''}`}
-                />
-              </button>
-              {isLanguageDropdownOpen && (
-                <div className="footer__language-dropdown">
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      className={`footer__language-option ${i18n.language === lang.code ? 'footer__language-option--active' : ''}`}
-                      onClick={() => handleLanguageChange(lang.code)}
-                    >
-                      <span className={`footer__language-flag ${lang.flagClass}`}></span>
-                      {i18n.language === lang.code && <FiCheck size={16} className="footer__language-check" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="footer__language-selector" ref={languageDropdownRef}>
+            <button
+              type="button"
+              className="footer__language-selector-btn"
+              onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+              aria-label="Выбрать язык"
+            >
+              <span className={`footer__language-flag ${currentLanguage.flagClass}`}></span>
+              <span className="footer__language-name">{currentLanguage.name}</span>
+              <FiChevronDown 
+                size={16} 
+                className={`footer__language-chevron ${isLanguageDropdownOpen ? 'footer__language-chevron--open' : ''}`}
+              />
+            </button>
+            {isLanguageDropdownOpen && (
+              <div className="footer__language-dropdown">
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    className={`footer__language-option ${i18n.language === lang.code ? 'footer__language-option--active' : ''}`}
+                    onClick={() => handleLanguageChange(lang.code)}
+                  >
+                    <span className={`footer__language-flag ${lang.flagClass}`}></span>
+                    <span className="footer__language-name">{lang.name}</span>
+                    {i18n.language === lang.code && <FiCheck size={16} className="footer__language-check" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

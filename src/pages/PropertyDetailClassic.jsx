@@ -32,13 +32,30 @@ function PropertyDetailClassic({ property, onBack }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const thumbnailScrollRef = useRef(null)
 
+  // Обрабатываем координаты
+  let coordinates = null
+  if (property.coordinates) {
+    try {
+      if (typeof property.coordinates === 'string') {
+        const parsed = JSON.parse(property.coordinates)
+        if (Array.isArray(parsed) && parsed.length >= 2) {
+          coordinates = [parseFloat(parsed[0]), parseFloat(parsed[1])]
+        }
+      } else if (Array.isArray(property.coordinates) && property.coordinates.length >= 2) {
+        coordinates = [parseFloat(property.coordinates[0]), parseFloat(property.coordinates[1])]
+      }
+    } catch (e) {
+      console.warn('Ошибка парсинга coordinates:', e)
+    }
+  }
+
   // Нормализуем данные под формат детальной страницы
   const displayProperty = {
     ...property,
     name: property.title || property.name,
     sqft: property.area || property.sqft,
     beds: property.rooms ?? property.beds,
-    coordinates: property.coordinates || [28.1000, -16.7200], // базовые координаты, как на макете
+    coordinates: coordinates, // Используем распарсенные координаты
   }
 
   const images =
@@ -333,6 +350,50 @@ function PropertyDetailClassic({ property, onBack }) {
                 </div>
               )}
 
+              {/* Статус аукциона */}
+              <div className="property-detail-sidebar__feature" style={{ marginBottom: '16px' }}>
+                <span className="property-detail-sidebar__feature-label">
+                  {t('auction') || 'Аукцион'}
+                </span>
+                <span className="property-detail-sidebar__feature-value">
+                  {displayProperty.is_auction === true || displayProperty.is_auction === 1 || displayProperty.isAuction === true ? 'Да' : 'Нет'}
+                </span>
+              </div>
+              {(displayProperty.is_auction === true || displayProperty.is_auction === 1 || displayProperty.isAuction === true) && displayProperty.auction_start_date && displayProperty.auction_end_date && (
+                <>
+                  {displayProperty.auction_start_date && (
+                    <div className="property-detail-sidebar__feature">
+                      <span className="property-detail-sidebar__feature-label">
+                        {t('auctionStart') || 'Начало'}
+                      </span>
+                      <span className="property-detail-sidebar__feature-value">
+                        {new Date(displayProperty.auction_start_date).toLocaleDateString('ru-RU')}
+                      </span>
+                    </div>
+                  )}
+                  {displayProperty.auction_end_date && (
+                    <div className="property-detail-sidebar__feature">
+                      <span className="property-detail-sidebar__feature-label">
+                        {t('auctionEnd') || 'Окончание'}
+                      </span>
+                      <span className="property-detail-sidebar__feature-value">
+                        {new Date(displayProperty.auction_end_date).toLocaleDateString('ru-RU')}
+                      </span>
+                    </div>
+                  )}
+                  {displayProperty.auction_starting_price && (
+                    <div className="property-detail-sidebar__feature">
+                      <span className="property-detail-sidebar__feature-label">
+                        {t('startingPrice') || 'Стартовая цена'}
+                      </span>
+                      <span className="property-detail-sidebar__feature-value">
+                        {displayProperty.auction_starting_price.toLocaleString('ru-RU')} {displayProperty.currency || 'USD'}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div className="property-detail-sidebar__features">
                 <div className="property-detail-sidebar__feature">
                   <span className="property-detail-sidebar__feature-label">
@@ -517,7 +578,7 @@ function PropertyDetailClassic({ property, onBack }) {
               </div>
 
               {/* Карта */}
-              {displayProperty.coordinates && (
+              {displayProperty.coordinates && Array.isArray(displayProperty.coordinates) && displayProperty.coordinates.length === 2 && (
                 <div className="property-detail-sidebar__map">
                   <h2 className="property-detail-sidebar__map-title">
                     {t('locationTitle') || 'Местоположение'}

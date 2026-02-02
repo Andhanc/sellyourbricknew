@@ -23,24 +23,15 @@ import {
 import { PiBuildingApartment, PiBuildings, PiWarehouse } from 'react-icons/pi'
 import { MdBed, MdOutlineBathtub, MdLightbulb } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import LocationMap from '../components/LocationMap'
 import PropertyPreviewModal from '../components/PropertyPreviewModal'
 import DateRangePicker from '../components/DateRangePicker'
 import AuctionPeriodPicker from '../components/AuctionPeriodPicker'
 import SellerVerificationModal from '../components/SellerVerificationModal'
+import CardBindingModal from '../components/CardBindingModal'
 import CountrySelect from '../components/CountrySelect'
 import { getUserData } from '../services/authService'
 import './AddProperty.css'
-
-// Фикс для иконок Leaflet
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
 
 const AddProperty = () => {
   const navigate = useNavigate()
@@ -67,6 +58,7 @@ const AddProperty = () => {
   const [photosMediaIndex, setPhotosMediaIndex] = useState(0) // Индекс для карусели на странице загрузки фотографий
   const [showPreview, setShowPreview] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [showCardBindingModal, setShowCardBindingModal] = useState(false)
   const [userId, setUserId] = useState(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -82,6 +74,18 @@ const AddProperty = () => {
   const [currentStep, setCurrentStep] = useState('type-selection') // 'type-selection', 'test-drive-question', 'property-name', 'location', 'details', 'amenities', 'photos', 'documents', 'price', 'form'
   const [showHint1, setShowHint1] = useState(true)
   const [showHint2, setShowHint2] = useState(true)
+  // Состояния для подсказок на каждом шаге
+  const [showHints, setShowHints] = useState({
+    'type-selection': true,
+    'test-drive-question': true,
+    'property-name': true, // уже используется showHint1 и showHint2
+    'location': true,
+    'details': true,
+    'amenities': true,
+    'photos': true,
+    'documents': true,
+    'price': true
+  })
   const [addressSearch, setAddressSearch] = useState('')
   const [addressSuggestions, setAddressSuggestions] = useState([])
   const [bedrooms, setBedrooms] = useState([
@@ -101,6 +105,9 @@ const AddProperty = () => {
   const [showCitySuggestions, setShowCitySuggestions] = useState(false)
   const citySearchRef = useRef(null)
   const citySearchTimeoutRef = useRef(null)
+  const [houseSuggestions, setHouseSuggestions] = useState([])
+  const [showHouseSuggestions, setShowHouseSuggestions] = useState(false)
+  const houseSearchTimeoutRef = useRef(null)
   const [isCitySearching, setIsCitySearching] = useState(false)
   const [isAddressSearching, setIsAddressSearching] = useState(false)
   
@@ -642,10 +649,30 @@ const AddProperty = () => {
 
   const handleVerificationComplete = async () => {
     // После завершения верификации сохраняем флаг в localStorage
-    // Форма объекта будет отправлена при повторном нажатии на "Продолжить"
     localStorage.setItem('verificationSubmitted', 'true')
     // Закрываем модальное окно верификации
     setShowVerificationModal(false)
+    // Открываем модальное окно привязки карточки
+    setShowCardBindingModal(true)
+    return true
+  }
+
+  const handleCardBindingComplete = async () => {
+    // После привязки карточки сохраняем флаг в localStorage (для совместимости)
+    localStorage.setItem('cardBound', 'true')
+    // Закрываем модальное окно привязки карточки
+    setShowCardBindingModal(false)
+    
+    // Если верификация уже была пройдена, автоматически отправляем объявление на модерацию
+    const verificationData = localStorage.getItem('verificationSubmitted')
+    if (verificationData === 'true') {
+      const success = await handlePublish()
+      if (success) {
+        // Очищаем только флаг верификации (cardBound остается, чтобы карта считалась привязанной навсегда)
+        localStorage.removeItem('verificationSubmitted')
+      }
+    }
+    
     return true
   }
 
@@ -816,7 +843,8 @@ const AddProperty = () => {
   }
 
   // Поиск адреса через Nominatim API с учетом города
-  const searchAddress = async (query) => {
+  // options.autoSelect = true — автоматически выбираем лучший результат и двигаем карту
+  const searchAddress = async (query, { autoSelect = false } = {}) => {
     if (!query || query.length < 2) {
       setAddressSuggestions([])
       setShowSuggestions(false)
@@ -887,6 +915,32 @@ const AddProperty = () => {
       
       setAddressSuggestions(addresses)
       setShowSuggestions(addresses.length > 0)
+
+      // При необходимости автоматически выбираем лучший результат
+      if (autoSelect && addresses.length > 0) {
+        const best = addresses[0]
+        const address = best.display_name
+        const lat = parseFloat(best.lat)
+        const lng = parseFloat(best.lon)
+        const coords = [lat, lng]
+
+        const addressParts = best.address || {}
+        const country = addressParts.country || ''
+        const city = addressParts.city || addressParts.town || addressParts.village || ''
+
+        setAddressSearch(address)
+        setSelectedCoordinates(coords)
+        setMapCenter(coords)
+
+        setFormData(prev => ({
+          ...prev,
+          address,
+          location: address,
+          coordinates: coords,
+          country: prev.country || country,
+          city: prev.city || city
+        }))
+      }
       // Сбрасываем загрузку только после установки результатов
       setTimeout(() => {
         setIsAddressSearching(false)
@@ -901,15 +955,16 @@ const AddProperty = () => {
 
   // Debounce для поиска адреса
   useEffect(() => {
-    if (addressSearch.length < 2) {
+    if (addressSearch.length < 3 || !formData.city) {
       setAddressSuggestions([])
       setShowSuggestions(false)
+      setIsAddressSearching(false)
       return
     }
 
     const timeoutId = setTimeout(() => {
       searchAddress(addressSearch)
-    }, 200)
+    }, 700)
 
     return () => clearTimeout(timeoutId)
   }, [addressSearch, formData.city, formData.country])
@@ -1079,6 +1134,103 @@ const AddProperty = () => {
     }))
   }
 
+  // Поиск домов (номер дома) на основе выбранной улицы
+  const searchHouse = async (houseValue) => {
+    if (!houseValue || !addressSearch || !formData.city) {
+      setHouseSuggestions([])
+      setShowHouseSuggestions(false)
+      return
+    }
+
+    try {
+      const streetPart = addressSearch.split(',')[0].trim()
+      const searchQuery = `${streetPart} ${houseValue}, ${formData.city}, ${formData.country}`.trim()
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=10&accept-language=ru&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'PropertyListingApp/1.0'
+          }
+        }
+      )
+
+      if (!response.ok) {
+        console.error('Ошибка поиска дома:', response.status)
+        setHouseSuggestions([])
+        setShowHouseSuggestions(false)
+        return
+      }
+
+      const data = await response.json()
+      
+      // Фильтруем результаты: оставляем только те, где есть конкретный номер дома
+      const filteredHouses = data.filter(item => {
+        const address = item.address || {}
+        const houseNumber = address.house_number || ''
+        const displayName = item.display_name || ''
+        
+        // Проверяем наличие номера дома в address.house_number
+        if (houseNumber && houseNumber.toString().toLowerCase().includes(houseValue.toLowerCase())) {
+          return true
+        }
+        
+        // Проверяем наличие номера дома в начале display_name (формат: "66 к1, улица..." или "улица ... 66")
+        const houseRegex = new RegExp(`\\b${houseValue}\\b`, 'i')
+        if (houseRegex.test(displayName)) {
+          // Убеждаемся, что это не просто индекс или часть другого адреса
+          // Проверяем, что номер дома находится в начале или после названия улицы
+          const streetPart = addressSearch.split(',')[0].trim().toLowerCase()
+          const displayLower = displayName.toLowerCase()
+          
+          // Если номер дома в начале адреса (например "66 к1, улица...") или после названия улицы
+          if (displayLower.startsWith(houseValue.toLowerCase()) || 
+              (displayLower.includes(streetPart) && displayLower.includes(houseValue.toLowerCase()))) {
+            return true
+          }
+        }
+        
+        return false
+      })
+      
+      setHouseSuggestions(filteredHouses)
+      setShowHouseSuggestions(filteredHouses.length > 0)
+    } catch (error) {
+      console.error('Ошибка поиска дома:', error)
+      setHouseSuggestions([])
+      setShowHouseSuggestions(false)
+    }
+  }
+
+  // Обработчик выбора дома из подсказок
+  const handleHouseSelect = (suggestion) => {
+    const address = suggestion.display_name
+    const lat = parseFloat(suggestion.lat)
+    const lng = parseFloat(suggestion.lon)
+    const coords = [lat, lng]
+
+    const addressParts = suggestion.address || {}
+    const country = addressParts.country || ''
+    const city = addressParts.city || addressParts.town || addressParts.village || ''
+    const houseNumber = addressParts.house_number || formData.apartment || ''
+
+    setAddressSearch(address)
+    setSelectedCoordinates(coords)
+    setMapCenter(coords)
+    setHouseSuggestions([])
+    setShowHouseSuggestions(false)
+
+    setFormData(prev => ({
+      ...prev,
+      address,
+      location: address,
+      coordinates: coords,
+      country: prev.country || country,
+      city: prev.city || city,
+      apartment: houseNumber
+    }))
+  }
+
   // Компонент для обновления центра карты
   const MapUpdater = ({ center, zoom = 15 }) => {
     const map = useMap()
@@ -1203,8 +1355,9 @@ const AddProperty = () => {
       }
     }
     
-    // Проверяем статус верификации пользователя
+    // Проверяем статус верификации и привязки карты пользователя
     let isUserVerified = false
+    let isCardBound = false
     if (userId) {
       try {
         // Используем относительный путь через proxy для лучшей совместимости
@@ -1229,7 +1382,8 @@ const AddProperty = () => {
           const verificationData = await verificationResponse.json()
           if (verificationData.success && verificationData.data) {
             isUserVerified = verificationData.data.isVerified === true
-            console.log('✅ Статус верификации получен:', isUserVerified)
+            isCardBound = verificationData.data.cardBound === true
+            console.log('✅ Статус верификации получен:', isUserVerified, 'Статус привязки карты:', isCardBound)
           }
         } else {
           console.warn('⚠️ Не удалось получить статус верификации, статус ответа:', verificationResponse.status)
@@ -1248,22 +1402,44 @@ const AddProperty = () => {
       }
     }
     
-    // Если пользователь уже верифицирован, пропускаем верификацию и сразу отправляем объявление
-    if (isUserVerified) {
+    // Если пользователь уже верифицирован и карта привязана, отправляем объявление
+    if (isUserVerified && isCardBound) {
       await handlePublish()
       // Модальное окно покажется из handlePublish, навигация произойдет при закрытии модального окна
       return
     }
     
-    // Проверяем, была ли верификация отправлена
+    // Если пользователь верифицирован, но карта не привязана, проверяем localStorage
+    if (isUserVerified && !isCardBound) {
+      const cardBoundLocal = localStorage.getItem('cardBound')
+      if (cardBoundLocal === 'true') {
+        // Если в localStorage есть флаг, но в БД нет, синхронизируем
+        // Отправляем объявление
+        await handlePublish()
+        return
+      } else {
+        // Если карточка не привязана, открываем модальное окно привязки карточки
+        setShowCardBindingModal(true)
+        return
+      }
+    }
+    
+    // Проверяем, была ли верификация отправлена (для первого раза)
     const verificationData = localStorage.getItem('verificationSubmitted')
     if (verificationData === 'true') {
-      // Если верификация уже отправлена, отправляем форму объекта на модерацию
-      const success = await handlePublish()
-      if (success) {
-        // Очищаем флаг верификации
-        localStorage.removeItem('verificationSubmitted')
-        // Модальное окно покажется из handlePublish, навигация произойдет при закрытии модального окна
+      // Проверяем, была ли привязана карточка
+      const cardBound = localStorage.getItem('cardBound')
+      if (cardBound === 'true') {
+        // Если верификация и привязка карточки завершены, отправляем форму объекта на модерацию
+        const success = await handlePublish()
+        if (success) {
+          // Очищаем флаг верификации (но НЕ очищаем cardBound, чтобы карта считалась привязанной навсегда)
+          localStorage.removeItem('verificationSubmitted')
+          // Модальное окно покажется из handlePublish, навигация произойдет при закрытии модального окна
+        }
+      } else {
+        // Если карточка не привязана, открываем модальное окно привязки карточки
+        setShowCardBindingModal(true)
       }
     } else {
       // Если верификация еще не отправлена, открываем модальное окно верификации
@@ -1410,6 +1586,38 @@ const AddProperty = () => {
     setBedrooms(bedrooms.filter(b => b.id !== id))
   }
 
+  // Компонент для отображения подсказок
+  const HintCard = ({ icon: Icon, iconColor, title, content, onClose, show }) => {
+    if (!show) return null;
+    
+    return (
+      <div className="property-name-hint-card">
+        <div className="property-name-hint-header">
+          <div className={`property-name-hint-icon ${iconColor || 'property-name-hint-icon--thumbs'}`}>
+            {Icon && <Icon size={20} />}
+          </div>
+          <h3 className="property-name-hint-title">{title}</h3>
+          <button
+            type="button"
+            className="property-name-hint-close"
+            onClick={onClose}
+          >
+            <FiX size={18} />
+          </button>
+        </div>
+        {Array.isArray(content) ? (
+          <ul className="property-name-hint-list">
+            {content.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="property-name-hint-text">{content}</p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="add-property-page">
       <div className="add-property-container">
@@ -1547,6 +1755,8 @@ const AddProperty = () => {
                 </button>
               </div>
             </div>
+
+     
           </div>
         ) : currentStep === 'test-drive-question' ? (
           /* Экран вопроса о тест-драйве */
@@ -1578,6 +1788,8 @@ const AddProperty = () => {
                 </button>
               </div>
             </div>
+
+
           </div>
         ) : currentStep === 'property-name' ? (
           /* Экран ввода названия и описания */
@@ -1724,11 +1936,11 @@ const AddProperty = () => {
                         clearTimeout(citySearchTimeoutRef.current)
                       }
                       
-                      // Если введено 2+ символа, запускаем поиск с минимальной задержкой
+                      // Если введено 2+ символа, запускаем поиск после паузы
                       if (value.length >= 2) {
                         citySearchTimeoutRef.current = setTimeout(() => {
                           searchCity(value, formData.country)
-                        }, 100)
+                        }, 700)
                       } else {
                         setCitySuggestions([])
                         setShowCitySuggestions(false)
@@ -1778,7 +1990,7 @@ const AddProperty = () => {
               </div>
 
               <div className="property-location-input-group">
-                <label className="property-location-label">Адрес</label>
+                <label className="property-location-label">Название улицы</label>
                 <div className="property-location-search-wrapper">
                   <input
                     type="text"
@@ -1786,10 +1998,25 @@ const AddProperty = () => {
                     onChange={(e) => {
                       const value = e.target.value
                       setAddressSearch(value)
-                      // Если введено 2+ символа и указан город, сразу запускаем поиск
-                      if (value.length >= 2 && formData.city) {
-                        searchAddress(value)
-                      } else {
+                      // Если адрес очистили — очищаем номер дома и связанные данные
+                      if (!value.trim()) {
+                        setAddressSuggestions([])
+                        setShowSuggestions(false)
+                        setIsAddressSearching(false)
+                        setHouseSuggestions([])
+                        setShowHouseSuggestions(false)
+                        setFormData(prev => ({
+                          ...prev,
+                          address: '',
+                          location: '',
+                          coordinates: null,
+                          apartment: ''
+                        }))
+                        return
+                      }
+
+                      // Пока введено меньше 3 символов или не выбран город — не ищем
+                      if (value.length < 3 || !formData.city) {
                         setAddressSuggestions([])
                         setShowSuggestions(false)
                         setIsAddressSearching(false)
@@ -1839,17 +2066,55 @@ const AddProperty = () => {
               </div>
 
               <div className="property-location-input-group">
-                <label className="property-location-label">
-                  Номер дома (необязательно)
-                </label>
-                <input
-                  type="text"
-                  name="apartment"
-                  value={formData.apartment}
-                  onChange={handleInputChange}
-                  className="property-location-input"
-                  placeholder="Номер дома"
-                />
+                <label className="property-location-label">Номер дома</label>
+                <div className="property-location-search-wrapper">
+                  <input
+                    type="text"
+                    name="apartment"
+                    value={formData.apartment}
+                    onChange={(e) => {
+                      handleInputChange(e)
+                      const value = e.target.value
+
+                      if (houseSearchTimeoutRef.current) {
+                        clearTimeout(houseSearchTimeoutRef.current)
+                      }
+
+                      if (value && addressSearch && formData.city) {
+                        houseSearchTimeoutRef.current = setTimeout(() => {
+                          searchHouse(value)
+                        }, 600)
+                      } else {
+                        setHouseSuggestions([])
+                        setShowHouseSuggestions(false)
+                      }
+                    }}
+                    onFocus={() => {
+                      if (houseSuggestions.length > 0) {
+                        setShowHouseSuggestions(true)
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowHouseSuggestions(false), 200)
+                    }}
+                    className="property-location-input"
+                    placeholder="Номер дома"
+                  />
+                  {showHouseSuggestions && houseSuggestions.length > 0 && (
+                    <div className="property-location-suggestions">
+                      {houseSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="property-location-suggestion-item"
+                          onClick={() => handleHouseSelect(suggestion)}
+                        >
+                          <FiMapPin size={16} />
+                          <span>{suggestion.display_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="property-location-actions">
@@ -1873,28 +2138,15 @@ const AddProperty = () => {
 
             <div className="property-location-map">
               {typeof window !== 'undefined' && (
-                <MapContainer
-                  key={selectedCoordinates ? `map-${selectedCoordinates[0]}-${selectedCoordinates[1]}` : 'map-default'}
+                <LocationMap
                   center={selectedCoordinates || mapCenter}
                   zoom={selectedCoordinates ? 15 : 10}
-                  style={{ height: '100%', width: '100%', borderRadius: '12px', minHeight: '500px' }}
-                  scrollWheelZoom={true}
-                  zoomControl={true}
-                  whenReady={(map) => {
-                    map.target.invalidateSize()
-                  }}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {selectedCoordinates && selectedCoordinates.length === 2 && (
-                    <Marker key={`marker-${selectedCoordinates[0]}-${selectedCoordinates[1]}`} position={selectedCoordinates} />
-                  )}
-                  <MapUpdater center={selectedCoordinates || mapCenter} zoom={selectedCoordinates ? 15 : 10} />
-                </MapContainer>
+                  marker={selectedCoordinates}
+                />
               )}
             </div>
+
+     
           </div>
         ) : currentStep === 'details' ? (
           /* Экран подробной информации */
@@ -2101,6 +2353,29 @@ const AddProperty = () => {
                 </div>
               </div>
             )}
+
+            <div className="property-name-hints" style={{ marginLeft: '150px' , marginTop: '75px'}}>
+              <HintCard
+                icon={MdBed}
+                iconColor="property-name-hint-icon--thumbs"
+                title="Как правильно указать детали недвижимости?"
+                content={[
+                  "Укажите точное количество спален и ванных комнат",
+                  "Добавьте информацию о площади для лучшего понимания размера",
+                  "Укажите количество этажей, если это многоэтажное здание"
+                ]}
+                show={showHints['details']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'details': false }))}
+              />
+              <HintCard
+                icon={MdLightbulb}
+                iconColor="property-name-hint-icon--bulb"
+                title="Зачем нужны детали?"
+                content="Подробная информация о недвижимости помогает покупателям лучше понять объект и принять обоснованное решение о покупке."
+                show={showHints['details']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'details': false }))}
+              />
+            </div>
           </div>
         ) : currentStep === 'amenities' ? (
           /* Экран удобств */
@@ -2353,6 +2628,29 @@ const AddProperty = () => {
                   Продолжить
                 </button>
               </div>
+            </div>
+
+            <div className="property-name-hints" style={{ marginLeft: '150px' , marginTop: '75px'}}>
+              <HintCard
+                icon={MdLightbulb}
+                iconColor="property-name-hint-icon--thumbs"
+                title="Какие удобства указать?"
+                content={[
+                  "Укажите все доступные удобства для привлечения покупателей",
+                  "Будьте честны - это повысит доверие",
+                  "Удобства влияют на цену и привлекательность объекта"
+                ]}
+                show={showHints['amenities']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'amenities': false }))}
+              />
+              <HintCard
+                icon={FiThumbsUp}
+                iconColor="property-name-hint-icon--bulb"
+                title="Зачем указывать удобства?"
+                content="Полный список удобств помогает покупателям понять, что они получают за свою цену, и делает ваше объявление более привлекательным."
+                show={showHints['amenities']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'amenities': false }))}
+              />
             </div>
           </div>
         ) : currentStep === 'photos' ? (
@@ -2613,6 +2911,30 @@ const AddProperty = () => {
                   </div>
                 </div>
               )}
+
+            </div>
+
+            <div className="property-name-hints" style={{ marginLeft: '150px' , marginTop: '75px'}}>
+              <HintCard
+                icon={FiUpload}
+                iconColor="property-name-hint-icon--thumbs"
+                title="Как правильно загрузить фотографии?"
+                content={[
+                  "Загрузите качественные фотографии в формате JPG или PNG",
+                  "Добавьте видео для лучшего представления объекта",
+                  "Первое фото будет главным изображением объявления"
+                ]}
+                show={showHints['photos']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'photos': false }))}
+              />
+              <HintCard
+                icon={MdLightbulb}
+                iconColor="property-name-hint-icon--bulb"
+                title="Зачем нужны фотографии?"
+                content="Качественные фотографии и видео помогают покупателям лучше представить объект и увеличивают интерес к вашему объявлению."
+                show={showHints['photos']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'photos': false }))}
+              />
             </div>
           </div>
         ) : currentStep === 'documents' ? (
@@ -2844,6 +3166,29 @@ const AddProperty = () => {
                 </button>
               </div>
             </div>
+
+            <div className="property-name-hints" style={{ marginLeft: '150px' , marginTop: '75px'}}>
+              <HintCard
+                icon={FiFileText}
+                iconColor="property-name-hint-icon--thumbs"
+                title="Какие документы нужны?"
+                content={[
+                  "Обязательно загрузите документ о праве собственности",
+                  "Добавьте справку об отсутствии долгов",
+                  "Можно загрузить дополнительные документы для доверия покупателей"
+                ]}
+                show={showHints['documents']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'documents': false }))}
+              />
+              <HintCard
+                icon={MdLightbulb}
+                iconColor="property-name-hint-icon--bulb"
+                title="Зачем нужны документы?"
+                content="Документы подтверждают ваше право собственности и отсутствие обременений, что повышает доверие покупателей и ускоряет процесс продажи."
+                show={showHints['documents']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'documents': false }))}
+              />
+            </div>
           </div>
         ) : currentStep === 'price' ? (
           /* Экран цены и аукциона */
@@ -2945,7 +3290,7 @@ const AddProperty = () => {
                   
                   <div className="auction-starting-price">
                     <label className="auction-starting-price-label">
-                      Стартовая цена продажи
+                      Стартовая сумма ставки
                     </label>
                     <div className="bid-step-input-wrapper-large">
                       <div className="currency-selector">
@@ -3009,6 +3354,29 @@ const AddProperty = () => {
                   Продолжить
                 </button>
               </div>
+            </div>
+
+            <div className="property-name-hints" style={{ marginLeft: '150px'}}>
+              <HintCard
+                icon={FiDollarSign}
+                iconColor="property-name-hint-icon--thumbs"
+                title="Как установить цену?"
+                content={[
+                  "Изучите цены на аналогичные объекты в вашем районе",
+                  "Учитывайте состояние и особенности недвижимости",
+                  "Можно установить фиксированную цену или начать аукцион"
+                ]}
+                show={showHints['price']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'price': false }))}
+              />
+              <HintCard
+                icon={MdLightbulb}
+                iconColor="property-name-hint-icon--bulb"
+                title="Что такое аукцион?"
+                content="Аукцион позволяет покупателям делать ставки, что может привести к более высокой цене продажи. Вы устанавливаете стартовую цену, а покупатели соревнуются за объект."
+                show={showHints['price']}
+                onClose={() => setShowHints(prev => ({ ...prev, 'price': false }))}
+              />
             </div>
           </div>
         ) : (
@@ -3514,8 +3882,6 @@ const AddProperty = () => {
           </form>
         )}
       </div>
-
-      {/* Объединенная карусель фото и видео */}
       {showCarousel && mediaItems.length > 0 && (
         <div className="carousel-overlay" onClick={() => setShowCarousel(false)}>
           <div className="carousel-container" onClick={(e) => e.stopPropagation()}>
@@ -3658,6 +4024,13 @@ const AddProperty = () => {
         onClose={() => setShowVerificationModal(false)}
         userId={userId}
         onComplete={handleVerificationComplete}
+      />
+
+      <CardBindingModal
+        isOpen={showCardBindingModal}
+        onClose={() => setShowCardBindingModal(false)}
+        userId={userId}
+        onComplete={handleCardBindingComplete}
       />
 
       {/* Модальное окно об успешной отправке */}
