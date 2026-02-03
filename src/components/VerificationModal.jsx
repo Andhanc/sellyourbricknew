@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import * as faceapi from 'face-api.js'
 import './VerificationModal.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
@@ -22,7 +23,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
   const [hintModalOpen, setHintModalOpen] = useState(false)
   const [hintStep, setHintStep] = useState(1)
 
-  const fileInputRef = useRef(null)
   const cameraRef = useRef(null)
 
   useEffect(() => {
@@ -42,18 +42,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
       setCurrentStep(newStep)
       setAnimationClass('slide-in')
     }, 300)
-  }
-
-  const handleFileSelect = (e, type) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPhotos(prev => ({ ...prev, [type]: file }))
-        setPreviews(prev => ({ ...prev, [type]: reader.result }))
-      }
-      reader.readAsDataURL(file)
-    }
   }
 
   const handleCameraCapture = (imageBlob, type) => {
@@ -212,13 +200,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
     setIsCameraOpen(true)
   }
 
-  const openFileUpload = (type) => {
-    if (fileInputRef.current) {
-      fileInputRef.current.setAttribute('data-type', type)
-      fileInputRef.current.click()
-    }
-  }
-
   const openHintModal = (step) => {
     setHintStep(step)
     setHintModalOpen(true)
@@ -344,7 +325,7 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
                       </button>
                     </div>
                     <p className="verification-step__description">
-                      Загрузите или сфотографируйте ваш паспорт. Убедитесь, что все данные четко видны.
+                      Сфотографируйте ваш паспорт. Убедитесь, что все данные четко видны.
                     </p>
                     <div className="verification-step__actions">
                       <button 
@@ -356,17 +337,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
                           <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
                         </svg>
                         Сфотографировать
-                      </button>
-                      <button 
-                        className="verification-step__btn verification-step__btn--secondary"
-                        onClick={() => openFileUpload('passport')}
-                      >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Загрузить из файлов
                       </button>
                     </div>
                   </>
@@ -420,17 +390,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
                         </svg>
                         Сделать селфи
                       </button>
-                      <button 
-                        className="verification-step__btn verification-step__btn--secondary"
-                        onClick={() => openFileUpload('selfie')}
-                      >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Загрузить из файлов
-                      </button>
                     </div>
                   </>
                 )}
@@ -482,17 +441,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
                           <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
                         </svg>
                         Сделать селфи с паспортом
-                      </button>
-                      <button 
-                        className="verification-step__btn verification-step__btn--secondary"
-                        onClick={() => openFileUpload('selfieWithPassport')}
-                      >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Загрузить из файлов
                       </button>
                     </div>
                   </>
@@ -572,18 +520,6 @@ const VerificationModal = ({ isOpen, onClose, userId, onComplete }) => {
           data={hintData[hintStep]}
         />
       )}
-      
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const type = e.target.getAttribute('data-type') || cameraType || 'passport'
-          handleFileSelect(e, type)
-          e.target.value = '' // Сброс для повторного выбора
-        }}
-      />
     </>
   )
 }
@@ -662,15 +598,90 @@ const Camera = ({ type, onCapture, onClose }) => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
+  const detectionCanvasRef = useRef(null)
   const [isCapturing, setIsCapturing] = useState(false)
   const [facingMode, setFacingMode] = useState('environment') // 'user' для фронтальной, 'environment' для задней
+  const [faceDetected, setFaceDetected] = useState(false)
+  const [modelsLoaded, setModelsLoaded] = useState(false)
+  const detectionIntervalRef = useRef(null)
+
+  // Загрузка моделей face-api.js
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        // Используем CDN для моделей face-api.js
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/'
+        
+        // Пробуем загрузить модели
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL)
+        
+        setModelsLoaded(true)
+        console.log('✅ Модели face-api.js загружены')
+      } catch (error) {
+        console.error('❌ Ошибка загрузки моделей face-api.js с CDN:', error)
+        // Пробуем альтернативный URL
+        try {
+          const ALT_MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/'
+          await faceapi.nets.tinyFaceDetector.loadFromUri(ALT_MODEL_URL)
+          setModelsLoaded(true)
+          console.log('✅ Модели face-api.js загружены с альтернативного URL')
+        } catch (altError) {
+          console.error('❌ Ошибка загрузки моделей с альтернативного URL:', altError)
+          // Проверяем, может модели уже загружены
+          if (faceapi.nets.tinyFaceDetector.isLoaded) {
+            setModelsLoaded(true)
+            console.log('✅ Модели face-api.js уже загружены')
+          } else {
+            setModelsLoaded(false)
+            console.warn('⚠️ Модели face-api.js не загружены, проверка лица будет недоступна')
+          }
+        }
+      }
+    }
+
+    if (type === 'selfie') {
+      loadModels()
+    }
+  }, [type])
 
   useEffect(() => {
     startCamera()
     return () => {
       stopCamera()
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current)
+      }
     }
   }, [facingMode])
+
+  // Запуск проверки лица в реальном времени после загрузки видео
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const handleVideoReady = () => {
+      if (type === 'selfie' && modelsLoaded) {
+        // Небольшая задержка для стабилизации видео
+        setTimeout(() => {
+          startFaceDetection()
+        }, 500)
+      }
+    }
+
+    if (video.readyState >= 2) {
+      handleVideoReady()
+    } else {
+      video.addEventListener('loadedmetadata', handleVideoReady)
+    }
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleVideoReady)
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current)
+        detectionIntervalRef.current = null
+      }
+    }
+  }, [type, modelsLoaded])
 
   const startCamera = async () => {
     try {
@@ -694,11 +705,98 @@ const Camera = ({ type, onCapture, onClose }) => {
     }
   }
 
+  // Функция проверки лица в реальном времени
+  const startFaceDetection = () => {
+    if (!videoRef.current || !modelsLoaded || type !== 'selfie') {
+      return
+    }
+
+    // Останавливаем предыдущую проверку, если она была
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current)
+    }
+
+    // Создаем скрытый canvas для детекции
+    if (!detectionCanvasRef.current) {
+      detectionCanvasRef.current = document.createElement('canvas')
+    }
+
+    const detectFace = async () => {
+      const video = videoRef.current
+      if (!video || video.readyState !== 4) return
+
+      const canvas = detectionCanvasRef.current
+      
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      try {
+        // Получаем размеры области круга (овала) для проверки
+        const videoRect = video.getBoundingClientRect()
+        const ovalWidth = 280 // Ширина овала из CSS
+        const ovalHeight = 360 // Высота овала из CSS
+        const ovalCenterX = videoRect.width / 2
+        const ovalCenterY = videoRect.height / 2
+
+        // Масштабируем координаты овала относительно размера видео
+        const scaleX = video.videoWidth / videoRect.width
+        const scaleY = video.videoHeight / videoRect.height
+        const ovalCenterXScaled = ovalCenterX * scaleX
+        const ovalCenterYScaled = ovalCenterY * scaleY
+        const ovalWidthScaled = ovalWidth * scaleX
+        const ovalHeightScaled = ovalHeight * scaleY
+
+        // Детектируем лица
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+
+        if (detections.length > 0) {
+          // Проверяем, находится ли хотя бы одно лицо в области овала
+          let faceInOval = false
+          
+          for (const detection of detections) {
+            const box = detection.box
+            const faceCenterX = box.x + box.width / 2
+            const faceCenterY = box.y + box.height / 2
+
+            // Проверяем, находится ли центр лица в пределах овала
+            // Формула эллипса: ((x - cx) / a)² + ((y - cy) / b)² <= 1
+            const a = ovalWidthScaled / 2
+            const b = ovalHeightScaled / 2
+            const dx = (faceCenterX - ovalCenterXScaled) / a
+            const dy = (faceCenterY - ovalCenterYScaled) / b
+            const distance = dx * dx + dy * dy
+
+            if (distance <= 1) {
+              faceInOval = true
+              break
+            }
+          }
+
+          setFaceDetected(faceInOval)
+        } else {
+          setFaceDetected(false)
+        }
+      } catch (error) {
+        console.error('Ошибка детекции лица:', error)
+        setFaceDetected(false)
+      }
+    }
+
+    // Запускаем проверку каждые 200мс
+    detectionIntervalRef.current = setInterval(detectFace, 200)
+  }
+
   const stopCamera = () => {
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current)
+      detectionIntervalRef.current = null
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
+    setFaceDetected(false)
   }
 
   const capturePhoto = () => {
@@ -750,11 +848,19 @@ const Camera = ({ type, onCapture, onClose }) => {
           {type === 'selfie' && (
             <div className="camera-face-overlay">
               <div className="camera-face-guide">
-                <div className="camera-face-guide__oval"></div>
+                <div className={`camera-face-guide__oval ${faceDetected ? 'face-detected' : ''}`}></div>
                 <div className="camera-face-guide__text">
-                  Расположите лицо в рамке
+                  {faceDetected ? '✓ Лицо обнаружено!' : 'Расположите лицо в рамке'}
                 </div>
               </div>
+              {faceDetected && (
+                <div className="camera-face-notification">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Лицо видно в рамке</span>
+                </div>
+              )}
             </div>
           )}
 
