@@ -248,7 +248,7 @@
   align-self: flex-start;
 }
 
-.leaflet-map {
+.maplibre-map {
   width: 100%;
   height: 100%;
   z-index: 1;
@@ -259,37 +259,34 @@
   bottom: 0;
 }
 
-.leaflet-container {
+/* Стили для MapLibre GL */
+.maplibregl-map {
   width: 100% !important;
   height: 100% !important;
-}
-
-/* Переопределение стилей Leaflet для лучшей интеграции */
-.leaflet-container {
   font-family: inherit;
 }
 
-.leaflet-control-zoom {
+.maplibregl-ctrl-group {
+  background: #fff !important;
   border: none !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
 }
 
-.leaflet-control-zoom a {
+.maplibregl-ctrl-group button {
   background-color: #fff !important;
   color: #333 !important;
-  border: 1px solid #e0e0e0 !important;
+  border: none !important;
   width: 40px !important;
   height: 40px !important;
-  line-height: 40px !important;
-  font-size: 20px !important;
-  font-weight: 600 !important;
+  font-size: 18px !important;
 }
 
-.leaflet-control-zoom a:hover {
+.maplibregl-ctrl-group button:hover {
   background-color: #f5f5f5 !important;
 }
 
-.leaflet-control-attribution {
+.maplibregl-ctrl-attrib {
   background: rgba(255, 255, 255, 0.8) !important;
   padding: 4px 8px !important;
   font-size: 11px !important;
@@ -328,24 +325,20 @@
   transform: scale(1.1);
 }
 
-/* Стили для popup */
-.custom-popup {
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: none;
-  padding: 0;
-  margin-bottom: 10px;
+/* Стили для popup MapLibre */
+.maplibregl-popup {
+  max-width: 300px;
 }
 
-.custom-popup .leaflet-popup-content-wrapper {
+.maplibregl-popup-content {
   padding: 0;
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
-.custom-popup .leaflet-popup-content {
-  margin: 0;
-  width: 300px !important;
+.maplibregl-popup-close-button {
+  display: none;
 }
 
 .map-popup {
@@ -413,6 +406,272 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   gap: 4px;
+}
+
+.map-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.map-style-control {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-style-control label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.style-select {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.style-select:focus {
+  outline: none;
+  border-color: #4A90E2;
+}
+
+.map-3d-toggle {
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.map-3d-toggle:hover {
+  background: #f5f5f5;
+}
+
+.map-3d-toggle.active {
+  background: #4A90E2;
+  color: #fff;
+}
+
+.map-3d-toggle.active:hover {
+  background: #357abd;
+}
+
+.map-control-toggle {
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.map-control-toggle:hover {
+  background: #f5f5f5;
+}
+
+.map-control-toggle.active {
+  background: #28a745;
+  color: #fff;
+}
+
+.map-control-toggle.active:hover {
+  background: #218838;
+}
+
+.control-mode-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+  max-width: 300px;
+}
+
+.control-instructions {
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.control-instructions p {
+  margin: 4px 0;
+}
+
+.control-instructions strong {
+  color: #4A90E2;
+  font-size: 13px;
+}
+
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-buttons-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.control-btn {
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+  user-select: none;
+  touch-action: none;
+}
+
+.walk-btn:active,
+.walk-btn:focus {
+  background: #4A90E2;
+  color: #fff;
+  transform: scale(0.95);
+  outline: none;
+}
+
+.control-forward {
+  order: 1;
+}
+
+.control-buttons-row {
+  order: 2;
+}
+
+.mapillary-panel {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1002;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.mapillary-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mapillary-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.mapillary-content {
+  margin-top: 10px;
+}
+
+.mapillary-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.mapillary-content p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.mapillary-content iframe {
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.mapillary-link {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #4A90E2;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.mapillary-link:hover {
+  background: #357abd;
+}
+
+@media (max-width: 768px) {
+  .control-mode-controls {
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
+  
+  .control-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+
+  .mapillary-panel {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
 }
 
 .map-tab {
