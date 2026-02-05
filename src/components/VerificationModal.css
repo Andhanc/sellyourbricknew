@@ -330,7 +330,7 @@
 
 .verification-step__actions {
   display: flex;
-  flex-direction: row; /* горизонтальное расположение */
+  flex-direction: row;
   gap: 16px;
   align-items: center;
   justify-content: center;
@@ -690,8 +690,8 @@
 }
 
 .camera-face-guide__oval {
-  width: 280px;
-  height: 360px;
+  width: 350px;
+  height: 450px;
   border: 3px solid #0ABAB5;
   border-radius: 50% 50% 45% 45%;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
@@ -699,6 +699,15 @@
               0 0 20px rgba(10, 186, 181, 0.5);
   animation: guidePulse 2s infinite;
   position: relative;
+  transition: all 0.3s ease;
+}
+
+.camera-face-guide__oval.face-detected {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
+              inset 0 0 40px rgba(74, 222, 128, 0.4),
+              0 0 30px rgba(74, 222, 128, 0.7);
+  animation: faceDetectedPulse 1.5s infinite;
 }
 
 .camera-face-guide__oval::before,
@@ -731,6 +740,19 @@
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
                 inset 0 0 40px rgba(10, 186, 181, 0.5),
                 0 0 30px rgba(10, 186, 181, 0.7);
+  }
+}
+
+@keyframes faceDetectedPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
+                inset 0 0 40px rgba(74, 222, 128, 0.4),
+                0 0 30px rgba(74, 222, 128, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
+                inset 0 0 40px rgba(74, 222, 128, 0.6),
+                0 0 40px rgba(74, 222, 128, 0.9);
   }
 }
 
@@ -780,6 +802,41 @@
   padding: 12px 24px;
   border-radius: 12px;
   backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.camera-face-notification {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(74, 222, 128, 0.4);
+  animation: slideDown 0.3s ease;
+  z-index: 100;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.camera-face-notification svg {
+  flex-shrink: 0;
 }
 
 .camera-controls {
@@ -910,8 +967,8 @@
   }
 
   .camera-face-guide__oval {
-    width: 240px;
-    height: 300px;
+    width: 300px;
+    height: 375px;
   }
 
   .camera-passport-guide__rect {
@@ -943,8 +1000,8 @@
   }
 
   .camera-face-guide__oval {
-    width: 200px;
-    height: 260px;
+    width: 250px;
+    height: 325px;
   }
 
   .camera-passport-guide__rect {

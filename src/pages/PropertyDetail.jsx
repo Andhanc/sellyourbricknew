@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { properties } from '../data/properties'
 import CountdownTimer from '../components/CountdownTimer'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
+import DepositButton from '../components/DepositButton'
 import { FiX, FiLayers, FiHome, FiCheck, FiX as FiXIcon } from 'react-icons/fi'
 import { IoLocationOutline } from 'react-icons/io5'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
@@ -232,17 +233,23 @@ const PropertyDetail = () => {
   }, [id, normalizedProperty, isLoading])
 
 
+  // Получаем депозит пользователя (пока используем моковые данные)
+  const userDeposit = 786898.67
+
   if (isLoading) {
     return (
-      <div className="property-detail">
-        <div className="loading" style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          minHeight: '50vh',
-          fontSize: '18px'
-        }}>
-          Загрузка...
+      <div className="property-detail-page">
+        <DepositButton amount={userDeposit} />
+        <div className="property-detail">
+          <div className="loading" style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            minHeight: '50vh',
+            fontSize: '18px'
+          }}>
+            Загрузка...
+          </div>
         </div>
       </div>
     )
@@ -251,11 +258,14 @@ const PropertyDetail = () => {
   if (!normalizedProperty) {
     console.error('Property not found. ID:', id, 'Available IDs:', properties.map(p => p.id))
     return (
-      <div className="property-detail">
-        <div className="not-found">
-          <h2>Объект не найден</h2>
-          <p>ID: {id}</p>
-          <Link to="/" className="btn btn-primary">Вернуться на главную</Link>
+      <div className="property-detail-page">
+        <DepositButton amount={userDeposit} />
+        <div className="property-detail">
+          <div className="not-found">
+            <h2>Объект не найден</h2>
+            <p>ID: {id}</p>
+            <Link to="/" className="btn btn-primary">Вернуться на главную</Link>
+          </div>
         </div>
       </div>
     )
@@ -281,6 +291,7 @@ const PropertyDetail = () => {
 
   return (
     <div className="property-detail-page">
+      <DepositButton amount={userDeposit} />
       <div className="property-detail">
         <div className="detail-header">
           <button onClick={() => navigate(-1)} className="back-button">

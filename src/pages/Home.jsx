@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Hero from '../components/Hero'
 import PropertyList from '../components/PropertyList'
 import FAQ from '../components/FAQ'
+import DepositButton from '../components/DepositButton'
 import './Home.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -111,8 +112,12 @@ function Home() {
     return () => clearInterval(interval)
   }, [])
 
+  // Получаем депозит пользователя (пока используем моковые данные)
+  const userDeposit = 786898.67
+
   return (
     <div className="home-page">
+      <DepositButton amount={userDeposit} />
       <Header />
       <Hero />
       {loading ? (
