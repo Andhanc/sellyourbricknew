@@ -1,14 +1,15 @@
 import { useParams, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { properties } from '../data/properties'
-import PropertyDetail from './PropertyDetail'
 import PropertyDetailClassic from './PropertyDetailClassic'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 // Обёртка над страницей объекта:
-// - аукционные объекты (isAuction === true и есть endTime) рендерятся через PropertyDetail (с таймером)
-// - неаукционные (isAuction === false или нет endTime) — через PropertyDetailClassic (без таймера)
+// Теперь используем единый «классический» layout PropertyDetailClassic
+// Для аукционных объектов внутри него отображаются:
+// - таймер аукциона
+// - блок с аукционной информацией и кнопкой «История ставок»
 const PropertyDetailPage = () => {
   const { id } = useParams()
   const location = useLocation()
@@ -35,8 +36,23 @@ const PropertyDetailPage = () => {
           const response = await fetch(`${API_BASE_URL}/properties/${id}`)
           if (response.ok) {
             const result = await response.json()
+            console.log('📥 PropertyDetailPage - Ответ от API:', result)
             if (result.success && result.data) {
               const prop = result.data
+              console.log('📥 PropertyDetailPage - Данные объекта (prop):', prop)
+              console.log('📥 PropertyDetailPage - Координаты (raw):', prop.coordinates, typeof prop.coordinates)
+              console.log('📥 PropertyDetailPage - Удобства (raw):', {
+                balcony: prop.balcony,
+                parking: prop.parking,
+                elevator: prop.elevator,
+                garage: prop.garage,
+                pool: prop.pool,
+                garden: prop.garden,
+                electricity: prop.electricity,
+                internet: prop.internet,
+                security: prop.security,
+                furniture: prop.furniture,
+              })
               
               // Получаем базовый URL без /api
               const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
@@ -128,21 +144,40 @@ const PropertyDetailPage = () => {
               }
               
               // Обрабатываем координаты
-              let coordinates = [28.1000, -16.7200] // Дефолтные координаты
+              let coordinates = [53.9045, 27.5615] // Дефолтные координаты (Минск)
               if (prop.coordinates) {
                 try {
                   if (typeof prop.coordinates === 'string') {
                     const parsed = JSON.parse(prop.coordinates)
                     if (Array.isArray(parsed) && parsed.length >= 2) {
-                      coordinates = [parseFloat(parsed[0]), parseFloat(parsed[1])]
+                      const lat = parseFloat(parsed[0])
+                      const lng = parseFloat(parsed[1])
+                      // Проверяем, что координаты валидны (широта: -90 до 90, долгота: -180 до 180)
+                      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                        coordinates = [lat, lng]
+                      } else {
+                        console.warn('⚠️ Некорректные координаты:', { lat, lng })
+                      }
                     }
                   } else if (Array.isArray(prop.coordinates) && prop.coordinates.length >= 2) {
-                    coordinates = [parseFloat(prop.coordinates[0]), parseFloat(prop.coordinates[1])]
+                    const lat = parseFloat(prop.coordinates[0])
+                    const lng = parseFloat(prop.coordinates[1])
+                    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                      coordinates = [lat, lng]
+                    } else {
+                      console.warn('⚠️ Некорректные координаты:', { lat, lng })
+                    }
                   }
                 } catch (e) {
                   console.warn('Ошибка парсинга coordinates:', e)
                 }
               }
+              
+              console.log('📍 Координаты объекта:', {
+                raw: prop.coordinates,
+                processed: coordinates,
+                location: prop.location
+              })
               
               // Преобразуем данные из базы в формат для компонентов
               const formattedProperty = {
@@ -190,6 +225,7 @@ const PropertyDetailPage = () => {
                 auction_end_date: prop.auction_end_date || null,
                 auction_starting_price: prop.auction_starting_price || null,
                 endTime: prop.auction_end_date || null, // Для компонента PropertyDetail
+                additional_amenities: prop.additional_amenities || null,
                 // Информация о продавце
                 seller: prop.first_name && prop.last_name 
                   ? `${prop.first_name} ${prop.last_name}` 
@@ -209,7 +245,31 @@ const PropertyDetailPage = () => {
                 images_count: formattedProperty.images.length,
                 coordinates: formattedProperty.coordinates,
                 coordinates_type: typeof formattedProperty.coordinates,
-                coordinates_is_array: Array.isArray(formattedProperty.coordinates)
+                coordinates_is_array: Array.isArray(formattedProperty.coordinates),
+                amenities: {
+                  balcony: formattedProperty.balcony,
+                  parking: formattedProperty.parking,
+                  elevator: formattedProperty.elevator,
+                  garage: formattedProperty.garage,
+                  pool: formattedProperty.pool,
+                  garden: formattedProperty.garden,
+                  electricity: formattedProperty.electricity,
+                  internet: formattedProperty.internet,
+                  security: formattedProperty.security,
+                  furniture: formattedProperty.furniture,
+                },
+                raw_amenities: {
+                  balcony: prop.balcony,
+                  parking: prop.parking,
+                  elevator: prop.elevator,
+                  garage: prop.garage,
+                  pool: prop.pool,
+                  garden: prop.garden,
+                  electricity: prop.electricity,
+                  internet: prop.internet,
+                  security: prop.security,
+                  furniture: prop.furniture,
+                }
               })
               setProperty(formattedProperty)
             } else {
@@ -252,16 +312,27 @@ const PropertyDetailPage = () => {
   const isClassicFromQuery = searchParams.get('classic') === '1'
 
   // Определяем, является ли объект аукционным
-  const isAuction = property.is_auction === true && property.auction_end_date != null && property.auction_end_date !== ''
+  const hasAuctionFlag =
+    property.is_auction === true ||
+    property.is_auction === 1 ||
+    property.isAuction === true
 
-  // Если объект неаукционный
-  if (!isAuction || isClassicFromQuery) {
-    return <PropertyDetailClassic property={property} />
-  }
+  const hasEndTime =
+    (property.endTime != null && property.endTime !== '') ||
+    (property.auction_end_date != null && property.auction_end_date !== '')
 
-  // Для аукционных объектов используем PropertyDetail (с таймером)
-  // Передаем property через location.state, чтобы компонент мог его использовать
-  return <PropertyDetail />
+  const isAuction = hasAuctionFlag && hasEndTime
+
+  // Если явно запрошен классический (неаукционный) вид через ?classic=1,
+  // принудительно отключаем аукционный режим
+  const finalIsAuction = isClassicFromQuery ? false : isAuction
+
+  // Всегда используем PropertyDetailClassic, передавая флаг аукциона
+  return (
+    <PropertyDetailClassic
+      property={{ ...property, isAuction: finalIsAuction }}
+    />
+  )
 }
 
 export default PropertyDetailPage

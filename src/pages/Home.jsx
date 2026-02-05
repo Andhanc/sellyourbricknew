@@ -11,9 +11,9 @@ function Home() {
   const [auctionProperties, setAuctionProperties] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Загрузка аукционных объявлений из API
+  // Загрузка аукционных и не аукционных объявлений из API
   useEffect(() => {
-    const loadAuctionProperties = async () => {
+    const loadProperties = async () => {
       try {
         setLoading(true)
         // Загружаем объявления по типам
@@ -25,51 +25,89 @@ function Home() {
         ]
 
         const allAuctionProperties = []
+        const allNonAuctionProperties = []
 
         for (const { apiType } of types) {
           try {
-            const url = `${API_BASE_URL}/properties/auctions?type=${apiType}`
-            const response = await fetch(url)
-            if (response.ok) {
-              const data = await response.json()
+            // Загружаем аукционные объявления
+            const auctionUrl = `${API_BASE_URL}/properties/auctions?type=${apiType}`
+            const auctionResponse = await fetch(auctionUrl)
+            if (auctionResponse.ok) {
+              const data = await auctionResponse.json()
               if (data.success && data.data) {
                 allAuctionProperties.push(...data.data)
               }
             }
+
+            // Загружаем не аукционные объявления (одобренные)
+            const approvedUrl = `${API_BASE_URL}/properties/approved?type=${apiType}`
+            const approvedResponse = await fetch(approvedUrl)
+            if (approvedResponse.ok) {
+              const data = await approvedResponse.json()
+              if (data.success && data.data) {
+                // Фильтруем только не аукционные объекты
+                const nonAuction = data.data.filter(prop => 
+                  !prop.is_auction || prop.is_auction === 0 || prop.is_auction === false
+                )
+                allNonAuctionProperties.push(...nonAuction)
+              }
+            }
           } catch (error) {
-            console.error(`Ошибка загрузки аукционных объявлений типа ${apiType}:`, error)
+            console.error(`Ошибка загрузки объявлений типа ${apiType}:`, error)
           }
         }
 
         // Форматируем данные для PropertyList
-        const formattedProperties = allAuctionProperties.map(prop => ({
+        const formatProperty = (prop, isAuction) => ({
           ...prop,
           // Убеждаемся, что все необходимые поля присутствуют
           title: prop.title || prop.name || '',
           location: prop.location || '',
-          price: prop.price || prop.auction_starting_price || 0,
-          currentBid: prop.currentBid || prop.auction_starting_price || prop.price || 0,
-          endTime: prop.endTime || prop.auction_end_date || null,
-          isAuction: true,
+          price: prop.price || (isAuction ? prop.auction_starting_price : 0) || 0,
+          currentBid: isAuction ? (prop.currentBid || prop.auction_starting_price || prop.price || 0) : null,
+          endTime: isAuction ? (prop.endTime || prop.auction_end_date || null) : null,
+          isAuction: isAuction,
           images: prop.images || (prop.image ? [prop.image] : []),
           image: prop.image || (prop.images && prop.images[0] ? prop.images[0] : null),
+          // Основные характеристики
           rooms: prop.rooms || prop.beds || 0,
-          area: prop.area || prop.sqft || 0
-        }))
+          beds: prop.bedrooms || prop.rooms || prop.beds || 0,
+          bedrooms: prop.bedrooms || prop.rooms || 0,
+          bathrooms: prop.bathrooms || 0,
+          area: prop.area || prop.sqft || 0,
+          sqft: prop.area || prop.sqft || 0,
+          floor: prop.floor || null,
+          total_floors: prop.total_floors || prop.totalFloors || null,
+          year_built: prop.year_built || null,
+          land_area: prop.land_area || null,
+          // Дополнительная информация
+          renovation: prop.renovation || null,
+          condition: prop.condition || null,
+          heating: prop.heating || null,
+          water_supply: prop.water_supply || null,
+          sewerage: prop.sewerage || null
+        })
 
-        setAuctionProperties(formattedProperties)
-        console.log('✅ Загружено аукционных объявлений:', formattedProperties.length)
+        const formattedAuction = allAuctionProperties.map(prop => formatProperty(prop, true))
+        const formattedNonAuction = allNonAuctionProperties.map(prop => formatProperty(prop, false))
+        
+        // Объединяем аукционные и не аукционные объекты
+        const allProperties = [...formattedAuction, ...formattedNonAuction]
+
+        setAuctionProperties(allProperties)
+        console.log('✅ Загружено аукционных объявлений:', formattedAuction.length)
+        console.log('✅ Загружено не аукционных объявлений:', formattedNonAuction.length)
       } catch (error) {
-        console.error('❌ Ошибка загрузки аукционных объявлений:', error)
+        console.error('❌ Ошибка загрузки объявлений:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    loadAuctionProperties()
+    loadProperties()
     
-    // Обновляем каждые 5 минут для получения новых аукционных объявлений
-    const interval = setInterval(loadAuctionProperties, 300000)
+    // Обновляем каждые 5 минут для получения новых объявлений
+    const interval = setInterval(loadProperties, 300000)
     return () => clearInterval(interval)
   }, [])
 

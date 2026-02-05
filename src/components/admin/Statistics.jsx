@@ -42,6 +42,11 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
   const [countryStats, setCountryStats] = useState([]); // Статистика по странам
   const [roleStats, setRoleStats] = useState({ sellers: 0, buyers: 0 }); // Статистика по ролям
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [realAuctions, setRealAuctions] = useState([]); // Реальные аукционные объявления из БД
+  const [isLoadingAuctions, setIsLoadingAuctions] = useState(true);
+  const [propertiesCount, setPropertiesCount] = useState(null); // Количество объектов из БД
+  const [auctionsCount, setAuctionsCount] = useState(null); // Количество аукционов из БД
+  const [isLoadingCounts, setIsLoadingCounts] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -127,6 +132,127 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     };
 
     fetchStats();
+  }, []);
+
+  // Загружаем количество объектов и аукционов из API
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        setIsLoadingCounts(true);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        
+        // Загружаем количество одобренных объектов
+        let approvedCount = 0;
+        try {
+          const approvedResponse = await fetch(`${API_BASE_URL}/properties/approved`);
+          if (approvedResponse.ok) {
+            const approvedData = await approvedResponse.json();
+            console.log('📊 Ответ /properties/approved:', approvedData);
+            if (approvedData.success && Array.isArray(approvedData.data)) {
+              approvedCount = approvedData.data.length;
+            } else {
+              console.warn('⚠️ Неверный формат ответа /properties/approved:', approvedData);
+            }
+          } else {
+            console.warn('⚠️ Ошибка HTTP при загрузке одобренных объектов:', approvedResponse.status, approvedResponse.statusText);
+            const errorText = await approvedResponse.text();
+            console.warn('⚠️ Текст ошибки:', errorText);
+          }
+        } catch (error) {
+          console.error('❌ Ошибка при загрузке одобренных объектов:', error);
+        }
+
+        // Загружаем количество аукционных объявлений по всем типам
+        const types = ['commercial', 'villa', 'apartment', 'house'];
+        let totalAuctionsCount = 0;
+        
+        for (const type of types) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/properties/auctions?type=${type}`);
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`📊 Ответ /properties/auctions?type=${type}:`, data);
+              if (data.success && Array.isArray(data.data)) {
+                totalAuctionsCount += data.data.length;
+              } else {
+                console.warn(`⚠️ Неверный формат ответа для типа ${type}:`, data);
+              }
+            } else {
+              console.warn(`⚠️ Ошибка HTTP при загрузке аукционов типа ${type}:`, response.status, response.statusText);
+            }
+          } catch (error) {
+            console.error(`❌ Ошибка загрузки аукционных объявлений типа ${type}:`, error);
+          }
+        }
+
+        console.log('✅ Итоговые данные - объектов:', approvedCount, 'аукционов:', totalAuctionsCount);
+        setPropertiesCount(approvedCount);
+        setAuctionsCount(totalAuctionsCount);
+      } catch (error) {
+        console.error('❌ Критическая ошибка при загрузке количества объектов и аукционов:', error);
+        // Устанавливаем 0, чтобы показать, что данные не загрузились
+        setPropertiesCount(0);
+        setAuctionsCount(0);
+      } finally {
+        setIsLoadingCounts(false);
+      }
+    };
+
+    fetchCounts();
+  }, []);
+
+  // Загружаем реальные аукционные объявления из API
+  useEffect(() => {
+    const fetchAuctions = async () => {
+      try {
+        setIsLoadingAuctions(true);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        
+        // Загружаем все типы аукционных объявлений
+        const types = ['commercial', 'villa', 'apartment', 'house'];
+        const allAuctions = [];
+
+        for (const type of types) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/properties/auctions?type=${type}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.data && Array.isArray(data.data)) {
+                allAuctions.push(...data.data);
+              }
+            }
+          } catch (error) {
+            console.error(`Ошибка загрузки аукционных объявлений типа ${type}:`, error);
+          }
+        }
+
+        // Форматируем данные для слайдера
+        const formattedAuctions = allAuctions.map(auction => ({
+          id: auction.id,
+          object_title: auction.title || auction.name || 'Без названия',
+          description: auction.description || '',
+          object_location: auction.location || 'Не указано',
+          image_url: auction.image || (auction.images && auction.images[0]) || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+          starting_price: auction.auction_starting_price || auction.price || 0,
+          auction_starting_price: auction.auction_starting_price || auction.price || 0,
+          current_bid: auction.currentBid || auction.auction_starting_price || auction.price || 0,
+          end_date: auction.auction_end_date || auction.endTime || null,
+          bedrooms: auction.bedrooms || auction.rooms || auction.beds || 0,
+          bathrooms: auction.bathrooms || 0,
+          area: auction.area || auction.sqft || 0,
+          object_type: auction.property_type || 'apartment',
+        }));
+
+        setRealAuctions(formattedAuctions);
+        console.log('✅ Загружено аукционных объявлений для слайдера:', formattedAuctions.length);
+      } catch (error) {
+        console.error('❌ Ошибка при загрузке аукционных объявлений:', error);
+      } finally {
+        setIsLoadingAuctions(false);
+      }
+    };
+
+    fetchAuctions();
   }, []);
 
   const getTimeMultiplier = (period, customStartDate = null, customEndDate = null) => {
@@ -522,13 +648,21 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
 
 
   const activeAuctions = useMemo(() => {
-    if (!businessInfo.auctions || businessInfo.auctions.length === 0) return [];
+    // Используем только реальные данные из API, без fallback на моковые данные
+    if (!realAuctions || realAuctions.length === 0) return [];
     const now = new Date();
-    return businessInfo.auctions
-      .filter(auction => new Date(auction.end_date) > now)
-      .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))
+    return realAuctions
+      .filter(auction => {
+        const endDate = auction.end_date || auction.auction_end_date;
+        return endDate && new Date(endDate) > now;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.end_date || a.auction_end_date);
+        const dateB = new Date(b.end_date || b.auction_end_date);
+        return dateA - dateB;
+      })
       .slice(0, 10); // Берем первые 10 ближайших
-  }, [businessInfo.auctions]);
+  }, [realAuctions]);
 
   const stats = useMemo(() => {
     // Используем реальное количество пользователей из БД, если оно загружено
@@ -562,14 +696,14 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       },
       {
         title: 'Выставленные Объекты',
-        value: Math.round((businessInfo.objects_count || 156) * multiplier),
+        value: isLoadingCounts ? '...' : (propertiesCount !== null && propertiesCount !== undefined ? propertiesCount : 0),
         changePercent: '15.2',
         icon: 'fas fa-building',
         iconClass: 'orange'
       },
       {
         title: 'Количество Аукционов',
-        value: Math.round((businessInfo.auctions_count || 23) * multiplier),
+        value: isLoadingCounts ? '...' : (auctionsCount !== null && auctionsCount !== undefined ? auctionsCount : 0),
         changePercent: '18.4',
         icon: 'fas fa-gavel',
         iconClass: 'blue'
@@ -741,9 +875,13 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
         ))}
       </div>
 
-      {activeAuctions.length > 0 && (
+      {isLoadingAuctions ? (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+          Загрузка аукционов...
+        </div>
+      ) : activeAuctions.length > 0 ? (
         <NearestAuctionsSlider auctions={activeAuctions} />
-      )}
+      ) : null}
 
       <div className="charts-row">
         <div className="chart-container">

@@ -595,6 +595,57 @@
   font-weight: 500;
 }
 
+.property-specs--auction {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.property-specs--auction .spec-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0369a1;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.property-specs--auction .spec-item:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  transform: translateY(-1px);
+}
+
+.property-specs--auction .spec-item svg {
+  color: #0ea5e9;
+  flex-shrink: 0;
+}
+
+/* Основные характеристики для аукционных объектов - в стиле личного кабинета продавца */
+.property-card-owner__info {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.property-card-owner__info-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #666;
+}
+
 .property-bid-info {
   display: flex;
   justify-content: space-between;

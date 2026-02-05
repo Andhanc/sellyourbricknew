@@ -101,8 +101,10 @@ const AuctionCardItem = ({ auction, onHistoryClick }) => {
             {auction.object_location}
           </div>
           <div className="nearest-auction-price">
-            <div className="price-label">Текущая ставка:</div>
-            <div className="price-value">${auction.current_bid.toLocaleString('ru-RU')}</div>
+        <div className="price-label">Стартовая ставка:</div>
+        <div className="price-value">
+          ${Number(auction.starting_price || auction.auction_starting_price || auction.current_bid || 0).toLocaleString('ru-RU')}
+        </div>
           </div>
           <button 
             className="history-button"

@@ -10,53 +10,164 @@ import {
 } from 'react-icons/fi'
 import { FaHeart as FaHeartSolid } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { isAuthenticated } from '../services/authService'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import PropertyTimer from '../components/PropertyTimer'
+import BiddingHistoryModal from '../components/BiddingHistoryModal'
+import LocationMap from '../components/LocationMap'
 import './PropertyDetailClassic.css'
 
-// Фикс для иконок Leaflet
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
-
-// Классическая страница объекта (без аукциона)
-// Ожидает объект из массива properties.js
+// Классическая страница объекта.
+// Для аукционных объектов дополнительно отображает таймер и историю ставок.
 function PropertyDetailClassic({ property, onBack }) {
   const { t } = useTranslation()
   const { user, isLoaded: userLoaded } = useUser()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const thumbnailScrollRef = useRef(null)
+  const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
+  const [mapCoordinates, setMapCoordinates] = useState(null)
+  const [isGeocoding, setIsGeocoding] = useState(false)
 
-  // Обрабатываем координаты
-  let coordinates = null
+  // Выводим ВСЕ данные в консоль для отладки
+  console.log('🔍 PropertyDetailClassic - ВСЕ ДАННЫЕ ОБЪЕКТА:', property)
+  console.log('🔍 PropertyDetailClassic - Координаты (raw):', property.coordinates)
+  console.log('🔍 PropertyDetailClassic - Удобства (raw):', {
+    balcony: property.balcony,
+    parking: property.parking,
+    elevator: property.elevator,
+    garage: property.garage,
+    pool: property.pool,
+    garden: property.garden,
+    electricity: property.electricity,
+    internet: property.internet,
+    security: property.security,
+    furniture: property.furniture,
+  })
+
+  // Обрабатываем координаты (как в админке - просто используем как есть)
+  let coordinates = [53.9045, 27.5615] // Дефолтные координаты (Минск)
   if (property.coordinates) {
     try {
       if (typeof property.coordinates === 'string') {
         const parsed = JSON.parse(property.coordinates)
         if (Array.isArray(parsed) && parsed.length >= 2) {
-          coordinates = [parseFloat(parsed[0]), parseFloat(parsed[1])]
+          const lat = parseFloat(parsed[0])
+          const lng = parseFloat(parsed[1])
+          if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            coordinates = [lat, lng]
+          }
         }
       } else if (Array.isArray(property.coordinates) && property.coordinates.length >= 2) {
-        coordinates = [parseFloat(property.coordinates[0]), parseFloat(property.coordinates[1])]
+        const lat = parseFloat(property.coordinates[0])
+        const lng = parseFloat(property.coordinates[1])
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          coordinates = [lat, lng]
+        }
       }
     } catch (e) {
       console.warn('Ошибка парсинга coordinates:', e)
     }
   }
 
-  // Нормализуем данные под формат детальной страницы
+  console.log('🔍 PropertyDetailClassic - Координаты (processed):', coordinates)
+
+  // Геокодирование адреса, если координат нет
+  useEffect(() => {
+    const geocodeAddress = async () => {
+      // Если координаты уже есть и валидны, используем их
+      const hasValidCoordinates = coordinates && 
+        coordinates[0] !== 53.9045 && 
+        coordinates[1] !== 27.5615 &&
+        !isNaN(coordinates[0]) && 
+        !isNaN(coordinates[1])
+      
+      if (hasValidCoordinates) {
+        setMapCoordinates(coordinates)
+        return
+      }
+
+      // Если координат нет, но есть адрес, пытаемся геокодировать
+      const address = property.location || property.address
+      if (address && !isGeocoding && !mapCoordinates) {
+        setIsGeocoding(true)
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&accept-language=ru&addressdetails=1`
+          )
+          if (response.ok) {
+            const data = await response.json()
+            if (data && data.length > 0) {
+              const lat = parseFloat(data[0].lat)
+              const lon = parseFloat(data[0].lon)
+              if (!isNaN(lat) && !isNaN(lon)) {
+                setMapCoordinates([lat, lon])
+                console.log('✅ Адрес геокодирован:', address, '->', [lat, lon])
+              } else {
+                // Если геокодирование не удалось, используем дефолтные координаты
+                setMapCoordinates(coordinates)
+              }
+            } else {
+              // Если результатов нет, используем дефолтные координаты
+              setMapCoordinates(coordinates)
+            }
+          } else {
+            setMapCoordinates(coordinates)
+          }
+        } catch (error) {
+          console.warn('Ошибка геокодирования адреса:', error)
+          setMapCoordinates(coordinates)
+        } finally {
+          setIsGeocoding(false)
+        }
+      } else if (!address) {
+        // Если нет ни координат, ни адреса, используем дефолтные координаты
+        setMapCoordinates(coordinates)
+      }
+    }
+
+    geocodeAddress()
+  }, [property.location, property.address, coordinates])
+
+  // Используем геокодированные координаты или исходные
+  const finalCoordinates = mapCoordinates || coordinates
+
+  // Нормализуем данные под формат детальной страницы (используем данные как есть, как в админке)
   const displayProperty = {
     ...property,
     name: property.title || property.name,
     sqft: property.area || property.sqft,
+    area: property.area || property.sqft,
     beds: property.rooms ?? property.beds,
-    coordinates: coordinates, // Используем распарсенные координаты
+    rooms: property.rooms ?? property.beds,
+    bedrooms: property.bedrooms || property.rooms,
+    bathrooms: property.bathrooms,
+    coordinates: coordinates,
+    // Убеждаемся, что все поля передаются
+    floor: property.floor,
+    total_floors: property.total_floors,
+    year_built: property.year_built,
+    land_area: property.land_area,
+    renovation: property.renovation,
+    condition: property.condition,
+    heating: property.heating,
+    water_supply: property.water_supply,
+    sewerage: property.sewerage,
+    commercial_type: property.commercial_type,
+    business_hours: property.business_hours,
+    additional_amenities: property.additional_amenities,
+    // Удобства
+    balcony: property.balcony,
+    parking: property.parking,
+    elevator: property.elevator,
+    garage: property.garage,
+    pool: property.pool,
+    garden: property.garden,
+    electricity: property.electricity,
+    internet: property.internet,
+    security: property.security,
+    furniture: property.furniture,
   }
+
+  console.log('🔍 PropertyDetailClassic - displayProperty:', displayProperty)
 
   const images =
     displayProperty.images && displayProperty.images.length > 0
@@ -138,6 +249,17 @@ function PropertyDetailClassic({ property, onBack }) {
 
   const [isFavorite, setIsFavorite] = useState(false)
 
+  // Признак аукционного объекта
+  const isAuctionProperty =
+    displayProperty.isAuction === true ||
+    displayProperty.is_auction === true ||
+    displayProperty.is_auction === 1
+
+  const auctionEndTime =
+    displayProperty.endTime ||
+    displayProperty.auction_end_date ||
+    null
+
   const handleToggleFavorite = () => {
     // Проверяем авторизацию через Clerk или старую систему
     const isClerkAuth = user && userLoaded
@@ -194,416 +316,412 @@ function PropertyDetailClassic({ property, onBack }) {
       {/* Основной контент */}
       <div className="property-detail-main">
         <div className="property-detail-main__container">
-          {/* Галерея */}
-          <div className="property-detail-gallery">
-            <div className="property-detail-gallery__main">
-              {currentMedia && (
-                currentMedia.type === 'video' ? (
-                  <div style={{ width: '100%', height: '100%', position: 'relative', paddingBottom: '56.25%', backgroundColor: '#000' }}>
-                    <iframe
-                      src={
-                        currentMedia.videoType === 'youtube' 
-                          ? getYouTubeEmbedUrl(currentMedia.videoId || currentMedia.url)
-                          : currentMedia.videoType === 'googledrive'
-                            ? getGoogleDriveEmbedUrl(currentMedia.videoId || currentMedia.url)
-                            : currentMedia.url
-                      }
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        border: 'none',
-                        borderRadius: '12px'
-                      }}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
+          {/* Левая колонка - обёртка для галереи и информации */}
+          <div className="property-detail-left-column">
+            {/* Галерея */}
+            <div className="property-detail-gallery">
+              <div className="property-detail-gallery__main">
+                {currentMedia && (
+                  currentMedia.type === 'video' ? (
+                    <div style={{ width: '100%', height: '100%', position: 'relative', paddingBottom: '56.25%', backgroundColor: '#000' }}>
+                      <iframe
+                        src={
+                          currentMedia.videoType === 'youtube' 
+                            ? getYouTubeEmbedUrl(currentMedia.videoId || currentMedia.url)
+                            : currentMedia.videoType === 'googledrive'
+                              ? getGoogleDriveEmbedUrl(currentMedia.videoId || currentMedia.url)
+                              : currentMedia.url
+                        }
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          border: 'none',
+                          borderRadius: '12px'
+                        }}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={currentMedia.url}
+                      alt={displayProperty.name}
+                      className="property-detail-gallery__main-image"
                     />
-                  </div>
-                ) : (
-                  <img
-                    src={currentMedia.url}
-                    alt={displayProperty.name}
-                    className="property-detail-gallery__main-image"
-                  />
-                )
-              )}
-              {galleryMedia.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="property-detail-gallery__nav property-detail-gallery__nav--prev"
-                    onClick={handlePreviousImage}
-                    aria-label={t('previousImage') || 'Предыдущее фото'}
-                  >
-                    <FiChevronLeft size={24} />
-                  </button>
-                  <button
-                    type="button"
-                    className="property-detail-gallery__nav property-detail-gallery__nav--next"
-                    onClick={handleNextImage}
-                    aria-label={t('nextImage') || 'Следующее фото'}
-                  >
-                    <FiChevronRight size={24} />
-                  </button>
-                  <div className="property-detail-gallery__counter">
-                    {currentImageIndex + 1} / {galleryMedia.length}
-                  </div>
-                </>
-              )}
-              <div className="property-detail-gallery__actions">
-                <button
-                  type="button"
-                  className="property-detail-gallery__action-btn"
-                  onClick={handleShare}
-                  aria-label={t('share') || 'Поделиться'}
-                >
-                  <FiShare2 size={20} />
-                </button>
-                <button
-                  type="button"
-                  className={`property-detail-gallery__action-btn ${
-                    isFavorite ? 'property-detail-gallery__action-btn--active' : ''
-                  }`}
-                  onClick={handleToggleFavorite}
-                  aria-label={t('addToFavorites') || 'В избранное'}
-                >
-                  {isFavorite ? <FaHeartSolid size={20} /> : <FiHeart size={20} />}
-                </button>
-              </div>
-            </div>
-
-            {galleryMedia.length > 0 && (
-              <div className="property-detail-gallery__thumbnails-wrapper">
-                <div className="property-detail-gallery__thumbnails" ref={thumbnailScrollRef}>
-                  {galleryMedia.map((media, index) => (
+                  )
+                )}
+                {galleryMedia.length > 1 && (
+                  <>
                     <button
-                      key={index}
                       type="button"
-                      className={`property-detail-gallery__thumbnail ${
-                        currentImageIndex === index
-                          ? 'property-detail-gallery__thumbnail--active'
-                          : ''
-                      }`}
-                      onClick={() => handleThumbnailClick(index)}
+                      className="property-detail-gallery__nav property-detail-gallery__nav--prev"
+                      onClick={handlePreviousImage}
+                      aria-label={t('previousImage') || 'Предыдущее фото'}
                     >
-                      {media.type === 'video' ? (
-                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                          {media.thumbnail ? (
-                            <img src={media.thumbnail} alt={`Видео ${index + 1}`} />
-                          ) : (
-                            <div style={{ 
-                              width: '100%', 
-                              height: '100%', 
-                              backgroundColor: '#000', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              color: '#fff',
-                              fontSize: '12px'
-                            }}>
-                              ▶ Видео
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <img src={media.url} alt={`${displayProperty.name} ${index + 1}`} />
-                      )}
+                      <FiChevronLeft size={24} />
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      className="property-detail-gallery__nav property-detail-gallery__nav--next"
+                      onClick={handleNextImage}
+                      aria-label={t('nextImage') || 'Следующее фото'}
+                    >
+                      <FiChevronRight size={24} />
+                    </button>
+                    <div className="property-detail-gallery__counter">
+                      {currentImageIndex + 1} / {galleryMedia.length}
+                    </div>
+                  </>
+                )}
+                <div className="property-detail-gallery__actions">
+                  <button
+                    type="button"
+                    className="property-detail-gallery__action-btn"
+                    onClick={handleShare}
+                    aria-label={t('share') || 'Поделиться'}
+                  >
+                    <FiShare2 size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`property-detail-gallery__action-btn ${
+                      isFavorite ? 'property-detail-gallery__action-btn--active' : ''
+                    }`}
+                    onClick={handleToggleFavorite}
+                    aria-label={t('addToFavorites') || 'В избранное'}
+                  >
+                    {isFavorite ? <FaHeartSolid size={20} /> : <FiHeart size={20} />}
+                  </button>
                 </div>
               </div>
-            )}
 
-            <div className="property-detail-gallery__action-buttons">
-              <button
-                type="button"
-                className="property-detail-gallery__buy-btn"
-                onClick={handleBookNow}
-              >
-                {t('buyNow') || 'Купить сейчас'}
-              </button>
+              {galleryMedia.length > 0 && (
+                <div className="property-detail-gallery__thumbnails-wrapper">
+                  <div className="property-detail-gallery__thumbnails" ref={thumbnailScrollRef}>
+                    {galleryMedia.map((media, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`property-detail-gallery__thumbnail ${
+                          currentImageIndex === index
+                            ? 'property-detail-gallery__thumbnail--active'
+                            : ''
+                        }`}
+                        onClick={() => handleThumbnailClick(index)}
+                      >
+                        {media.type === 'video' ? (
+                          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                            {media.thumbnail ? (
+                              <img src={media.thumbnail} alt={`Видео ${index + 1}`} />
+                            ) : (
+                              <div style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                backgroundColor: '#000', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: '12px'
+                              }}>
+                                ▶ Видео
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <img src={media.url} alt={`${displayProperty.name} ${index + 1}`} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Блок с подробной информацией об объекте - под галереей */}
+            <div className="property-detail-info-section">
+              {/* Основные характеристики */}
+              {(displayProperty.area || displayProperty.sqft || displayProperty.rooms || displayProperty.beds || 
+                displayProperty.bedrooms || displayProperty.bathrooms || displayProperty.floor || 
+                displayProperty.total_floors || displayProperty.year_built || displayProperty.land_area) && (
+                <div className="property-detail-info-block">
+                  <h3 className="property-detail-info-block__title">Основные характеристики</h3>
+                  <div className="property-detail-info-block__content property-detail-info-block__content--grid">
+                    {(displayProperty.area || displayProperty.sqft) && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Площадь:</span>
+                        <span className="property-detail-info-value">
+                          {displayProperty.area || displayProperty.sqft} м²
+                        </span>
+                      </div>
+                    )}
+                    {(displayProperty.rooms || displayProperty.beds) && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Комнат:</span>
+                        <span className="property-detail-info-value">
+                          {displayProperty.rooms || displayProperty.beds || displayProperty.bedrooms}
+                        </span>
+                      </div>
+                    )}
+                    {displayProperty.bedrooms && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Спальни:</span>
+                        <span className="property-detail-info-value">{displayProperty.bedrooms}</span>
+                      </div>
+                    )}
+                    {displayProperty.bathrooms && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Ванные:</span>
+                        <span className="property-detail-info-value">{displayProperty.bathrooms}</span>
+                      </div>
+                    )}
+                    {displayProperty.floor && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Этаж:</span>
+                        <span className="property-detail-info-value">{displayProperty.floor}</span>
+                      </div>
+                    )}
+                    {displayProperty.total_floors && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Всего этажей:</span>
+                        <span className="property-detail-info-value">{displayProperty.total_floors}</span>
+                      </div>
+                    )}
+                    {displayProperty.year_built && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Год постройки:</span>
+                        <span className="property-detail-info-value">{displayProperty.year_built}</span>
+                      </div>
+                    )}
+                    {displayProperty.land_area && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Площадь участка:</span>
+                        <span className="property-detail-info-value">{displayProperty.land_area} м²</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Дополнительная информация */}
+              {(displayProperty.renovation || displayProperty.condition || displayProperty.heating || 
+                displayProperty.water_supply || displayProperty.sewerage || displayProperty.commercial_type || 
+                displayProperty.business_hours) && (
+                <div className="property-detail-info-block">
+                  <h3 className="property-detail-info-block__title">Дополнительная информация</h3>
+                  <div className="property-detail-info-block__content property-detail-info-block__content--grid">
+                    {displayProperty.renovation && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Ремонт:</span>
+                        <span className="property-detail-info-value">{displayProperty.renovation}</span>
+                      </div>
+                    )}
+                    {displayProperty.condition && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Состояние:</span>
+                        <span className="property-detail-info-value">{displayProperty.condition}</span>
+                      </div>
+                    )}
+                    {displayProperty.heating && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Отопление:</span>
+                        <span className="property-detail-info-value">{displayProperty.heating}</span>
+                      </div>
+                    )}
+                    {displayProperty.water_supply && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Водоснабжение:</span>
+                        <span className="property-detail-info-value">{displayProperty.water_supply}</span>
+                      </div>
+                    )}
+                    {displayProperty.sewerage && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Канализация:</span>
+                        <span className="property-detail-info-value">{displayProperty.sewerage}</span>
+                      </div>
+                    )}
+                    {displayProperty.commercial_type && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Тип коммерческой:</span>
+                        <span className="property-detail-info-value">{displayProperty.commercial_type}</span>
+                      </div>
+                    )}
+                    {displayProperty.business_hours && (
+                      <div className="property-detail-info-item">
+                        <span className="property-detail-info-label">Часы работы:</span>
+                        <span className="property-detail-info-value">{displayProperty.business_hours}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Удобства - используем формат как в админке модерации */}
+              <div className="property-detail-info-block">
+                <h3 className="property-detail-info-block__title">Удобства</h3>
+                <div className="property-detail-info-block__content">
+                  {(() => {
+                    // Функция для проверки удобства (работает с разными форматами)
+                    const hasAmenity = (value) => {
+                      return value === 1 || value === true || value === '1' || value === 'true'
+                    }
+                    
+                    const amenities = []
+                    
+                    if (hasAmenity(property.balcony) || hasAmenity(displayProperty.balcony)) {
+                      amenities.push(<span key="balcony" className="amenity-tag">Балкон</span>)
+                    }
+                    if (hasAmenity(property.parking) || hasAmenity(displayProperty.parking)) {
+                      amenities.push(<span key="parking" className="amenity-tag">Парковка</span>)
+                    }
+                    if (hasAmenity(property.elevator) || hasAmenity(displayProperty.elevator)) {
+                      amenities.push(<span key="elevator" className="amenity-tag">Лифт</span>)
+                    }
+                    if (hasAmenity(property.garage) || hasAmenity(displayProperty.garage)) {
+                      amenities.push(<span key="garage" className="amenity-tag">Гараж</span>)
+                    }
+                    if (hasAmenity(property.pool) || hasAmenity(displayProperty.pool)) {
+                      amenities.push(<span key="pool" className="amenity-tag">Бассейн</span>)
+                    }
+                    if (hasAmenity(property.garden) || hasAmenity(displayProperty.garden)) {
+                      amenities.push(<span key="garden" className="amenity-tag">Сад</span>)
+                    }
+                    if (hasAmenity(property.electricity) || hasAmenity(displayProperty.electricity)) {
+                      amenities.push(<span key="electricity" className="amenity-tag">Электричество</span>)
+                    }
+                    if (hasAmenity(property.internet) || hasAmenity(displayProperty.internet)) {
+                      amenities.push(<span key="internet" className="amenity-tag">Интернет</span>)
+                    }
+                    if (hasAmenity(property.security) || hasAmenity(displayProperty.security)) {
+                      amenities.push(<span key="security" className="amenity-tag">Охрана</span>)
+                    }
+                    if (hasAmenity(property.furniture) || hasAmenity(displayProperty.furniture)) {
+                      amenities.push(<span key="furniture" className="amenity-tag">Мебель</span>)
+                    }
+                    
+                    if (amenities.length === 0) {
+                      return <span className="amenity-tag" style={{ opacity: 0.6 }}>Удобства не указаны</span>
+                    }
+                    
+                    return amenities
+                  })()}
+                </div>
+              </div>
+
+              {/* Дополнительные удобства (текст, который пользователь написал сам) */}
+              {displayProperty.additional_amenities && (
+                <div className="property-detail-info-block">
+                  <h3 className="property-detail-info-block__title">Дополнительные удобства</h3>
+                  <div className="property-detail-info-block__content property-detail-info-block__content--text">
+                    <p>{displayProperty.additional_amenities}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Правая колонка */}
           <div className="property-detail-sidebar">
             <div className="property-detail-sidebar__content">
+              {/* Название */}
               <h1 className="property-detail-sidebar__title">{propertyInfo}</h1>
 
+              {/* Описание */}
+              {displayProperty.description && (
+                <div className="property-detail-sidebar__description">
+                  <p className="property-detail-sidebar__description-text">
+                    {displayProperty.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Местоположение */}
               <div className="property-detail-sidebar__location">
                 <IoLocationOutline size={18} />
                 <span>{displayProperty.location}</span>
               </div>
 
-              {displayProperty.price && (
-                <div className="property-detail-sidebar__price" style={{ 
-                  fontSize: '28px', 
-                  fontWeight: 700, 
-                  color: '#000', 
-                  marginTop: '16px',
-                  marginBottom: '16px'
-                }}>
-                  {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : ''}
-                  {displayProperty.price.toLocaleString('ru-RU')}
+              {/* Блок таймера аукциона, текущей ставки и истории ставок */}
+              {isAuctionProperty && auctionEndTime && (
+                <div className="property-detail-sidebar__auction-block">
+                  <PropertyTimer endTime={auctionEndTime} />
+                  <div className="property-detail-sidebar__current-bid">
+                    <span className="current-bid-label">Текущая ставка:</span>
+                    <span className="current-bid-value">
+                      {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                      {(displayProperty.currentBid || displayProperty.price || 0).toLocaleString('ru-RU')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="property-detail-sidebar__history-btn"
+                    onClick={() => setIsBidHistoryOpen(true)}
+                  >
+                    История ставок
+                  </button>
                 </div>
               )}
-
-              {/* Статус аукциона */}
-              <div className="property-detail-sidebar__feature" style={{ marginBottom: '16px' }}>
-                <span className="property-detail-sidebar__feature-label">
-                  {t('auction') || 'Аукцион'}
-                </span>
-                <span className="property-detail-sidebar__feature-value">
-                  {displayProperty.is_auction === true || displayProperty.is_auction === 1 || displayProperty.isAuction === true ? 'Да' : 'Нет'}
-                </span>
-              </div>
-              {(displayProperty.is_auction === true || displayProperty.is_auction === 1 || displayProperty.isAuction === true) && displayProperty.auction_start_date && displayProperty.auction_end_date && (
-                <>
-                  {displayProperty.auction_start_date && (
-                    <div className="property-detail-sidebar__feature">
-                      <span className="property-detail-sidebar__feature-label">
-                        {t('auctionStart') || 'Начало'}
-                      </span>
-                      <span className="property-detail-sidebar__feature-value">
-                        {new Date(displayProperty.auction_start_date).toLocaleDateString('ru-RU')}
-                      </span>
-                    </div>
-                  )}
-                  {displayProperty.auction_end_date && (
-                    <div className="property-detail-sidebar__feature">
-                      <span className="property-detail-sidebar__feature-label">
-                        {t('auctionEnd') || 'Окончание'}
-                      </span>
-                      <span className="property-detail-sidebar__feature-value">
-                        {new Date(displayProperty.auction_end_date).toLocaleDateString('ru-RU')}
-                      </span>
-                    </div>
-                  )}
-                  {displayProperty.auction_starting_price && (
-                    <div className="property-detail-sidebar__feature">
-                      <span className="property-detail-sidebar__feature-label">
-                        {t('startingPrice') || 'Стартовая цена'}
-                      </span>
-                      <span className="property-detail-sidebar__feature-value">
-                        {displayProperty.auction_starting_price.toLocaleString('ru-RU')} {displayProperty.currency || 'USD'}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className="property-detail-sidebar__features">
-                <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">
-                    {t('area') || 'Площадь'}
-                  </span>
-                  <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.sqft || displayProperty.area || 'Не указано'} м²
-                  </span>
-                </div>
-                {displayProperty.land_area && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('landArea') || 'Площадь участка'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.land_area} м²
-                    </span>
-                  </div>
-                )}
-                <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">
-                    {t('roomsCount') || 'Комнат'}
-                  </span>
-                  <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.beds || displayProperty.rooms || 'Студия'}
-                  </span>
-                </div>
-                {displayProperty.bathrooms && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('bathrooms') || 'Ванных'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.bathrooms}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.floor !== null && displayProperty.floor !== undefined && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('floorNumber') || 'Этаж'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.floor} {displayProperty.total_floors ? `из ${displayProperty.total_floors}` : ''}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.year_built && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('yearBuilt') || 'Год постройки'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.year_built}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.property_type && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('propertyType') || 'Тип недвижимости'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.property_type === 'apartment' ? 'Квартира' :
-                       displayProperty.property_type === 'house' ? 'Дом' :
-                       displayProperty.property_type === 'villa' ? 'Вилла' :
-                       displayProperty.property_type === 'commercial' ? 'Коммерческая' :
-                       displayProperty.property_type}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.renovation && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('renovation') || 'Ремонт'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.renovation}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.condition && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('condition') || 'Состояние'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.condition}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.heating && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('heating') || 'Отопление'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.heating}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.water_supply && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('waterSupply') || 'Водоснабжение'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.water_supply}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.sewerage && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('sewerage') || 'Канализация'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.sewerage}
-                    </span>
-                  </div>
-                )}
-                <div className="property-detail-sidebar__feature">
-                  <span className="property-detail-sidebar__feature-label">
-                    {t('seller') || 'Продавец'}
-                  </span>
-                  <span className="property-detail-sidebar__feature-value">
-                    {displayProperty.seller || 'Не указано'}
-                  </span>
-                </div>
-                {/* Дополнительные характеристики */}
-                {(displayProperty.balcony || displayProperty.parking || displayProperty.elevator || 
-                  displayProperty.garage || displayProperty.pool || displayProperty.garden ||
-                  displayProperty.electricity || displayProperty.internet || displayProperty.security || 
-                  displayProperty.furniture) && (
-                  <div className="property-detail-sidebar__feature" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-                    <span className="property-detail-sidebar__feature-label" style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>
-                      {t('additionalFeatures') || 'Дополнительно'}
-                    </span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {displayProperty.balcony && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Балкон</span>}
-                      {displayProperty.parking && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Парковка</span>}
-                      {displayProperty.elevator && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Лифт</span>}
-                      {displayProperty.garage && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Гараж</span>}
-                      {displayProperty.pool && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Бассейн</span>}
-                      {displayProperty.garden && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Сад</span>}
-                      {displayProperty.electricity && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Электричество</span>}
-                      {displayProperty.internet && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Интернет</span>}
-                      {displayProperty.security && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Охрана</span>}
-                      {displayProperty.furniture && <span style={{ padding: '4px 8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>Мебель</span>}
-                    </div>
-                  </div>
-                )}
-                {displayProperty.commercial_type && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('commercialType') || 'Тип коммерческой недвижимости'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.commercial_type}
-                    </span>
-                  </div>
-                )}
-                {displayProperty.business_hours && (
-                  <div className="property-detail-sidebar__feature">
-                    <span className="property-detail-sidebar__feature-label">
-                      {t('businessHours') || 'Часы работы'}
-                    </span>
-                    <span className="property-detail-sidebar__feature-value">
-                      {displayProperty.business_hours}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="property-detail-sidebar__description">
-                <h2 className="property-detail-sidebar__description-title">
-                  {t('description') || 'Описание'}
-                </h2>
-                <p className="property-detail-sidebar__description-text">
-                  {displayProperty.description}
-                </p>
-              </div>
 
               {/* Карта */}
-              {displayProperty.coordinates && Array.isArray(displayProperty.coordinates) && displayProperty.coordinates.length === 2 && (
-                <div className="property-detail-sidebar__map">
-                  <h2 className="property-detail-sidebar__map-title">
-                    {t('locationTitle') || 'Местоположение'}
-                  </h2>
-                  <div className="property-detail-sidebar__map-container">
-                    <MapContainer
-                      center={displayProperty.coordinates}
-                      zoom={15}
-                      style={{ height: '100%', width: '100%', borderRadius: '12px' }}
-                      scrollWheelZoom={true}
-                      zoomControl={true}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              <div className="property-detail-sidebar__map">
+                <h2 className="property-detail-sidebar__map-title">
+                  {t('locationTitle') || 'Местоположение'}
+                </h2>
+                <div className="property-detail-sidebar__map-container">
+                  {typeof window !== 'undefined' && (
+                    <>
+                      <LocationMap
+                        center={finalCoordinates}
+                        zoom={finalCoordinates && finalCoordinates[0] !== 53.9045 && finalCoordinates[1] !== 27.5615 ? 15 : 10}
+                        marker={finalCoordinates && finalCoordinates[0] !== 53.9045 && finalCoordinates[1] !== 27.5615 ? finalCoordinates : null}
                       />
-                      <Marker position={displayProperty.coordinates} />
-                    </MapContainer>
-                  </div>
+                      {isGeocoding && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          background: 'rgba(255, 255, 255, 0.95)',
+                          padding: '12px 20px',
+                          borderRadius: '8px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                          zIndex: 1000,
+                          fontSize: '14px',
+                          color: '#4b5563',
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontWeight: 500
+                        }}>
+                          Поиск местоположения...
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Модальное окно истории ставок для аукционных объектов */}
+      {isAuctionProperty && (
+        <BiddingHistoryModal
+          isOpen={isBidHistoryOpen}
+          onClose={() => setIsBidHistoryOpen(false)}
+          property={{
+            id: displayProperty.id,
+            title: propertyInfo,
+            start_date: displayProperty.auction_start_date,
+            end_date: displayProperty.auction_end_date,
+            auction_starting_price: displayProperty.auction_starting_price,
+            price: displayProperty.price,
+            currentBid: displayProperty.currentBid || displayProperty.price
+          }}
+        />
+      )}
     </div>
   )
 }

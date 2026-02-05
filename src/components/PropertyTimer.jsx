@@ -83,11 +83,10 @@ const PropertyTimer = ({ endTime, compact = false }) => {
   }
 
   return (
-    <div className={`property-timer ${statusClass} ${isCritical ? 'timer-critical' : ''}`}>
-      <div className="timer-compact-time">
+    <div className={`property-timer property-timer--detail ${statusClass} ${isCritical ? 'timer-critical' : ''}`}>
+      <div className="timer-compact-time timer-compact-time--detail">
         {String(timeLeft.days).padStart(2, '0')}д {String(timeLeft.hours).padStart(2, '0')}ч {String(timeLeft.minutes).padStart(2, '0')}м {String(timeLeft.seconds).padStart(2, '0')}с
       </div>
-      <div className="timer-compact-label">До окончания аукциона</div>
     </div>
   )
 }

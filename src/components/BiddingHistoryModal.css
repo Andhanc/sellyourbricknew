@@ -93,6 +93,85 @@
   margin: 0;
 }
 
+/* Период аукциона и стартовая ставка */
+.bidding-history-period {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.bidding-history-period__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.bidding-history-period__label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.bidding-history-period__value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.bidding-history-start-price {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  margin-top: 8px;
+}
+
+.bidding-history-start-price__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.bidding-history-start-price__label {
+  font-size: 0.8rem;
+  color: #1d4ed8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.bidding-history-start-price__value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.bidding-history-placeholder {
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
 /* Таймер */
 .bidding-history-timer-wrapper {
   margin-bottom: 32px;

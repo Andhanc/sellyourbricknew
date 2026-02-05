@@ -189,3 +189,18 @@
   animation: property-timer-shadow 1s infinite;
 }
 
+/* Стили для таймера на странице детального просмотра объекта */
+.property-timer--detail {
+  border: none !important;
+  padding: 0;
+  gap: 0;
+}
+
+.property-timer--detail .timer-compact-time--detail {
+  font-size: 28px;
+  font-weight: 700;
+  color: inherit;
+  border: none;
+  padding: 0;
+  line-height: 1.2;
+}
