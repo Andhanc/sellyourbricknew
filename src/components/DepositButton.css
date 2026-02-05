@@ -1,0 +1,266 @@
+.deposit-button {
+  position: fixed !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent !important;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 220px;
+  height: 80px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible;
+}
+
+.deposit-button__glow {
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, #0ABAB5, #089a95, #0ABAB5);
+  border-radius: 20px;
+  opacity: 0.8;
+  filter: blur(12px);
+  animation: glowPulse 3s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+.deposit-button__content-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, rgba(10, 186, 181, 0.98), rgba(8, 154, 149, 0.98));
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  box-shadow: 
+    0 10px 40px rgba(10, 186, 181, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 2px 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.deposit-button__content-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s;
+}
+
+.deposit-button:hover .deposit-button__content-wrapper {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 
+    0 15px 50px rgba(10, 186, 181, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 4px 15px rgba(0, 0, 0, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.deposit-button:hover .deposit-button__content-wrapper::before {
+  left: 100%;
+}
+
+.deposit-button:active .deposit-button__content-wrapper {
+  transform: translateY(-2px) scale(1);
+}
+
+.deposit-button__icon-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.deposit-button__icon-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+}
+
+.deposit-button:hover .deposit-button__icon-bg {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(5deg) scale(1.1);
+}
+
+.deposit-button__icon {
+  position: relative;
+  font-size: 24px;
+  color: white;
+  z-index: 1;
+  transition: transform 0.3s;
+}
+
+.deposit-button:hover .deposit-button__icon {
+  transform: scale(1.1);
+}
+
+.deposit-button__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
+  z-index: 1;
+}
+
+.deposit-button__label {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.95);
+  transition: opacity 0.3s;
+}
+
+.deposit-button:hover .deposit-button__label {
+  opacity: 1;
+}
+
+.deposit-button__amount {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.5px;
+  transition: transform 0.3s;
+}
+
+.deposit-button:hover .deposit-button__amount {
+  transform: scale(1.05);
+}
+
+.deposit-button__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: white;
+  font-size: 14px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.deposit-button__arrow.hovered {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.deposit-button__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.deposit-button__particles span {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: float 3s ease-in-out infinite;
+}
+
+.deposit-button__particles span:nth-child(1) {
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.deposit-button__particles span:nth-child(2) {
+  top: 60%;
+  left: 80%;
+  animation-delay: 1s;
+}
+
+.deposit-button__particles span:nth-child(3) {
+  top: 40%;
+  left: 50%;
+  animation-delay: 2s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-20px) scale(1.2);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .deposit-button {
+    bottom: 20px !important;
+    right: 20px !important;
+    min-width: 180px;
+    height: 70px;
+  }
+
+  .deposit-button__content-wrapper {
+    padding: 12px 18px;
+    gap: 12px;
+  }
+
+  .deposit-button__icon-wrapper {
+    width: 40px;
+    height: 40px;
+  }
+
+  .deposit-button__icon {
+    font-size: 20px;
+  }
+
+  .deposit-button__amount {
+    font-size: 18px;
+  }
+
+  .deposit-button__label {
+    font-size: 10px;
+  }
+
+  .deposit-button__arrow {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
