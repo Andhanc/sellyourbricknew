@@ -12,6 +12,7 @@ import Chat from './pages/Chat'
 import Favorites from './pages/Favorites'
 import OwnerDashboard from './pages/OwnerDashboard'
 import AddProperty from './pages/AddProperty'
+import Wallet from './pages/Wallet'
 import AdminPanelPage from './admin/AdminPanelPage'
 import Footer from './components/Footer'
 import ClerkAuthSync from './components/ClerkAuthSync'
@@ -213,6 +214,7 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/wallet" element={<Wallet />} />
           
           {/* Страницы для владельцев */}
           <Route path="/owner" element={<OwnerDashboard />} />
