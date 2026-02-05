@@ -574,13 +574,13 @@ const MapPage = () => {
               onClick={() => setIsControlMode(!isControlMode)}
               title="Режим управления (WASD/стрелки для движения, мышь для поворота)"
             >
-              {isControlMode ? '🎮 Управление ✓' : '🎮 Управление'}
+              {isControlMode ? ' Stetings ✓' : '  Stetings'}
             </button>
           </div>
           {isControlMode && (
             <div className="control-mode-controls">
               <div className="control-instructions">
-                <p><strong>Управление:</strong></p>
+                <p><strong> Stetings:</strong></p>
                 <p>W/↑ - Вперед | S/↓ - Назад</p>
                 <p>A/← - Влево | D/→ - Вправо</p>
                 <p>Мышь - Поворот камеры</p>
