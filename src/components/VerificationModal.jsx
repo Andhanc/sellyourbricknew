@@ -733,8 +733,8 @@ const Camera = ({ type, onCapture, onClose }) => {
       try {
         // Получаем размеры области круга (овала) для проверки
         const videoRect = video.getBoundingClientRect()
-        const ovalWidth = 280 // Ширина овала из CSS
-        const ovalHeight = 360 // Высота овала из CSS
+        const ovalWidth = 350 // Ширина овала из CSS
+        const ovalHeight = 450 // Высота овала из CSS
         const ovalCenterX = videoRect.width / 2
         const ovalCenterY = videoRect.height / 2
 
