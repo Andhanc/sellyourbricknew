@@ -2,8 +2,11 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { properties } from '../data/properties'
 import CountdownTimer from '../components/CountdownTimer'
-import { FiX } from 'react-icons/fi'
+import BiddingHistoryModal from '../components/BiddingHistoryModal'
+import { FiX, FiLayers, FiHome, FiCheck, FiX as FiXIcon } from 'react-icons/fi'
 import { IoLocationOutline } from 'react-icons/io5'
+import { MdBed, MdOutlineBathtub } from 'react-icons/md'
+import { BiArea } from 'react-icons/bi'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -28,7 +31,6 @@ const PropertyDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0)
   const [bidAmount, setBidAmount] = useState('')
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
-  const historyPanelRef = useRef(null)
 
   // Загружаем данные объявления
   useEffect(() => {
@@ -178,6 +180,7 @@ const PropertyDetail = () => {
                 auction_end_date: prop.auction_end_date || null,
                 auction_starting_price: prop.auction_starting_price || null,
                 endTime: prop.auction_end_date || null,
+                additional_amenities: prop.additional_amenities || null,
                 seller: prop.first_name && prop.last_name 
                   ? `${prop.first_name} ${prop.last_name}` 
                   : 'Продавец',
@@ -215,29 +218,19 @@ const PropertyDetail = () => {
   useEffect(() => {
     if (normalizedProperty) {
       console.log('✅ Property loaded:', normalizedProperty.id, normalizedProperty.title, 'Auction:', normalizedProperty.is_auction)
+      console.log('📊 Property data:', {
+        area: normalizedProperty.area,
+        rooms: normalizedProperty.rooms,
+        bathrooms: normalizedProperty.bathrooms,
+        floor: normalizedProperty.floor,
+        total_floors: normalizedProperty.total_floors,
+        coordinates: normalizedProperty.coordinates
+      })
     } else if (id && !isLoading) {
       console.error('❌ Property not found for ID:', id)
     }
   }, [id, normalizedProperty, isLoading])
 
-  // Закрытие панели истории при клике вне её
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (historyPanelRef.current && !historyPanelRef.current.contains(event.target)) {
-        // Проверяем, что клик не по кнопке открытия
-        if (!event.target.closest('.btn-bid-history')) {
-          setIsBidHistoryOpen(false)
-        }
-      }
-    }
-
-    if (isBidHistoryOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-      }
-    }
-  }, [isBidHistoryOpen])
 
   if (isLoading) {
     return (
@@ -285,79 +278,6 @@ const PropertyDetail = () => {
     }
   }
 
-  // Генерация тестовых данных истории ставок
-  const generateBidHistory = () => {
-    const history = []
-    const now = new Date()
-    const startPrice = normalizedProperty.currentBid * 0.7 // Начальная цена (70% от текущей)
-    const priceStep = (normalizedProperty.currentBid - startPrice) / 10
-    const countries = ['Россия', 'Германия', 'Франция', 'Великобритания', 'США', 'Канада', 'Испания', 'Италия', 'Швейцария', 'ОАЭ']
-    
-    for (let i = 10; i >= 1; i--) {
-      const price = Math.round(startPrice + priceStep * i)
-      const time = new Date(now.getTime() - i * 2 * 60 * 60 * 1000) // Каждые 2 часа назад
-      history.push({
-        id: i,
-        amount: price,
-        time: time,
-        userId: `ID-${1000 + i * 100}`,
-        country: countries[i % countries.length]
-      })
-    }
-    return history.reverse() // От старых к новым
-  }
-
-  const bidHistory = normalizedProperty ? generateBidHistory() : []
-  const lastFiveBids = bidHistory.slice(-5).reverse() // Последние 5, от новых к старым
-
-  // Форматирование времени для истории
-  const formatTime = (date) => {
-    const now = new Date()
-    const diff = now - date
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    
-    if (hours > 0) {
-      return `${hours} ч ${minutes} мин назад`
-    }
-    return `${minutes} мин назад`
-  }
-
-  // Получение кода страны для флага
-  const getCountryCode = (country) => {
-    const countryCodes = {
-      'Россия': 'ru',
-      'Германия': 'de',
-      'Франция': 'fr',
-      'Великобритания': 'gb',
-      'Испания': 'es',
-      'Италия': 'it',
-      'Швейцария': 'ch',
-      'США': 'us',
-      'Канада': 'ca',
-      'ОАЭ': 'ae'
-    }
-    return countryCodes[country] || 'xx'
-  }
-
-  // Данные для графика
-  const chartData = bidHistory.map(bid => ({
-    time: bid.time,
-    price: bid.amount
-  }))
-
-  // Вычисление размеров для графика
-  const getChartDimensions = () => {
-    const minPrice = Math.min(...chartData.map(d => d.price))
-    const maxPrice = Math.max(...chartData.map(d => d.price))
-    const priceRange = maxPrice - minPrice || 1
-    return { minPrice, maxPrice, priceRange }
-  }
-
-  const { minPrice, maxPrice, priceRange } = getChartDimensions()
-  const chartWidth = 500
-  const chartHeight = 200
-  const padding = 40
 
   return (
     <div className="property-detail-page">
@@ -412,67 +332,257 @@ const PropertyDetail = () => {
             </div>
 
             <div className="detail-main">
-              <h1 className="detail-title">{normalizedProperty.title}</h1>
-              <div className="detail-location">
-                <IoLocationOutline size={18} />
-                <span>{normalizedProperty.location}</span>
+              <div className="detail-header-info">
+                <h1 className="detail-title">{normalizedProperty.title}</h1>
+                <div className="detail-location">
+                  <IoLocationOutline size={18} />
+                  <span>{normalizedProperty.location}</span>
+                </div>
+                {/* Цена объекта */}
+                {normalizedProperty.price && (
+                  <div className="detail-price">
+                    <span className="detail-price-label">Цена:</span>
+                    <span className="detail-price-value">
+                      {normalizedProperty.currency === 'EUR' ? '€' : 
+                       normalizedProperty.currency === 'USD' ? '$' : 
+                       normalizedProperty.currency === 'BYN' ? 'Br' : ''}
+                      {normalizedProperty.price.toLocaleString('ru-RU')}
+                    </span>
+                  </div>
+                )}
+                {/* Тип недвижимости */}
+                {normalizedProperty.property_type && (
+                  <div className="detail-property-type">
+                    <span className="property-type-badge">
+                      {normalizedProperty.property_type === 'apartment' ? 'Квартира' :
+                       normalizedProperty.property_type === 'house' ? 'Дом' :
+                       normalizedProperty.property_type === 'villa' ? 'Вилла' :
+                       normalizedProperty.property_type === 'townhouse' ? 'Таунхаус' :
+                       normalizedProperty.property_type === 'commercial' ? 'Коммерческая' :
+                       normalizedProperty.property_type}
+                    </span>
+                  </div>
+                )}
               </div>
               
-              {/* Объединенный блок с параметрами, описанием и картой */}
-              <div className="detail-info-with-map">
-                <div className="detail-info-content">
-                  <div className="detail-specs">
-                    <div className="spec-item">
-                      <span className="spec-label">Площадь:</span>
-                      <span className="spec-value">{normalizedProperty.area} м²</span>
-                    </div>
-                    <div className="spec-item">
-                      <span className="spec-label">Комнат:</span>
-                      <span className="spec-value">{normalizedProperty.rooms || 'Студия'}</span>
-                    </div>
-                    {normalizedProperty.floor && (
-                    <div className="spec-item">
-                      <span className="spec-label">Этаж:</span>
-                      <span className="spec-value">{normalizedProperty.floor}</span>
-                    </div>
+              {/* Основная информация об объекте */}
+              <div className="detail-info-sections">
+                {/* Основные параметры */}
+                <div className="detail-section">
+                  <h3 className="detail-section-title">Основные параметры</h3>
+                  <div className="detail-specs-grid">
+                    {(normalizedProperty.area || normalizedProperty.sqft) && (
+                      <div className="spec-item-icon">
+                        <BiArea size={20} />
+                        <div className="spec-item-content">
+                          <span className="spec-label">Площадь</span>
+                          <span className="spec-value">{normalizedProperty.area || normalizedProperty.sqft || 0} м²</span>
+                        </div>
+                      </div>
                     )}
-                    {normalizedProperty.seller && (
-                    <div className="spec-item">
-                      <span className="spec-label">Продавец:</span>
-                      <span className="spec-value">{normalizedProperty.seller}</span>
-                    </div>
+                    {(normalizedProperty.rooms || normalizedProperty.beds) && (
+                      <div className="spec-item-icon">
+                        <MdBed size={20} />
+                        <div className="spec-item-content">
+                          <span className="spec-label">Комнат</span>
+                          <span className="spec-value">{normalizedProperty.rooms || normalizedProperty.beds || 'Студия'}</span>
+                        </div>
+                      </div>
                     )}
-                    {normalizedProperty.sellerId && (
-                    <div className="spec-item">
-                      <span className="spec-label">ID:</span>
-                      <span className="spec-value">{normalizedProperty.sellerId}</span>
-                    </div>
+                    {normalizedProperty.bathrooms && (
+                      <div className="spec-item-icon">
+                        <MdOutlineBathtub size={20} />
+                        <div className="spec-item-content">
+                          <span className="spec-label">Ванных</span>
+                          <span className="spec-value">{normalizedProperty.bathrooms}</span>
+                        </div>
+                      </div>
                     )}
-                  </div>
-
-                  <div className="detail-description">
-                    <h3>Описание</h3>
-                    <p>{normalizedProperty.description}</p>
+                    {(normalizedProperty.floor || normalizedProperty.total_floors) && (
+                      <div className="spec-item-icon">
+                        <FiLayers size={20} />
+                        <div className="spec-item-content">
+                          <span className="spec-label">Этаж</span>
+                          <span className="spec-value">
+                            {normalizedProperty.floor || ''}
+                            {normalizedProperty.total_floors && `/${normalizedProperty.total_floors}`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {normalizedProperty.year_built && (
+                      <div className="spec-item-icon">
+                        <FiHome size={20} />
+                        <div className="spec-item-content">
+                          <span className="spec-label">Год постройки</span>
+                          <span className="spec-value">{normalizedProperty.year_built}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Удобства и особенности */}
+                {(normalizedProperty.balcony || normalizedProperty.parking || normalizedProperty.elevator || 
+                  normalizedProperty.garage || normalizedProperty.pool || normalizedProperty.garden ||
+                  normalizedProperty.electricity || normalizedProperty.internet || normalizedProperty.security ||
+                  normalizedProperty.furniture) && (
+                  <div className="detail-section">
+                    <h3 className="detail-section-title">Удобства и особенности</h3>
+                    <div className="detail-features-grid">
+                      {normalizedProperty.balcony && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Балкон</span>
+                        </div>
+                      )}
+                      {normalizedProperty.parking && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Парковка</span>
+                        </div>
+                      )}
+                      {normalizedProperty.elevator && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Лифт</span>
+                        </div>
+                      )}
+                      {normalizedProperty.garage && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Гараж</span>
+                        </div>
+                      )}
+                      {normalizedProperty.pool && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Бассейн</span>
+                        </div>
+                      )}
+                      {normalizedProperty.garden && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Сад</span>
+                        </div>
+                      )}
+                      {normalizedProperty.electricity && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Электричество</span>
+                        </div>
+                      )}
+                      {normalizedProperty.internet && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Интернет</span>
+                        </div>
+                      )}
+                      {normalizedProperty.security && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Охрана</span>
+                        </div>
+                      )}
+                      {normalizedProperty.furniture && (
+                        <div className="feature-item">
+                          <FiCheck size={18} />
+                          <span>Мебель</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Дополнительная информация */}
+                {(normalizedProperty.land_area || normalizedProperty.renovation || normalizedProperty.condition ||
+                  normalizedProperty.heating || normalizedProperty.water_supply || normalizedProperty.sewerage ||
+                  normalizedProperty.commercial_type || normalizedProperty.business_hours) && (
+                  <div className="detail-section">
+                    <h3 className="detail-section-title">Дополнительная информация</h3>
+                    <div className="detail-additional-info">
+                      {normalizedProperty.land_area && (
+                        <div className="info-item">
+                          <span className="info-label">Площадь участка:</span>
+                          <span className="info-value">{normalizedProperty.land_area} м²</span>
+                        </div>
+                      )}
+                      {normalizedProperty.renovation && (
+                        <div className="info-item">
+                          <span className="info-label">Ремонт:</span>
+                          <span className="info-value">{normalizedProperty.renovation}</span>
+                        </div>
+                      )}
+                      {normalizedProperty.condition && (
+                        <div className="info-item">
+                          <span className="info-label">Состояние:</span>
+                          <span className="info-value">{normalizedProperty.condition}</span>
+                        </div>
+                      )}
+                      {normalizedProperty.heating && (
+                        <div className="info-item">
+                          <span className="info-label">Отопление:</span>
+                          <span className="info-value">{normalizedProperty.heating}</span>
+                        </div>
+                      )}
+                      {normalizedProperty.water_supply && (
+                        <div className="info-item">
+                          <span className="info-label">Водоснабжение:</span>
+                          <span className="info-value">{normalizedProperty.water_supply}</span>
+                        </div>
+                      )}
+                      {normalizedProperty.sewerage && (
+                        <div className="info-item">
+                          <span className="info-label">Канализация:</span>
+                          <span className="info-value">{normalizedProperty.sewerage}</span>
+                        </div>
+                      )}
+                      {normalizedProperty.commercial_type && (
+                        <div className="info-item">
+                          <span className="info-label">Тип коммерческой недвижимости:</span>
+                          <span className="info-value">{normalizedProperty.commercial_type}</span>
+                        </div>
+                      )}
+                      {normalizedProperty.business_hours && (
+                        <div className="info-item">
+                          <span className="info-label">Часы работы:</span>
+                          <span className="info-value">{normalizedProperty.business_hours}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Описание */}
+                {normalizedProperty.description && (
+                  <div className="detail-section">
+                    <h3 className="detail-section-title">Описание</h3>
+                    <div className="detail-description">
+                      <p>{normalizedProperty.description}</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Карта */}
                 {normalizedProperty.coordinates && Array.isArray(normalizedProperty.coordinates) && normalizedProperty.coordinates.length === 2 && (
-                  <div className="detail-map">
-                    <div className="detail-map-container">
-                      <MapContainer
-                        center={normalizedProperty.coordinates}
-                        zoom={15}
-                        style={{ height: '100%', width: '100%', borderRadius: '12px' }}
-                        scrollWheelZoom={true}
-                        zoomControl={true}
-                      >
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <Marker position={normalizedProperty.coordinates} />
-                      </MapContainer>
+                  <div className="detail-section">
+                    <h3 className="detail-section-title">Местоположение</h3>
+                    <div className="detail-map">
+                      <div className="detail-map-container">
+                        <MapContainer
+                          center={normalizedProperty.coordinates}
+                          zoom={15}
+                          style={{ height: '400px', width: '100%', borderRadius: '12px' }}
+                          scrollWheelZoom={true}
+                          zoomControl={true}
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={normalizedProperty.coordinates} />
+                        </MapContainer>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -541,169 +651,20 @@ const PropertyDetail = () => {
         </div>
       </div>
 
-      {/* Панель истории ставок */}
-      {isBidHistoryOpen && (
-        <>
-          <div 
-            className="bid-history-backdrop"
-            onClick={() => setIsBidHistoryOpen(false)}
-          />
-          <div className="bid-history-panel" ref={historyPanelRef}>
-            <div className="bid-history-header">
-              <h2>История ставок</h2>
-              <button 
-                type="button"
-                className="bid-history-close"
-                onClick={() => setIsBidHistoryOpen(false)}
-                aria-label="Закрыть"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-
-            <div className="bid-history-content">
-              {/* Последние 5 ставок */}
-              <div className="bid-history-list">
-                <h3>Последние ставки</h3>
-                <div className="bid-history-items">
-                  {lastFiveBids.map((bid) => (
-                    <div key={bid.id} className="bid-history-item">
-                      <div className="bid-history-item-info">
-                        <div className="bid-history-item-amount">{formatPrice(bid.amount)}</div>
-                        <div className="bid-history-item-details">
-                          <span className="bid-history-item-bidder">
-                            {bid.userId} • {bid.country}
-                            <img 
-                              src={`https://flagcdn.com/w20/${getCountryCode(bid.country)}.png`}
-                              alt={bid.country}
-                              className="bid-history-item-flag"
-                              onError={(e) => {
-                                e.target.style.display = 'none'
-                              }}
-                            />
-                          </span>
-                          <span className="bid-history-item-time">{formatTime(bid.time)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* График изменения цены */}
-              <div className="bid-history-chart">
-                <h3>Изменение цены за всё время</h3>
-                <div className="chart-container">
-                  <svg 
-                    width={chartWidth} 
-                    height={chartHeight}
-                    className="price-chart"
-                  >
-                    {/* Сетка */}
-                    <defs>
-                      <linearGradient id="priceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#0ABAB5" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#0ABAB5" stopOpacity="0.05" />
-                      </linearGradient>
-                    </defs>
-                    
-                    {/* Горизонтальные линии сетки */}
-                    {[0, 1, 2, 3, 4].map((i) => {
-                      const y = padding + (chartHeight - padding * 2) * (i / 4)
-                      const price = maxPrice - (priceRange * i / 4)
-                      return (
-                        <g key={`grid-${i}`}>
-                          <line
-                            x1={padding}
-                            y1={y}
-                            x2={chartWidth - padding}
-                            y2={y}
-                            stroke="#e0e0e0"
-                            strokeWidth="1"
-                            strokeDasharray="4,4"
-                          />
-                          <text
-                            x={padding - 10}
-                            y={y + 4}
-                            textAnchor="end"
-                            fontSize="12"
-                            fill="#666"
-                          >
-                            {formatPrice(price)}
-                          </text>
-                        </g>
-                      )
-                    })}
-
-                    {/* Область под графиком (градиент) */}
-                    <path
-                      d={`M ${padding},${chartHeight - padding} ${
-                        chartData.map((point, index) => {
-                          const x = padding + (index / (chartData.length - 1)) * (chartWidth - padding * 2)
-                          const y = chartHeight - padding - ((point.price - minPrice) / priceRange) * (chartHeight - padding * 2)
-                          return `${index === 0 ? 'L' : 'L'} ${x},${y}`
-                        }).join(' ')
-                      } L ${chartWidth - padding},${chartHeight - padding} Z`}
-                      fill="url(#priceGradient)"
-                    />
-
-                    {/* Линия графика */}
-                    <polyline
-                      points={chartData.map((point, index) => {
-                        const x = padding + (index / (chartData.length - 1)) * (chartWidth - padding * 2)
-                        const y = chartHeight - padding - ((point.price - minPrice) / priceRange) * (chartHeight - padding * 2)
-                        return `${x},${y}`
-                      }).join(' ')}
-                      fill="none"
-                      stroke="#0ABAB5"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-
-                    {/* Точки на графике */}
-                    {chartData.map((point, index) => {
-                      const x = padding + (index / (chartData.length - 1)) * (chartWidth - padding * 2)
-                      const y = chartHeight - padding - ((point.price - minPrice) / priceRange) * (chartHeight - padding * 2)
-                      return (
-                        <circle
-                          key={index}
-                          cx={x}
-                          cy={y}
-                          r="4"
-                          fill="#0ABAB5"
-                          stroke="#fff"
-                          strokeWidth="2"
-                        />
-                      )
-                    })}
-
-                    {/* Ось X (время) */}
-                    <line
-                      x1={padding}
-                      y1={chartHeight - padding}
-                      x2={chartWidth - padding}
-                      y2={chartHeight - padding}
-                      stroke="#333"
-                      strokeWidth="2"
-                    />
-
-                    {/* Ось Y (цена) */}
-                    <line
-                      x1={padding}
-                      y1={padding}
-                      x2={padding}
-                      y2={chartHeight - padding}
-                      stroke="#333"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Модальное окно истории ставок */}
+      <BiddingHistoryModal
+        isOpen={isBidHistoryOpen}
+        onClose={() => setIsBidHistoryOpen(false)}
+        property={{
+          id: normalizedProperty.id,
+          title: normalizedProperty.title,
+          start_date: normalizedProperty.auction_start_date,
+          end_date: normalizedProperty.auction_end_date,
+          auction_starting_price: normalizedProperty.auction_starting_price,
+          price: normalizedProperty.price,
+          currentBid: normalizedProperty.currentBid
+        }}
+      />
     </div>
   )
 }

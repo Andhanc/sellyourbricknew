@@ -5,6 +5,8 @@ import { MdBed, MdOutlineBathtub } from 'react-icons/md';
 import { BiArea } from 'react-icons/bi';
 import './ModerationPropertyDetail.css';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
 // Моковые изображения для недвижимости
 const mockPropertyImages = [
   'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
@@ -22,6 +24,37 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [mediaType, setMediaType] = useState('photos'); // 'photos' или 'videos'
   
+  // Функция для обработки URL документа
+  const processDocumentUrl = (docUrl) => {
+    if (!docUrl) return null;
+    
+    // Data URL (base64) - используем как есть
+    if (docUrl.startsWith('data:')) {
+      return docUrl;
+    }
+    
+    // Полный HTTP/HTTPS URL - используем как есть
+    if (docUrl.startsWith('http://') || docUrl.startsWith('https://')) {
+      return docUrl;
+    }
+    
+    // Получаем базовый URL без /api
+    const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '');
+    
+    // Путь начинается с /uploads/ - добавляем базовый URL
+    if (docUrl.startsWith('/uploads/')) {
+      return `${baseUrl}${docUrl}`;
+    }
+    
+    // Путь начинается с uploads/ без слеша - добавляем / и базовый URL
+    if (docUrl.startsWith('uploads/')) {
+      return `${baseUrl}/${docUrl}`;
+    }
+    
+    // Относительный путь - добавляем /uploads/
+    return `${baseUrl}/uploads/${docUrl}`;
+  };
+
   // Функция для определения типа документа
   const getDocumentType = (docUrl, docName) => {
     if (!docUrl) return 'image';
@@ -385,6 +418,15 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 12</span>
               )}
             </div>
+            {/* Дополнительные удобства */}
+            {property.additional_amenities && property.additional_amenities.trim() && (
+              <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>Дополнительно:</h4>
+                <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                  {property.additional_amenities}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="moderation-property-detail__owner">
@@ -533,15 +575,18 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
           <div className="moderation-property-detail__documents-grid">
             {/* Документ о праве собственности */}
             {(property.ownership_document || property.ownershipDocument) && (() => {
-              const docUrl = property.ownership_document || property.ownershipDocument;
+              const rawDocUrl = property.ownership_document || property.ownershipDocument;
+              const docUrl = processDocumentUrl(rawDocUrl);
               const docName = property.ownership_document_name || property.ownershipDocumentName || 'Документ о праве собственности';
-              const docType = getDocumentType(docUrl, docName);
+              const docType = getDocumentType(rawDocUrl, docName);
               
               return (
                 <div 
                   className="moderation-property-detail__document-card"
                   onClick={() => {
-                    setSelectedDocument({ type: docType, url: docUrl, name: docName });
+                    if (docUrl) {
+                      setSelectedDocument({ type: docType, url: docUrl, name: docName });
+                    }
                   }}
                 >
                   <div className="moderation-property-detail__document-icon">
@@ -561,15 +606,18 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
             
             {/* Справка об отсутствии долгов */}
             {(property.no_debts_document || property.noDebtsDocument) && (() => {
-              const docUrl = property.no_debts_document || property.noDebtsDocument;
+              const rawDocUrl = property.no_debts_document || property.noDebtsDocument;
+              const docUrl = processDocumentUrl(rawDocUrl);
               const docName = property.no_debts_document_name || property.noDebtsDocumentName || 'Справка об отсутствии долгов';
-              const docType = getDocumentType(docUrl, docName);
+              const docType = getDocumentType(rawDocUrl, docName);
               
               return (
                 <div 
                   className="moderation-property-detail__document-card"
                   onClick={() => {
-                    setSelectedDocument({ type: docType, url: docUrl, name: docName });
+                    if (docUrl) {
+                      setSelectedDocument({ type: docType, url: docUrl, name: docName });
+                    }
                   }}
                 >
                   <div className="moderation-property-detail__document-icon">

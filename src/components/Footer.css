@@ -193,7 +193,9 @@ body.admin-panel-active .footer .footer__brand-text {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-left: 20px;
 }
+
 
 .footer__qr-image {
   width: 130px;
@@ -203,8 +205,13 @@ body.admin-panel-active .footer .footer__brand-text {
   padding: 4px;
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  position: relative;
-  bottom: 42px;
+  object-fit: contain;
+}
+
+/* Иконка WhatsApp в кнопке */
+/* Ссылка-кнопка WhatsApp */
+.footer__store-btn[href] {
+  text-decoration: none;
 }
 
 
@@ -226,6 +233,10 @@ body.admin-panel-active .footer .footer__brand-text {
   color: #ffffff;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
+  min-width: 130px;
+  height: 48px;
+  box-sizing: border-box;
+  justify-content: flex-start;
 }
 
 /* Гарантируем белый текст внутри кнопок стора */
@@ -301,6 +312,7 @@ body.admin-panel-active .footer .footer__brand-text {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  margin-left: 20px;
 }
 
 .footer__language-selector-btn {

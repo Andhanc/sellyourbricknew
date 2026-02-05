@@ -83,7 +83,7 @@
 .auction-card {
   background: white;
   border-radius: 12px;
-  padding: 1rem;
+  padding: 0.75rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
   height: 100%;
   display: flex;
@@ -98,7 +98,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .nearest-auction-timer {
@@ -113,21 +113,21 @@
   align-items: center;
   background: transparent;
   border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  min-width: 50px;
+  padding: 0.3rem 0.5rem;
+  min-width: 45px;
 }
 
 .timer-value {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #111827; /* темные цифры таймера только в админ-слайдере */
   line-height: 1.2;
 }
 
 .timer-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #6b7280;
-  margin-top: 0.2rem;
+  margin-top: 0.15rem;
   text-transform: uppercase;
 }
 
@@ -140,8 +140,8 @@
 
 .nearest-auction-content {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 1rem;
+  grid-template-columns: 140px 1fr;
+  gap: 0.75rem;
 }
 
 .nearest-auction-image-wrapper {
@@ -156,7 +156,7 @@
   border-radius: 8px;
   overflow: hidden;
   background: #f3f4f6;
-  max-height: 140px;
+  max-height: 100px;
 }
 
 .nearest-auction-image img {
@@ -168,8 +168,8 @@
 .nearest-auction-image-info {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.5rem;
+  gap: 0.3rem;
+  padding: 0.4rem;
   border-radius: 8px;
 }
 
@@ -190,31 +190,31 @@
 .nearest-auction-info {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
 .nearest-auction-object-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--dark);
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.1rem;
   line-height: 1.3;
 }
 
 .nearest-auction-object-description {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6b7280;
   line-height: 1.4;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
 .nearest-auction-object-location {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6b7280;
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
 .nearest-auction-object-location i {
@@ -225,21 +225,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.6rem;
+  padding: 0.5rem;
   background: #f9fafb;
   border-radius: 8px;
-  margin-top: 0.3rem;
-  margin-bottom: 0.3rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
 }
 
 .history-button {
-  margin-top: 0.3rem;
-  padding: 0.5rem 0.75rem;
+  margin-top: 0.2rem;
+  padding: 0.4rem 0.6rem;
   background: transparent;
   border: 1px solid var(--primary);
   border-radius: 8px;
   color: var(--primary);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;

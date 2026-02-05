@@ -12,7 +12,7 @@ const LocationMap = ({ center, zoom = 10, marker }) => {
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
 
-    const initialCenter = Array.isArray(center) && center.length === 2
+    const initialCenter = Array.isArray(center) && center.length === 2 && !isNaN(center[0]) && !isNaN(center[1])
       ? [center[1], center[0]]
       : [37.6173, 55.7558] // Москва по умолчанию [lng, lat]
 
@@ -45,13 +45,6 @@ const LocationMap = ({ center, zoom = 10, marker }) => {
     })
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
-    map.addControl(
-      new maplibregl.AttributionControl({
-        compact: true,
-        customAttribution: 'MapLibre GL | © OpenStreetMap contributors'
-      }),
-      'bottom-right'
-    )
 
     mapRef.current = map
 

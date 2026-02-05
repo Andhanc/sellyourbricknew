@@ -99,7 +99,7 @@ const AddProperty = () => {
   const [showBedModal, setShowBedModal] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedCoordinates, setSelectedCoordinates] = useState(null)
-  const [mapCenter, setMapCenter] = useState([55.7558, 37.6173]) // Москва по умолчанию
+  const [mapCenter, setMapCenter] = useState([54.5, 15.0]) // Центр Европы по умолчанию
   const [citySearch, setCitySearch] = useState('')
   const [citySuggestions, setCitySuggestions] = useState([])
   const [showCitySuggestions, setShowCitySuggestions] = useState(false)
@@ -110,6 +110,7 @@ const AddProperty = () => {
   const houseSearchTimeoutRef = useRef(null)
   const [isCitySearching, setIsCitySearching] = useState(false)
   const [isAddressSearching, setIsAddressSearching] = useState(false)
+  const [validationErrors, setValidationErrors] = useState({})
   
   const currencies = [
     { code: 'USD', symbol: '$', name: 'Доллар США' },
@@ -130,6 +131,8 @@ const AddProperty = () => {
     auctionStartingPrice: '',
     // Общие поля
     area: '',
+    livingArea: '',
+    buildingType: '',
     rooms: '',
     bedrooms: '',
     bathrooms: '',
@@ -148,7 +151,6 @@ const AddProperty = () => {
     elevator: false,
     // Дополнительные поля для дома/виллы
     landArea: '',
-    garage: false,
     pool: false,
     garden: false,
     // Дополнительные поля для коммерческой
@@ -176,7 +178,22 @@ const AddProperty = () => {
     feature9: false,
     feature10: false,
     feature11: false,
-    feature12: false
+    feature12: false,
+    feature13: false,
+    feature14: false,
+    feature15: false,
+    feature16: false,
+    feature17: false,
+    feature18: false,
+    feature19: false,
+    feature20: false,
+    feature21: false,
+    feature22: false,
+    feature23: false,
+    feature24: false,
+    feature25: false,
+    feature26: false,
+    additionalAmenities: ''
   })
 
   // Закрытие выпадающего списка валют при клике вне его
@@ -431,9 +448,113 @@ const AddProperty = () => {
   }
 
   const handleDetailChange = (field, value) => {
+    // Валидация для числовых полей
+    let validatedValue = value
+    
+    // Проверка на тип данных - только числа
+    if (['rooms', 'bathrooms', 'area', 'livingArea', 'floor', 'totalFloors', 'yearBuilt'].includes(field)) {
+      // Разрешаем пустую строку
+      if (value === '') {
+        validatedValue = value
+        // Убираем ошибку при очистке поля
+        setValidationErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[field]
+          return newErrors
+        })
+      } else {
+        // Проверяем, что это число (не допускаем минус)
+        if (value.startsWith('-')) {
+          setValidationErrors(prev => ({
+            ...prev,
+            [field]: 'Значение не может быть отрицательным'
+          }))
+          return
+        }
+        
+        const numValue = parseFloat(value)
+        if (isNaN(numValue)) {
+          // Если не число, не обновляем значение
+          return
+        }
+        
+        // Проверка на отрицательные числа
+        if (numValue < 0) {
+          setValidationErrors(prev => ({
+            ...prev,
+            [field]: 'Значение не может быть отрицательным'
+          }))
+          // Не обновляем значение, если оно отрицательное
+          return
+        }
+        
+        validatedValue = String(numValue)
+        
+        // Специфичные проверки для каждого поля
+        const currentYear = new Date().getFullYear()
+        
+        if (field === 'yearBuilt') {
+          // Год постройки не может быть больше текущего года
+          if (numValue > currentYear) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [field]: `Год постройки не может быть больше ${currentYear}`
+            }))
+            // Не блокируем ввод, но показываем ошибку
+          } else {
+            // Убираем ошибку, если год валиден
+            setValidationErrors(prev => {
+              const newErrors = { ...prev }
+              delete newErrors[field]
+              return newErrors
+            })
+          }
+        }
+        
+        if (field === 'floor') {
+          // Этаж не может быть больше этажности
+          const totalFloors = parseFloat(formData.totalFloors) || 0
+          if (totalFloors > 0 && numValue > totalFloors) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [field]: `Этаж не может быть больше этажности (${totalFloors})`
+            }))
+            return
+          }
+        }
+        
+        if (field === 'totalFloors') {
+          // Если этажность изменилась, проверяем этаж
+          const floor = parseFloat(formData.floor) || 0
+          if (floor > 0 && numValue > 0 && floor > numValue) {
+            setValidationErrors(prev => ({
+              ...prev,
+              floor: `Этаж (${floor}) не может быть больше этажности (${numValue})`
+            }))
+          } else {
+            // Убираем ошибку этажа, если она была связана с этажностью
+            setValidationErrors(prev => {
+              const newErrors = { ...prev }
+              if (newErrors.floor && newErrors.floor.includes('этажности')) {
+                delete newErrors.floor
+              }
+              return newErrors
+            })
+          }
+        }
+        
+        // Убираем ошибку для этого поля, если валидация прошла
+        setValidationErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[field]
+          return newErrors
+        })
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: validatedValue
     }))
   }
 
@@ -487,13 +608,15 @@ const AddProperty = () => {
       formDataToSend.append('title', formData.title)
       
       // Данные пользователя из профиля (если загружены)
+      // НЕ добавляем address и country из профиля, чтобы использовать только адрес объекта недвижимости
       if (userProfileData) {
         if (userProfileData.first_name) formDataToSend.append('first_name', userProfileData.first_name)
         if (userProfileData.last_name) formDataToSend.append('last_name', userProfileData.last_name)
         if (userProfileData.email) formDataToSend.append('email', userProfileData.email)
         if (userProfileData.phone_number) formDataToSend.append('phone_number', userProfileData.phone_number)
-        if (userProfileData.country) formDataToSend.append('country', userProfileData.country)
-        if (userProfileData.address) formDataToSend.append('address', userProfileData.address)
+        // Убрано: адрес и страна из профиля пользователя не должны перезаписывать адрес объекта
+        // if (userProfileData.country) formDataToSend.append('country', userProfileData.country)
+        // if (userProfileData.address) formDataToSend.append('address', userProfileData.address)
         if (userProfileData.passport_series) formDataToSend.append('passport_series', userProfileData.passport_series)
         if (userProfileData.passport_number) formDataToSend.append('passport_number', userProfileData.passport_number)
         if (userProfileData.identification_number) formDataToSend.append('identification_number', userProfileData.identification_number)
@@ -511,17 +634,25 @@ const AddProperty = () => {
       
       // Общие характеристики
       if (formData.area) formDataToSend.append('area', String(formData.area))
+      if (formData.livingArea) formDataToSend.append('living_area', String(formData.livingArea))
+      if (formData.buildingType) formDataToSend.append('building_type', formData.buildingType)
       if (formData.rooms) formDataToSend.append('rooms', String(formData.rooms))
       if (formData.bedrooms) formDataToSend.append('bedrooms', String(formData.bedrooms))
       if (formData.bathrooms) formDataToSend.append('bathrooms', String(formData.bathrooms))
       if (formData.floor) formDataToSend.append('floor', String(formData.floor))
       if (formData.totalFloors) formDataToSend.append('total_floors', String(formData.totalFloors))
       if (formData.yearBuilt) formDataToSend.append('year_built', String(formData.yearBuilt))
-      if (formData.location) formDataToSend.append('location', formData.location)
-      if (formData.address) formDataToSend.append('address', formData.address)
-      if (formData.apartment) formDataToSend.append('apartment', formData.apartment)
-      if (formData.country) formDataToSend.append('country', formData.country)
-      if (formData.city) formDataToSend.append('city', formData.city)
+      // Если location указан, используем только его, чтобы избежать дублирования
+      if (formData.location) {
+        formDataToSend.append('location', formData.location)
+        // Не отправляем отдельные поля, если location уже содержит полный адрес
+      } else {
+        // Если location не указан, отправляем отдельные поля
+        if (formData.address) formDataToSend.append('address', formData.address)
+        if (formData.apartment) formDataToSend.append('apartment', formData.apartment)
+        if (formData.country) formDataToSend.append('country', formData.country)
+        if (formData.city) formDataToSend.append('city', formData.city)
+      }
       if (formData.coordinates) {
         formDataToSend.append('coordinates', JSON.stringify(formData.coordinates))
       }
@@ -531,7 +662,6 @@ const AddProperty = () => {
       formDataToSend.append('parking', formData.parking ? '1' : '0')
       formDataToSend.append('elevator', formData.elevator ? '1' : '0')
       if (formData.landArea) formDataToSend.append('land_area', String(formData.landArea))
-      formDataToSend.append('garage', formData.garage ? '1' : '0')
       formDataToSend.append('pool', formData.pool ? '1' : '0')
       formDataToSend.append('garden', formData.garden ? '1' : '0')
       if (formData.commercialType) formDataToSend.append('commercial_type', formData.commercialType)
@@ -545,6 +675,17 @@ const AddProperty = () => {
       formDataToSend.append('internet', formData.internet ? '1' : '0')
       formDataToSend.append('security', formData.security ? '1' : '0')
       formDataToSend.append('furniture', formData.furniture ? '1' : '0')
+      
+      // Дополнительные удобства (feature поля)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`
+        formDataToSend.append(featureKey, formData[featureKey] ? '1' : '0')
+      }
+      
+      // Дополнительные удобства (текстовое поле)
+      if (formData.additionalAmenities) {
+        formDataToSend.append('additional_amenities', formData.additionalAmenities)
+      }
       
       // Медиа (JSON)
       formDataToSend.append('photos', JSON.stringify(photos.map(p => p.url)))
@@ -919,7 +1060,8 @@ const AddProperty = () => {
       // При необходимости автоматически выбираем лучший результат
       if (autoSelect && addresses.length > 0) {
         const best = addresses[0]
-        const address = best.display_name
+        const fullAddress = best.display_name
+        const shortAddress = formatShortAddress(best)
         const lat = parseFloat(best.lat)
         const lng = parseFloat(best.lon)
         const coords = [lat, lng]
@@ -928,15 +1070,24 @@ const AddProperty = () => {
         const country = addressParts.country || ''
         const city = addressParts.city || addressParts.town || addressParts.village || ''
 
-        setAddressSearch(address)
-        setSelectedCoordinates(coords)
-        setMapCenter(coords)
+        // В инпуте показываем только короткий адрес
+        setAddressSearch(shortAddress)
+        // НЕ обновляем карту здесь - карта обновится только после выбора номера дома
+        // setSelectedCoordinates(coords)
+        // setMapCenter(coords)
+
+        // Формируем адрес в правильном формате: страна, город, улица
+        const formattedAddress = country && city 
+          ? `${country}, ${city}, ${shortAddress}`
+          : shortAddress
 
         setFormData(prev => ({
           ...prev,
-          address,
-          location: address,
-          coordinates: coords,
+          // address — короткий (улица), location — полный в правильном формате
+          address: shortAddress,
+          location: formattedAddress,
+          // НЕ устанавливаем coordinates здесь - они установятся только после выбора номера дома
+          // coordinates: coords,
           country: prev.country || country,
           city: prev.city || city
         }))
@@ -1104,19 +1255,109 @@ const AddProperty = () => {
     }
   }, [])
 
+  // Функция для форматирования короткого адреса (только улица и район)
+  const formatShortAddress = (suggestion) => {
+    const address = suggestion.address || {}
+    // Пробуем разные поля для названия улицы
+    const road = address.road || address.street || ''
+    const suburb = address.suburb || ''
+    const cityDistrict = address.city_district || ''
+    const district = address.district || ''
+    const neighbourhood = address.neighbourhood || ''
+    
+    // Определяем район (приоритет: suburb > city_district > district > neighbourhood)
+    const districtName = suburb || cityDistrict || district || neighbourhood || ''
+    
+    // Формируем короткий адрес
+    let shortAddress = ''
+    if (road) {
+      // Проверяем, есть ли уже префикс "улица" или "ул." в названии
+      const roadLower = road.toLowerCase().trim()
+      const hasStreetPrefix = roadLower.startsWith('улица') || 
+                              roadLower.startsWith('ул.') || 
+                              roadLower.startsWith('ул ')
+      
+      if (hasStreetPrefix) {
+        shortAddress = road
+      } else {
+        shortAddress = `улица ${road}`
+      }
+      
+      // Добавляем район, если есть
+      if (districtName) {
+        shortAddress += `, ${districtName}`
+      }
+    } else {
+      // Если нет улицы в структурированных данных, пытаемся извлечь из display_name
+      const displayName = suggestion.display_name || ''
+      const parts = displayName.split(',').map(p => p.trim())
+      
+      // Ищем улицу в display_name (обычно содержит "улица", "ул.", "street" и т.д.)
+      let foundStreet = ''
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i].toLowerCase()
+        if (part.includes('улица') || part.includes('ул.') || 
+            part.includes('ул ') || part.includes('street') ||
+            part.includes('проспект') || part.includes('пр.') ||
+            part.includes('проспект ') || part.includes('пр ')) {
+          foundStreet = parts[i]
+          break
+        }
+      }
+      
+      if (foundStreet) {
+        shortAddress = foundStreet
+        // Пытаемся найти район (обычно следующий элемент после улицы или содержит "район")
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i].toLowerCase()
+          if (part.includes('район') || part.includes('district') || 
+              part.includes('suburb') || part.includes('neighbourhood')) {
+            if (shortAddress) {
+              shortAddress += `, ${parts[i]}`
+            }
+            break
+          }
+        }
+      }
+    }
+    
+    // НИКОГДА не возвращаем display_name - только сформированный адрес или пустую строку
+    return shortAddress
+  }
+
+  // Получение уникальных подсказок по короткому адресу (улица + район)
+  const getUniqueAddressSuggestions = () => {
+    const seenLabels = new Set()
+    const unique = []
+
+    addressSuggestions.forEach((suggestion) => {
+      const label = formatShortAddress(suggestion)
+      if (!label) return
+
+      if (!seenLabels.has(label)) {
+        seenLabels.add(label)
+        unique.push({ suggestion, label })
+      }
+    })
+
+    return unique
+  }
+
   // Обработчик выбора адреса из предложений
   const handleAddressSelect = (suggestion) => {
-    const address = suggestion.display_name
+    const shortAddress = formatShortAddress(suggestion)
     const lat = parseFloat(suggestion.lat)
     const lng = parseFloat(suggestion.lon)
     const coords = [lat, lng]
     
-    setAddressSearch(address)
-    setSelectedCoordinates(coords)
-    setMapCenter(coords)
+    // В поле ввода и в formData.address записываем короткий адрес (улица + район)
+    setAddressSearch(shortAddress)
+    // Сохраняем координаты, но НЕ обновляем карту - карта обновится только после выбора номера дома
+    // setSelectedCoordinates(coords) - не устанавливаем, чтобы карта не двигалась
+    // setMapCenter(coords) - не устанавливаем, чтобы карта не двигалась
     setShowSuggestions(false)
     setIsAddressSearching(false) // Сбрасываем состояние загрузки
-    // Устанавливаем подсказки, чтобы показать галочку
+    // Устанавливаем подсказки, чтобы показать галочку (храним исходный объект)
     setAddressSuggestions([suggestion])
     
     // Извлекаем страну и город из адреса
@@ -1124,11 +1365,19 @@ const AddProperty = () => {
     const country = addressParts.country || ''
     const city = addressParts.city || addressParts.town || addressParts.village || ''
     
+    // Формируем адрес в правильном формате: страна, город, улица
+    const formattedAddress = country && city 
+      ? `${country}, ${city}, ${shortAddress}`
+      : shortAddress
+    
     setFormData(prev => ({
       ...prev,
-      address: address,
-      location: address,
-      coordinates: coords,
+      // Краткий вариант для отображения и отправки в поле "address"
+      address: shortAddress,
+      // Сохраняем адрес в правильном формате
+      location: formattedAddress,
+      // НЕ устанавливаем coordinates здесь - они установятся только после выбора номера дома
+      // coordinates: coords,
       country: country,
       city: city
     }))
@@ -1202,9 +1451,181 @@ const AddProperty = () => {
     }
   }
 
+  // Функция для форматирования адреса в формате: страна, город, улица, номер дома
+  const formatShortAddressWithHouse = (suggestion) => {
+    const address = suggestion.address || {}
+    const country = address.country || ''
+    const city = address.city || address.town || address.village || ''
+    const houseNumber = address.house_number || ''
+    const road = address.road || address.street || ''
+    
+    const parts = []
+    
+    // Страна (первым элементом)
+    if (country) {
+      parts.push(country)
+    }
+    
+    // Город (вторым элементом)
+    if (city) {
+      parts.push(city)
+    }
+    
+    // Улица (третьим элементом)
+    if (road) {
+      const roadLower = road.toLowerCase().trim()
+      const hasStreetPrefix = roadLower.startsWith('улица') || 
+                              roadLower.startsWith('ул.') || 
+                              roadLower.startsWith('ул ')
+      
+      if (hasStreetPrefix) {
+        parts.push(road)
+      } else {
+        parts.push(`улица ${road}`)
+      }
+    }
+    
+    // Номер дома (четвертым элементом)
+    if (houseNumber) {
+      parts.push(houseNumber)
+    }
+    
+    // Если не удалось собрать адрес из структурированных данных, формируем из display_name
+    if (parts.length === 0) {
+      const displayName = suggestion.display_name || ''
+      // Парсим display_name и берем только нужные части
+      const displayParts = displayName.split(',').map(p => p.trim())
+      
+      // Ищем страну, город, улицу и номер дома в display_name
+      // Обычно формат: номер, улица, район, город, индекс, страна
+      // Нам нужно: страна, город, улица, номер
+      
+      // Ищем страну (обычно последний элемент или содержит название страны)
+      let foundCountry = ''
+      for (let i = displayParts.length - 1; i >= 0; i--) {
+        const part = displayParts[i].toLowerCase()
+        if (part.includes('беларусь') || part.includes('belarus') || 
+            part.includes('россия') || part.includes('russia') ||
+            part.includes('украина') || part.includes('ukraine') ||
+            part.includes('казахстан') || part.includes('kazakhstan')) {
+          foundCountry = displayParts[i]
+          break
+        }
+      }
+      if (foundCountry) {
+        parts.push(foundCountry)
+      }
+      
+      // Ищем город (обычно перед страной, содержит название крупного города)
+      let foundCity = ''
+      const countryIndex = foundCountry ? displayParts.indexOf(foundCountry) : displayParts.length
+      for (let i = countryIndex - 1; i >= 0; i--) {
+        const part = displayParts[i].toLowerCase()
+        // Пропускаем индексы и районы
+        if (!/^\d+$/.test(displayParts[i]) && 
+            !part.includes('район') && 
+            !part.includes('district') &&
+            !part.includes('область') &&
+            !part.includes('region')) {
+          foundCity = displayParts[i]
+          break
+        }
+      }
+      if (foundCity) {
+        parts.push(foundCity)
+      }
+      
+      // Ищем улицу (обычно содержит "улица" или "ул." или "street")
+      let foundStreet = ''
+      for (let i = 0; i < displayParts.length; i++) {
+        const part = displayParts[i].toLowerCase()
+        if (part.includes('улица') || part.includes('ул.') || 
+            part.includes('ул ') || part.includes('street') ||
+            part.includes('проспект') || part.includes('пр.') ||
+            part.includes('проспект ') || part.includes('пр ')) {
+          foundStreet = displayParts[i]
+          break
+        }
+      }
+      if (foundStreet) {
+        parts.push(foundStreet)
+      }
+      
+      // Ищем номер дома (обычно первый элемент или число перед/после улицы)
+      let foundHouse = ''
+      if (foundStreet) {
+        const streetIndex = displayParts.indexOf(foundStreet)
+        // Ищем число рядом с улицей
+        for (let i = Math.max(0, streetIndex - 1); i <= Math.min(displayParts.length - 1, streetIndex + 1); i++) {
+          if (/^\d+/.test(displayParts[i]) && displayParts[i] !== foundStreet) {
+            foundHouse = displayParts[i]
+            break
+          }
+        }
+      } else {
+        // Если улицу не нашли, берем первое число
+        for (let i = 0; i < displayParts.length; i++) {
+          if (/^\d+/.test(displayParts[i])) {
+            foundHouse = displayParts[i]
+            break
+          }
+        }
+      }
+      if (foundHouse) {
+        parts.push(foundHouse)
+      }
+    }
+    
+    // Если все еще пусто, пытаемся извлечь хотя бы страну и город из display_name
+    if (parts.length === 0) {
+      const displayName = suggestion.display_name || ''
+      const displayParts = displayName.split(',').map(p => p.trim())
+      
+      // Ищем страну (обычно последний элемент)
+      let foundCountry = ''
+      for (let i = displayParts.length - 1; i >= 0; i--) {
+        const part = displayParts[i].toLowerCase()
+        if (part.includes('беларусь') || part.includes('belarus') || 
+            part.includes('россия') || part.includes('russia') ||
+            part.includes('украина') || part.includes('ukraine') ||
+            part.includes('казахстан') || part.includes('kazakhstan')) {
+          foundCountry = displayParts[i]
+          break
+        }
+      }
+      
+      // Ищем город
+      let foundCity = ''
+      const countryIndex = foundCountry ? displayParts.indexOf(foundCountry) : displayParts.length
+      for (let i = countryIndex - 1; i >= 0; i--) {
+        const part = displayParts[i].toLowerCase()
+        if (!/^\d+$/.test(displayParts[i]) && 
+            !part.includes('район') && 
+            !part.includes('district') &&
+            !part.includes('область') &&
+            !part.includes('region')) {
+          foundCity = displayParts[i]
+          break
+        }
+      }
+      
+      if (foundCountry && foundCity) {
+        return `${foundCountry}, ${foundCity}`
+      } else if (foundCountry) {
+        return foundCountry
+      } else if (foundCity) {
+        return foundCity
+      }
+      
+      // Если ничего не нашли, возвращаем пустую строку вместо display_name
+      return ''
+    }
+    
+    return parts.join(', ')
+  }
+
   // Обработчик выбора дома из подсказок
   const handleHouseSelect = (suggestion) => {
-    const address = suggestion.display_name
     const lat = parseFloat(suggestion.lat)
     const lng = parseFloat(suggestion.lon)
     const coords = [lat, lng]
@@ -1213,8 +1634,11 @@ const AddProperty = () => {
     const country = addressParts.country || ''
     const city = addressParts.city || addressParts.town || addressParts.village || ''
     const houseNumber = addressParts.house_number || formData.apartment || ''
+    
+    // Формируем адрес в правильном формате: страна, город, улица, номер дома
+    const formattedAddress = formatShortAddressWithHouse(suggestion)
 
-    setAddressSearch(address)
+    setAddressSearch(formattedAddress)
     setSelectedCoordinates(coords)
     setMapCenter(coords)
     setHouseSuggestions([])
@@ -1222,12 +1646,12 @@ const AddProperty = () => {
 
     setFormData(prev => ({
       ...prev,
-      address,
-      location: address,
+      address: formattedAddress,
+      location: formattedAddress, // Используем тот же отформатированный адрес (уже содержит номер дома)
       coordinates: coords,
-      country: prev.country || country,
-      city: prev.city || city,
-      apartment: houseNumber
+      // Не сохраняем country и city отдельно, так как они уже в location
+      // Не сохраняем houseNumber как apartment, так как номер дома уже включен в formattedAddress
+      apartment: '' // Очищаем apartment, так как номер дома уже в адресе
     }))
   }
 
@@ -1253,6 +1677,91 @@ const AddProperty = () => {
 
   // Обработчик перехода к удобствам после заполнения подробной информации
   const handleDetailsContinue = () => {
+    // Валидация всех полей
+    const errors = {}
+    const currentYear = new Date().getFullYear()
+    
+    // Проверка для формы квартир и коммерческой недвижимости
+    if (formData.propertyType === 'apartment' || formData.propertyType === 'commercial') {
+      // Проверка обязательных полей
+      if (!formData.rooms || formData.rooms === '' || parseFloat(formData.rooms) <= 0) {
+        errors.rooms = 'Укажите количество комнат'
+      }
+      if (!formData.bathrooms || formData.bathrooms === '' || parseFloat(formData.bathrooms) <= 0) {
+        errors.bathrooms = 'Укажите количество ванных комнат'
+      }
+      if (!formData.area || formData.area === '' || parseFloat(formData.area) <= 0) {
+        errors.area = 'Укажите общую площадь'
+      }
+      if (!formData.livingArea || formData.livingArea === '' || parseFloat(formData.livingArea) <= 0) {
+        errors.livingArea = 'Укажите жилую площадь'
+      }
+      if (!formData.floor || formData.floor === '' || parseFloat(formData.floor) < 0) {
+        errors.floor = 'Укажите этаж'
+      }
+      if (!formData.totalFloors || formData.totalFloors === '' || parseFloat(formData.totalFloors) <= 0) {
+        errors.totalFloors = 'Укажите этажность'
+      }
+      if (!formData.yearBuilt || formData.yearBuilt === '' || parseFloat(formData.yearBuilt) <= 0) {
+        errors.yearBuilt = 'Укажите год постройки'
+      }
+      if (!formData.buildingType || formData.buildingType === '') {
+        errors.buildingType = 'Выберите тип дома/здания'
+      }
+      
+      // Проверка года постройки - только что год не больше текущего
+      const yearBuilt = parseFloat(formData.yearBuilt)
+      if (yearBuilt > currentYear) {
+        errors.yearBuilt = `Год постройки не может быть больше ${currentYear}`
+      }
+      
+      // Проверка этажа и этажности
+      const floor = parseFloat(formData.floor)
+      const totalFloors = parseFloat(formData.totalFloors)
+      if (floor > totalFloors) {
+        errors.floor = `Этаж не может быть больше этажности (${totalFloors})`
+      }
+    }
+    
+    // Если есть ошибки, показываем их и не переходим дальше
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      // Прокручиваем к первому полю с ошибкой
+      setTimeout(() => {
+        const firstErrorField = Object.keys(errors)[0]
+        // Ищем поле по имени или по классу с ошибкой
+        let errorElement = document.querySelector(`input[type="number"][value*="${formData[firstErrorField]}"]`)
+        if (!errorElement) {
+          // Пытаемся найти по классу и значению
+          const allInputs = document.querySelectorAll('.detail-form-input')
+          for (let input of allInputs) {
+            if (input.value === String(formData[firstErrorField] || '')) {
+              errorElement = input
+              break
+            }
+          }
+        }
+        // Если не нашли по значению, ищем select для buildingType
+        if (!errorElement && firstErrorField === 'buildingType') {
+          errorElement = document.querySelector('select.detail-form-select')
+        }
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          errorElement.focus()
+        } else {
+          // Если не нашли конкретное поле, прокручиваем к первому блоку с ошибкой
+          const errorMessage = document.querySelector('.detail-form-error')
+          if (errorMessage) {
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+      }, 100)
+      return
+    }
+    
+    // Очищаем ошибки
+    setValidationErrors({})
+    
     // Сохраняем данные о спальнях в formData
     setFormData(prev => ({
       ...prev,
@@ -2050,14 +2559,14 @@ const AddProperty = () => {
                   )}
                   {showSuggestions && addressSuggestions.length > 0 && (
                     <div className="property-location-suggestions">
-                      {addressSuggestions.map((suggestion, index) => (
+                      {getUniqueAddressSuggestions().map(({ suggestion, label }, index) => (
                         <div
                           key={index}
                           className="property-location-suggestion-item"
                           onClick={() => handleAddressSelect(suggestion)}
                         >
                           <FiMapPin size={16} />
-                          <span>{suggestion.display_name}</span>
+                          <span>{label}</span>
                         </div>
                       ))}
                     </div>
@@ -2109,7 +2618,7 @@ const AddProperty = () => {
                           onClick={() => handleHouseSelect(suggestion)}
                         >
                           <FiMapPin size={16} />
-                          <span>{suggestion.display_name}</span>
+                          <span>{formatShortAddressWithHouse(suggestion)}</span>
                         </div>
                       ))}
                     </div>
@@ -2140,7 +2649,7 @@ const AddProperty = () => {
               {typeof window !== 'undefined' && (
                 <LocationMap
                   center={selectedCoordinates || mapCenter}
-                  zoom={selectedCoordinates ? 15 : 10}
+                  zoom={selectedCoordinates ? 15 : 4}
                   marker={selectedCoordinates}
                 />
               )}
@@ -2157,117 +2666,302 @@ const AddProperty = () => {
               </h2>
               
               <div className="property-details-content-scrollable">
-                {/* Блок "Where can people sleep?" */}
-                <div className="sleep-areas-section">
-                  <h3 className="sleep-areas-title">Где могут спать люди?</h3>
-                  <div className="sleep-areas-list">
-                    {bedrooms.map((bedroom, index) => (
-                      <div 
-                        key={bedroom.id} 
-                        className="sleep-area-item"
-                        onClick={() => handleEditBedroom(bedroom)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="sleep-area-content">
-                          <div className="sleep-area-name">{bedroom.name}</div>
-                          <div className="sleep-area-beds">
-                            {getBedsDisplayText(bedroom.beds)}
-                          </div>
-                        </div>
-                        {bedroom.name.startsWith('Спальня') && (
-                          <button
-                            type="button"
-                            className="sleep-area-remove-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleRemoveBedroom(bedroom.id)
-                            }}
-                          >
-                            <FiX size={18} />
-                          </button>
+                {/* Новая форма для квартир и апартаментов */}
+                {(formData.propertyType === 'apartment' || formData.propertyType === 'commercial') ? (
+                  <div className="property-details-form">
+                    {/* Строка 1: Количество комнат | Количество ванных комнат */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Количество комнат</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.rooms}
+                          onChange={(e) => handleDetailChange('rooms', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.rooms ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.rooms && (
+                          <span className="detail-form-error">{validationErrors.rooms}</span>
                         )}
                       </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    className="add-bedroom-btn"
-                    onClick={handleAddBedroom}
-                  >
-                    <span className="add-bedroom-icon">+</span>
-                    Добавить спальню
-                  </button>
-                </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Количество ванных комнат</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.bathrooms}
+                          onChange={(e) => handleDetailChange('bathrooms', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.bathrooms ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.bathrooms && (
+                          <span className="detail-form-error">{validationErrors.bathrooms}</span>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Блок "Количество этажей" */}
-                <div className="floors-section">
-                  <h3 className="floors-title">Количество этажей</h3>
-                  <div className="number-input-control">
-                    <button
-                      type="button"
-                      className="number-input-btn number-input-btn--minus"
-                      onClick={() => handleDetailChange('totalFloors', Math.max(0, (formData.totalFloors || 0) - 1))}
-                      disabled={(formData.totalFloors || 0) === 0}
-                    >
-                      <span className="number-input-icon">−</span>
-                    </button>
-                    <span className="number-input-value">{formData.totalFloors || 0}</span>
-                    <button
-                      type="button"
-                      className="number-input-btn number-input-btn--plus"
-                      onClick={() => handleDetailChange('totalFloors', (formData.totalFloors || 0) + 1)}
-                    >
-                      <span className="number-input-icon">+</span>
-                    </button>
-                  </div>
-                </div>
+                    {/* Строка 2: Площадь общая | Площадь жилая */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь общая</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.area}
+                          onChange={(e) => handleDetailChange('area', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.area ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.area && (
+                          <span className="detail-form-error">{validationErrors.area}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь жилая</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.livingArea}
+                          onChange={(e) => handleDetailChange('livingArea', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.livingArea ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.livingArea && (
+                          <span className="detail-form-error">{validationErrors.livingArea}</span>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Блок "How many bathrooms are there?" */}
-                <div className="bathrooms-section">
-                  <h3 className="bathrooms-title">Сколько ванных комнат?</h3>
-                  <div className="number-input-control">
-                    <button
-                      type="button"
-                      className="number-input-btn number-input-btn--minus"
-                      onClick={() => handleDetailChange('bathrooms', Math.max(0, (formData.bathrooms || 0) - 1))}
-                      disabled={(formData.bathrooms || 0) === 0}
-                    >
-                      <span className="number-input-icon">−</span>
-                    </button>
-                    <span className="number-input-value">{formData.bathrooms || 0}</span>
-                    <button
-                      type="button"
-                      className="number-input-btn number-input-btn--plus"
-                      onClick={() => handleDetailChange('bathrooms', (formData.bathrooms || 0) + 1)}
-                    >
-                      <span className="number-input-icon">+</span>
-                    </button>
-                  </div>
-                </div>
+                    {/* Переключатель единиц измерения */}
+                    <div className="detail-form-field detail-form-field--centered">
+                      <label className="detail-form-label">
+                        <span className="detail-form-label-text">Единицы измерения</span>
+                      </label>
+                      <div className="area-unit-toggle">
+                        <button
+                          type="button"
+                          className={`area-unit-toggle-btn ${areaUnit === 'square_meters' ? 'active' : ''}`}
+                          onClick={() => setAreaUnit('square_meters')}
+                        >
+                          Метры квадратные
+                        </button>
+                        <button
+                          type="button"
+                          className={`area-unit-toggle-btn ${areaUnit === 'square_feet' ? 'active' : ''}`}
+                          onClick={() => setAreaUnit('square_feet')}
+                        >
+                          Футы квадратные
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Блок "How big is this apartment?" */}
-                <div className="apartment-size-section">
-                  <h3 className="apartment-size-title">Какой размер у этой квартиры?</h3>
-                  <label className="apartment-size-label">Размер квартиры – необязательно</label>
-                  <div className="apartment-size-input-group">
-                    <input
-                      type="number"
-                      value={formData.area}
-                      onChange={(e) => handleDetailChange('area', e.target.value)}
-                      className="apartment-size-input"
-                      placeholder="0"
-                      min="0"
-                    />
-                    <select
-                      value={areaUnit}
-                      onChange={(e) => setAreaUnit(e.target.value)}
-                      className="apartment-size-unit"
-                    >
-                      <option value="square_meters">квадратные метры</option>
-                      <option value="square_feet">квадратные футы</option>
-                    </select>
+                    {/* Строка 3: Этаж | Этажность */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Этаж</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.floor}
+                          onChange={(e) => handleDetailChange('floor', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.floor ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.floor && (
+                          <span className="detail-form-error">{validationErrors.floor}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Этажность</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.totalFloors}
+                          onChange={(e) => handleDetailChange('totalFloors', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.totalFloors ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.totalFloors && (
+                          <span className="detail-form-error">{validationErrors.totalFloors}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка 4: Год постройки | Площадь кухни */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Год постройки</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.yearBuilt}
+                          onChange={(e) => handleDetailChange('yearBuilt', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.yearBuilt ? 'detail-form-input--error' : ''}`}
+                          placeholder="2025"
+                          max={new Date().getFullYear()}
+                        />
+                        {validationErrors.yearBuilt && (
+                          <span className="detail-form-error">{validationErrors.yearBuilt}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Тип дома/здания</span>
+                        </label>
+                        <select
+                          value={formData.buildingType}
+                          onChange={(e) => handleDetailChange('buildingType', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow detail-form-select ${validationErrors.buildingType ? 'detail-form-input--error' : ''}`}
+                        >
+                          <option value="">Выберите тип</option>
+                          <option value="monolithic">Монолитный</option>
+                          <option value="brick">Кирпичный</option>
+                          <option value="panel">Панельный</option>
+                          <option value="block">Блочный</option>
+                          <option value="wood">Деревянный</option>
+                          <option value="frame">Каркасный</option>
+                          <option value="aerated_concrete">Газобетонный</option>
+                          <option value="foam_concrete">Пенобетонный</option>
+                          <option value="other">Другой</option>
+                        </select>
+                        {validationErrors.buildingType && (
+                          <span className="detail-form-error">{validationErrors.buildingType}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* Старая форма для других типов недвижимости */
+                  <>
+                    {/* Блок "Where can people sleep?" */}
+                    <div className="sleep-areas-section">
+                      <h3 className="sleep-areas-title">Где могут спать люди?</h3>
+                      <div className="sleep-areas-list">
+                        {bedrooms.map((bedroom, index) => (
+                          <div 
+                            key={bedroom.id} 
+                            className="sleep-area-item"
+                            onClick={() => handleEditBedroom(bedroom)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="sleep-area-content">
+                              <div className="sleep-area-name">{bedroom.name}</div>
+                              <div className="sleep-area-beds">
+                                {getBedsDisplayText(bedroom.beds)}
+                              </div>
+                            </div>
+                            {bedroom.name.startsWith('Спальня') && (
+                              <button
+                                type="button"
+                                className="sleep-area-remove-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleRemoveBedroom(bedroom.id)
+                                }}
+                              >
+                                <FiX size={18} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="add-bedroom-btn"
+                        onClick={handleAddBedroom}
+                      >
+                        <span className="add-bedroom-icon">+</span>
+                        Добавить спальню
+                      </button>
+                    </div>
+
+                    {/* Блок "Количество этажей" */}
+                    <div className="floors-section">
+                      <h3 className="floors-title">Количество этажей</h3>
+                      <div className="number-input-control">
+                        <button
+                          type="button"
+                          className="number-input-btn number-input-btn--minus"
+                          onClick={() => handleDetailChange('totalFloors', Math.max(0, (formData.totalFloors || 0) - 1))}
+                          disabled={(formData.totalFloors || 0) === 0}
+                        >
+                          <span className="number-input-icon">−</span>
+                        </button>
+                        <span className="number-input-value">{formData.totalFloors || 0}</span>
+                        <button
+                          type="button"
+                          className="number-input-btn number-input-btn--plus"
+                          onClick={() => handleDetailChange('totalFloors', (formData.totalFloors || 0) + 1)}
+                        >
+                          <span className="number-input-icon">+</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Блок "How many bathrooms are there?" */}
+                    <div className="bathrooms-section">
+                      <h3 className="bathrooms-title">Сколько ванных комнат?</h3>
+                      <div className="number-input-control">
+                        <button
+                          type="button"
+                          className="number-input-btn number-input-btn--minus"
+                          onClick={() => handleDetailChange('bathrooms', Math.max(0, (formData.bathrooms || 0) - 1))}
+                          disabled={(formData.bathrooms || 0) === 0}
+                        >
+                          <span className="number-input-icon">−</span>
+                        </button>
+                        <span className="number-input-value">{formData.bathrooms || 0}</span>
+                        <button
+                          type="button"
+                          className="number-input-btn number-input-btn--plus"
+                          onClick={() => handleDetailChange('bathrooms', (formData.bathrooms || 0) + 1)}
+                        >
+                          <span className="number-input-icon">+</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Блок "How big is this apartment?" */}
+                    <div className="apartment-size-section">
+                      <h3 className="apartment-size-title">Какой размер у этой квартиры?</h3>
+                      <label className="apartment-size-label">Размер квартиры – необязательно</label>
+                      <div className="apartment-size-input-group">
+                        <input
+                          type="number"
+                          value={formData.area}
+                          onChange={(e) => handleDetailChange('area', e.target.value)}
+                          className="apartment-size-input"
+                          placeholder="0"
+                          min="0"
+                        />
+                        <select
+                          value={areaUnit}
+                          onChange={(e) => setAreaUnit(e.target.value)}
+                          className="apartment-size-unit"
+                        >
+                          <option value="square_meters">квадратные метры</option>
+                          <option value="square_feet">квадратные футы</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="property-details-actions">
@@ -2386,19 +3080,13 @@ const AddProperty = () => {
               </h2>
               
               <div className="property-amenities-content-scrollable">
-                {/* Парковка и гараж */}
+                {/* Парковка */}
                 <div className="amenities-category">
-                  <h4 className="amenities-category-title">Парковка и гараж</h4>
+                  <h4 className="amenities-category-title">
+                    <span className="amenities-category-icon">🚗</span>
+                    Парковка
+                  </h4>
                   <div className="amenities-list">
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.garage || false}
-                        onChange={(e) => handleDetailChange('garage', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Гараж</span>
-                    </label>
                     <label className="amenity-item">
                       <input
                         type="checkbox"
@@ -2417,12 +3105,24 @@ const AddProperty = () => {
                       />
                       <span className="amenity-label">Подземная парковка</span>
                     </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature12 || false}
+                        onChange={(e) => handleDetailChange('feature12', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Парковка для велосипедов</span>
+                    </label>
                   </div>
                 </div>
 
                 {/* Мебель и техника */}
                 <div className="amenities-category">
-                  <h4 className="amenities-category-title">Мебель и техника</h4>
+                  <h4 className="amenities-category-title">
+                    <span className="amenities-category-icon">🛋️</span>
+                    Мебель и техника
+                  </h4>
                   <div className="amenities-list">
                     <label className="amenity-item">
                       <input
@@ -2469,12 +3169,24 @@ const AddProperty = () => {
                       />
                       <span className="amenity-label">Кондиционер</span>
                     </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature18 || false}
+                        onChange={(e) => handleDetailChange('feature18', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Гардеробная</span>
+                    </label>
                   </div>
                 </div>
 
                 {/* Коммуникации и безопасность */}
                 <div className="amenities-category">
-                  <h4 className="amenities-category-title">Коммуникации и безопасность</h4>
+                  <h4 className="amenities-category-title">
+                    <span className="amenities-category-icon">🔒</span>
+                    Коммуникации и безопасность
+                  </h4>
                   <div className="amenities-list">
                     <label className="amenity-item">
                       <input
@@ -2512,12 +3224,33 @@ const AddProperty = () => {
                       />
                       <span className="amenity-label">Видеонаблюдение</span>
                     </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature16 || false}
+                        onChange={(e) => handleDetailChange('feature16', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Видеодомофон</span>
+                    </label>
+                    <label className="amenity-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.feature17 || false}
+                        onChange={(e) => handleDetailChange('feature17', e.target.checked)}
+                        className="amenity-checkbox"
+                      />
+                      <span className="amenity-label">Консьерж</span>
+                    </label>
                   </div>
                 </div>
 
                 {/* Дополнительные помещения */}
                 <div className="amenities-category">
-                  <h4 className="amenities-category-title">Дополнительные помещения</h4>
+                  <h4 className="amenities-category-title">
+                    <span className="amenities-category-icon">🏠</span>
+                    Дополнительные помещения
+                  </h4>
                   <div className="amenities-list">
                     <label className="amenity-item">
                       <input
@@ -2558,55 +3291,23 @@ const AddProperty = () => {
                   </div>
                 </div>
 
-                {/* Дополнительные удобства */}
+                {/* Дополнительно */}
                 <div className="amenities-category">
-                  <h4 className="amenities-category-title">Дополнительные удобства</h4>
-                  <div className="amenities-list">
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.pool || false}
-                        onChange={(e) => handleDetailChange('pool', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Бассейн</span>
+                  <h4 className="amenities-category-title">
+                    <span className="amenities-category-icon">➕</span>
+                    Дополнительно
+                  </h4>
+                  <div className="amenities-additional-field">
+                    <label className="amenities-additional-label">
+                      Укажите другие удобства, если такие есть
                     </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.garden || false}
-                        onChange={(e) => handleDetailChange('garden', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Сад</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature9 || false}
-                        onChange={(e) => handleDetailChange('feature9', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Терраса</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature10 || false}
-                        onChange={(e) => handleDetailChange('feature10', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Камин</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature11 || false}
-                        onChange={(e) => handleDetailChange('feature11', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Мансарда</span>
-                    </label>
+                    <textarea
+                      className="amenities-additional-textarea"
+                      placeholder="Например: встроенная система умного дома, проектор, музыкальная система и т.д."
+                      value={formData.additionalAmenities || ''}
+                      onChange={(e) => handleDetailChange('additionalAmenities', e.target.value)}
+                      rows={3}
+                    />
                   </div>
                 </div>
               </div>

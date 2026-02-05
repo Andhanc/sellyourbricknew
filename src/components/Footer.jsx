@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FiChevronDown, FiCheck } from 'react-icons/fi'
-import { FaApple } from 'react-icons/fa'
+import { FaApple, FaWhatsapp } from 'react-icons/fa'
+import whatsappQR from '../../6019556644745841501.png'
 import './Footer.css'
 
 const Footer = () => {
@@ -10,6 +11,7 @@ const Footer = () => {
   const navigate = useNavigate()
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
   const languageDropdownRef = useRef(null)
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -161,33 +163,28 @@ const Footer = () => {
               </div>
             </button>
 
-            <button
-              type="button"
+            <a
+              href="https://wa.me/447700183959"
+              target="_blank"
+              rel="noopener noreferrer"
               className="footer__store-btn"
-              aria-label={`${t('downloadIn')} RuStore`}
             >
-              <div className="footer__store-icon footer__store-icon--rustore">
-                <span className="footer__store-icon-text">Ru</span>
+              <div className="footer__store-icon footer__store-icon--whatsapp">
+                <FaWhatsapp size={18} />
               </div>
               <div className="footer__store-text">
-                <span className="footer__store-label">{t('downloadIn')}</span>
-                <span className="footer__store-name">RuStore</span>
+                <span className="footer__store-label">{t('downloadIn') || 'ЗАГРУЗИТЕ В'}</span>
+                <span className="footer__store-name">WhatsApp</span>
               </div>
-            </button>
+            </a>
+          </div>
 
-            <button
-              type="button"
-              className="footer__store-btn"
-              aria-label={`${t('downloadIn')} AppGallery`}
-            >
-              <div className="footer__store-icon footer__store-icon--appgallery">
-                <span className="footer__store-icon-text">AG</span>
-              </div>
-              <div className="footer__store-text">
-                <span className="footer__store-label">{t('downloadIn')}</span>
-                <span className="footer__store-name">AppGallery</span>
-              </div>
-            </button>
+          <div className="footer__whatsapp-qr">
+            <img 
+              src={whatsappQR}
+              alt="WhatsApp QR код" 
+              className="footer__qr-image"
+            />
           </div>
 
           <div className="footer__language-selector" ref={languageDropdownRef}>

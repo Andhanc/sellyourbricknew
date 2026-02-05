@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: #f9fafb;
 }
 
 /* Заголовок */
@@ -78,6 +78,14 @@
   align-items: start;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Левая колонка - обёртка для галереи и информации */
+.property-detail-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
 }
 
 /* Галерея */
@@ -288,32 +296,134 @@
   opacity: 0;
 }
 
-/* Кнопки под галереей */
-.property-detail-gallery__action-buttons {
-  margin-top: 16px;
+/* Блок с подробной информацией об объекте */
+.property-detail-info-section {
   display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.property-detail-info-block {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.property-detail-info-block__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.property-detail-info-block__content {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.property-detail-gallery__buy-btn,
-.property-detail-gallery__test-drive-btn {
-  padding: 12px 20px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-family: 'Montserrat', sans-serif;
+.property-detail-info-block__content--text {
+  display: block;
+  flex-wrap: unset;
+}
+
+.property-detail-info-block__content--text p {
   font-size: 14px;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0;
+  white-space: pre-wrap;
 }
 
-.property-detail-gallery__buy-btn {
-  background: #2563eb;
-  color: #ffffff;
+.property-detail-info-block__content--grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  flex-wrap: unset;
 }
 
-.property-detail-gallery__test-drive-btn {
-  background: #f3f4f6;
+.property-detail-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.property-detail-info-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.property-detail-info-value {
+  font-size: 14px;
   color: #111827;
+  font-weight: 600;
+}
+
+/* Адаптивные стили для подробной информации */
+@media (max-width: 768px) {
+  .property-detail-info-block__content--grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.amenity-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0369a1;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(14, 165, 233, 0.1);
+}
+
+.amenity-tag:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: #7dd3fc;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.15);
+}
+
+.amenity-tag::before {
+  content: '✓';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: #0ea5e9;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.amenity-tag[style*="opacity"] {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
+}
+
+.amenity-tag[style*="opacity"]::before {
+  background: #d1d5db;
+  content: '—';
+}
+
+.amenity-tag[style*="opacity"]:hover {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  transform: none;
+  box-shadow: none;
 }
 
 /* Правая колонка */
@@ -365,10 +475,63 @@
   color: #111827;
 }
 
+.property-detail-sidebar__description {
+  margin-bottom: 20px;
+}
+
 .property-detail-sidebar__description-text {
   font-size: 14px;
   line-height: 1.6;
   color: #4b5563;
+  margin: 0;
+}
+
+/* Блок аукциона */
+.property-detail-sidebar__auction-block {
+  margin-top: 24px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.property-detail-sidebar__current-bid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-bid-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.current-bid-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.property-detail-sidebar__history-btn {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  width: 100%;
+}
+
+.property-detail-sidebar__history-btn:hover {
+  background: #1d4ed8;
 }
 
 /* Карта */
@@ -384,10 +547,11 @@
 }
 
 .property-detail-sidebar__map-container {
-  height: 260px;
+  height: 330px;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  position: relative;
 }
 
 /* Футер */

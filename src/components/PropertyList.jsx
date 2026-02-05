@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
-import { MdBed } from 'react-icons/md'
+import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
+import { FiLayers, FiCalendar } from 'react-icons/fi'
 import { properties } from '../data/properties'
 import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
@@ -321,6 +322,46 @@ const PropertyList = ({ auctionProperties = null }) => {
                     <p className="property-description">{property.description}</p>
                   )}
                   <p className="property-location">{property.location || ''}</p>
+                  
+                  {/* Основные характеристики для аукционных карточек - в стиле личного кабинета продавца */}
+                  {hasTimer && (
+                    <div className="property-card-owner__info">
+                      {(property.area || property.sqft) && (
+                        <div className="property-card-owner__info-item">
+                          <BiArea size={16} />
+                          <span>{property.area || property.sqft} м²</span>
+                        </div>
+                      )}
+                      {(property.rooms || property.beds || property.bedrooms) && (
+                        <div className="property-card-owner__info-item">
+                          <MdBed size={16} />
+                          <span>{property.rooms || property.beds || property.bedrooms}</span>
+                        </div>
+                      )}
+                      {property.bathrooms && (
+                        <div className="property-card-owner__info-item">
+                          <MdOutlineBathtub size={16} />
+                          <span>{property.bathrooms}</span>
+                        </div>
+                      )}
+                      {property.floor && (
+                        <div className="property-card-owner__info-item">
+                          <FiLayers size={16} />
+                          <span>
+                            {property.floor}
+                            {(property.total_floors || property.totalFloors) && `/${property.total_floors || property.totalFloors}`}
+                          </span>
+                        </div>
+                      )}
+                      {property.year_built && (
+                        <div className="property-card-owner__info-item">
+                          <FiCalendar size={16} />
+                          <span>{property.year_built}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {hasTimer ? (
                     <div className="property-bid-info">
                       <span className="bid-label">Текущая ставка:</span>

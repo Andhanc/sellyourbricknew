@@ -129,6 +129,7 @@ initDatabase();
 
 // ========== НАСТРОЙКА WHATSAPP WEB КЛИЕНТА ==========
 let waClientReady = false;
+let currentQRCode = null; // Сохраняем текущий QR-код для отображения в футере
 
 const waClient = new Client({
   authStrategy: new LocalAuth({
@@ -167,6 +168,8 @@ const waClient = new Client({
 
 waClient.on('qr', (qr) => {
   console.log('📲 Отсканируйте этот QR-код в WhatsApp (телефон, который будет отправлять коды):');
+  // Сохраняем QR-код для отображения в футере
+  currentQRCode = qr;
   try {
     qrcode.generate(qr, { small: true });
   } catch (e) {
@@ -177,6 +180,8 @@ waClient.on('qr', (qr) => {
 // Обработчик события authenticated - клиент успешно авторизован
 waClient.on('authenticated', () => {
   console.log('✅ WhatsApp клиент успешно авторизован');
+  // Очищаем QR-код после авторизации
+  currentQRCode = null;
   // Не устанавливаем waClientReady здесь, ждем события 'ready'
 });
 
@@ -248,6 +253,8 @@ const applySendSeenPatch = async () => {
 
 waClient.on('ready', async () => {
   waClientReady = true;
+  // Очищаем QR-код после готовности клиента
+  currentQRCode = null;
   console.log('✅ WhatsApp клиент готов к отправке сообщений');
 
   // Применяем патч sendSeen при готовности клиента
@@ -2417,6 +2424,73 @@ app.get('/api/whatsapp/status', async (req, res) => {
 });
 
 /**
+ * GET /api/whatsapp/qr - Получить QR-код WhatsApp для отображения в футере
+ */
+app.get('/api/whatsapp/qr', async (req, res) => {
+  try {
+    if (!currentQRCode) {
+      return res.status(404).json({
+        success: false,
+        error: 'QR-код недоступен. WhatsApp клиент уже авторизован или QR-код еще не сгенерирован.'
+      });
+    }
+
+    // Пытаемся использовать библиотеку qrcode для генерации изображения
+    try {
+      const QRCode = await import('qrcode');
+      const qrImageBuffer = await QRCode.toBuffer(currentQRCode, {
+        type: 'png',
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return res.send(qrImageBuffer);
+    } catch (importError) {
+      // Если библиотека qrcode не установлена, возвращаем SVG
+      // Генерируем простой SVG QR-код
+      const qrDataUrl = `data:image/svg+xml;base64,${Buffer.from(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+          <rect width="300" height="300" fill="white"/>
+          <text x="150" y="150" text-anchor="middle" font-size="14" fill="black">
+            QR-код WhatsApp
+          </text>
+          <text x="150" y="170" text-anchor="middle" font-size="12" fill="gray">
+            Установите пакет qrcode
+          </text>
+        </svg>
+      `).toString('base64')}`;
+      
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return res.send(Buffer.from(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+          <rect width="300" height="300" fill="white"/>
+          <text x="150" y="150" text-anchor="middle" font-size="14" fill="black">
+            QR-код WhatsApp
+          </text>
+          <text x="150" y="170" text-anchor="middle" font-size="12" fill="gray">
+            Установите пакет qrcode
+          </text>
+        </svg>
+      `));
+    }
+  } catch (error) {
+    console.error('Ошибка генерации QR-кода:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Не удалось сгенерировать QR-код'
+    });
+  }
+});
+
+/**
  * POST /api/whatsapp/broadcast - Рассылка сообщений выбранным пользователям
  */
 app.post('/api/whatsapp/broadcast', async (req, res) => {
@@ -3189,12 +3263,14 @@ app.post('/api/properties', upload.fields([
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // Объединяем address, apartment, city, country в location если они переданы
+    // Используем location, если он указан (он уже содержит полный адрес)
+    // Если location не указан, формируем его из отдельных полей
     let finalLocation = location || '';
-    if (address || apartment || city || country) {
+    if (!finalLocation && (address || apartment || city || country)) {
       const locationParts = [];
       if (address) locationParts.push(address);
-      if (apartment) locationParts.push(`кв. ${apartment}`);
+      // Убираем автоматическое добавление квартиры, чтобы избежать дублирования
+      // if (apartment) locationParts.push(`кв. ${apartment}`);
       if (city) locationParts.push(city);
       if (country) locationParts.push(country);
       if (locationParts.length > 0) {
@@ -3453,7 +3529,8 @@ app.get('/api/properties/approved', (req, res) => {
         ) : null,
         owner: {
           firstName: prop.first_name || '',
-          lastName: prop.last_name || ''
+          lastName: prop.last_name || '',
+          email: prop.email || ''
         },
         image: photos && photos.length > 0 ? photos[0] : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
         images: photos || [],
@@ -3539,6 +3616,7 @@ app.get('/api/properties/auctions', (req, res) => {
         name: prop.title,
         title: prop.title,
         location: prop.location || '',
+        // price по-прежнему используем как стартовую ставку, чтобы не ломать фронт
         price: prop.auction_starting_price || prop.price || 0,
         coordinates: prop.coordinates ? (
           typeof prop.coordinates === 'string' 
@@ -3549,7 +3627,8 @@ app.get('/api/properties/auctions', (req, res) => {
         ) : null,
         owner: {
           firstName: prop.first_name || '',
-          lastName: prop.last_name || ''
+          lastName: prop.last_name || '',
+          email: prop.email || ''
         },
         image: photos && photos.length > 0 ? photos[0] : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
         images: photos || [],
@@ -3566,6 +3645,12 @@ app.get('/api/properties/auctions', (req, res) => {
         description: prop.description || '',
         property_type: prop.property_type,
         currency: prop.currency || 'USD',
+        // Доп. поля для админки
+        // originalPrice - минимальная цена продажи (из поля price в БД)
+        originalPrice: prop.price || null,
+        // auctionStartingPrice - стартовая ставка (из поля auction_starting_price в БД)
+        // НЕ используем fallback на price, чтобы не смешивать с минимальной ценой
+        auctionStartingPrice: prop.auction_starting_price || null,
         tag: prop.property_type === 'apartment' ? 'apartment' : 
              prop.property_type === 'villa' ? 'villa' : 
              prop.property_type === 'house' ? 'house' : 

@@ -20,7 +20,8 @@ import {
   FiDollarSign as FiDollar,
   FiClock,
   FiAlertCircle,
-  FiCheck
+  FiCheck,
+  FiTag
 } from 'react-icons/fi'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
@@ -325,7 +326,8 @@ const OwnerDashboard = () => {
             views: 0, // TODO: добавить подсчет просмотров
             inquiries: 0, // TODO: добавить подсчет запросов
             publishedDate: prop.created_at || new Date().toISOString(),
-            rejectionReason: prop.rejection_reason || null
+            rejectionReason: prop.rejection_reason || null,
+            isAuction: prop.is_auction === 1 || prop.is_auction === true || prop.is_auction === '1' || prop.is_auction === 'true'
           }
           })
           setProperties(formattedProperties)
@@ -1095,11 +1097,25 @@ const OwnerDashboard = () => {
                     }}
                   />
                   {getStatusBadge(property.status)}
+                  {property.isAuction && (
+                    <div className="auction-badge">
+                      <FiTag size={14} />
+                      <span>Аукцион</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="property-card-owner__content">
                   <div className="property-card-owner__header">
-                    <h3 className="property-card-owner__title">{property.title}</h3>
+                    <div className="property-card-owner__title-wrapper">
+                      <h3 className="property-card-owner__title">{property.title}</h3>
+                      {property.isAuction && (
+                        <div className="auction-indicator">
+                          <FiTag size={16} />
+                          <span>Аукционный объект</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="property-card-owner__price">
                       ${property.price.toLocaleString('ru-RU')}
                     </div>
