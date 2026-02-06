@@ -1841,6 +1841,174 @@ app.post('/api/auth/whatsapp/send-code', async (req, res) => {
 });
 
 /**
+ * POST /api/whatsapp/send-message - Отправка произвольного сообщения через WhatsApp
+ */
+app.post('/api/whatsapp/send-message', async (req, res) => {
+  try {
+    const { phone, message } = req.body;
+
+    if (!phone || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходимо указать номер телефона и сообщение'
+      });
+    }
+
+    if (!message.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Сообщение не может быть пустым'
+      });
+    }
+
+    // Проверяем готовность клиента перед отправкой
+    if (!waClientReady) {
+      // Попытка проверить состояние клиента еще раз
+      try {
+        if (waClient && waClient.info && waClient.info.wid) {
+          console.log('⚠️ waClientReady = false, но клиент авторизован. Устанавливаем готовность...');
+          waClientReady = true;
+        } else {
+          console.warn('⚠️ Попытка отправить сообщение через WhatsApp, но клиент не готов. Статус waClientReady:', waClientReady);
+          return res.status(503).json({
+            success: false,
+            error: 'WhatsApp сервис временно недоступен. Пожалуйста, подождите несколько секунд и попробуйте снова. Если проблема сохраняется, убедитесь, что WhatsApp Web авторизован на сервере.',
+            code: 'WHATSAPP_NOT_READY'
+          });
+        }
+      } catch (checkError) {
+        console.warn('⚠️ Попытка отправить сообщение через WhatsApp, но клиент не готов. Статус waClientReady:', waClientReady);
+        return res.status(503).json({
+          success: false,
+          error: 'WhatsApp сервис временно недоступен. Пожалуйста, подождите несколько секунд и попробуйте снова. Если проблема сохраняется, убедитесь, что WhatsApp Web авторизован на сервере.',
+          code: 'WHATSAPP_NOT_READY'
+        });
+      }
+    }
+
+    const digits = String(phone).replace(/\D/g, '');
+    if (!digits) {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный формат номера телефона'
+      });
+    }
+
+    const chatId = `${digits}@c.us`;
+    const messageText = message.trim();
+
+    let contactName = null;
+    let profilePicUrl = null;
+
+    try {
+      const contact = await waClient.getContactById(chatId);
+      if (contact) {
+        contactName = contact.pushname || contact.name || contact.number || null;
+        try {
+          profilePicUrl = await contact.getProfilePicUrl();
+        } catch {
+          profilePicUrl = null;
+        }
+      }
+    } catch {
+      // Если контакт не найден, просто продолжаем отправку сообщения
+    }
+
+    // Применяем патч sendSeen перед отправкой (на случай, если он не был применен ранее)
+    await applySendSeenPatch();
+    
+    // Отправляем сообщение с дополнительной диагностикой
+    try {
+      await waClient.sendMessage(chatId, messageText);
+    } catch (sendError) {
+      const errorMessage = sendError.message || '';
+      const errorStack = sendError.stack || '';
+      const isMarkedUnreadError = 
+        errorMessage.includes('markedUnread') || 
+        errorStack.includes('markedUnread') ||
+        errorMessage.includes('Cannot read properties of undefined');
+      
+      if (isMarkedUnreadError) {
+        // Это известная ошибка библиотеки. Пытаемся применить патч еще раз и повторить отправку
+        console.warn('⚠️ Обнаружена ошибка markedUnread, применяем патч и повторяем отправку...');
+        await applySendSeenPatch();
+        
+        try {
+          // Повторная попытка отправки после применения патча
+          await waClient.sendMessage(chatId, messageText);
+          console.log('✅ Сообщение отправлено после применения патча');
+        } catch (retryError) {
+          // Если повторная попытка тоже не удалась, проверяем, было ли сообщение отправлено
+          // Иногда сообщение отправляется, но ошибка возникает в sendSeen
+          const retryErrorMessage = retryError.message || '';
+          const retryErrorStack = retryError.stack || '';
+          const isStillMarkedUnreadError = 
+            retryErrorMessage.includes('markedUnread') || 
+            retryErrorStack.includes('markedUnread');
+          
+          if (isStillMarkedUnreadError) {
+            // В этом случае считаем, что сообщение могло быть отправлено, но sendSeen упал
+            // Проверяем, можем ли мы получить информацию о чате (косвенный признак успешной отправки)
+            try {
+              const contact = await waClient.getContactById(chatId);
+              if (contact) {
+                console.warn('⚠️ Ошибка markedUnread, но контакт доступен. Предполагаем, что сообщение отправлено.');
+                // Возвращаем успех, так как сообщение, вероятно, было отправлено
+                return res.json({
+                  success: true,
+                  message: 'Сообщение отправлено в WhatsApp',
+                  contact: {
+                    name: contactName,
+                    picture: profilePicUrl
+                  },
+                  warning: 'Сообщение отправлено, но возникла техническая ошибка при отметке прочтения'
+                });
+              }
+            } catch (contactError) {
+              // Если не можем получить контакт, значит сообщение не было отправлено
+            }
+          }
+          
+          console.error('❌ Ошибка whatsapp-web.js (markedUnread) при отправке сообщения после повторной попытки.');
+          throw retryError;
+        }
+      } else {
+        // Если это другая ошибка - пробрасываем её дальше
+        throw sendError;
+      }
+    }
+
+    // Обновляем статистику в базе данных для WhatsApp пользователей
+    try {
+      const existingUser = whatsappUserQueries.getByPhone(chatId);
+      whatsappUserQueries.createOrUpdate({
+        phone_number: chatId,
+        phone_number_clean: digits,
+        country: existingUser?.country || null,
+        language: existingUser?.language || 'ru'
+      });
+    } catch (dbError) {
+      console.warn('⚠️ Ошибка обновления статистики в БД:', dbError.message);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Сообщение отправлено в WhatsApp',
+      contact: {
+        name: contactName,
+        picture: profilePicUrl
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка отправки сообщения через WhatsApp:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Не удалось отправить сообщение через WhatsApp'
+    });
+  }
+});
+
+/**
  * POST /api/auth/email/register - Регистрация через Email
  */
 app.post('/api/auth/email/register', async (req, res) => {
@@ -3324,6 +3492,390 @@ app.post('/api/properties', upload.fields([
 });
 
 /**
+ * PUT /api/properties/:id/delete-request - Отправить запрос на удаление объявления
+ * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе он будет перехвачен
+ */
+app.put('/api/properties/:id/delete-request', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать причину удаления' 
+      });
+    }
+
+    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(id);
+    if (!property) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Объявление не найдено' 
+      });
+    }
+
+    // Проверяем, не отправлен ли уже запрос на удаление
+    const existingDeleteRequest = db.prepare(`
+      SELECT * FROM properties 
+      WHERE rejection_reason LIKE ? AND moderation_status = 'pending'
+    `).get(`DELETE:${id}:%`);
+
+    if (existingDeleteRequest) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Запрос на удаление уже отправлен и ожидает модерации' 
+      });
+    }
+
+    // Создаем новую запись с запросом на удаление
+    // Используем rejection_reason для хранения ID оригинального объекта и причины: DELETE:propertyId:reason
+    const stmt = db.prepare(`
+      INSERT INTO properties (
+        user_id, property_type, title, description, price, currency,
+        is_auction, auction_start_date, auction_end_date, auction_starting_price,
+        area, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
+        balcony, parking, elevator, land_area, garage, pool, garden,
+        commercial_type, business_hours, renovation, condition, heating,
+        water_supply, sewerage, electricity, internet, security, furniture,
+        photos, videos, additional_documents, ownership_document, no_debts_document,
+        test_drive_data, moderation_status, rejection_reason
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // Подготавливаем все значения для вставки (44 значения для 44 колонок)
+    const values = [
+      property.user_id,
+      property.property_type,
+      property.title,
+      property.description,
+      property.price,
+      property.currency,
+      property.is_auction,
+      property.auction_start_date,
+      property.auction_end_date,
+      property.auction_starting_price,
+      property.area,
+      property.rooms,
+      property.bedrooms,
+      property.bathrooms,
+      property.floor,
+      property.total_floors,
+      property.year_built,
+      property.location,
+      property.balcony,
+      property.parking,
+      property.elevator,
+      property.land_area,
+      property.garage,
+      property.pool,
+      property.garden,
+      property.commercial_type,
+      property.business_hours,
+      property.renovation,
+      property.condition,
+      property.heating,
+      property.water_supply,
+      property.sewerage,
+      property.electricity,
+      property.internet,
+      property.security,
+      property.furniture,
+      property.photos,
+      property.videos,
+      property.additional_documents,
+      property.ownership_document,
+      property.no_debts_document,
+      property.test_drive_data,
+      'pending', // Статус модерации для запроса на удаление
+      `DELETE:${id}:${reason.trim()}` // Сохраняем ID оригинального объекта и причину
+    ];
+    
+    console.log(`📊 Количество значений для вставки: ${values.length}`);
+    console.log(`📊 Ожидается 44 значения`);
+
+    const result = stmt.run(...values);
+    const newRequestId = result.lastInsertRowid;
+
+    console.log(`🗑️ Создан запрос на удаление. ID запроса: ${newRequestId}, ID оригинала: ${id}, Причина: ${reason.trim()}`);
+
+    res.json({
+      success: true,
+      message: 'Запрос на удаление отправлен на модерацию',
+      request_id: newRequestId
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при создании запроса на удаление:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Ошибка при создании запроса на удаление' 
+    });
+  }
+});
+
+/**
+ * PUT /api/properties/:id - Обновить объявление (для редактирования)
+ */
+app.put('/api/properties/:id', upload.fields([
+  { name: 'ownership_document', maxCount: 1 },
+  { name: 'no_debts_document', maxCount: 1 }
+]), (req, res) => {
+  try {
+    console.log('📥 Получен запрос на обновление объявления');
+    console.log('📋 Body:', req.body);
+    console.log('📁 Files:', req.files);
+    
+    const db = getDatabase();
+    const { id } = req.params;
+    const isEdit = req.body.is_edit === '1' || req.body.is_edit === 1;
+    const originalPropertyId = req.body.original_property_id || id;
+    
+    // Проверяем существование оригинального объекта
+    const originalProperty = db.prepare('SELECT * FROM properties WHERE id = ?').get(originalPropertyId);
+    if (!originalProperty) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Оригинальное объявление не найдено' 
+      });
+    }
+    
+    const {
+      user_id,
+      property_type,
+      title,
+      description,
+      price,
+      currency = 'USD',
+      is_auction = 0,
+      auction_start_date,
+      auction_end_date,
+      auction_starting_price
+    } = req.body;
+    
+    // Нормализуем is_auction
+    let normalizedIsAuction = 0;
+    if (typeof is_auction === 'string') {
+      normalizedIsAuction = (is_auction === '1' || is_auction === 'true') ? 1 : 0;
+    } else if (typeof is_auction === 'boolean') {
+      normalizedIsAuction = is_auction ? 1 : 0;
+    } else {
+      normalizedIsAuction = is_auction ? 1 : 0;
+    }
+    
+    const {
+      area,
+      rooms,
+      bedrooms,
+      bathrooms,
+      floor,
+      total_floors,
+      year_built,
+      location,
+      address,
+      apartment,
+      country,
+      city,
+      coordinates,
+      balcony = 0,
+      parking = 0,
+      elevator = 0,
+      land_area,
+      garage = 0,
+      pool = 0,
+      garden = 0,
+      commercial_type,
+      business_hours,
+      renovation,
+      condition,
+      heating,
+      water_supply,
+      sewerage,
+      electricity = 0,
+      internet = 0,
+      security = 0,
+      furniture = 0,
+      photos,
+      videos,
+      additional_documents,
+      test_drive_data
+    } = req.body;
+    
+    // Парсим JSON поля
+    let parsedPhotos = [];
+    let parsedVideos = [];
+    let parsedAdditionalDocuments = [];
+    
+    try {
+      if (photos && typeof photos === 'string') {
+        parsedPhotos = JSON.parse(photos);
+      } else if (Array.isArray(photos)) {
+        parsedPhotos = photos;
+      }
+      
+      if (videos && typeof videos === 'string') {
+        parsedVideos = JSON.parse(videos);
+      } else if (Array.isArray(videos)) {
+        parsedVideos = videos;
+      }
+      
+      if (additional_documents && typeof additional_documents === 'string') {
+        parsedAdditionalDocuments = JSON.parse(additional_documents);
+      } else if (Array.isArray(additional_documents)) {
+        parsedAdditionalDocuments = additional_documents;
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Ошибка парсинга JSON для медиа:', parseError.message);
+    }
+    
+    // Обрабатываем координаты
+    let coordinatesStr = null;
+    if (coordinates) {
+      try {
+        coordinatesStr = typeof coordinates === 'string' ? coordinates : JSON.stringify(coordinates);
+      } catch (e) {
+        console.warn('⚠️ Ошибка обработки координат:', e);
+      }
+    }
+    
+    // Обрабатываем test_drive_data
+    let testDriveDataStr = null;
+    if (test_drive_data) {
+      try {
+        testDriveDataStr = typeof test_drive_data === 'string' 
+          ? test_drive_data 
+          : JSON.stringify(test_drive_data);
+      } catch (e) {
+        console.warn('⚠️ Ошибка обработки test_drive_data:', e);
+      }
+    }
+    
+    // Обрабатываем документы
+    let ownershipDocumentPath = originalProperty.ownership_document;
+    let noDebtsDocumentPath = originalProperty.no_debts_document;
+    
+    if (req.files) {
+      if (req.files['ownership_document'] && req.files['ownership_document'][0]) {
+        ownershipDocumentPath = `/uploads/${req.files['ownership_document'][0].filename}`;
+      }
+      if (req.files['no_debts_document'] && req.files['no_debts_document'][0]) {
+        noDebtsDocumentPath = `/uploads/${req.files['no_debts_document'][0].filename}`;
+      }
+    }
+    
+    // Формируем location
+    let finalLocation = location || '';
+    if (!finalLocation && (address || apartment || city || country)) {
+      const locationParts = [];
+      if (address) locationParts.push(address);
+      if (city) locationParts.push(city);
+      if (country) locationParts.push(country);
+      if (locationParts.length > 0) {
+        finalLocation = locationParts.join(', ');
+      }
+    }
+    
+    // Если это редактирование, создаем новую запись с пометкой
+    if (isEdit) {
+      // Создаем новую запись с данными изменений
+      // Используем rejection_reason для хранения original_property_id
+      const stmt = db.prepare(`
+        INSERT INTO properties (
+          user_id, property_type, title, description, price, currency,
+          is_auction, auction_start_date, auction_end_date, auction_starting_price,
+          area, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
+          balcony, parking, elevator, land_area, garage, pool, garden,
+          commercial_type, business_hours, renovation, condition, heating,
+          water_supply, sewerage, electricity, internet, security, furniture,
+          photos, videos, additional_documents, ownership_document, no_debts_document,
+          test_drive_data, moderation_status, rejection_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      // Подготавливаем все значения для вставки
+      const values = [
+        user_id || originalProperty.user_id,
+        property_type || originalProperty.property_type,
+        title || originalProperty.title,
+        description !== undefined ? description : originalProperty.description,
+        price ? parseFloat(price) : originalProperty.price,
+        currency || originalProperty.currency,
+        normalizedIsAuction,
+        auction_start_date || originalProperty.auction_start_date,
+        auction_end_date || originalProperty.auction_end_date,
+        auction_starting_price ? parseFloat(auction_starting_price) : originalProperty.auction_starting_price,
+        area ? parseFloat(area) : originalProperty.area,
+        rooms ? parseInt(rooms) : originalProperty.rooms,
+        bedrooms ? parseInt(bedrooms) : originalProperty.bedrooms,
+        bathrooms ? parseInt(bathrooms) : originalProperty.bathrooms,
+        floor ? parseInt(floor) : originalProperty.floor,
+        total_floors ? parseInt(total_floors) : originalProperty.total_floors,
+        year_built ? parseInt(year_built) : originalProperty.year_built,
+        finalLocation || originalProperty.location,
+        balcony === '1' || balcony === 1 || (typeof balcony === 'boolean' && balcony) ? 1 : 0,
+        parking === '1' || parking === 1 || (typeof parking === 'boolean' && parking) ? 1 : 0,
+        elevator === '1' || elevator === 1 || (typeof elevator === 'boolean' && elevator) ? 1 : 0,
+        land_area ? parseFloat(land_area) : originalProperty.land_area,
+        garage === '1' || garage === 1 || (typeof garage === 'boolean' && garage) ? 1 : 0,
+        pool === '1' || pool === 1 || (typeof pool === 'boolean' && pool) ? 1 : 0,
+        garden === '1' || garden === 1 || (typeof garden === 'boolean' && garden) ? 1 : 0,
+        commercial_type || originalProperty.commercial_type,
+        business_hours || originalProperty.business_hours,
+        renovation || originalProperty.renovation,
+        condition || originalProperty.condition,
+        heating || originalProperty.heating,
+        water_supply || originalProperty.water_supply,
+        sewerage || originalProperty.sewerage,
+        electricity === '1' || electricity === 1 || (typeof electricity === 'boolean' && electricity) ? 1 : 0,
+        internet === '1' || internet === 1 || (typeof internet === 'boolean' && internet) ? 1 : 0,
+        security === '1' || security === 1 || (typeof security === 'boolean' && security) ? 1 : 0,
+        furniture === '1' || furniture === 1 || (typeof furniture === 'boolean' && furniture) ? 1 : 0,
+        JSON.stringify(parsedPhotos.length > 0 ? parsedPhotos : (originalProperty.photos ? JSON.parse(originalProperty.photos) : [])),
+        JSON.stringify(parsedVideos.length > 0 ? parsedVideos : (originalProperty.videos ? JSON.parse(originalProperty.videos) : [])),
+        JSON.stringify(parsedAdditionalDocuments.length > 0 ? parsedAdditionalDocuments : (originalProperty.additional_documents ? JSON.parse(originalProperty.additional_documents) : [])),
+        ownershipDocumentPath,
+        noDebtsDocumentPath,
+        testDriveDataStr || originalProperty.test_drive_data,
+        'pending', // Статус модерации для изменений
+        `EDIT:${originalPropertyId}` // Сохраняем ID оригинального объекта в rejection_reason
+      ];
+      
+      console.log(`📊 Количество значений для вставки: ${values.length}`);
+      console.log(`📊 Ожидается 44 значения`);
+      
+      const result = stmt.run(...values);
+      
+      const newPropertyId = result.lastInsertRowid;
+      
+      console.log(`✅ Создана новая запись для редактирования. ID новой записи: ${newPropertyId}, ID оригинала: ${originalPropertyId}`);
+      
+      // Получаем созданную запись
+      const newProperty = db.prepare('SELECT * FROM properties WHERE id = ?').get(newPropertyId);
+      
+      res.json({
+        success: true,
+        data: newProperty,
+        message: 'Изменения отправлены на модерацию',
+        is_edit: true,
+        original_property_id: originalPropertyId
+      });
+    } else {
+      // Обычное обновление (если не режим редактирования)
+      return res.status(400).json({
+        success: false,
+        error: 'Используйте POST для создания нового объявления'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Ошибка при обновлении объявления:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при обновлении объявления'
+    });
+  }
+});
+
+/**
  * GET /api/properties/pending - Получить все объявления на модерации
  * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе "pending" будет интерпретироваться как ID
  */
@@ -3853,36 +4405,282 @@ app.put('/api/properties/:id/approve', (req, res) => {
 
     console.log(`✅ Одобрение объявления ID: ${id}, Тип: ${property.property_type}, Аукцион: ${property.is_auction}`);
 
-    db.prepare(`
-      UPDATE properties 
-      SET moderation_status = 'approved',
-          reviewed_by = ?,
-          reviewed_at = CURRENT_TIMESTAMP,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(reviewed_by || 'admin', id);
+    // Проверяем тип запроса (редактирование или удаление)
+    const isEdit = property.rejection_reason && property.rejection_reason.startsWith('EDIT:');
+    const isDelete = property.rejection_reason && property.rejection_reason.startsWith('DELETE:');
+    let originalPropertyId = null;
+    let deleteReason = null;
     
-    // Проверяем, что объявление действительно одобрено и сохраняет is_auction
-    const updatedProperty = db.prepare('SELECT id, title, property_type, moderation_status, is_auction FROM properties WHERE id = ?').get(id);
-    console.log(`✅ Объявление обновлено:`, updatedProperty);
-
-    // Создаем уведомление для пользователя
-    try {
-      notificationQueries.create({
-        user_id: property.user_id,
-        type: 'property_approved',
-        title: 'Ваш объект прошел верификацию',
-        message: `Ваш объект "${property.title}" прошел верификацию, в скором времени он будет опубликован на платформе`,
-        data: JSON.stringify({ property_id: id })
+    if (isDelete) {
+      // Извлекаем ID оригинального объекта и причину удаления
+      // Формат: DELETE:propertyId:reason
+      const deleteMatch = property.rejection_reason.match(/^DELETE:(\d+):(.+)$/);
+      if (deleteMatch) {
+        originalPropertyId = deleteMatch[1];
+        deleteReason = deleteMatch[2];
+        console.log(`🗑️ Это запрос на удаление. ID оригинала: ${originalPropertyId}, Причина: ${deleteReason}`);
+      } else {
+        // Старый формат без причины (для обратной совместимости)
+        originalPropertyId = property.rejection_reason.replace('DELETE:', '');
+        console.log(`🗑️ Это запрос на удаление (старый формат). ID оригинала: ${originalPropertyId}`);
+      }
+      
+      // Проверяем существование оригинального объекта
+      const originalProperty = db.prepare('SELECT * FROM properties WHERE id = ?').get(originalPropertyId);
+      if (!originalProperty) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Оригинальное объявление не найдено' 
+        });
+      }
+      
+      // Удаляем оригинальное объявление
+      db.prepare('DELETE FROM properties WHERE id = ?').run(originalPropertyId);
+      console.log(`✅ Оригинальное объявление ID ${originalPropertyId} удалено`);
+      
+      // Удаляем запись с запросом на удаление
+      db.prepare('DELETE FROM properties WHERE id = ?').run(id);
+      console.log(`🗑️ Запись с запросом на удаление ID ${id} удалена`);
+      
+      // Создаем уведомление для пользователя
+      try {
+        notificationQueries.create({
+          user_id: property.user_id,
+          type: 'property_deleted',
+          title: 'Объявление удалено',
+          message: `Ваш запрос на удаление объявления "${property.title}" одобрен. Объявление удалено с площадки.`,
+          data: JSON.stringify({ property_id: originalPropertyId })
+        });
+      } catch (notifError) {
+        console.warn('Не удалось создать уведомление:', notifError);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Объявление удалено',
+        deleted_property_id: originalPropertyId
       });
-    } catch (notifError) {
-      console.warn('Не удалось создать уведомление:', notifError);
-    }
+      return;
+    } else if (isEdit) {
+      // Извлекаем ID оригинального объекта
+      originalPropertyId = property.rejection_reason.replace('EDIT:', '');
+      console.log(`📝 Это редактирование. ID оригинала: ${originalPropertyId}`);
+      
+      // Проверяем существование оригинального объекта
+      const originalProperty = db.prepare('SELECT * FROM properties WHERE id = ?').get(originalPropertyId);
+      if (!originalProperty) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Оригинальное объявление не найдено' 
+        });
+      }
+      
+      // Определяем, изменились ли даты аукциона
+      // Если даты не изменились (равны оригинальным или пустые), сохраняем оригинальные даты
+      let finalAuctionStartDate = property.auction_start_date;
+      let finalAuctionEndDate = property.auction_end_date;
+      
+      // Проверяем, является ли это аукционом
+      const isAuction = property.is_auction === 1 || property.is_auction === '1' || property.is_auction === true;
+      
+      if (isAuction) {
+        // Нормализуем даты для сравнения (убираем лишние пробелы, приводим к единому формату)
+        const normalizeDate = (date) => {
+          if (!date) return null;
+          return String(date).trim() || null;
+        };
+        
+        const newStartDate = normalizeDate(property.auction_start_date);
+        const newEndDate = normalizeDate(property.auction_end_date);
+        const oldStartDate = normalizeDate(originalProperty.auction_start_date);
+        const oldEndDate = normalizeDate(originalProperty.auction_end_date);
+        
+        // Проверяем, изменились ли даты аукциона
+        // Если новые даты пустые или равны оригинальным, значит пользователь не менял их
+        const startDateChanged = newStartDate && newStartDate !== oldStartDate;
+        const endDateChanged = newEndDate && newEndDate !== oldEndDate;
+        const datesChanged = startDateChanged || endDateChanged;
+        
+        // Если даты не изменились или пустые, используем оригинальные даты (чтобы таймер продолжал работать)
+        if (!datesChanged || !newStartDate || !newEndDate) {
+          finalAuctionStartDate = originalProperty.auction_start_date;
+          finalAuctionEndDate = originalProperty.auction_end_date;
+          console.log(`⏰ Даты аукциона не изменились, сохраняем оригинальные даты для продолжения таймера`);
+          console.log(`   Оригинальные: ${oldStartDate} - ${oldEndDate}`);
+        } else {
+          console.log(`⏰ Даты аукциона изменены, используем новые даты`);
+          console.log(`   Было: ${oldStartDate} - ${oldEndDate}`);
+          console.log(`   Стало: ${newStartDate} - ${newEndDate}`);
+        }
+      } else {
+        // Если это не аукцион, даты не важны
+        finalAuctionStartDate = null;
+        finalAuctionEndDate = null;
+      }
+      
+      // Обновляем оригинальный объект данными из изменений
+      // Важно: обновляем существующий объект, а не создаем новый, чтобы избежать дубликатов
+      db.prepare(`
+        UPDATE properties 
+        SET 
+          property_type = ?,
+          title = ?,
+          description = ?,
+          price = ?,
+          currency = ?,
+          is_auction = ?,
+          auction_start_date = ?,
+          auction_end_date = ?,
+          auction_starting_price = ?,
+          area = ?,
+          rooms = ?,
+          bedrooms = ?,
+          bathrooms = ?,
+          floor = ?,
+          total_floors = ?,
+          year_built = ?,
+          location = ?,
+          balcony = ?,
+          parking = ?,
+          elevator = ?,
+          land_area = ?,
+          garage = ?,
+          pool = ?,
+          garden = ?,
+          commercial_type = ?,
+          business_hours = ?,
+          renovation = ?,
+          condition = ?,
+          heating = ?,
+          water_supply = ?,
+          sewerage = ?,
+          electricity = ?,
+          internet = ?,
+          security = ?,
+          furniture = ?,
+          photos = ?,
+          videos = ?,
+          additional_documents = ?,
+          ownership_document = ?,
+          no_debts_document = ?,
+          test_drive_data = ?,
+          moderation_status = 'approved',
+          rejection_reason = NULL,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        property.property_type,
+        property.title,
+        property.description,
+        property.price,
+        property.currency,
+        property.is_auction,
+        finalAuctionStartDate,
+        finalAuctionEndDate,
+        property.auction_starting_price,
+        property.area,
+        property.rooms,
+        property.bedrooms,
+        property.bathrooms,
+        property.floor,
+        property.total_floors,
+        property.year_built,
+        property.location,
+        property.balcony,
+        property.parking,
+        property.elevator,
+        property.land_area,
+        property.garage,
+        property.pool,
+        property.garden,
+        property.commercial_type,
+        property.business_hours,
+        property.renovation,
+        property.condition,
+        property.heating,
+        property.water_supply,
+        property.sewerage,
+        property.electricity,
+        property.internet,
+        property.security,
+        property.furniture,
+        property.photos,
+        property.videos,
+        property.additional_documents,
+        property.ownership_document,
+        property.no_debts_document,
+        property.test_drive_data,
+        originalPropertyId
+      );
+      
+      console.log(`✅ Оригинальный объект ID ${originalPropertyId} обновлен данными из изменений`);
+      console.log(`   Статус модерации: approved, rejection_reason: очищен`);
+      
+      // Удаляем запись с изменениями после применения (чтобы избежать дубликатов)
+      db.prepare('DELETE FROM properties WHERE id = ?').run(id);
+      console.log(`🗑️ Запись с изменениями ID ${id} удалена (дубликат предотвращен)`);
+      
+      // Проверяем, что оригинальный объект обновлен корректно
+      const updatedOriginal = db.prepare('SELECT id, title, moderation_status, is_auction, auction_start_date, auction_end_date FROM properties WHERE id = ?').get(originalPropertyId);
+      console.log(`✅ Проверка обновленного объекта:`, {
+        id: updatedOriginal.id,
+        title: updatedOriginal.title,
+        moderation_status: updatedOriginal.moderation_status,
+        is_auction: updatedOriginal.is_auction,
+        auction_dates: updatedOriginal.is_auction ? `${updatedOriginal.auction_start_date} - ${updatedOriginal.auction_end_date}` : 'N/A'
+      });
+      
+      // Создаем уведомление для пользователя
+      try {
+        notificationQueries.create({
+          user_id: property.user_id,
+          type: 'property_approved',
+          title: 'Изменения в объекте одобрены',
+          message: `Изменения в объекте "${property.title}" одобрены и применены к опубликованному объявлению`,
+          data: JSON.stringify({ property_id: originalPropertyId })
+        });
+      } catch (notifError) {
+        console.warn('Не удалось создать уведомление:', notifError);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Изменения одобрены и применены к оригинальному объекту',
+        original_property_id: originalPropertyId
+      });
+    } else {
+      // Обычное одобрение нового объявления
+      db.prepare(`
+        UPDATE properties 
+        SET moderation_status = 'approved',
+            reviewed_by = ?,
+            reviewed_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(reviewed_by || 'admin', id);
+      
+      // Проверяем, что объявление действительно одобрено и сохраняет is_auction
+      const updatedProperty = db.prepare('SELECT id, title, property_type, moderation_status, is_auction FROM properties WHERE id = ?').get(id);
+      console.log(`✅ Объявление обновлено:`, updatedProperty);
 
-    res.json({ 
-      success: true, 
-      message: 'Объявление одобрено' 
-    });
+      // Создаем уведомление для пользователя
+      try {
+        notificationQueries.create({
+          user_id: property.user_id,
+          type: 'property_approved',
+          title: 'Ваш объект прошел верификацию',
+          message: `Ваш объект "${property.title}" прошел верификацию, в скором времени он будет опубликован на платформе`,
+          data: JSON.stringify({ property_id: id })
+        });
+      } catch (notifError) {
+        console.warn('Не удалось создать уведомление:', notifError);
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Объявление одобрено' 
+      });
+    }
   } catch (error) {
     console.error('Ошибка при одобрении объявления:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -3972,7 +4770,7 @@ app.put('/api/properties/:id/reject', (req, res) => {
 });
 
 /**
- * DELETE /api/properties/:id - Удалить объявление
+ * DELETE /api/properties/:id - Удалить объявление (только для админа)
  */
 app.delete('/api/properties/:id', (req, res) => {
   try {

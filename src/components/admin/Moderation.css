@@ -325,6 +325,50 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+/* Фильтр по типу запроса */
+.moderation-filter-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  background: white;
+  padding: 0.75rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+}
+
+.moderation-filter-btn {
+  padding: 0.625rem 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.moderation-filter-btn:hover {
+  background: #f9fafb;
+  border-color: #0ABAB5;
+  color: #0ABAB5;
+}
+
+.moderation-filter-btn.active {
+  background: linear-gradient(135deg, #0ABAB5, #089a95);
+  color: white;
+  border-color: #0ABAB5;
+  box-shadow: 0 2px 8px rgba(10, 186, 181, 0.3);
+}
+
+.moderation-request-badge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .moderation-card {
     flex-direction: column;
@@ -341,6 +385,14 @@
 
   .moderation-tabs {
     flex-direction: column;
+  }
+
+  .moderation-filter-buttons {
+    flex-direction: column;
+  }
+
+  .moderation-filter-btn {
+    width: 100%;
   }
 }
 

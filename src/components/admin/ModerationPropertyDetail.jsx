@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiCheck, FiXCircle, FiFileText, FiVideo, FiImage } from 'react-icons/fi';
+import React, { useState, useRef, useEffect } from 'react';
+import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiCheck, FiXCircle, FiFileText, FiVideo, FiImage, FiEye, FiX, FiAlertCircle } from 'react-icons/fi';
 import { IoLocationOutline as IoLocation } from 'react-icons/io5';
 import { MdBed, MdOutlineBathtub } from 'react-icons/md';
 import { BiArea } from 'react-icons/bi';
@@ -23,6 +23,9 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [mediaType, setMediaType] = useState('photos'); // 'photos' или 'videos'
+  const [originalProperty, setOriginalProperty] = useState(null); // Оригинальный объект для сравнения
+  const [showChangesModal, setShowChangesModal] = useState(false); // Модальное окно с изменениями
+  const [loadingOriginal, setLoadingOriginal] = useState(false);
   
   // Функция для обработки URL документа
   const processDocumentUrl = (docUrl) => {
@@ -153,6 +156,169 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
     return types[type] || type;
   };
 
+  // Функция для определения типа запроса
+  const getRequestType = (property) => {
+    if (property.rejection_reason) {
+      if (property.rejection_reason.startsWith('EDIT:')) {
+        return 'edit';
+      }
+      if (property.rejection_reason.startsWith('DELETE:')) {
+        return 'delete';
+      }
+    }
+    return 'publication';
+  };
+
+  const requestType = getRequestType(property);
+  const requestTypeLabels = {
+    'publication': 'Запрос на публикацию',
+    'edit': 'Запрос на редактирование',
+    'delete': 'Запрос на удаление'
+  };
+  const requestTypeColors = {
+    'publication': '#0ABAB5',
+    'edit': '#f59e0b',
+    'delete': '#ef4444'
+  };
+
+  // Загружаем оригинальный объект, если это запрос на редактирование
+  useEffect(() => {
+    if (requestType === 'edit' && property.rejection_reason) {
+      const originalPropertyId = property.rejection_reason.replace('EDIT:', '');
+      if (originalPropertyId) {
+        setLoadingOriginal(true);
+        fetch(`${API_BASE_URL}/properties/${originalPropertyId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.data) {
+              setOriginalProperty(data.data);
+            }
+          })
+          .catch(error => {
+            console.error('Ошибка загрузки оригинального объекта:', error);
+          })
+          .finally(() => {
+            setLoadingOriginal(false);
+          });
+      }
+    }
+  }, [property, requestType]);
+
+  // Функция для сравнения изменений
+  const getPropertyChanges = () => {
+    if (!originalProperty) return [];
+    
+    const changes = [];
+    const fieldLabels = {
+      title: 'Название',
+      description: 'Описание',
+      price: 'Цена',
+      currency: 'Валюта',
+      area: 'Площадь',
+      rooms: 'Комнаты',
+      bedrooms: 'Спальни',
+      bathrooms: 'Ванные',
+      floor: 'Этаж',
+      total_floors: 'Всего этажей',
+      year_built: 'Год постройки',
+      location: 'Местоположение',
+      land_area: 'Площадь участка',
+      commercial_type: 'Тип коммерческой',
+      business_hours: 'Часы работы',
+      renovation: 'Ремонт',
+      condition: 'Состояние',
+      heating: 'Отопление',
+      water_supply: 'Водоснабжение',
+      sewerage: 'Канализация',
+      is_auction: 'Аукцион',
+      auction_start_date: 'Дата начала аукциона',
+      auction_end_date: 'Дата окончания аукциона',
+      auction_starting_price: 'Стартовая цена аукциона',
+      balcony: 'Балкон',
+      parking: 'Парковка',
+      elevator: 'Лифт',
+      garage: 'Гараж',
+      pool: 'Бассейн',
+      garden: 'Сад',
+      electricity: 'Электричество',
+      internet: 'Интернет',
+      security: 'Охрана',
+      furniture: 'Мебель'
+    };
+    
+    // Сравниваем основные поля
+    Object.keys(fieldLabels).forEach(key => {
+      const oldValue = originalProperty[key];
+      const newValue = property[key];
+      
+      // Обработка булевых значений
+      if (key === 'is_auction') {
+        const oldBool = oldValue === 1 || oldValue === true;
+        const newBool = newValue === 1 || newValue === true;
+        if (oldBool !== newBool) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldBool ? 'Да' : 'Нет',
+            new: newBool ? 'Да' : 'Нет'
+          });
+        }
+        return;
+      }
+      
+      // Обработка булевых полей удобств
+      if (['balcony', 'parking', 'elevator', 'garage', 'pool', 'garden', 'electricity', 'internet', 'security', 'furniture'].includes(key)) {
+        const oldBool = oldValue === 1 || oldValue === true;
+        const newBool = newValue === 1 || newValue === true;
+        if (oldBool !== newBool) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldBool ? 'Да' : 'Нет',
+            new: newBool ? 'Да' : 'Нет'
+          });
+        }
+        return;
+      }
+      
+      // Обработка числовых значений
+      if (['price', 'area', 'land_area', 'auction_starting_price'].includes(key)) {
+        const oldNum = oldValue ? Number(oldValue) : null;
+        const newNum = newValue ? Number(newValue) : null;
+        if (oldNum !== newNum) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldNum !== null ? oldNum.toLocaleString('ru-RU') : 'Не указано',
+            new: newNum !== null ? newNum.toLocaleString('ru-RU') : 'Не указано'
+          });
+        }
+        return;
+      }
+      
+      // Обработка строковых значений
+      if (oldValue !== newValue && (oldValue || newValue)) {
+        changes.push({
+          field: fieldLabels[key],
+          old: oldValue || 'Не указано',
+          new: newValue || 'Не указано'
+        });
+      }
+    });
+    
+    // Сравниваем фотографии
+    const oldPhotos = originalProperty.photos ? 
+      (typeof originalProperty.photos === 'string' ? JSON.parse(originalProperty.photos) : originalProperty.photos) : [];
+    const newPhotos = property.photos ? 
+      (typeof property.photos === 'string' ? JSON.parse(property.photos) : property.photos) : [];
+    if (JSON.stringify(oldPhotos) !== JSON.stringify(newPhotos)) {
+      changes.push({
+        field: 'Фотографии',
+        old: `${oldPhotos.length} фото`,
+        new: `${newPhotos.length} фото`
+      });
+    }
+    
+    return changes;
+  };
+
   const handleApproveClick = () => {
     if (window.confirm('Вы уверены, что хотите одобрить этот объект недвижимости?')) {
       onApprove(property.id);
@@ -239,10 +405,70 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
         <div className="moderation-property-detail__info">
           <div className="moderation-property-detail__header">
             <h1 className="moderation-property-detail__title">{property.title || 'Без названия'}</h1>
-            <div className="moderation-property-detail__badge">
-              {getTypeLabel(property.property_type || property.type)}
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="moderation-property-detail__badge">
+                {getTypeLabel(property.property_type || property.type)}
+              </div>
+              <span 
+                style={{
+                  backgroundColor: requestTypeColors[requestType] + '20',
+                  color: requestTypeColors[requestType],
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  display: 'inline-flex',
+                  alignItems: 'center'
+                }}
+              >
+                {requestTypeLabels[requestType]}
+              </span>
             </div>
           </div>
+
+          {/* Отображение причины удаления */}
+          {requestType === 'delete' && property.rejection_reason && (
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              borderLeft: '4px solid #ef4444'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.5rem',
+                marginBottom: '0.5rem'
+              }}>
+                <FiAlertCircle size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div style={{ flex: 1 }}>
+                  <h4 style={{
+                    margin: '0 0 0.5rem 0',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    color: '#991b1b'
+                  }}>
+                    Причина удаления:
+                  </h4>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '0.875rem',
+                    color: '#7f1d1d',
+                    lineHeight: '1.5',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {(() => {
+                      // Извлекаем причину из формата DELETE:propertyId:reason
+                      const deleteMatch = property.rejection_reason.match(/^DELETE:\d+:(.+)$/);
+                      return deleteMatch ? deleteMatch[1] : property.rejection_reason.replace('DELETE:', '');
+                    })()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="moderation-property-detail__location">
             <IoLocation size={20} />
@@ -444,6 +670,24 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
           </div>
 
           <div className="moderation-property-detail__actions">
+            {requestType === 'edit' && (
+              <button
+                className={`moderation-property-detail__btn moderation-property-detail__btn--view-changes ${!originalProperty || loadingOriginal ? 'disabled' : ''}`}
+                onClick={() => {
+                  if (originalProperty) {
+                    setShowChangesModal(true);
+                  } else if (loadingOriginal) {
+                    alert('Загрузка оригинального объекта...');
+                  } else {
+                    alert('Не удалось загрузить оригинальный объект для сравнения');
+                  }
+                }}
+                disabled={!originalProperty || loadingOriginal}
+              >
+                <FiEye size={18} />
+                {loadingOriginal ? 'Загрузка...' : 'Посмотреть изменения'}
+              </button>
+            )}
             <button
               className="moderation-property-detail__btn moderation-property-detail__btn--approve"
               onClick={handleApproveClick}
@@ -760,6 +1004,147 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
                 }}
               />
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно с изменениями */}
+      {showChangesModal && (
+        <div 
+          className="changes-modal-overlay"
+          onClick={() => setShowChangesModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}
+        >
+          <div 
+            className="changes-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '900px',
+              width: '90%',
+              maxHeight: '85vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>
+                Изменения в объявлении
+              </h2>
+              <button
+                onClick={() => setShowChangesModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '0.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            {getPropertyChanges().length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {getPropertyChanges().map((change, index) => (
+                  <div 
+                    key={index}
+                    style={{
+                      padding: '1rem',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: '#111827', fontSize: '0.95rem' }}>
+                      {change.field}
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem', fontWeight: '500' }}>Было:</div>
+                        <div style={{ 
+                          padding: '0.5rem', 
+                          backgroundColor: '#fee2e2', 
+                          borderRadius: '4px',
+                          color: '#991b1b',
+                          textDecoration: 'line-through',
+                          fontSize: '0.875rem'
+                        }}>
+                          {change.old}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '1.5rem', color: '#0ABAB5', fontWeight: 'bold' }}>→</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem', fontWeight: '500' }}>Стало:</div>
+                        <div style={{ 
+                          padding: '0.5rem', 
+                          backgroundColor: '#d1fae5', 
+                          borderRadius: '4px',
+                          color: '#065f46',
+                          fontWeight: '500',
+                          fontSize: '0.875rem'
+                        }}>
+                          {change.new}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ 
+                padding: '2rem', 
+                textAlign: 'center', 
+                color: '#6b7280',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px'
+              }}>
+                Изменений не обнаружено
+              </div>
+            )}
+            
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowChangesModal(false)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#0ABAB5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#089a95';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#0ABAB5';
+                }}
+              >
+                Закрыть
+              </button>
+            </div>
           </div>
         </div>
       )}
