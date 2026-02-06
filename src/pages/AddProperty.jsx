@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { 
   FiUpload, 
   FiX, 
@@ -35,6 +35,8 @@ import './AddProperty.css'
 
 const AddProperty = () => {
   const navigate = useNavigate()
+  const { id } = useParams() // ID объекта для редактирования
+  const isEditMode = !!id // Режим редактирования
   const fileInputRef = useRef(null)
   const videoInputRef = useRef(null)
   const documentInputRef = useRef(null)
@@ -99,7 +101,7 @@ const AddProperty = () => {
   const [showBedModal, setShowBedModal] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedCoordinates, setSelectedCoordinates] = useState(null)
-  const [mapCenter, setMapCenter] = useState([54.5, 15.0]) // Центр Европы по умолчанию
+  const [mapCenter, setMapCenter] = useState(null) // Будет установлен при загрузке данных или выборе адреса
   const [citySearch, setCitySearch] = useState('')
   const [citySuggestions, setCitySuggestions] = useState([])
   const [showCitySuggestions, setShowCitySuggestions] = useState(false)
@@ -111,6 +113,12 @@ const AddProperty = () => {
   const [isCitySearching, setIsCitySearching] = useState(false)
   const [isAddressSearching, setIsAddressSearching] = useState(false)
   const [validationErrors, setValidationErrors] = useState({})
+  const [isLoadingProperty, setIsLoadingProperty] = useState(false)
+  const [originalPropertyId, setOriginalPropertyId] = useState(null) // ID оригинального объекта при редактировании
+  const [originalPropertyData, setOriginalPropertyData] = useState(null) // Оригинальные данные объекта для сравнения
+  const [showChangesModal, setShowChangesModal] = useState(false) // Модальное окно с изменениями
+  const [savedLocationData, setSavedLocationData] = useState(null) // Сохраняем данные о местоположении для восстановления
+  const [isEditingLocation, setIsEditingLocation] = useState(false) // Флаг для режима редактирования адреса
   
   const currencies = [
     { code: 'USD', symbol: '$', name: 'Доллар США' },
@@ -434,6 +442,25 @@ const AddProperty = () => {
       ...prev,
       price: numericValue
     }))
+    
+    // Валидация: Проверяем, что стартовая цена меньше минимальной цены (если обе заполнены)
+    if (numericValue && formData.auctionStartingPrice) {
+      const priceNum = Number(numericValue)
+      // Убираем запятые из стартовой цены перед сравнением
+      const startingPriceNum = Number(removeCommas(String(formData.auctionStartingPrice)))
+      if (startingPriceNum >= priceNum) {
+        setValidationErrors(prev => ({
+          ...prev,
+          auctionStartingPrice: 'Стартовая сумма ставки должна быть меньше минимальной цены продажи'
+        }))
+      } else {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.auctionStartingPrice
+          return newErrors
+        })
+      }
+    }
   }
 
   // Обработчик для стартовой цены аукциона с форматированием
@@ -445,6 +472,32 @@ const AddProperty = () => {
       ...prev,
       auctionStartingPrice: numericValue
     }))
+    
+    // Валидация: Стартовая сумма ставки должна быть меньше минимальной цены продажи
+    if (numericValue && formData.price) {
+      const startingPriceNum = Number(numericValue)
+      // Убираем запятые из цены перед сравнением
+      const priceNum = Number(removeCommas(String(formData.price)))
+      if (startingPriceNum >= priceNum) {
+        setValidationErrors(prev => ({
+          ...prev,
+          auctionStartingPrice: 'Стартовая сумма ставки должна быть меньше минимальной цены продажи'
+        }))
+      } else {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.auctionStartingPrice
+          return newErrors
+        })
+      }
+    } else {
+      // Очищаем ошибку, если одно из полей пустое
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors.auctionStartingPrice
+        return newErrors
+      })
+    }
   }
 
   const handleDetailChange = (field, value) => {
@@ -697,17 +750,42 @@ const AddProperty = () => {
       }))))
       
       // Документы
+      // Отправляем только если это новый файл (File объект), а не существующий документ
       if (requiredDocuments.ownership) {
-        formDataToSend.append('ownership_document', requiredDocuments.ownership)
+        // Проверяем, является ли это File объектом (новый файл) или существующим документом
+        if (requiredDocuments.ownership instanceof File) {
+          formDataToSend.append('ownership_document', requiredDocuments.ownership)
+        } else if (requiredDocuments.ownership.isExisting && isEditMode) {
+          // Если это существующий документ при редактировании, не отправляем его заново
+          // Сервер сохранит существующий документ
+          console.log('📄 Документ о праве собственности уже загружен, пропускаем')
+        }
       }
       if (requiredDocuments.noDebts) {
-        formDataToSend.append('no_debts_document', requiredDocuments.noDebts)
+        // Проверяем, является ли это File объектом (новый файл) или существующим документом
+        if (requiredDocuments.noDebts instanceof File) {
+          formDataToSend.append('no_debts_document', requiredDocuments.noDebts)
+        } else if (requiredDocuments.noDebts.isExisting && isEditMode) {
+          // Если это существующий документ при редактировании, не отправляем его заново
+          // Сервер сохранит существующий документ
+          console.log('📄 Справка об отсутствии долгов уже загружена, пропускаем')
+        }
       }
       
       console.log('📤 Отправка объявления на сервер...')
       
-      const response = await fetch(`${API_BASE_URL}/properties`, {
-        method: 'POST',
+      // Если это режим редактирования, добавляем пометку и отправляем PUT запрос
+      if (isEditMode && originalPropertyId) {
+        formDataToSend.append('is_edit', '1')
+        formDataToSend.append('original_property_id', String(originalPropertyId))
+      }
+      
+      const url = isEditMode && originalPropertyId 
+        ? `${API_BASE_URL}/properties/${originalPropertyId}`
+        : `${API_BASE_URL}/properties`
+      
+      const response = await fetch(url, {
+        method: isEditMode && originalPropertyId ? 'PUT' : 'POST',
         body: formDataToSend
       })
       
@@ -766,6 +844,665 @@ const AddProperty = () => {
       setUserId(userData.id)
     }
   }, [])
+
+  // Загружаем данные объекта при редактировании
+  useEffect(() => {
+    if (isEditMode && id) {
+      loadPropertyData(id)
+    }
+  }, [isEditMode, id])
+
+  // Функция геокодирования адреса при редактировании
+  const geocodeAddressForEdit = async (address) => {
+    if (!address || address.trim().length === 0) return
+    
+    try {
+      console.log('🌍 Геокодируем адрес для редактирования:', address)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&accept-language=ru&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'PropertyListingApp/1.0'
+          }
+        }
+      )
+      
+      if (!response.ok) {
+        console.warn('⚠️ Ошибка геокодирования:', response.status)
+        return
+      }
+      
+      const data = await response.json()
+      
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat)
+        const lon = parseFloat(data[0].lon)
+        
+        if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+          const coords = [lat, lon]
+          console.log('✅ Адрес геокодирован:', address, '->', coords)
+          
+          // Устанавливаем координаты
+          setSelectedCoordinates(coords)
+          setMapCenter(coords)
+          setFormData(prev => ({ ...prev, coordinates: coords }))
+          
+          // Обновляем savedLocationData с новыми координатами
+          setSavedLocationData(prev => {
+            if (prev) {
+              return { ...prev, coordinates: coords }
+            }
+            return {
+              country: formData.country || '',
+              city: formData.city || '',
+              address: address,
+              location: address,
+              coordinates: coords,
+              citySearch: formData.city || '',
+              addressSearch: address
+            }
+          })
+        } else {
+          console.warn('⚠️ Невалидные координаты после геокодирования:', { lat, lon })
+        }
+      } else {
+        console.warn('⚠️ Геокодирование не дало результатов для адреса:', address)
+      }
+    } catch (error) {
+      console.warn('❌ Ошибка геокодирования адреса:', error)
+    }
+  }
+
+  // Восстанавливаем данные о местоположении при переходе на шаг location в режиме редактирования
+  useEffect(() => {
+    if (isEditMode && currentStep === 'location' && savedLocationData && !isEditingLocation) {
+      console.log('📍 Восстанавливаем данные о местоположении:', savedLocationData)
+      console.log('📍 Координаты в savedLocationData:', savedLocationData.coordinates, 'тип:', typeof savedLocationData.coordinates)
+      // Используем задержку, чтобы убедиться, что компонент полностью отрендерился
+      const timer = setTimeout(() => {
+        // Восстанавливаем адрес (приоритет: address > location) только если пользователь не редактирует
+        const addressToRestore = savedLocationData.address || savedLocationData.location || ''
+        if (addressToRestore && !addressSearch) {
+          console.log('📍 Устанавливаем адрес:', addressToRestore)
+          setFormData(prev => ({ 
+            ...prev, 
+            address: savedLocationData.address || '',
+            location: savedLocationData.location || savedLocationData.address || ''
+          }))
+          setAddressSearch(addressToRestore)
+        }
+        // Восстанавливаем координаты для карты
+        if (savedLocationData.coordinates) {
+          let coordsToSet = savedLocationData.coordinates
+          console.log('📍 Обрабатываем координаты для восстановления:', coordsToSet, 'тип:', typeof coordsToSet)
+          
+          // Убеждаемся, что координаты - массив
+          if (!Array.isArray(coordsToSet)) {
+            if (typeof coordsToSet === 'string') {
+              try {
+                if (coordsToSet.startsWith('[') || coordsToSet.startsWith('{')) {
+                  coordsToSet = JSON.parse(coordsToSet)
+                  console.log('📍 Координаты распарсены из JSON:', coordsToSet)
+                } else {
+                  const parts = coordsToSet.split(',')
+                  if (parts.length >= 2) {
+                    coordsToSet = [parseFloat(parts[0].trim()), parseFloat(parts[1].trim())]
+                    console.log('📍 Координаты распарсены из строки:', coordsToSet)
+                  }
+                }
+              } catch (e) {
+                console.warn('❌ Ошибка парсинга координат при восстановлении:', e)
+                coordsToSet = null
+              }
+            } else {
+              console.warn('⚠️ Координаты не массив и не строка:', coordsToSet)
+              coordsToSet = null
+            }
+          }
+          
+          if (Array.isArray(coordsToSet) && coordsToSet.length >= 2) {
+            let lat = parseFloat(coordsToSet[0])
+            let lng = parseFloat(coordsToSet[1])
+            console.log('📍 Парсим координаты:', { lat, lng, исходные: coordsToSet })
+            
+            // Проверяем, не перепутаны ли координаты местами
+            if ((lat > 90 || lat < -90) && (lng >= -90 && lng <= 90)) {
+              console.warn('⚠️ Координаты перепутаны местами при восстановлении, исправляем:', [lat, lng], '->', [lng, lat])
+              [lat, lng] = [lng, lat]
+            }
+            
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              console.log('✅ Устанавливаем координаты на карту:', [lat, lng])
+              // Обновляем координаты
+              setSelectedCoordinates([lat, lng])
+              setMapCenter([lat, lng])
+              // Обновляем formData с координатами
+              setFormData(prev => ({ ...prev, coordinates: [lat, lng] }))
+              console.log('✅ Координаты установлены в selectedCoordinates, mapCenter и formData')
+            } else {
+              console.warn('⚠️ Координаты невалидны:', [lat, lng])
+            }
+          } else {
+            console.warn('⚠️ Координаты не в правильном формате после обработки:', coordsToSet)
+          }
+        } else {
+          console.warn('⚠️ Координаты отсутствуют в savedLocationData. Проверяем formData.coordinates...')
+          // Пытаемся использовать координаты из formData, если они есть
+          if (formData.coordinates && Array.isArray(formData.coordinates) && formData.coordinates.length >= 2) {
+            console.log('📍 Найдены координаты в formData:', formData.coordinates)
+            const lat = parseFloat(formData.coordinates[0])
+            const lng = parseFloat(formData.coordinates[1])
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              console.log('✅ Используем координаты из formData:', [lat, lng])
+              setSelectedCoordinates([lat, lng])
+              setMapCenter([lat, lng])
+            }
+          } else {
+            // Если координат нет, пытаемся геокодировать адрес
+            const addressToGeocode = savedLocationData.address || savedLocationData.location || ''
+            if (addressToGeocode) {
+              console.log('📍 Координаты отсутствуют, пытаемся геокодировать адрес:', addressToGeocode)
+              geocodeAddressForEdit(addressToGeocode)
+            }
+          }
+        }
+      }, 200) // Задержка для корректного рендеринга
+      
+      return () => clearTimeout(timer)
+    }
+  }, [currentStep, isEditMode, savedLocationData, formData.coordinates, isEditingLocation, addressSearch])
+
+  // Функция загрузки данных объекта для редактирования
+  const loadPropertyData = async (propertyId) => {
+    setIsLoadingProperty(true)
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api')
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`)
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить данные объекта')
+      }
+      
+      const result = await response.json()
+      if (result.success && result.data) {
+        const property = result.data
+        setOriginalPropertyId(propertyId)
+        // Сохраняем оригинальные данные для сравнения
+        setOriginalPropertyData(JSON.parse(JSON.stringify(property)))
+        
+        // Парсим JSON поля
+        let photosArray = []
+        let videosArray = []
+        let additionalDocsArray = []
+        
+        try {
+          if (property.photos && typeof property.photos === 'string') {
+            photosArray = JSON.parse(property.photos)
+          } else if (Array.isArray(property.photos)) {
+            photosArray = property.photos
+          }
+          
+          if (property.videos && typeof property.videos === 'string') {
+            videosArray = JSON.parse(property.videos)
+          } else if (Array.isArray(property.videos)) {
+            videosArray = property.videos
+          }
+          
+          if (property.additional_documents && typeof property.additional_documents === 'string') {
+            additionalDocsArray = JSON.parse(property.additional_documents)
+          } else if (Array.isArray(property.additional_documents)) {
+            additionalDocsArray = property.additional_documents
+          }
+        } catch (parseError) {
+          console.warn('Ошибка парсинга JSON полей:', parseError)
+        }
+        
+        // Преобразуем фото в формат компонента
+        const formattedPhotos = photosArray.map((photo, index) => ({
+          id: `photo-${index}`,
+          url: typeof photo === 'string' ? photo : photo.url || photo
+        }))
+        setPhotos(formattedPhotos)
+        
+        // Преобразуем видео в формат компонента
+        const formattedVideos = videosArray.map((video, index) => ({
+          id: `video-${index}`,
+          url: typeof video === 'string' ? video : video.url || video.embedUrl || video.videoId,
+          type: typeof video === 'object' ? (video.type || 'youtube') : 'youtube',
+          videoId: typeof video === 'object' ? video.videoId : null,
+          thumbnail: typeof video === 'object' ? video.thumbnail : null
+        }))
+        setVideos(formattedVideos)
+        
+        // Преобразуем дополнительные документы
+        const formattedDocs = additionalDocsArray.map((doc, index) => ({
+          id: `doc-${index}`,
+          name: typeof doc === 'object' ? doc.name : `Документ ${index + 1}`,
+          url: typeof doc === 'string' ? doc : doc.url,
+          type: typeof doc === 'object' ? doc.type : 'other'
+        }))
+        setAdditionalDocuments(formattedDocs)
+        
+        // Парсим координаты (API уже возвращает их как массив, но проверяем на всякий случай)
+        let parsedCoordinates = null
+        console.log('📍 Исходные координаты из API:', property.coordinates, 'тип:', typeof property.coordinates)
+        
+        if (property.coordinates) {
+          try {
+            if (Array.isArray(property.coordinates)) {
+              // Уже массив - используем как есть
+              parsedCoordinates = property.coordinates
+              console.log('📍 Координаты уже массив:', parsedCoordinates)
+            } else if (typeof property.coordinates === 'string') {
+              // Строка - парсим
+              if (property.coordinates.startsWith('[') || property.coordinates.startsWith('{')) {
+                parsedCoordinates = JSON.parse(property.coordinates)
+                console.log('📍 Координаты распарсены из JSON строки:', parsedCoordinates)
+              } else {
+                // Строка вида "lat,lng"
+                const parts = property.coordinates.split(',')
+                if (parts.length >= 2) {
+                  parsedCoordinates = [parseFloat(parts[0].trim()), parseFloat(parts[1].trim())]
+                  console.log('📍 Координаты распарсены из строки с запятой:', parsedCoordinates)
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('❌ Ошибка парсинга координат:', e)
+            parsedCoordinates = null
+          }
+        } else {
+          console.warn('⚠️ Координаты отсутствуют в данных объекта')
+        }
+        
+        // Парсим test_drive_data
+        let testDriveData = null
+        if (property.test_drive_data) {
+          try {
+            testDriveData = typeof property.test_drive_data === 'string'
+              ? JSON.parse(property.test_drive_data)
+              : property.test_drive_data
+          } catch (e) {
+            console.warn('Ошибка парсинга test_drive_data:', e)
+          }
+        }
+        
+        // Предзаполняем форму данными объекта
+        setFormData({
+          propertyType: property.property_type || '',
+          testDrive: property.test_drive !== undefined ? (property.test_drive === 1 || property.test_drive === true) : null,
+          title: property.title || '',
+          description: property.description || '',
+          price: property.price ? String(property.price) : '',
+          isAuction: property.is_auction === 1 || property.is_auction === true,
+          auctionStartDate: property.auction_start_date || '',
+          auctionEndDate: property.auction_end_date || '',
+          auctionStartingPrice: property.auction_starting_price ? String(property.auction_starting_price) : '',
+          area: property.area ? String(property.area) : '',
+          livingArea: property.living_area ? String(property.living_area) : '',
+          buildingType: property.building_type || '',
+          rooms: property.rooms ? String(property.rooms) : '',
+          bedrooms: property.bedrooms ? String(property.bedrooms) : '',
+          bathrooms: property.bathrooms ? String(property.bathrooms) : '',
+          floor: property.floor ? String(property.floor) : '',
+          totalFloors: property.total_floors ? String(property.total_floors) : '',
+          yearBuilt: property.year_built ? String(property.year_built) : '',
+          location: property.location || '',
+          address: property.address || '',
+          apartment: property.apartment || '',
+          country: property.country || '',
+          city: property.city || '',
+          coordinates: parsedCoordinates || null, // Устанавливаем координаты сразу после парсинга
+          balcony: property.balcony === 1 || property.balcony === true,
+          parking: property.parking === 1 || property.parking === true,
+          elevator: property.elevator === 1 || property.elevator === true,
+          landArea: property.land_area ? String(property.land_area) : '',
+          pool: property.pool === 1 || property.pool === true,
+          garden: property.garden === 1 || property.garden === true,
+          commercialType: property.commercial_type || '',
+          businessHours: property.business_hours || '',
+          renovation: property.renovation || '',
+          condition: property.condition || '',
+          heating: property.heating || '',
+          waterSupply: property.water_supply || '',
+          sewerage: property.sewerage || '',
+          electricity: property.electricity === 1 || property.electricity === true,
+          internet: property.internet === 1 || property.internet === true,
+          security: property.security === 1 || property.security === true,
+          furniture: property.furniture === 1 || property.furniture === true,
+          feature1: property.feature1 === 1 || property.feature1 === true,
+          feature2: property.feature2 === 1 || property.feature2 === true,
+          feature3: property.feature3 === 1 || property.feature3 === true,
+          feature4: property.feature4 === 1 || property.feature4 === true,
+          feature5: property.feature5 === 1 || property.feature5 === true,
+          feature6: property.feature6 === 1 || property.feature6 === true,
+          feature7: property.feature7 === 1 || property.feature7 === true,
+          feature8: property.feature8 === 1 || property.feature8 === true,
+          feature9: property.feature9 === 1 || property.feature9 === true,
+          feature10: property.feature10 === 1 || property.feature10 === true,
+          feature11: property.feature11 === 1 || property.feature11 === true,
+          feature12: property.feature12 === 1 || property.feature12 === true,
+          feature13: property.feature13 === 1 || property.feature13 === true,
+          feature14: property.feature14 === 1 || property.feature14 === true,
+          feature15: property.feature15 === 1 || property.feature15 === true,
+          feature16: property.feature16 === 1 || property.feature16 === true,
+          feature17: property.feature17 === 1 || property.feature17 === true,
+          feature18: property.feature18 === 1 || property.feature18 === true,
+          feature19: property.feature19 === 1 || property.feature19 === true,
+          feature20: property.feature20 === 1 || property.feature20 === true,
+          feature21: property.feature21 === 1 || property.feature21 === true,
+          feature22: property.feature22 === 1 || property.feature22 === true,
+          feature23: property.feature23 === 1 || property.feature23 === true,
+          feature24: property.feature24 === 1 || property.feature24 === true,
+          feature25: property.feature25 === 1 || property.feature25 === true,
+          feature26: property.feature26 === 1 || property.feature26 === true,
+          additionalAmenities: property.additional_amenities || ''
+        })
+        
+        // Устанавливаем валюту
+        if (property.currency) {
+          setCurrency(property.currency)
+        }
+        
+        // Валидируем и нормализуем уже распарсенные координаты
+        if (parsedCoordinates && Array.isArray(parsedCoordinates) && parsedCoordinates.length >= 2) {
+          let lat = parseFloat(parsedCoordinates[0])
+          let lng = parseFloat(parsedCoordinates[1])
+          
+          // Проверяем, не перепутаны ли координаты местами
+          // Если lat выходит за диапазон, но lng в диапазоне lat, то координаты перепутаны
+          if ((lat > 90 || lat < -90) && (lng >= -90 && lng <= 90)) {
+            console.warn('⚠️ Координаты перепутаны местами, исправляем:', [lat, lng], '->', [lng, lat])
+            [lat, lng] = [lng, lat]
+          }
+          
+          if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            // Нормализуем координаты
+            parsedCoordinates = [lat, lng]
+            console.log('✅ Валидные координаты (lat, lng):', [lat, lng])
+            console.log('📍 Для Минска ожидаем примерно: [53.9045, 27.5615]')
+            // Обновляем formData с правильными координатами
+            setFormData(prev => ({ ...prev, coordinates: [lat, lng] }))
+            // Устанавливаем координаты для карты
+            setSelectedCoordinates([lat, lng])
+            setMapCenter([lat, lng])
+            console.log('✅ Координаты установлены в selectedCoordinates и mapCenter')
+          } else {
+            console.warn('⚠️ Координаты невалидны (вне диапазона):', [lat, lng])
+            parsedCoordinates = null
+            setFormData(prev => ({ ...prev, coordinates: null }))
+          }
+        } else if (parsedCoordinates) {
+          console.warn('⚠️ Координаты не в формате массива:', parsedCoordinates)
+          parsedCoordinates = null
+          setFormData(prev => ({ ...prev, coordinates: null }))
+        }
+        
+        // Сохраняем данные о местоположении для восстановления при переходе на шаг location
+        // Сохраняем координаты вместе с остальными данными о местоположении
+        setSavedLocationData(prev => {
+          const locationData = {
+            country: property.country || '',
+            city: property.city || '',
+            address: property.address || '',
+            location: property.location || '',
+            coordinates: parsedCoordinates || prev?.coordinates || null, // Приоритет: новые координаты > старые > null
+            citySearch: property.city || '',
+            addressSearch: property.address || property.location || ''
+          }
+          console.log('💾 Сохраняем данные о местоположении:', locationData)
+          console.log('💾 Координаты в locationData:', locationData.coordinates)
+          return locationData
+        })
+        
+        // Устанавливаем город для поиска
+        if (property.city) {
+          setCitySearch(property.city)
+        }
+        
+        // Устанавливаем адрес для поиска (приоритет: location > address)
+        // Если location содержит полный адрес, используем его, иначе используем address
+        let addressToSet = ''
+        if (property.location) {
+          // Если location содержит полный адрес, извлекаем только улицу
+          // Или используем location как есть, если address пустой
+          addressToSet = property.address || property.location
+        } else if (property.address) {
+          addressToSet = property.address
+        }
+        if (addressToSet) {
+          setAddressSearch(addressToSet)
+        }
+        
+        // Устанавливаем документы как загруженные (если они есть)
+        if (property.ownership_document) {
+          // Создаем объект-заглушку для уже загруженного документа
+          const ownershipDocName = property.ownership_document_name || 
+            (property.ownership_document.includes('/') 
+              ? property.ownership_document.split('/').pop() 
+              : 'Документ о праве собственности')
+          setRequiredDocuments(prev => ({
+            ...prev,
+            ownership: {
+              name: ownershipDocName,
+              url: property.ownership_document,
+              isExisting: true // Флаг, что это уже загруженный документ
+            }
+          }))
+          setUploadedDocuments(prev => ({ ...prev, ownership: true }))
+        }
+        if (property.no_debts_document) {
+          // Создаем объект-заглушку для уже загруженного документа
+          const noDebtsDocName = property.no_debts_document_name || 
+            (property.no_debts_document.includes('/') 
+              ? property.no_debts_document.split('/').pop() 
+              : 'Справка об отсутствии долгов')
+          setRequiredDocuments(prev => ({
+            ...prev,
+            noDebts: {
+              name: noDebtsDocName,
+              url: property.no_debts_document,
+              isExisting: true // Флаг, что это уже загруженный документ
+            }
+          }))
+          setUploadedDocuments(prev => ({ ...prev, noDebts: true }))
+        }
+        
+        // Проверяем валидацию цен после загрузки данных
+        // Очищаем ошибки валидации, если значения корректны
+        if (property.price && property.auction_starting_price) {
+          const priceNum = Number(property.price)
+          const startingPriceNum = Number(property.auction_starting_price)
+          if (startingPriceNum < priceNum) {
+            // Значения корректны, очищаем ошибку валидации если она есть
+            setValidationErrors(prev => {
+              const newErrors = { ...prev }
+              delete newErrors.auctionStartingPrice
+              return newErrors
+            })
+          }
+        }
+        
+        // Начинаем пошаговый процесс редактирования с вопроса о тест-драйве
+        // (тип объекта уже известен, поэтому пропускаем type-selection)
+        setCurrentStep('test-drive-question')
+      } else {
+        throw new Error('Данные объекта не найдены')
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных объекта:', error)
+      alert('Не удалось загрузить данные объекта для редактирования')
+      navigate('/owner')
+    } finally {
+      setIsLoadingProperty(false)
+    }
+  }
+
+  // Функция для сравнения изменений
+  const getPropertyChanges = () => {
+    if (!originalPropertyData) return []
+    
+    const changes = []
+    const fieldLabels = {
+      title: 'Название',
+      description: 'Описание',
+      price: 'Цена',
+      currency: 'Валюта',
+      area: 'Площадь',
+      rooms: 'Комнаты',
+      bedrooms: 'Спальни',
+      bathrooms: 'Ванные',
+      floor: 'Этаж',
+      total_floors: 'Всего этажей',
+      year_built: 'Год постройки',
+      location: 'Местоположение',
+      land_area: 'Площадь участка',
+      commercial_type: 'Тип коммерческой',
+      business_hours: 'Часы работы',
+      renovation: 'Ремонт',
+      condition: 'Состояние',
+      heating: 'Отопление',
+      water_supply: 'Водоснабжение',
+      sewerage: 'Канализация',
+      is_auction: 'Аукцион',
+      auction_start_date: 'Дата начала аукциона',
+      auction_end_date: 'Дата окончания аукциона',
+      auction_starting_price: 'Стартовая цена аукциона',
+      balcony: 'Балкон',
+      parking: 'Парковка',
+      elevator: 'Лифт',
+      garage: 'Гараж',
+      pool: 'Бассейн',
+      garden: 'Сад',
+      electricity: 'Электричество',
+      internet: 'Интернет',
+      security: 'Охрана',
+      furniture: 'Мебель'
+    }
+    
+    // Сравниваем основные поля
+    Object.keys(fieldLabels).forEach(key => {
+      const oldValue = originalPropertyData[key]
+      // Маппинг полей формы к полям базы данных
+      const formDataMapping = {
+        'title': 'title',
+        'description': 'description',
+        'price': 'price',
+        'currency': 'currency',
+        'area': 'area',
+        'rooms': 'rooms',
+        'bedrooms': 'bedrooms',
+        'bathrooms': 'bathrooms',
+        'floor': 'floor',
+        'total_floors': 'totalFloors',
+        'year_built': 'yearBuilt',
+        'location': 'location',
+        'land_area': 'landArea',
+        'commercial_type': 'commercialType',
+        'business_hours': 'businessHours',
+        'renovation': 'renovation',
+        'condition': 'condition',
+        'heating': 'heating',
+        'water_supply': 'waterSupply',
+        'sewerage': 'sewerage',
+        'is_auction': 'isAuction',
+        'auction_start_date': 'auctionStartDate',
+        'auction_end_date': 'auctionEndDate',
+        'auction_starting_price': 'auctionStartingPrice',
+        'balcony': 'balcony',
+        'parking': 'parking',
+        'elevator': 'elevator',
+        'garage': 'garage',
+        'pool': 'pool',
+        'garden': 'garden',
+        'electricity': 'electricity',
+        'internet': 'internet',
+        'security': 'security',
+        'furniture': 'furniture'
+      }
+      
+      const formDataKey = formDataMapping[key] || key
+      let newValue = formData[formDataKey]
+      
+      // Обработка булевых значений
+      if (key === 'is_auction') {
+        newValue = formData.isAuction
+        const oldBool = oldValue === 1 || oldValue === true
+        if (oldBool !== newValue) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldBool ? 'Да' : 'Нет',
+            new: newValue ? 'Да' : 'Нет'
+          })
+        }
+        return
+      }
+      
+      // Обработка булевых полей удобств
+      if (['balcony', 'parking', 'elevator', 'garage', 'pool', 'garden', 'electricity', 'internet', 'security', 'furniture'].includes(key)) {
+        const oldBool = oldValue === 1 || oldValue === true
+        const newBool = newValue === true || newValue === 1
+        if (oldBool !== newBool) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldBool ? 'Да' : 'Нет',
+            new: newBool ? 'Да' : 'Нет'
+          })
+        }
+        return
+      }
+      
+      // Обработка числовых значений
+      if (['price', 'area', 'land_area', 'auction_starting_price'].includes(key)) {
+        const oldNum = oldValue ? Number(oldValue) : null
+        const newNum = newValue ? Number(newValue) : null
+        if (oldNum !== newNum) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldNum !== null ? oldNum.toLocaleString('ru-RU') : 'Не указано',
+            new: newNum !== null ? newNum.toLocaleString('ru-RU') : 'Не указано'
+          })
+        }
+        return
+      }
+      
+      // Обработка location - может быть в formData.location или formData.address
+      if (key === 'location') {
+        const newLocation = formData.location || formData.address || savedLocationData?.location || savedLocationData?.address
+        if (oldValue !== newLocation && (oldValue || newLocation)) {
+          changes.push({
+            field: fieldLabels[key],
+            old: oldValue || 'Не указано',
+            new: newLocation || 'Не указано'
+          })
+        }
+        return
+      }
+      
+      // Обработка строковых значений
+      if (oldValue !== newValue && (oldValue || newValue)) {
+        changes.push({
+          field: fieldLabels[key],
+          old: oldValue || 'Не указано',
+          new: newValue || 'Не указано'
+        })
+      }
+    })
+    
+    // Сравниваем фотографии
+    const oldPhotos = originalPropertyData.photos ? 
+      (typeof originalPropertyData.photos === 'string' ? JSON.parse(originalPropertyData.photos) : originalPropertyData.photos) : []
+    const newPhotos = photos.map(p => p.url || p)
+    if (JSON.stringify(oldPhotos) !== JSON.stringify(newPhotos)) {
+      changes.push({
+        field: 'Фотографии',
+        old: `${oldPhotos.length} фото`,
+        new: `${newPhotos.length} фото`
+      })
+    }
+    
+    return changes
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -1352,9 +2089,9 @@ const AddProperty = () => {
     
     // В поле ввода и в formData.address записываем короткий адрес (улица + район)
     setAddressSearch(shortAddress)
-    // Сохраняем координаты, но НЕ обновляем карту - карта обновится только после выбора номера дома
-    // setSelectedCoordinates(coords) - не устанавливаем, чтобы карта не двигалась
-    // setMapCenter(coords) - не устанавливаем, чтобы карта не двигалась
+    // Сохраняем координаты для отображения на карте
+    setSelectedCoordinates(coords)
+    setMapCenter(coords)
     setShowSuggestions(false)
     setIsAddressSearching(false) // Сбрасываем состояние загрузки
     // Устанавливаем подсказки, чтобы показать галочку (храним исходный объект)
@@ -1376,8 +2113,7 @@ const AddProperty = () => {
       address: shortAddress,
       // Сохраняем адрес в правильном формате
       location: formattedAddress,
-      // НЕ устанавливаем coordinates здесь - они установятся только после выбора номера дома
-      // coordinates: coords,
+      coordinates: coords, // Сохраняем координаты для отображения на карте
       country: country,
       city: city
     }))
@@ -1862,6 +2598,14 @@ const AddProperty = () => {
         alert('Пожалуйста, укажите стартовую цену аукциона')
         return
       }
+      // Проверка: Стартовая сумма ставки должна быть меньше Минимальной цены продажи
+      // Преобразуем строки в числа, убирая запятые если они есть
+      const startingPriceNum = Number(removeCommas(String(formData.auctionStartingPrice)))
+      const priceNum = Number(removeCommas(String(formData.price)))
+      if (startingPriceNum >= priceNum) {
+        alert('Стартовая сумма ставки должна быть меньше минимальной цены продажи')
+        return
+      }
     }
     
     // Проверяем статус верификации и привязки карты пользователя
@@ -2131,32 +2875,92 @@ const AddProperty = () => {
     <div className="add-property-page">
       <div className="add-property-container">
         <div className="add-property-header">
-          <button 
-            className="back-btn"
-            onClick={() => {
-              if (currentStep === 'test-drive-question') {
-                setCurrentStep('type-selection')
-                setFormData(prev => ({ ...prev, propertyType: '' }))
-              } else if (currentStep === 'property-name') {
-                setCurrentStep('test-drive-question')
-                setFormData(prev => ({ ...prev, testDrive: null }))
-              } else if (currentStep === 'location') {
-                setCurrentStep('property-name')
-              } else if (currentStep === 'form') {
-                setCurrentStep('price')
-              } else if (currentStep === 'price') {
-                setCurrentStep('documents')
-              } else if (currentStep === 'documents') {
-                setCurrentStep('photos')
-              } else {
-                navigate('/owner')
-              }
-            }}
-          >
-            <FiChevronLeft size={20} />
-            Назад
-          </button>
-          <h1 className="page-title">Добавить объявление</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              className="back-btn"
+              onClick={() => {
+                if (currentStep === 'test-drive-question') {
+                  // В режиме редактирования тип уже выбран, поэтому возвращаемся на главную
+                  if (isEditMode) {
+                    navigate('/owner')
+                  } else {
+                    setCurrentStep('type-selection')
+                    setFormData(prev => ({ ...prev, propertyType: '' }))
+                  }
+                } else if (currentStep === 'property-name') {
+                  setCurrentStep('test-drive-question')
+                  setFormData(prev => ({ ...prev, testDrive: null }))
+                } else if (currentStep === 'location') {
+                  setCurrentStep('property-name')
+                } else if (currentStep === 'details') {
+                  setCurrentStep('location')
+                } else if (currentStep === 'amenities') {
+                  setCurrentStep('details')
+                } else if (currentStep === 'photos') {
+                  setCurrentStep('amenities')
+                } else if (currentStep === 'documents') {
+                  setCurrentStep('photos')
+                } else if (currentStep === 'price') {
+                  setCurrentStep('documents')
+                } else if (currentStep === 'form') {
+                  setCurrentStep('price')
+                } else {
+                  navigate('/owner')
+                }
+              }}
+            >
+              <FiChevronLeft size={20} />
+              Назад
+            </button>
+            <h1 className="page-title">{isEditMode ? 'Редактировать объявление' : 'Добавить объявление'}</h1>
+          </div>
+          {isEditMode && (
+            <button
+              type="button"
+              className="view-changes-btn"
+              onClick={() => {
+                if (originalPropertyData) {
+                  setShowChangesModal(true)
+                } else {
+                  alert('Данные еще загружаются. Пожалуйста, подождите.')
+                }
+              }}
+              disabled={!originalPropertyData || isLoadingProperty}
+              style={{
+                padding: '0.625rem 1.25rem',
+                backgroundColor: originalPropertyData ? '#0ABAB5' : '#9ca3af',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: originalPropertyData ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 4px rgba(10, 186, 181, 0.2)',
+                opacity: originalPropertyData ? 1 : 0.6
+              }}
+              onMouseEnter={(e) => {
+                if (originalPropertyData && !e.target.disabled) {
+                  e.target.style.backgroundColor = '#089a95'
+                  e.target.style.transform = 'translateY(-1px)'
+                  e.target.style.boxShadow = '0 4px 8px rgba(10, 186, 181, 0.3)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (originalPropertyData && !e.target.disabled) {
+                  e.target.style.backgroundColor = '#0ABAB5'
+                  e.target.style.transform = 'translateY(0)'
+                  e.target.style.boxShadow = '0 2px 4px rgba(10, 186, 181, 0.2)'
+                }
+              }}
+            >
+              <FiEye size={16} />
+              {isLoadingProperty ? 'Загрузка...' : 'Посмотреть изменения'}
+            </button>
+          )}
         </div>
 
         {currentStep === 'type-selection' ? (
@@ -2410,21 +3214,70 @@ const AddProperty = () => {
                 Где находится ваша недвижимость?
               </h2>
               
-              <div className="property-location-input-group">
-                <label className="property-location-label">Страна</label>
-                <CountrySelect
-                  value={formData.country}
-                  onChange={(countryName) => {
-                    setFormData(prev => ({ ...prev, country: countryName }))
-                    // Обновляем поиск города при изменении страны
-                    if (citySearch) {
-                      searchCity(citySearch, countryName)
-                    }
-                  }}
-                  placeholder="Выберите страну"
-                  className="property-location-country-select"
-                />
-              </div>
+              {/* Упрощенный режим для редактирования - только поле Адрес */}
+              {isEditMode && !isEditingLocation && (formData.address || formData.location) ? (
+                <div className="property-location-input-group">
+                  <label className="property-location-label">Адрес</label>
+                  <div className="property-location-search-wrapper">
+                    <input
+                      type="text"
+                      value={addressSearch || ''}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        // Сразу обновляем addressSearch, чтобы поле реагировало на изменения
+                        setAddressSearch(value)
+                        
+                        // Если поле очищено, переключаемся на полную форму
+                        if (!value.trim()) {
+                          // Устанавливаем флаг редактирования ПЕРЕД очисткой данных
+                          setIsEditingLocation(true)
+                          // Очищаем все данные
+                          setFormData(prev => ({
+                            ...prev,
+                            address: '',
+                            location: '',
+                            coordinates: null
+                          }))
+                          setSelectedCoordinates(null)
+                          setMapCenter(null)
+                          setAddressSuggestions([])
+                          setShowSuggestions(false)
+                          // Явно устанавливаем пустую строку, чтобы предотвратить восстановление
+                          setAddressSearch('')
+                        } else {
+                          setFormData(prev => ({
+                            ...prev,
+                            address: value,
+                            location: value
+                          }))
+                        }
+                      }}
+                      className="property-location-input"
+                      placeholder="Введите адрес"
+                    />
+                  </div>
+                  <p className="property-location-hint" style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
+                    Очистите поле, чтобы изменить адрес
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Полная форма для добавления или редактирования */}
+                  <div className="property-location-input-group">
+                    <label className="property-location-label">Страна</label>
+                    <CountrySelect
+                      value={formData.country}
+                      onChange={(countryName) => {
+                        setFormData(prev => ({ ...prev, country: countryName }))
+                        // Обновляем поиск города при изменении страны
+                        if (citySearch) {
+                          searchCity(citySearch, countryName)
+                        }
+                      }}
+                      placeholder="Выберите страну"
+                      className="property-location-country-select"
+                    />
+                  </div>
 
               <div className="property-location-input-group">
                 <label className="property-location-label">Город</label>
@@ -2514,6 +3367,8 @@ const AddProperty = () => {
                         setIsAddressSearching(false)
                         setHouseSuggestions([])
                         setShowHouseSuggestions(false)
+                        setSelectedCoordinates(null)
+                        setMapCenter(null)
                         setFormData(prev => ({
                           ...prev,
                           address: '',
@@ -2625,6 +3480,8 @@ const AddProperty = () => {
                   )}
                 </div>
               </div>
+                </>
+              )}
 
               <div className="property-location-actions">
                 <button
@@ -2646,13 +3503,166 @@ const AddProperty = () => {
             </div>
 
             <div className="property-location-map">
-              {typeof window !== 'undefined' && (
-                <LocationMap
-                  center={selectedCoordinates || mapCenter}
-                  zoom={selectedCoordinates ? 15 : 4}
-                  marker={selectedCoordinates}
-                />
-              )}
+              {typeof window !== 'undefined' && (() => {
+                // Определяем координаты для карты
+                // Для нового объекта используем дефолтные координаты без маркера
+                // Для редактирования используем координаты из данных
+                let mapCoords = [55, 20] // Дефолтные координаты (вид над Европой) [lat, lng]
+                let hasValidCoords = false
+                let shouldShowMarker = false // Флаг для отображения маркера
+                
+                // Функция для валидации и нормализации координат
+                const validateAndNormalizeCoords = (coords) => {
+                  if (!coords || !Array.isArray(coords) || coords.length < 2) return null
+                  
+                  let lat = parseFloat(coords[0])
+                  let lng = parseFloat(coords[1])
+                  
+                  // Проверяем, не перепутаны ли координаты (если lat > 90 или lat < -90, но lng в диапазоне lat)
+                  // Это может означать, что координаты перепутаны местами
+                  if ((lat > 90 || lat < -90) && (lng >= -90 && lng <= 90)) {
+                    // Координаты перепутаны, меняем местами
+                    console.warn('⚠️ Координаты перепутаны местами, исправляем:', [lat, lng], '->', [lng, lat])
+                    [lat, lng] = [lng, lat]
+                  }
+                  
+                  if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    return [lat, lng]
+                  }
+                  return null
+                }
+                
+                // Для нового объекта (не редактирование) проверяем координаты из выбранного адреса
+                if (!isEditMode) {
+                  // Проверяем координаты в порядке приоритета
+                  if (selectedCoordinates) {
+                    const validated = validateAndNormalizeCoords(selectedCoordinates)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true // Показываем маркер, если есть выбранный адрес
+                      console.log('📍 Новый объект: используем selectedCoordinates:', mapCoords)
+                    }
+                  }
+                  
+                  if (!hasValidCoords && mapCenter && Array.isArray(mapCenter)) {
+                    const validated = validateAndNormalizeCoords(mapCenter)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true
+                      console.log('📍 Новый объект: используем mapCenter:', mapCoords)
+                    }
+                  }
+                  
+                  if (!hasValidCoords && formData.coordinates) {
+                    const validated = validateAndNormalizeCoords(formData.coordinates)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true
+                      console.log('📍 Новый объект: используем formData.coordinates:', mapCoords)
+                    }
+                  }
+                  
+                  // Если координаты не найдены, используем дефолтные без маркера
+                  if (!hasValidCoords) {
+                    const validated = validateAndNormalizeCoords(mapCoords)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = false
+                      console.log('📍 Новый объект: используем дефолтные координаты без маркера:', mapCoords)
+                    }
+                  }
+                } else {
+                  // Для редактирования проверяем координаты в порядке приоритета
+                  if (selectedCoordinates) {
+                    const validated = validateAndNormalizeCoords(selectedCoordinates)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true
+                      console.log('📍 Редактирование: используем selectedCoordinates:', mapCoords)
+                    }
+                  }
+                  
+                  if (!hasValidCoords && mapCenter && Array.isArray(mapCenter)) {
+                    const validated = validateAndNormalizeCoords(mapCenter)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true
+                      console.log('📍 Редактирование: используем mapCenter:', mapCoords)
+                    }
+                  }
+                  
+                  if (!hasValidCoords && formData.coordinates) {
+                    const validated = validateAndNormalizeCoords(formData.coordinates)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true
+                      console.log('📍 Редактирование: используем formData.coordinates:', mapCoords)
+                    }
+                  }
+                  
+                  if (!hasValidCoords && savedLocationData?.coordinates) {
+                    const validated = validateAndNormalizeCoords(savedLocationData.coordinates)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = true
+                      console.log('📍 Редактирование: используем savedLocationData.coordinates:', mapCoords)
+                      // Устанавливаем координаты для использования
+                      setSelectedCoordinates(validated)
+                      setMapCenter(validated)
+                      setFormData(prev => ({ ...prev, coordinates: validated }))
+                    }
+                  }
+                  
+                  // Если координаты не найдены, используем дефолтные, но без маркера
+                  if (!hasValidCoords) {
+                    const validated = validateAndNormalizeCoords(mapCoords)
+                    if (validated) {
+                      mapCoords = validated
+                      hasValidCoords = true
+                      shouldShowMarker = false
+                      console.log('📍 Редактирование: координаты не найдены, используем дефолтные без маркера:', mapCoords)
+                    }
+                  }
+                }
+                
+                console.log('🗺️ Передаем координаты в LocationMap:', {
+                  selectedCoordinates,
+                  mapCenter,
+                  formDataCoordinates: formData.coordinates,
+                  savedLocationDataCoords: savedLocationData?.coordinates,
+                  finalCoords: mapCoords,
+                  hasValidCoords,
+                  isEditMode,
+                  shouldShowMarker,
+                  center: hasValidCoords ? mapCoords : null,
+                  marker: (hasValidCoords && shouldShowMarker) ? mapCoords : null,
+                  zoom: hasValidCoords ? (shouldShowMarker ? 15 : 10) : 10
+                })
+                
+                // Передаем координаты для центра карты
+                // Маркер показываем только если shouldShowMarker = true (т.е. для редактирования с валидными координатами)
+                const finalMapCoords = hasValidCoords ? mapCoords : (mapCoords && Array.isArray(mapCoords) && mapCoords.length === 2 ? mapCoords : null)
+                
+                // Для нового объекта (не редактирование) не передаем zoom, чтобы использовался дефолтный высокий вид
+                // Для редактирования передаем zoom 15 для детального вида
+                const finalZoom = (hasValidCoords && shouldShowMarker) ? 15 : undefined
+                
+                return (
+                  <LocationMap
+                    center={finalMapCoords}
+                    zoom={finalZoom}
+                    marker={hasValidCoords && shouldShowMarker ? finalMapCoords : null}
+                  />
+                )
+              })()}
             </div>
 
      
@@ -4028,12 +5038,17 @@ const AddProperty = () => {
                         name="auctionStartingPrice"
                         value={formData.auctionStartingPrice ? formatNumberWithCommas(formData.auctionStartingPrice) : ''}
                         onChange={handleAuctionPriceChange}
-                        className="price-input-large"
+                        className={`price-input-large ${validationErrors.auctionStartingPrice ? 'error' : ''}`}
                         placeholder="0"
                         inputMode="numeric"
                         required={formData.isAuction}
                       />
                     </div>
+                    {validationErrors.auctionStartingPrice && (
+                      <div className="validation-error" style={{ marginTop: '8px', color: '#ff4444', fontSize: '14px' }}>
+                        {validationErrors.auctionStartingPrice}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -4761,6 +5776,135 @@ const AddProperty = () => {
             >
               Понятно
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно с изменениями */}
+      {showChangesModal && (
+        <div 
+          className="changes-modal-overlay"
+          onClick={() => setShowChangesModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}
+        >
+          <div 
+            className="changes-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '800px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>
+                Изменения в объявлении
+              </h2>
+              <button
+                onClick={() => setShowChangesModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '0.25rem'
+                }}
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            {getPropertyChanges().length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {getPropertyChanges().map((change, index) => (
+                  <div 
+                    key={index}
+                    style={{
+                      padding: '1rem',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: '#111827' }}>
+                      {change.field}
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Было:</div>
+                        <div style={{ 
+                          padding: '0.5rem', 
+                          backgroundColor: '#fee2e2', 
+                          borderRadius: '4px',
+                          color: '#991b1b',
+                          textDecoration: 'line-through'
+                        }}>
+                          {change.old}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '1.5rem', color: '#0ABAB5' }}>→</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Стало:</div>
+                        <div style={{ 
+                          padding: '0.5rem', 
+                          backgroundColor: '#d1fae5', 
+                          borderRadius: '4px',
+                          color: '#065f46',
+                          fontWeight: '500'
+                        }}>
+                          {change.new}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ 
+                padding: '2rem', 
+                textAlign: 'center', 
+                color: '#6b7280',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px'
+              }}>
+                Изменений не обнаружено
+              </div>
+            )}
+            
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowChangesModal(false)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#0ABAB5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  fontSize: '0.875rem'
+                }}
+              >
+                Закрыть
+              </button>
+            </div>
           </div>
         </div>
       )}

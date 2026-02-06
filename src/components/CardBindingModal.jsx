@@ -14,6 +14,7 @@ const CardBindingModal = ({ isOpen, onClose, userId, onComplete }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cardType, setCardType] = useState(null)
   const [validFields, setValidFields] = useState({})
+  const [isFlipped, setIsFlipped] = useState(false)
 
   const formatCardNumber = (value) => {
     // Удаляем все нецифровые символы
@@ -254,6 +255,21 @@ const CardBindingModal = ({ isOpen, onClose, userId, onComplete }) => {
     // Проверяем валидность
     const isValid = checkFieldValidity('cvv', formatted)
     setValidFields(prev => ({ ...prev, cvv: isValid }))
+    // Переворачиваем карту при фокусе на CVV
+    if (formatted.length > 0) {
+      setIsFlipped(true)
+    }
+  }
+
+  const handleCVVFocus = () => {
+    setIsFlipped(true)
+  }
+
+  const handleCVVBlur = () => {
+    // Не переворачиваем обратно, если CVV заполнен
+    if (!cardData.cvv) {
+      setIsFlipped(false)
+    }
   }
 
   const handleCardholderNameChange = (e) => {
@@ -350,65 +366,20 @@ const CardBindingModal = ({ isOpen, onClose, userId, onComplete }) => {
     }
   }
 
+  const formatCardNumberForDisplay = (number) => {
+    if (!number) return '**** **** **** ****'
+    const digits = number.replace(/\s/g, '')
+    let display = digits
+    // Дополняем до 16 символов звездочками
+    const remaining = 16 - digits.length
+    if (remaining > 0) {
+      display = digits + '*'.repeat(remaining)
+    }
+    // Форматируем с пробелами каждые 4 символа
+    return display.replace(/(.{4})/g, '$1 ').trim()
+  }
+
   if (!isOpen) return null
-
-  const getCardIcon = () => {
-    switch (cardType) {
-      case 'visa':
-        return (
-          <img 
-            src="https://zg-brand.ru/upload/resize_cache/webp/images/visa-logo.webp" 
-            alt="Visa" 
-            style={{ 
-              width: '70px', 
-              height: '45px', 
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
-            }}
-          />
-        )
-      case 'mastercard':
-        return (
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg" 
-            alt="Mastercard" 
-            style={{ 
-              width: '70px', 
-              height: '45px', 
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
-            }}
-          />
-        )
-      case 'amex':
-        return (
-          <svg width="70" height="45" viewBox="0 0 70 45" fill="none">
-            <rect width="70" height="45" rx="5" fill="#006FCF"/>
-            <text x="35" y="28" textAnchor="middle" fill="white" fontSize="16" fontWeight="bold" fontFamily="Arial, sans-serif">AMEX</text>
-          </svg>
-        )
-      default:
-        return (
-          <svg width="70" height="45" viewBox="0 0 70 45" fill="none">
-            <rect width="70" height="45" rx="5" fill="rgba(255, 255, 255, 0.2)"/>
-            <rect x="10" y="14" width="50" height="17" rx="2" fill="rgba(255, 255, 255, 0.1)"/>
-          </svg>
-        )
-    }
-  }
-
-  const getCardTypeName = () => {
-    switch (cardType) {
-      case 'visa':
-        return 'VISA'
-      case 'mastercard':
-        return 'MASTERCARD'
-      case 'amex':
-        return 'AMERICAN EXPRESS'
-      default:
-        return ''
-    }
-  }
 
   return (
     <div className="card-binding-modal-overlay" onClick={onClose}>
@@ -435,32 +406,82 @@ const CardBindingModal = ({ isOpen, onClose, userId, onComplete }) => {
 
           <form onSubmit={handleSubmit} className="card-binding-form">
             <div className="card-binding-form__card-preview">
-              <div className={`card-preview ${cardType ? `card-preview--${cardType}` : ''}`}>
-                <div className="card-preview__chip">
-                  <svg width="50" height="38" viewBox="0 0 50 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="50" height="38" rx="6" fill="#FFD700"/>
-                    <rect x="5" y="7" width="40" height="24" rx="3" fill="#FFA500"/>
-                    <rect x="8" y="10" width="34" height="18" rx="2" fill="#FFD700"/>
-                    <rect x="10" y="12" width="30" height="14" rx="1" fill="#FFA500"/>
-                  </svg>
-                </div>
-                <div className="card-preview__type">
-                  {getCardIcon()}
-                </div>
-                {cardType && (
-                  <div className="card-preview__type-name">
-                    {getCardTypeName()}
+              <div 
+                className={`card-container ${isFlipped ? 'card-container--flipped' : ''}`}
+                onClick={() => setIsFlipped(!isFlipped)}
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Лицевая сторона карты */}
+                <div className={`card-preview card-preview--front ${cardType ? `card-preview--${cardType}` : ''}`}>
+                  <div className="card-preview__top">
+                    <div className="card-preview__logo">
+                      {cardType === 'visa' ? (
+                        <span className="card-logo-text">VISA</span>
+                      ) : cardType === 'mastercard' ? (
+                        <div className="mastercard-logo">
+                          <div className="mastercard-circle mastercard-circle--red"></div>
+                          <div className="mastercard-circle mastercard-circle--orange"></div>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="card-preview__icons">
+                      <div className="card-icon card-icon--lock">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2C8.13 2 5 5.13 5 9V11C3.9 11 3 11.9 3 13V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V13C21 11.9 20.1 11 19 11V9C19 5.13 15.87 2 12 2ZM12 4C14.76 4 17 6.24 17 9V11H7V9C7 6.24 9.24 4 12 4ZM5 13H19V20H5V13Z" fill="currentColor"/>
+                        </svg>
+                      </div>
+                      <div className="card-icon card-icon--contactless">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+                          <path d="M12 6C8.69 6 6 8.69 6 12C6 15.31 8.69 18 12 18C15.31 18 18 15.31 18 12C18 8.69 15.31 6 12 6ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z" fill="currentColor"/>
+                          <path d="M12 9C10.34 9 9 10.34 9 12C9 13.66 10.34 15 12 15C13.66 15 15 13.66 15 12C15 10.34 13.66 9 12 9Z" fill="currentColor"/>
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div className="card-preview__number">
-                  {cardData.cardNumber || '•••• •••• •••• ••••'}
-                </div>
-                <div className="card-preview__footer">
-                  <div className="card-preview__name">
-                    {cardData.cardholderName || 'ИМЯ ДЕРЖАТЕЛЯ'}
+                  
+                  <div className="card-preview__chip">
+                    <div className="chip"></div>
                   </div>
-                  <div className="card-preview__expiry">
-                    {cardData.expiryDate || 'ММ/ГГ'}
+                  
+                  <div className="card-preview__number">
+                    {formatCardNumberForDisplay(cardData.cardNumber)}
+                  </div>
+                  
+                  <div className="card-preview__footer">
+                    <div className="card-preview__name">
+                      {cardData.cardholderName || '**** ****'}
+                    </div>
+                    <div className="card-preview__expiry">
+                      {cardData.expiryDate || '**/**'}
+                    </div>
+                  </div>
+                  
+                  <div className="card-preview__lock-bottom">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2C8.13 2 5 5.13 5 9V11C3.9 11 3 11.9 3 13V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V13C21 11.9 20.1 11 19 11V9C19 5.13 15.87 2 12 2Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Обратная сторона карты */}
+                <div className={`card-preview card-preview--back ${cardType ? `card-preview--${cardType}` : ''}`}>
+                  <div className="card-preview__magnetic-stripe"></div>
+                  <div className="card-preview__cvv-section">
+                    <div className="card-preview__cvv-label">CVV</div>
+                    <div className="card-preview__cvv-value">
+                      {cardData.cvv || '***'}
+                    </div>
+                  </div>
+                  <div className="card-preview__back-logo">
+                    {cardType === 'visa' ? (
+                      <span className="card-logo-text">VISA</span>
+                    ) : cardType === 'mastercard' ? (
+                      <div className="mastercard-logo">
+                        <div className="mastercard-circle mastercard-circle--red"></div>
+                        <div className="mastercard-circle mastercard-circle--orange"></div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -526,9 +547,11 @@ const CardBindingModal = ({ isOpen, onClose, userId, onComplete }) => {
                   <input
                     type="text"
                     className={`form-field__input ${errors.cvv ? 'error' : ''} ${validFields.cvv ? 'valid' : ''}`}
-                    placeholder="123"
+                    placeholder="***"
                     value={cardData.cvv}
                     onChange={handleCVVChange}
+                    onFocus={handleCVVFocus}
+                    onBlur={handleCVVBlur}
                     maxLength={4}
                   />
                   {errors.cvv && (

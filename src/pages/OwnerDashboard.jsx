@@ -137,6 +137,10 @@ const OwnerDashboard = () => {
   const [uploading, setUploading] = useState({ passport: false, passportWithFace: false })
   const passportInputRef = useRef(null)
   const passportWithFaceInputRef = useRef(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [propertyToDelete, setPropertyToDelete] = useState(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false)
 
   useEffect(() => {
     // Проверяем, авторизован ли владелец
@@ -723,27 +727,61 @@ const OwnerDashboard = () => {
   const totalViews = properties.reduce((sum, p) => sum + (p.views || 0), 0)
   const totalInquiries = properties.reduce((sum, p) => sum + (p.inquiries || 0), 0)
 
-  const handleDeleteProperty = async (id) => {
-    if (window.confirm('Вы уверены, что хотите удалить это объявление?')) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
-          method: 'DELETE'
-        })
-        if (response.ok) {
-          // Обновляем список объявлений
-          if (userId) {
-            await loadUserProperties(userId)
-          } else {
-            setProperties(properties.filter(p => p.id !== id))
-          }
-        } else {
-          alert('Ошибка при удалении объявления')
-        }
-      } catch (error) {
-        console.error('Ошибка при удалении объявления:', error)
-        alert('Ошибка при удалении объявления')
-      }
+  const handleDeleteProperty = (id) => {
+    const property = properties.find(p => p.id === id)
+    if (property) {
+      setPropertyToDelete(property)
+      setDeleteReason('')
+      setShowDeleteModal(true)
     }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!propertyToDelete) return
+    
+    if (!deleteReason.trim()) {
+      alert('Пожалуйста, укажите причину удаления')
+      return
+    }
+
+    setIsSubmittingDelete(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyToDelete.id}/delete-request`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reason: deleteReason.trim()
+        })
+      })
+
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        alert('Запрос на удаление отправлен на модерацию')
+        // Обновляем список объявлений
+        if (userId) {
+          await loadUserProperties(userId)
+        }
+        setShowDeleteModal(false)
+        setPropertyToDelete(null)
+        setDeleteReason('')
+      } else {
+        alert(result.error || 'Ошибка при отправке запроса на удаление')
+      }
+    } catch (error) {
+      console.error('Ошибка при отправке запроса на удаление:', error)
+      alert('Ошибка при отправке запроса на удаление')
+    } finally {
+      setIsSubmittingDelete(false)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false)
+    setPropertyToDelete(null)
+    setDeleteReason('')
   }
 
   const handleEditProperty = (id) => {
@@ -1097,12 +1135,6 @@ const OwnerDashboard = () => {
                     }}
                   />
                   {getStatusBadge(property.status)}
-                  {property.isAuction && (
-                    <div className="auction-badge">
-                      <FiTag size={14} />
-                      <span>Аукцион</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="property-card-owner__content">
@@ -1149,10 +1181,16 @@ const OwnerDashboard = () => {
                     <div className="property-card-owner__stat">
                       <span>Опубликовано: {new Date(property.publishedDate).toLocaleDateString('ru-RU')}</span>
                     </div>
-                    {property.rejectionReason && (
+                    {property.rejectionReason && !property.rejectionReason.startsWith('EDIT:') && (
                       <div className="property-card-owner__stat" style={{ color: '#ef4444', fontWeight: 500 }}>
                         <FiAlertCircle size={14} />
                         <span>Причина отклонения: {property.rejectionReason}</span>
+                      </div>
+                    )}
+                    {property.rejectionReason && property.rejectionReason.startsWith('EDIT:') && (
+                      <div className="property-card-owner__stat" style={{ color: '#0ABAB5', fontWeight: 500 }}>
+                        <FiClock size={14} />
+                        <span>Запрос на редактирование отправлен на модерацию</span>
                       </div>
                     )}
                   </div>
@@ -1422,6 +1460,170 @@ const OwnerDashboard = () => {
         onClose={() => setSelectedPropertyForHistory(null)}
         property={selectedPropertyForHistory}
       />
+
+      {/* Модальное окно удаления объявления */}
+      {showDeleteModal && propertyToDelete && (
+        <div 
+          className="delete-modal-overlay"
+          onClick={handleCancelDelete}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}
+        >
+          <div 
+            className="delete-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '90%',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#111827' }}>
+                Удаление объявления
+              </h2>
+              <button
+                onClick={handleCancelDelete}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '0.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p style={{ margin: '0 0 1rem 0', color: '#4b5563', fontSize: '0.95rem' }}>
+                Вы собираетесь отправить запрос на удаление объявления <strong>"{propertyToDelete.title || 'Без названия'}"</strong>.
+              </p>
+              <p style={{ margin: '0 0 1rem 0', color: '#4b5563', fontSize: '0.95rem' }}>
+                Пожалуйста, укажите причину удаления. Запрос будет отправлен на модерацию администратору.
+              </p>
+              <label 
+                htmlFor="delete-reason"
+                style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: '500', 
+                  color: '#111827',
+                  fontSize: '0.95rem'
+                }}
+              >
+                Причина удаления <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <textarea
+                id="delete-reason"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Например: Объект уже продан, ошибка в данных, передумал продавать..."
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+                disabled={isSubmittingDelete}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleCancelDelete}
+                disabled={isSubmittingDelete}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isSubmittingDelete ? 'not-allowed' : 'pointer',
+                  fontWeight: '500',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s',
+                  opacity: isSubmittingDelete ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSubmittingDelete) {
+                    e.target.style.backgroundColor = '#e5e7eb';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSubmittingDelete) {
+                    e.target.style.backgroundColor = '#f3f4f6';
+                  }
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isSubmittingDelete || !deleteReason.trim()}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: isSubmittingDelete || !deleteReason.trim() ? '#9ca3af' : '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isSubmittingDelete || !deleteReason.trim() ? 'not-allowed' : 'pointer',
+                  fontWeight: '500',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSubmittingDelete && deleteReason.trim()) {
+                    e.target.style.backgroundColor = '#b91c1c';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSubmittingDelete && deleteReason.trim()) {
+                    e.target.style.backgroundColor = '#dc2626';
+                  }
+                }}
+              >
+                {isSubmittingDelete ? (
+                  <>
+                    <span>Отправка...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiTrash2 size={16} />
+                    Отправить на модерацию
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Панель профиля */}
       {isProfilePanelOpen && (

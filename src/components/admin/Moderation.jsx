@@ -173,6 +173,7 @@ const Moderation = () => {
   const [pendingDocuments, setPendingDocuments] = useState([]);
   const [pendingProperties, setPendingProperties] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [requestTypeFilter, setRequestTypeFilter] = useState('all'); // 'all', 'publication', 'edit', 'delete'
 
   // Загрузка документов на верификацию
   useEffect(() => {
@@ -509,9 +510,33 @@ const Moderation = () => {
     }
   };
 
+  // Функция для определения типа запроса
+  const getRequestType = (property) => {
+    // Проверяем rejection_reason для определения типа запроса
+    if (property.rejection_reason) {
+      if (property.rejection_reason.startsWith('EDIT:')) {
+        return 'edit';
+      }
+      if (property.rejection_reason.startsWith('DELETE:')) {
+        return 'delete';
+      }
+    }
+    // Если rejection_reason пустой или null, это публикация
+    return 'publication';
+  };
+
   const filteredProperties = useMemo(() => {
     if (activeTab !== 'properties') return [];
     const filtered = pendingProperties.filter(property => {
+      // Фильтрация по типу запроса
+      if (requestTypeFilter !== 'all') {
+        const requestType = getRequestType(property);
+        if (requestType !== requestTypeFilter) {
+          return false;
+        }
+      }
+      
+      // Фильтрация по поисковому запросу
       const ownerName = `${property.first_name || ''} ${property.last_name || ''}`.toLowerCase();
       return (
         (property.title && property.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -526,7 +551,7 @@ const Moderation = () => {
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
       return dateB - dateA; // Новые сверху
     });
-  }, [activeTab, searchQuery, pendingProperties]);
+  }, [activeTab, searchQuery, pendingProperties, requestTypeFilter]);
 
   const handleApprove = async (type, id) => {
     try {
@@ -975,6 +1000,7 @@ const Moderation = () => {
           onClick={() => {
             setActiveTab('properties');
             setSearchQuery('');
+            setRequestTypeFilter('all');
           }}
         >
           <FiHome size={18} />
@@ -1078,6 +1104,34 @@ const Moderation = () => {
 
       {activeTab === 'properties' && (
         <div className="moderation-content">
+          {/* Фильтр по типу запроса */}
+          <div className="moderation-filter-buttons">
+            <button
+              className={`moderation-filter-btn ${requestTypeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setRequestTypeFilter('all')}
+            >
+              Все
+            </button>
+            <button
+              className={`moderation-filter-btn ${requestTypeFilter === 'publication' ? 'active' : ''}`}
+              onClick={() => setRequestTypeFilter('publication')}
+            >
+              Публикация
+            </button>
+            <button
+              className={`moderation-filter-btn ${requestTypeFilter === 'edit' ? 'active' : ''}`}
+              onClick={() => setRequestTypeFilter('edit')}
+            >
+              Редактирование
+            </button>
+            <button
+              className={`moderation-filter-btn ${requestTypeFilter === 'delete' ? 'active' : ''}`}
+              onClick={() => setRequestTypeFilter('delete')}
+            >
+              Удаление
+            </button>
+          </div>
+
           {loading ? (
             <div className="moderation-empty">
               <p>Загрузка...</p>
@@ -1090,6 +1144,18 @@ const Moderation = () => {
             <div className="moderation-list">
               {filteredProperties.map(property => {
                 const ownerName = `${property.first_name || ''} ${property.last_name || ''}`.trim() || 'Не указано';
+                const requestType = getRequestType(property);
+                const requestTypeLabels = {
+                  'publication': 'Запрос на публикацию',
+                  'edit': 'Запрос на редактирование',
+                  'delete': 'Запрос на удаление'
+                };
+                const requestTypeColors = {
+                  'publication': '#0ABAB5',
+                  'edit': '#f59e0b',
+                  'delete': '#ef4444'
+                };
+                
                 return (
                   <div 
                     key={property.id} 
@@ -1104,6 +1170,22 @@ const Moderation = () => {
                     <div className="moderation-card__info">
                       <div className="moderation-card__header">
                         <h3>{property.title}</h3>
+                        {/* Показываем тип запроса только когда выбран фильтр "Все" */}
+                        {requestTypeFilter === 'all' && (
+                          <span 
+                            className="moderation-request-badge"
+                            style={{
+                              backgroundColor: requestTypeColors[requestType] + '20',
+                              color: requestTypeColors[requestType],
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {requestTypeLabels[requestType]}
+                          </span>
+                        )}
                       </div>
                       <p className="moderation-card__location">{property.location || 'Не указано'}</p>
 

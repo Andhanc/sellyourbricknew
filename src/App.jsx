@@ -219,6 +219,7 @@ function App() {
           {/* Страницы для владельцев */}
           <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/owner/property/new" element={<AddProperty />} />
+          <Route path="/property/:id/edit" element={<AddProperty />} />
           
           {/* Админ-панель */}
           <Route path="/admin" element={<AdminPanelPage />} />

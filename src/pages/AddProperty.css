@@ -51,6 +51,7 @@
 .add-property-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 20px;
   padding-bottom: 12px;
