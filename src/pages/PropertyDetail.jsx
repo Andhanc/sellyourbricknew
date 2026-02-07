@@ -4,6 +4,7 @@ import { properties } from '../data/properties'
 import CountdownTimer from '../components/CountdownTimer'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
 import DepositButton from '../components/DepositButton'
+import { getUserData } from '../services/authService'
 import { FiX, FiLayers, FiHome, FiCheck, FiX as FiXIcon } from 'react-icons/fi'
 import { IoLocationOutline } from 'react-icons/io5'
 import { MdBed, MdOutlineBathtub } from 'react-icons/md'
@@ -32,6 +33,9 @@ const PropertyDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0)
   const [bidAmount, setBidAmount] = useState('')
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
+  const [userDeposit, setUserDeposit] = useState(0)
+  const userData = getUserData()
+  const userId = userData?.id
 
   // Загружаем данные объявления
   useEffect(() => {
@@ -232,9 +236,33 @@ const PropertyDetail = () => {
     }
   }, [id, normalizedProperty, isLoading])
 
-
-  // Получаем депозит пользователя (пока используем моковые данные)
-  const userDeposit = 786898.67
+  // Загружаем депозит пользователя
+  useEffect(() => {
+    const loadUserDeposit = async () => {
+      if (!userId) {
+        setUserDeposit(0)
+        return
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            setUserDeposit(data.data.depositAmount || 0)
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки депозита:', error)
+        setUserDeposit(0)
+      }
+    }
+    
+    loadUserDeposit()
+    // Обновляем каждые 5 секунд для актуальности данных
+    const interval = setInterval(loadUserDeposit, 5000)
+    return () => clearInterval(interval)
+  }, [userId])
 
   if (isLoading) {
     return (

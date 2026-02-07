@@ -1,208 +1,407 @@
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect, useMemo } from 'react'
-import { FaArrowLeft, FaArrowUp, FaArrowDown, FaLock, FaWifi, FaPlus, FaBuilding, FaMoneyBillWave } from 'react-icons/fa'
-import { Line, Bar } from 'react-chartjs-2'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
+import { useState, useEffect } from 'react'
+import { FaArrowLeft, FaArrowUp, FaArrowDown, FaLock, FaWifi } from 'react-icons/fa'
+import { getUserData } from '../services/authService'
+import { validateLuhn, detectCardType, formatCardNumber, maskCardNumber } from '../utils/cardValidation'
 import './Wallet.css'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-)
-
-// Демо данные для транзакций
-const generateDemoTransactions = () => {
-  const names = [
-    { name: 'Henry James', initials: 'HJ', time: '10:30 AM', amount: 450.00, type: 'Пополнение' },
-    { name: 'Chris Michael', initials: 'CM', time: '10:00 AM', amount: 250.00, type: 'Пополнение' },
-    { name: 'Sarah Johnson', initials: 'SJ', time: '09:45 AM', amount: -1200.00, type: 'Вывод' },
-    { name: 'Michael Brown', initials: 'MB', time: '09:20 AM', amount: 750.00, type: 'Пополнение' },
-    { name: 'Emma Wilson', initials: 'EW', time: '08:55 AM', amount: -350.00, type: 'Вывод' },
-    { name: 'David Lee', initials: 'DL', time: '08:30 AM', amount: 1500.00, type: 'Пополнение' },
-  ]
-  return names
-}
-
-// Данные для графиков по периодам
-const getChartDataByPeriod = (period) => {
-  const data = {
-    Daily: {
-      labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
-      values: [5000, 8000, 12000, 18000, 15000, 10000, 7000]
-    },
-    Weekly: {
-      labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
-      values: [12000, 15000, 18000, 22000, 25000, 20000, 15000]
-    },
-    Monthly: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      values: [12000, 15000, 28000, 14000, 16000, 15000]
-    }
-  }
-  return data[period] || data.Monthly
-}
-
-// Данные карт
-const cardsData = [
-  {
-    id: 1,
-    type: 'VISA',
-    number: '4532 1234 5678 5466',
-    cvv: '123',
-    balance: 786898.67,
-    color: 'linear-gradient(135deg, #0ABAB5 0%, #089a95 50%, #0ABAB5 100%)'
-  },
-  {
-    id: 2,
-    type: 'MASTERCARD',
-    number: '5555 4321 9876 3210',
-    cvv: '456',
-    balance: 245000.00,
-    color: 'linear-gradient(135deg, #EB001B 0%, #F79E1B 50%, #EB001B 100%)'
-  }
-]
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const Wallet = () => {
   const navigate = useNavigate()
-  const [selectedPeriod, setSelectedPeriod] = useState('M')
-  const [selectedTab, setSelectedTab] = useState('Monthly')
-  const [activeCardIndex, setActiveCardIndex] = useState(0)
+  const userData = getUserData()
+  const userId = userData?.id
+
+  const [depositAmount, setDepositAmount] = useState(0)
+  const [hasCard, setHasCard] = useState(false)
+  const [cardType, setCardType] = useState(null)
+  const [cardNumber, setCardNumber] = useState('') // Только последние 4 цифры после сохранения
+  const [cardCvv, setCardCvv] = useState('')
+  const [cardExpiry, setCardExpiry] = useState('')
+  const [savedCardNumber, setSavedCardNumber] = useState('') // Полный номер для показа при разблокировке
+  const [savedCardExpiry, setSavedCardExpiry] = useState('') // Дата для показа при разблокировке
+  const [savedCardCvv, setSavedCardCvv] = useState('') // CVV для показа при разблокировке
   const [isCardFlipped, setIsCardFlipped] = useState(false)
-  const [activeAction, setActiveAction] = useState(null)
+  const [isEditingCard, setIsEditingCard] = useState(false)
   const [isCardDataVisible, setIsCardDataVisible] = useState(false)
-
-  // Демо данные
-  const activeCard = cardsData[activeCardIndex]
-  const balance = activeCard.balance
-  const totalWithdrawal = 60500
-  const totalDeposit = 20500
-  const transactions = generateDemoTransactions()
-
-  // Данные для графика
-  const chartDataConfig = useMemo(() => {
-    const periodData = getChartDataByPeriod(selectedTab)
-    return {
-      labels: periodData.labels,
-      datasets: [
-        {
-          label: 'Расходы',
-          data: periodData.values,
-          borderColor: '#0ABAB5',
-          backgroundColor: (context) => {
-            const ctx = context.chart.ctx
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400)
-            gradient.addColorStop(0, 'rgba(10, 186, 181, 0.3)')
-            gradient.addColorStop(1, 'rgba(10, 186, 181, 0.05)')
-            return gradient
-          },
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 8,
-          pointBackgroundColor: '#0ABAB5',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 3,
-          pointHoverBorderWidth: 4
-        }
-      ]
+  const [cardError, setCardError] = useState('')
+  
+  // Автоматический переворот карточки при заполнении номера и даты
+  useEffect(() => {
+    if (isEditingCard && !hasCard) {
+      const cleanedNumber = cardNumber.replace(/\D/g, '')
+      const hasNumber = cleanedNumber.length >= 13
+      const hasExpiry = cardExpiry.length === 5
+      
+      if (hasNumber && hasExpiry && !isCardFlipped) {
+        // Небольшая задержка для плавности
+        setTimeout(() => setIsCardFlipped(true), 300)
+      }
     }
-  }, [selectedTab])
+  }, [cardNumber, cardExpiry, isEditingCard, hasCard, isCardFlipped])
+  const [loading, setLoading] = useState(true)
+  const [transactions, setTransactions] = useState([])
+  const [analytics, setAnalytics] = useState({
+    totalDeposit: 0,
+    totalWithdrawal: 0
+  })
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      intersect: false,
-      mode: 'index'
-    },
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        padding: 16,
-        titleFont: { size: 14, weight: 'bold', family: 'inherit' },
-        bodyFont: { size: 16, weight: '600', family: 'inherit' },
-        displayColors: false,
-        borderColor: '#0ABAB5',
-        borderWidth: 2,
-        cornerRadius: 12,
-        callbacks: {
-          label: function(context) {
-            return `$${context.parsed.y.toLocaleString()}`
-          }
+  // Загружаем данные пользователя
+  useEffect(() => {
+    if (!userId) {
+      navigate('/')
+      return
+    }
+    loadUserData()
+  }, [userId])
+
+  // Автоматический переворот карточки при заполнении номера и даты
+  useEffect(() => {
+    if (isEditingCard && !hasCard) {
+      const cleanedNumber = cardNumber.replace(/\D/g, '')
+      const hasNumber = cleanedNumber.length >= 13
+      const hasExpiry = cardExpiry.length === 5
+      
+      if (hasNumber && hasExpiry && !isCardFlipped) {
+        // Небольшая задержка для плавности
+        setTimeout(() => setIsCardFlipped(true), 300)
+      } else if ((!hasNumber || !hasExpiry) && isCardFlipped && isEditingCard) {
+        // Не переворачиваем обратно автоматически, только если пользователь не редактирует
+      }
+    }
+  }, [cardNumber, cardExpiry, isEditingCard, hasCard])
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true)
+      const [depositRes, transactionsRes, analyticsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/users/${userId}/deposit`),
+        fetch(`${API_BASE_URL}/users/${userId}/transactions`),
+        fetch(`${API_BASE_URL}/users/${userId}/analytics`)
+      ])
+
+      if (depositRes.ok) {
+        const depositData = await depositRes.json()
+        if (depositData.success) {
+          setDepositAmount(depositData.data.depositAmount || 0)
+          setHasCard(depositData.data.hasCard || false)
+          setCardType(depositData.data.cardType)
+          setIsEditingCard(!depositData.data.hasCard)
         }
       }
-    },
-    scales: {
-      x: {
-        grid: {
-          display: false
-        },
-        ticks: {
-          color: 'rgba(255, 255, 255, 0.7)',
-          font: { size: 12, weight: '500' }
+
+      if (transactionsRes.ok) {
+        const transData = await transactionsRes.json()
+        if (transData.success) {
+          setTransactions(transData.data || [])
         }
-      },
-      y: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          drawBorder: false
-        },
-        ticks: {
-          color: 'rgba(255, 255, 255, 0.7)',
-          font: { size: 12, weight: '500' },
-          callback: function(value) {
-            return `$${value / 1000}K`
-          }
+      }
+
+      if (analyticsRes.ok) {
+        const analyticsData = await analyticsRes.json()
+        if (analyticsData.success) {
+          setAnalytics({
+            totalDeposit: analyticsData.data.totalDeposit || 0,
+            totalWithdrawal: analyticsData.data.totalWithdrawal || 0
+          })
         }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCardSubmit = async (e) => {
+    if (e && e.preventDefault) {
+      e.preventDefault()
+    }
+    setCardError('')
+
+    // Валидация
+    const cleanedCardNumber = cardNumber.replace(/\D/g, '')
+    if (cleanedCardNumber.length < 13 || cleanedCardNumber.length > 19) {
+      setCardError('Номер карты должен содержать от 13 до 19 цифр')
+      return
+    }
+
+    if (!validateLuhn(cleanedCardNumber)) {
+      setCardError('Номер карты недействителен (не прошел проверку алгоритма Луна)')
+      return
+    }
+
+    if (!cardCvv || cardCvv.length < 3 || cardCvv.length > 4) {
+      setCardError('CVV должен содержать 3 или 4 цифры')
+      return
+    }
+
+    if (!cardExpiry || !/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+      setCardError('Укажите срок действия в формате MM/YY')
+      return
+    }
+
+    const detectedType = detectCardType(cleanedCardNumber)
+    if (detectedType === 'UNKNOWN') {
+      setCardError('Неподдерживаемый тип карты. Используйте VISA или Mastercard')
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/card`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cardNumber: cleanedCardNumber,
+          cardCvv: cardCvv,
+          cardType: detectedType
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setHasCard(true)
+        setCardType(detectedType)
+        // Сохраняем полные данные для показа при разблокировке
+        setSavedCardNumber(cleanedCardNumber)
+        setSavedCardExpiry(cardExpiry)
+        setSavedCardCvv(cardCvv)
+        // Сохраняем только последние 4 цифры для обычного отображения
+        setCardNumber(cleanedCardNumber.slice(-4))
+        setCardExpiry('') // Очищаем форму
+        setCardCvv('') // Очищаем CVV
+        setIsEditingCard(false)
+        setIsCardFlipped(false) // Возвращаем карточку на лицевую сторону
+        setIsCardDataVisible(false) // Сбрасываем видимость
+        await loadUserData()
+      } else {
+        setCardError(data.error || 'Ошибка при сохранении карты')
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения карты:', error)
+      setCardError('Ошибка при сохранении карты')
+    }
+  }
+
+  const handleTopUp = async () => {
+    if (!hasCard) {
+      setIsEditingCard(true)
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit/top-up`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // Обновляем депозит из ответа
+        const newDeposit = data.data.depositAmount || 0
+        setDepositAmount(newDeposit)
+        // Перезагружаем все данные для синхронизации
+        await loadUserData()
+        alert(`Депозит пополнен на 3000 евро! Текущий баланс: ${formatAmount(newDeposit)}`)
+      } else {
+        alert(data.error || 'Ошибка при пополнении депозита')
+      }
+    } catch (error) {
+      console.error('Ошибка пополнения:', error)
+      alert('Ошибка при пополнении депозита')
+    }
+  }
+
+  const handleWithdraw = async () => {
+    const amount = prompt('Введите сумму для вывода (евро):')
+    if (!amount || parseFloat(amount) <= 0) {
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit/withdraw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ amount: parseFloat(amount) })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setDepositAmount(data.data.depositAmount)
+        await loadUserData()
+        alert(`Выведено ${amount} евро!`)
+      } else {
+        alert(data.error || 'Ошибка при выводе средств')
+      }
+    } catch (error) {
+      console.error('Ошибка вывода:', error)
+      alert('Ошибка при выводе средств')
+    }
+  }
+
+  const getCardColor = () => {
+    // Если карта не сохранена и номер не введен - нейтральный дизайн
+    if (!hasCard && !cardNumber) {
+      return 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%)'
+    }
+    if (cardType === 'VISA') {
+      return 'linear-gradient(135deg, #0ABAB5 0%, #089a95 50%, #0ABAB5 100%)'
+    } else if (cardType === 'MASTERCARD') {
+      return 'linear-gradient(135deg, #EB001B 0%, #F79E1B 50%, #EB001B 100%)'
+    }
+    // По умолчанию нейтральный дизайн
+    return 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%)'
+  }
+  
+  const getCardLogo = () => {
+    if (!hasCard && !cardNumber) {
+      return null // Нет логотипа пока не введен номер
+    }
+    if (cardType === 'MASTERCARD') {
+      return (
+        <div className="mastercard-logo">
+          <div className="mastercard-circle mastercard-circle--red"></div>
+          <div className="mastercard-circle mastercard-circle--yellow"></div>
+        </div>
+      )
+    }
+    return <span>VISA</span>
+  }
+  
+  const formatCardNumberForDisplay = () => {
+    if (hasCard) {
+      // После сохранения показываем только последние 4 цифры
+      return getMaskedCardNumber()
+    }
+    // При вводе показываем введенные цифры с подчеркиваниями
+    const cleaned = cardNumber.replace(/\D/g, '')
+    if (cleaned.length === 0) {
+      return '____ ____ ____ ____'
+    }
+    const formatted = cleaned.padEnd(16, '_')
+    // Форматируем с пробелами каждые 4 символа
+    return formatted.match(/.{1,4}/g)?.join(' ') || formatted
+  }
+  
+  const formatExpiryForDisplay = () => {
+    if (hasCard) {
+      return '**/**'
+    }
+    if (cardExpiry) {
+      return cardExpiry
+    }
+    return 'MM/YY'
+  }
+  
+  const formatCvvForDisplay = () => {
+    if (hasCard) {
+      return '***'
+    }
+    if (cardCvv) {
+      return cardCvv
+    }
+    return '___'
+  }
+  
+  // Проверка, можно ли сохранить карту
+  const canSaveCard = () => {
+    const cleanedNumber = cardNumber.replace(/\D/g, '')
+    return cleanedNumber.length >= 13 && 
+           cardExpiry.length === 5 && 
+           cardCvv.length >= 3 &&
+           validateLuhn(cleanedNumber)
+  }
+  
+  // Определяем тип карты при вводе номера
+  const handleCardNumberChange = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 19)
+    setCardNumber(cleaned)
+    setCardError('')
+    
+    // Определяем тип карты при вводе
+    if (cleaned.length >= 4) {
+      const detectedType = detectCardType(cleaned)
+      if (detectedType !== 'UNKNOWN') {
+        setCardType(detectedType)
       }
     }
   }
 
   const formatAmount = (amount) => {
     if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(2)}M`
+      return `€${(amount / 1000000).toFixed(2)}M`
     }
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `€${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const getMaskedCardNumber = () => {
-    if (isCardDataVisible) {
-      return activeCard.number
+    if (!hasCard) {
+      // При редактировании показываем введенный номер
+      if (cardNumber) {
+        const cleaned = cardNumber.replace(/\D/g, '')
+        if (cleaned.length === 0) {
+          return '____ ____ ____ ____'
+        }
+        const formatted = cleaned.padEnd(16, '_')
+        return formatted.match(/.{1,4}/g)?.join(' ') || formatted
+      }
+      return '____ ____ ____ ____'
     }
-    const last4 = activeCard.number.slice(-4)
-    return `**** **** **** ${last4}`
+    
+    // После сохранения
+    if (isCardDataVisible && savedCardNumber) {
+      // Показываем полный номер
+      return formatCardNumber(savedCardNumber)
+    }
+    // Показываем только последние 4 цифры
+    return `**** **** **** ${cardNumber}`
   }
-
-  const getCardNumberForDisplay = () => {
-    const number = getMaskedCardNumber()
-    // Форматируем с пробелами каждые 4 цифры
-    return number.replace(/(.{4})/g, '$1 ').trim()
+  
+  const getCardExpiryDisplay = () => {
+    if (!hasCard) {
+      return formatExpiryForDisplay()
+    }
+    
+    // После сохранения
+    if (isCardDataVisible && savedCardExpiry) {
+      return savedCardExpiry
+    }
+    return '**/**'
+  }
+  
+  const getCardCvvDisplay = () => {
+    if (!hasCard) {
+      return formatCvvForDisplay()
+    }
+    
+    // После сохранения
+    if (isCardDataVisible && savedCardCvv) {
+      return savedCardCvv
+    }
+    return '***'
   }
 
   const handleCardLockClick = (e) => {
     e.stopPropagation()
     setIsCardDataVisible(!isCardDataVisible)
+  }
+
+  if (loading) {
+    return (
+      <div className="wallet-page">
+        <div className="wallet-container">
+          <div style={{ textAlign: 'center', padding: '50px', color: 'white' }}>
+            Загрузка...
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -219,286 +418,240 @@ const Wallet = () => {
             <FaArrowLeft />
             <span>Назад</span>
           </button>
-          <h1 className="wallet-title">Мой кошелёк</h1>
+          <h1 className="wallet-title">Депозит</h1>
+        </div>
+
+        {/* Инструкция о депозите */}
+        <div className="deposit-instruction">
+          <div className="deposit-instruction__content">
+            <h2>Что такое депозит?</h2>
+            <p>Депозит — это 3000 евро, которые вы вносите для участия в аукционе.</p>
+          </div>
         </div>
 
         {/* Банковская карта */}
         <div className="wallet-card-section">
           <div className="wallet-card-header">
-            <h2 className="wallet-card-title">Мои карты</h2>
-            <button className="wallet-add-card-btn">
-              <FaPlus />
-              <span>Добавить карту</span>
-            </button>
+            <h2 className="wallet-card-title">{hasCard ? 'Моя карта' : 'Добавьте карту'}</h2>
           </div>
           
-          {/* Карусель карт */}
+          {/* Карточка всегда видна */}
           <div className="wallet-cards-carousel">
-            <div className="wallet-cards-wrapper" style={{ transform: `translateX(-${activeCardIndex * 100}%)` }}>
-              {cardsData.map((card, index) => (
-                <div 
-                  key={card.id}
-                  className={`bank-card ${isCardFlipped && activeCardIndex === index ? 'flipped' : ''}`}
-                  onClick={() => {
-                    if (activeCardIndex === index) {
-                      setIsCardFlipped(!isCardFlipped)
-                    } else {
-                      setActiveCardIndex(index)
-                      setIsCardFlipped(false)
-                      setIsCardDataVisible(false)
-                    }
-                  }}
-                  style={{ '--card-color': card.color }}
+            <div
+              className={`bank-card ${isCardFlipped ? 'flipped' : ''} ${isEditingCard ? 'editing' : ''}`}
+              onClick={() => hasCard && !isEditingCard && setIsCardFlipped(!isCardFlipped)}
+              style={{ '--card-color': getCardColor() }}
+            >
+              <div className="bank-card__front">
+                <div className="bank-card__background" style={{ background: getCardColor() }}>
+                  <div className="bank-card__pattern"></div>
+                  <div className="bank-card__shine"></div>
+                </div>
+                <div className="bank-card__content">
+                  <div className="bank-card__top">
+                    <div className={`bank-card__logo ${cardType === 'MASTERCARD' ? 'mastercard' : ''}`}>
+                      {getCardLogo()}
+                    </div>
+                    {hasCard && !isEditingCard && (
+                      <div 
+                        className="bank-card__security"
+                        onClick={handleCardLockClick}
+                      >
+                        <FaLock className={`bank-card__lock-icon ${isCardDataVisible ? 'unlocked' : ''}`} />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bank-card__middle">
+                    <div className="bank-card__chip">
+                      <div className="chip"></div>
+                    </div>
+                    <div className="bank-card__contactless">
+                      <FaWifi className="contactless-icon" />
+                    </div>
+                  </div>
+                  
+                  <div className="bank-card__number">
+                    {isEditingCard ? (
+                      <input
+                        type="text"
+                        className="bank-card__number-input"
+                        value={cardNumber}
+                        onChange={(e) => handleCardNumberChange(e.target.value)}
+                        placeholder="1234 5678 9012 3456"
+                        maxLength="19"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="bank-card__number-text">
+                        {formatCardNumberForDisplay()}
+                      </span>
+                    )}
+                    {hasCard && isCardDataVisible && !isEditingCard && (
+                      <FaLock 
+                        className={`bank-card__number-lock unlocked`}
+                        onClick={handleCardLockClick}
+                      />
+                    )}
+                  </div>
+                  
+                  <div className="bank-card__bottom">
+                    <div className="bank-card__expiry">
+                      {isEditingCard && !hasCard ? (
+                        <input
+                          type="text"
+                          className="bank-card__expiry-input"
+                          value={cardExpiry}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                            if (value.length >= 2) {
+                              value = value.slice(0, 2) + '/' + value.slice(2)
+                            }
+                            setCardExpiry(value)
+                            setCardError('')
+                          }}
+                          placeholder="MM/YY"
+                          maxLength="5"
+                        />
+                      ) : (
+                        <span className="bank-card__expiry-text">{getCardExpiryDisplay()}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bank-card__back">
+                <div className="bank-card__back-content">
+                  <div className="bank-card__magnetic-stripe"></div>
+                  <div className="bank-card__cvv">
+                    <div className="cvv-label">CVV</div>
+                    <div className="cvv-value">
+                      {isEditingCard ? (
+                        <input
+                          type="text"
+                          className="bank-card__cvv-input"
+                          value={cardCvv}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                            setCardCvv(value)
+                            setCardError('')
+                          }}
+                          placeholder="___"
+                          maxLength="4"
+                        />
+                      ) : (
+                        getCardCvvDisplay()
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Кнопка сохранения (показывается только когда все поля заполнены) */}
+          {isEditingCard && !hasCard && canSaveCard() && (
+            <div className="card-save-container">
+              {cardError && <div className="card-error">{cardError}</div>}
+              <button 
+                type="button"
+                onClick={handleCardSubmit}
+                className="card-form-submit"
+              >
+                Сохранить карту
+              </button>
+            </div>
+          )}
+
+          {/* Блок депозита (показывается только после сохранения карты) */}
+          {hasCard && (
+            <>
+              <div className="deposit-info-block">
+                <div className="deposit-info-label">Депозит</div>
+                <div className="deposit-info-amount">{formatAmount(depositAmount)}</div>
+              </div>
+              
+              {/* Кнопки действий */}
+              <div className="wallet-actions">
+                <button 
+                  className="wallet-action-btn deposit-action"
+                  onClick={handleTopUp}
                 >
-                  <div className="bank-card__front">
-                    <div className="bank-card__background" style={{ background: card.color }}>
-                      <div className="bank-card__pattern"></div>
-                      <div className="bank-card__shine"></div>
-                    </div>
-                    <div className="bank-card__content">
-                      <div className="bank-card__top">
-                        <div className={`bank-card__logo ${card.type === 'MASTERCARD' ? 'mastercard' : ''}`}>
-                          {card.type === 'MASTERCARD' ? (
-                            <div className="mastercard-logo">
-                              <div className="mastercard-circle mastercard-circle--red"></div>
-                              <div className="mastercard-circle mastercard-circle--yellow"></div>
-                            </div>
-                          ) : (
-                            'VISA'
-                          )}
-                        </div>
-                        <div 
-                          className="bank-card__security"
-                          onClick={handleCardLockClick}
-                        >
-                          <FaLock className={`bank-card__lock-icon ${isCardDataVisible ? 'unlocked' : ''}`} />
-                        </div>
-                      </div>
-                      
-                      <div className="bank-card__middle">
-                        <div className="bank-card__chip">
-                          <div className="chip"></div>
-                        </div>
-                        <div className="bank-card__contactless">
-                          <FaWifi className="contactless-icon" />
-                        </div>
-                      </div>
-                      
-                      <div className="bank-card__number">
-                        <span className="bank-card__number-text">
-                          {activeCardIndex === index ? getCardNumberForDisplay() : `**** **** **** ${card.number.slice(-4)}`}
-                        </span>
-                        {activeCardIndex === index && (
-                          <FaLock 
-                            className={`bank-card__number-lock ${isCardDataVisible ? 'unlocked' : ''}`}
-                            onClick={handleCardLockClick}
-                          />
-                        )}
-                      </div>
-                      
-                      <div className="bank-card__bottom">
-                        <div className="bank-card__balance-label">Баланс</div>
-                        <div className="bank-card__balance-amount">{formatAmount(card.balance)}</div>
-                      </div>
-                    </div>
+                  <div className="wallet-action-icon-wrapper">
+                    <FaArrowUp className="wallet-action-icon" />
                   </div>
-                  <div className="bank-card__back">
-                    <div className="bank-card__back-content">
-                      <div className="bank-card__magnetic-stripe"></div>
-                      <div className="bank-card__cvv">
-                        <div className="cvv-label">CVV</div>
-                        <div className={`cvv-value ${activeCardIndex === index && isCardDataVisible ? 'visible' : ''}`}>
-                          {activeCardIndex === index && isCardDataVisible ? card.cvv : '***'}
-                        </div>
-                      </div>
-                    </div>
+                  <span>Пополнить</span>
+                </button>
+                <button 
+                  className="wallet-action-btn withdraw-action"
+                  onClick={handleWithdraw}
+                >
+                  <div className="wallet-action-icon-wrapper">
+                    <FaArrowDown className="wallet-action-icon" />
                   </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Точки для переключения карт */}
-            <div className="wallet-cards-dots">
-              {cardsData.map((card, index) => (
-                <button
-                  key={card.id}
-                  className={`wallet-card-dot ${activeCardIndex === index ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveCardIndex(index)
-                    setIsCardFlipped(false)
-                    setIsCardDataVisible(false)
-                  }}
-                  aria-label={`Карта ${index + 1}`}
-                />
-              ))}
-            </div>
-          </div>
+                  <span>Вывести</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Кнопки действий */}
-        <div className="wallet-actions">
-          <button 
-            className={`wallet-action-btn ${activeAction === 'deposit' ? 'active' : ''}`}
-            onClick={() => setActiveAction(activeAction === 'deposit' ? null : 'deposit')}
-          >
-            <div className="wallet-action-icon-wrapper">
-              <FaArrowUp className="wallet-action-icon" />
-            </div>
-            <span>Пополнить</span>
-          </button>
-          <button 
-            className={`wallet-action-btn ${activeAction === 'withdraw' ? 'active' : ''}`}
-            onClick={() => setActiveAction(activeAction === 'withdraw' ? null : 'withdraw')}
-          >
-            <div className="wallet-action-icon-wrapper">
-              <FaArrowDown className="wallet-action-icon" />
-            </div>
-            <span>Вывести</span>
-          </button>
-          <button 
-            className={`wallet-action-btn ${activeAction === 'loan' ? 'active' : ''}`}
-            onClick={() => setActiveAction(activeAction === 'loan' ? null : 'loan')}
-          >
-            <div className="wallet-action-icon-wrapper">
-              <FaBuilding className="wallet-action-icon" />
-            </div>
-            <span>Кредит</span>
-          </button>
-          <button 
-            className={`wallet-action-btn ${activeAction === 'remit' ? 'active' : ''}`}
-            onClick={() => setActiveAction(activeAction === 'remit' ? null : 'remit')}
-          >
-            <div className="wallet-action-icon-wrapper">
-              <FaMoneyBillWave className="wallet-action-icon" />
-            </div>
-            <span>Перевод</span>
-          </button>
-        </div>
-
-        {/* Аналитика */}
-        <div className="wallet-analytics">
-          <div className="wallet-analytics-header">
+        {/* Аналитика и Транзакции в одной строке */}
+        <div className="wallet-stats-transactions">
+          {/* Аналитика */}
+          <div className="wallet-analytics-block">
             <h2 className="wallet-analytics-title">Аналитика</h2>
-            
-            {/* Табы периода */}
-            <div className="wallet-period-tabs">
-              <button 
-                className={`wallet-period-tab ${selectedTab === 'Daily' ? 'active' : ''}`}
-                onClick={() => setSelectedTab('Daily')}
-              >
-                День
-              </button>
-              <button 
-                className={`wallet-period-tab ${selectedTab === 'Weekly' ? 'active' : ''}`}
-                onClick={() => setSelectedTab('Weekly')}
-              >
-                Неделя
-              </button>
-              <button 
-                className={`wallet-period-tab ${selectedTab === 'Monthly' ? 'active' : ''}`}
-                onClick={() => setSelectedTab('Monthly')}
-              >
-                Месяц
-              </button>
-            </div>
-          </div>
-
-          {/* Общая сумма */}
-          <div className="wallet-total">
-            <div className="wallet-total-content">
-              <div className="wallet-total-label">Всего</div>
-              <div className="wallet-total-amount">{formatAmount(balance)}</div>
-            </div>
-            <div className="wallet-total-trend">
-              <FaArrowUp className="trend-icon" />
-              <span className="trend-text">+12.5%</span>
-            </div>
-          </div>
-
-          {/* Периоды */}
-          <div className="wallet-period-buttons">
-            <button 
-              className={`wallet-period-btn ${selectedPeriod === 'D' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('D')}
-            >
-              Д
-            </button>
-            <button 
-              className={`wallet-period-btn ${selectedPeriod === 'W' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('W')}
-            >
-              Н
-            </button>
-            <button 
-              className={`wallet-period-btn ${selectedPeriod === 'M' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('M')}
-            >
-              М
-            </button>
-            <button 
-              className={`wallet-period-btn ${selectedPeriod === 'Y' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('Y')}
-            >
-              Г
-            </button>
-          </div>
-
-          {/* График */}
-          <div className="wallet-chart-container">
-            <div className="wallet-chart">
-              <Line data={chartDataConfig} options={chartOptions} />
-            </div>
-          </div>
-
-          {/* Статистика */}
-          <div className="wallet-stats">
-            <div className="wallet-stat-card">
-              <div className="wallet-stat-header">
-                <div className="wallet-stat-label">Всего выведено</div>
-                <div className="wallet-stat-icon">
-                  <FaArrowDown />
+            <div className="wallet-stats">
+              <div className="wallet-stat-card">
+                <div className="wallet-stat-header">
+                  <div className="wallet-stat-label">Всего выведено</div>
+                  <div className="wallet-stat-icon">
+                    <FaArrowDown />
+                  </div>
                 </div>
+                <div className="wallet-stat-amount">{formatAmount(analytics.totalWithdrawal)}</div>
               </div>
-              <div className="wallet-stat-amount">{formatAmount(totalWithdrawal)}</div>
-              <div className="wallet-stat-change negative">-5.2% за месяц</div>
-            </div>
-            <div className="wallet-stat-card">
-              <div className="wallet-stat-header">
-                <div className="wallet-stat-label">Всего пополнено</div>
-                <div className="wallet-stat-icon">
-                  <FaArrowUp />
+              <div className="wallet-stat-card">
+                <div className="wallet-stat-header">
+                  <div className="wallet-stat-label">Всего пополнено</div>
+                  <div className="wallet-stat-icon">
+                    <FaArrowUp />
+                  </div>
                 </div>
+                <div className="wallet-stat-amount">{formatAmount(analytics.totalDeposit)}</div>
               </div>
-              <div className="wallet-stat-amount">{formatAmount(totalDeposit)}</div>
-              <div className="wallet-stat-change positive">+18.3% за месяц</div>
             </div>
           </div>
 
-          {/* Последние транзакции */}
-          <div className="wallet-transactions">
+          {/* Транзакции */}
+          <div className="wallet-transactions-block">
             <div className="wallet-transactions-header">
               <h3 className="wallet-transactions-title">Транзакции</h3>
-              <button className="wallet-view-all">Показать все →</button>
             </div>
             
             <div className="wallet-transactions-list">
-              {transactions.map((transaction, index) => (
-                <div key={index} className="wallet-transaction-item">
-                  <div className="wallet-transaction-avatar">
-                    <div className="avatar-placeholder">{transaction.initials}</div>
-                  </div>
-                  <div className="wallet-transaction-info">
-                    <div className="wallet-transaction-name">{transaction.name}</div>
-                    <div className="wallet-transaction-time">{transaction.time}</div>
-                  </div>
-                  <div className="wallet-transaction-right">
-                    <div className={`wallet-transaction-amount ${transaction.amount > 0 ? 'positive' : 'negative'}`}>
-                      {transaction.amount > 0 ? '+' : ''}{formatAmount(Math.abs(transaction.amount))}
+              {transactions.length === 0 ? (
+                <div className="wallet-transaction-empty">Нет транзакций</div>
+              ) : (
+                transactions.map((transaction, index) => (
+                  <div key={transaction.id || index} className="wallet-transaction-item">
+                    <div className="wallet-transaction-info">
+                      <div className="wallet-transaction-name">{transaction.description || transaction.type}</div>
+                      <div className="wallet-transaction-time">
+                        {new Date(transaction.created_at).toLocaleString('ru-RU')}
+                      </div>
                     </div>
-                    <div className="wallet-transaction-type">{transaction.type}</div>
+                    <div className="wallet-transaction-right">
+                      <div className={`wallet-transaction-amount ${transaction.amount > 0 ? 'positive' : 'negative'}`}>
+                        {transaction.amount > 0 ? '+' : ''}{formatAmount(Math.abs(transaction.amount))}
+                      </div>
+                      <div className="wallet-transaction-type">
+                        {transaction.type === 'deposit' ? 'Пополнение' : 'Вывод'}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

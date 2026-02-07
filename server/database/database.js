@@ -78,6 +78,14 @@ function checkAndUpdateSchema(dbInstance) {
         needsUpdate = true;
       }
       
+      // Проверяем, есть ли поля для карты и депозита
+      const hasCardColumn = pragmaInfo.find(col => col.name === 'has_card');
+      const depositAmountColumn = pragmaInfo.find(col => col.name === 'deposit_amount');
+      if (!hasCardColumn || !depositAmountColumn) {
+        console.log('🔄 Обновление схемы БД: добавляем поля для карты и депозита...');
+        needsUpdate = true;
+      }
+      
       if (needsUpdate) {
         try {
           // Если нет поля password, добавляем его
@@ -97,6 +105,59 @@ function checkAndUpdateSchema(dbInstance) {
             } catch (blockedError) {
               console.warn('⚠️ Не удалось добавить поле is_blocked:', blockedError.message);
             }
+          }
+          
+          // Добавляем поля для карты и депозита, если их нет
+          if (!hasCardColumn) {
+            try {
+              dbInstance.exec("ALTER TABLE users ADD COLUMN has_card INTEGER DEFAULT 0");
+              console.log('✅ Поле has_card добавлено в таблицу users');
+            } catch (cardError) {
+              console.warn('⚠️ Не удалось добавить поле has_card:', cardError.message);
+            }
+          }
+          if (!depositAmountColumn) {
+            try {
+              dbInstance.exec("ALTER TABLE users ADD COLUMN deposit_amount REAL DEFAULT 0");
+              console.log('✅ Поле deposit_amount добавлено в таблицу users');
+            } catch (depositError) {
+              console.warn('⚠️ Не удалось добавить поле deposit_amount:', depositError.message);
+            }
+          }
+          // Добавляем остальные поля карты
+          const cardNumberColumn = pragmaInfo.find(col => col.name === 'card_number');
+          const cardTypeColumn = pragmaInfo.find(col => col.name === 'card_type');
+          const cardCvvColumn = pragmaInfo.find(col => col.name === 'card_cvv');
+          if (!cardNumberColumn) {
+            try {
+              dbInstance.exec("ALTER TABLE users ADD COLUMN card_number TEXT");
+              console.log('✅ Поле card_number добавлено в таблицу users');
+            } catch (e) {
+              console.warn('⚠️ Не удалось добавить поле card_number:', e.message);
+            }
+          }
+          if (!cardTypeColumn) {
+            try {
+              dbInstance.exec("ALTER TABLE users ADD COLUMN card_type TEXT");
+              console.log('✅ Поле card_type добавлено в таблицу users');
+            } catch (e) {
+              console.warn('⚠️ Не удалось добавить поле card_type:', e.message);
+            }
+          }
+          if (!cardCvvColumn) {
+            try {
+              dbInstance.exec("ALTER TABLE users ADD COLUMN card_cvv TEXT");
+              console.log('✅ Поле card_cvv добавлено в таблицу users');
+            } catch (e) {
+              console.warn('⚠️ Не удалось добавить поле card_cvv:', e.message);
+            }
+          }
+          // Создаем индекс для has_card
+          try {
+            dbInstance.exec("CREATE INDEX IF NOT EXISTS idx_users_has_card ON users(has_card)");
+            console.log('✅ Индекс idx_users_has_card создан');
+          } catch (e) {
+            // Индекс может уже существовать
           }
           
           // Если email NOT NULL, исправляем
@@ -387,6 +448,31 @@ export function initDatabase() {
         }
       } catch (whatsappError) {
         console.warn('⚠️ Не удалось создать таблицу WhatsApp пользователей:', whatsappError.message);
+      }
+
+      // Создаем таблицу транзакций, если её нет
+      try {
+        const transactionsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'").get();
+        if (!transactionsTable) {
+          console.log('🔄 Создание таблицы транзакций...');
+          db.exec(`
+            CREATE TABLE IF NOT EXISTS transactions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              type TEXT NOT NULL, -- 'deposit', 'withdrawal'
+              amount REAL NOT NULL,
+              description TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+            CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+            CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+          `);
+          console.log('✅ Таблица транзакций создана');
+        }
+      } catch (transactionsError) {
+        console.warn('⚠️ Не удалось создать таблицу транзакций:', transactionsError.message);
       }
     } catch (migrationError) {
       console.warn('⚠️ Не удалось обновить схему документов:', migrationError.message);
