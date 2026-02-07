@@ -194,9 +194,7 @@
   border: none !important;
   padding: 0;
   gap: 0;
-}
-
-.property-timer--detail .timer-compact-time--detail {
+}.property-timer--detail .timer-compact-time--detail {
   font-size: 28px;
   font-weight: 700;
   color: inherit;

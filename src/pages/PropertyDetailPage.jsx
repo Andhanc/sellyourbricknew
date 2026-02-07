@@ -1,4 +1,4 @@
-import { useParams, useLocation } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { properties } from '../data/properties'
 import PropertyDetailClassic from './PropertyDetailClassic'
@@ -39,9 +39,33 @@ const PropertyDetailPage = () => {
             console.log('📥 PropertyDetailPage - Ответ от API:', result)
             if (result.success && result.data) {
               const prop = result.data
-              console.log('📥 PropertyDetailPage - Данные объекта (prop):', prop)
-              console.log('📥 PropertyDetailPage - Координаты (raw):', prop.coordinates, typeof prop.coordinates)
-              console.log('📥 PropertyDetailPage - Удобства (raw):', {
+              console.log('📥 PropertyDetailPage - Данные объекта (prop) - ВСЕ ПОЛЯ:', prop)
+              console.log('📥 PropertyDetailPage - Ключевые поля из API:', {
+                rooms: prop.rooms,
+                bedrooms: prop.bedrooms,
+                bathrooms: prop.bathrooms,
+                area: prop.area,
+                living_area: prop.living_area,
+                floor: prop.floor,
+                total_floors: prop.total_floors,
+                year_built: prop.year_built,
+                building_type: prop.building_type,
+                balcony: prop.balcony,
+                parking: prop.parking,
+                elevator: prop.elevator,
+                price: prop.price,
+                auction_starting_price: prop.auction_starting_price,
+              })
+              console.log('📥 PropertyDetailPage - Все поля из API:', {
+                rooms: prop.rooms,
+                bedrooms: prop.bedrooms,
+                bathrooms: prop.bathrooms,
+                area: prop.area,
+                living_area: prop.living_area,
+                floor: prop.floor,
+                total_floors: prop.total_floors,
+                year_built: prop.year_built,
+                building_type: prop.building_type,
                 balcony: prop.balcony,
                 parking: prop.parking,
                 elevator: prop.elevator,
@@ -52,7 +76,10 @@ const PropertyDetailPage = () => {
                 internet: prop.internet,
                 security: prop.security,
                 furniture: prop.furniture,
+                price: prop.price,
+                auction_starting_price: prop.auction_starting_price,
               })
+              console.log('📥 PropertyDetailPage - Координаты (raw):', prop.coordinates, typeof prop.coordinates)
               
               // Получаем базовый URL без /api
               const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
@@ -186,37 +213,42 @@ const PropertyDetailPage = () => {
                 name: prop.title,
                 description: prop.description || '',
                 location: prop.location || '',
-                price: prop.price || 0,
-                currentBid: prop.price || 0, // Для аукционов
-                area: prop.area || 0,
-                sqft: prop.area || 0,
-                rooms: prop.rooms || 0,
-                beds: prop.bedrooms || prop.rooms || 0,
-                bathrooms: prop.bathrooms || 0,
-                floor: prop.floor || null,
-                total_floors: prop.total_floors || null,
-                year_built: prop.year_built || null,
+                price: prop.price || 0, // Минимальная цена продажи
+                currentBid: prop.auction_starting_price || prop.price || 0, // Для аукционов - стартовая ставка
+                area: (prop.area !== undefined && prop.area !== null) ? prop.area : 0,
+                sqft: (prop.area !== undefined && prop.area !== null) ? prop.area : 0,
+                living_area: (prop.living_area !== undefined && prop.living_area !== null && prop.living_area !== '') ? prop.living_area : null,
+                livingArea: (prop.living_area !== undefined && prop.living_area !== null && prop.living_area !== '') ? prop.living_area : null,
+                rooms: (prop.rooms !== undefined && prop.rooms !== null) ? prop.rooms : ((prop.bedrooms !== undefined && prop.bedrooms !== null) ? prop.bedrooms : 0),
+                beds: (prop.bedrooms !== undefined && prop.bedrooms !== null) ? prop.bedrooms : ((prop.rooms !== undefined && prop.rooms !== null) ? prop.rooms : 0),
+                bathrooms: (prop.bathrooms !== undefined && prop.bathrooms !== null) ? prop.bathrooms : ((prop.baths !== undefined && prop.baths !== null) ? prop.baths : 0),
+                baths: (prop.baths !== undefined && prop.baths !== null) ? prop.baths : ((prop.bathrooms !== undefined && prop.bathrooms !== null) ? prop.bathrooms : 0),
+                floor: (prop.floor !== undefined && prop.floor !== null) ? prop.floor : null,
+                total_floors: (prop.total_floors !== undefined && prop.total_floors !== null) ? prop.total_floors : null,
+                year_built: (prop.year_built !== undefined && prop.year_built !== null) ? prop.year_built : null,
                 property_type: prop.property_type || 'apartment',
+                building_type: (prop.building_type !== undefined && prop.building_type !== null && prop.building_type !== '') ? prop.building_type : null,
+                buildingType: (prop.building_type !== undefined && prop.building_type !== null && prop.building_type !== '') ? prop.building_type : null,
                 coordinates: coordinates,
                 images: processedImages,
                 videos: processedVideos,
-                // Дополнительные характеристики
-                balcony: prop.balcony === 1,
-                parking: prop.parking === 1,
-                elevator: prop.elevator === 1,
+                // Дополнительные характеристики - проверяем разные форматы (сохраняем исходные значения из БД)
+                balcony: prop.balcony === 1 || prop.balcony === true || prop.balcony === '1' || prop.balcony === 'true',
+                parking: prop.parking === 1 || prop.parking === true || prop.parking === '1' || prop.parking === 'true',
+                elevator: prop.elevator === 1 || prop.elevator === true || prop.elevator === '1' || prop.elevator === 'true',
                 land_area: prop.land_area || null,
-                garage: prop.garage === 1,
-                pool: prop.pool === 1,
-                garden: prop.garden === 1,
+                garage: prop.garage === 1 || prop.garage === true || prop.garage === '1' || prop.garage === 'true',
+                pool: prop.pool === 1 || prop.pool === true || prop.pool === '1' || prop.pool === 'true',
+                garden: prop.garden === 1 || prop.garden === true || prop.garden === '1' || prop.garden === 'true',
                 renovation: prop.renovation || null,
                 condition: prop.condition || null,
                 heating: prop.heating || null,
                 water_supply: prop.water_supply || null,
                 sewerage: prop.sewerage || null,
-                electricity: prop.electricity === 1,
-                internet: prop.internet === 1,
-                security: prop.security === 1,
-                furniture: prop.furniture === 1,
+                electricity: prop.electricity === 1 || prop.electricity === true || prop.electricity === '1' || prop.electricity === 'true',
+                internet: prop.internet === 1 || prop.internet === true || prop.internet === '1' || prop.internet === 'true',
+                security: prop.security === 1 || prop.security === true || prop.security === '1' || prop.security === 'true',
+                furniture: prop.furniture === 1 || prop.furniture === true || prop.furniture === '1' || prop.furniture === 'true',
                 commercial_type: prop.commercial_type || null,
                 business_hours: prop.business_hours || null,
                 currency: prop.currency || 'USD',
@@ -232,7 +264,10 @@ const PropertyDetailPage = () => {
                   : 'Продавец',
                 sellerEmail: prop.email || null,
                 sellerPhone: prop.phone_number || null,
-                // НЕ включаем документы (ownership_document, no_debts_document, additional_documents)
+                // Документы
+                ownership_document: prop.ownership_document || null,
+                no_debts_document: prop.no_debts_document || null,
+                additional_documents: prop.additional_documents || null,
               }
               
               console.log('✅ Загружено объявление:', {
@@ -327,10 +362,17 @@ const PropertyDetailPage = () => {
   // принудительно отключаем аукционный режим
   const finalIsAuction = isClassicFromQuery ? false : isAuction
 
+  // Проверяем, находимся ли мы в кабинете продавца (по URL или другим признакам)
+  // Если пользователь пришел из кабинета продавца, показываем документы
+  const isOwnerDashboard = location.pathname.includes('/owner') || 
+                           document.referrer.includes('/owner') ||
+                           location.state?.fromOwnerDashboard
+
   // Всегда используем PropertyDetailClassic, передавая флаг аукциона
   return (
     <PropertyDetailClassic
       property={{ ...property, isAuction: finalIsAuction }}
+      showDocuments={isOwnerDashboard}
     />
   )
 }

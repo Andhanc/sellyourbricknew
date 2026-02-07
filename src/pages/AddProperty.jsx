@@ -2404,10 +2404,30 @@ const AddProperty = () => {
 
   // Обработчик перехода к подробной информации после заполнения местоположения
   const handleLocationContinue = () => {
-    if (!formData.address) {
+    // Проверяем адрес в разных местах: formData.address, formData.location, addressSearch, savedLocationData
+    const hasAddress = formData.address || 
+                      formData.location || 
+                      addressSearch || 
+                      savedLocationData?.address || 
+                      savedLocationData?.location
+    
+    if (!hasAddress || (typeof hasAddress === 'string' && hasAddress.trim().length === 0)) {
       alert('Пожалуйста, введите адрес')
       return
     }
+    
+    // Если адрес есть только в addressSearch или savedLocationData, но не в formData, сохраняем его
+    if (!formData.address && !formData.location) {
+      const addressToSave = addressSearch || savedLocationData?.address || savedLocationData?.location
+      if (addressToSave) {
+        setFormData(prev => ({
+          ...prev,
+          address: addressToSave,
+          location: addressToSave
+        }))
+      }
+    }
+    
     setCurrentStep('details')
   }
 
