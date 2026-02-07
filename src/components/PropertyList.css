@@ -263,6 +263,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 30px;
+  align-items: stretch;
 }
 
 @media (max-width: 1200px) {
@@ -277,6 +278,9 @@
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .property-card:hover {
@@ -524,8 +528,109 @@
   transform: scale(1.1);
 }
 
+.property-image-icons {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 3;
+}
+
+.property-icon-button {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.65) 100%);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  color: #666;
+  padding: 0;
+}
+
+.property-icon-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.property-icon-button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: rotate(45deg);
+  transition: left 0.5s ease;
+}
+
+.property-icon-button:hover::before {
+  width: 60px;
+  height: 60px;
+}
+
+.property-icon-button:hover::after {
+  left: 100%;
+}
+
+.property-icon-button:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.property-icon-button:active {
+  transform: translateY(0) scale(1);
+}
+
+.property-icon-button svg {
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.property-icon-buy:hover svg {
+  color: #0ABAB5;
+  transform: scale(1.1);
+}
+
+.property-icon-testdrive:hover svg {
+  color: #0ABAB5;
+  transform: scale(1.1);
+}
+
 .property-content {
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .property-title {
@@ -553,6 +658,9 @@
   font-size: 14px;
   color: #666;
   margin-bottom: 12px;
+  min-height: 0px;
+  flex-shrink: 0;
+  line-height: 1.5;
 }
 
 .property-price {
@@ -560,6 +668,7 @@
   font-weight: 700;
   color: #333;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .property-specs {
@@ -569,6 +678,7 @@
   margin-top: 8px;
   align-items: center;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .property-specs .spec-item {
@@ -636,6 +746,7 @@
   flex-wrap: wrap;
   margin-top: 12px;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .property-card-owner__info-item {
@@ -654,6 +765,7 @@
   background: #f9f9f9;
   border-radius: 8px;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .bid-label {
@@ -670,6 +782,16 @@
 .property-actions {
   display: flex;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Обертка для данных, которые должны быть закреплены снизу */
+.property-content-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
 }
 
 .btn {

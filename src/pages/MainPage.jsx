@@ -22,6 +22,7 @@ import {
   FiCheck,
   FiStar,
   FiMail,
+  FiShoppingCart,
 } from 'react-icons/fi'
 import {
   FaHome,
@@ -37,7 +38,7 @@ import {
 } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
 import { IoLocationOutline } from 'react-icons/io5'
-import { MdBed, MdOutlineBathtub } from 'react-icons/md'
+import { MdBed, MdOutlineBathtub, MdDirectionsCar } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
 import {
   PiHouseLine,
@@ -2113,11 +2114,34 @@ function MainPage() {
                           alt={apartment.name}
                           className="property-image"
                         />
-                        {index % 2 === 1 && apartment.isAuction && apartment.endTime && (
-                          <div className="property-buy-now-overlay">
-                            <span>Купить сейчас</span>
-                          </div>
-                        )}
+                        <div className="property-image-icons">
+                          <button
+                            type="button"
+                            className="property-icon-button property-icon-buy"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handlePropertyClick('apartment', apartment.id, !showTimer, hasTimer, apartment)
+                            }}
+                            title="Купить сейчас"
+                          >
+                            <FiShoppingCart size={20} />
+                          </button>
+                          {(apartment.test_drive === 1 || apartment.testDrive === true || apartment.test_drive === true) && (
+                            <button
+                              type="button"
+                              className="property-icon-button property-icon-testdrive"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handlePropertyClick('apartment', apartment.id, !showTimer, hasTimer, apartment)
+                              }}
+                              title="Тест-Драйв"
+                            >
+                              <MdDirectionsCar size={20} />
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -2280,11 +2304,38 @@ function MainPage() {
                           alt={villa.name}
                           className="property-image"
                         />
-                        {index % 2 === 1 && villa.isAuction && villa.endTime && (
-                          <div className="property-buy-now-overlay">
-                            <span>Купить сейчас</span>
-                          </div>
-                        )}
+                        <div className="property-image-icons">
+                          <button
+                            type="button"
+                            className="property-icon-button property-icon-buy"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const hasTimer = villa.isAuction === true && villa.endTime != null && villa.endTime !== ''
+                              const showTimer = index % 2 === 1 && hasTimer
+                              handlePropertyClick('villa', villa.id, !showTimer, hasTimer, villa)
+                            }}
+                            title="Купить сейчас"
+                          >
+                            <FiShoppingCart size={20} />
+                          </button>
+                          {(villa.test_drive === 1 || villa.testDrive === true || villa.test_drive === true) && (
+                            <button
+                              type="button"
+                              className="property-icon-button property-icon-testdrive"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                const hasTimer = villa.isAuction === true && villa.endTime != null && villa.endTime !== ''
+                                const showTimer = index % 2 === 1 && hasTimer
+                                handlePropertyClick('villa', villa.id, !showTimer, hasTimer, villa)
+                              }}
+                              title="Тест-Драйв"
+                            >
+                              <MdDirectionsCar size={20} />
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -2447,11 +2498,38 @@ function MainPage() {
                           alt={flat.name}
                           className="property-image"
                         />
-                        {index % 2 === 1 && flat.isAuction && flat.endTime && (
-                          <div className="property-buy-now-overlay">
-                            <span>Купить сейчас</span>
-                          </div>
-                        )}
+                        <div className="property-image-icons">
+                          <button
+                            type="button"
+                            className="property-icon-button property-icon-buy"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const hasTimer = flat.isAuction === true && flat.endTime != null && flat.endTime !== ''
+                              const showTimer = index % 2 === 1 && hasTimer
+                              handlePropertyClick('flat', flat.id, !showTimer, hasTimer, flat)
+                            }}
+                            title="Купить сейчас"
+                          >
+                            <FiShoppingCart size={20} />
+                          </button>
+                          {(flat.test_drive === 1 || flat.testDrive === true || flat.test_drive === true) && (
+                            <button
+                              type="button"
+                              className="property-icon-button property-icon-testdrive"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                const hasTimer = flat.isAuction === true && flat.endTime != null && flat.endTime !== ''
+                                const showTimer = index % 2 === 1 && hasTimer
+                                handlePropertyClick('flat', flat.id, !showTimer, hasTimer, flat)
+                              }}
+                              title="Тест-Драйв"
+                            >
+                              <MdDirectionsCar size={20} />
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -2614,11 +2692,38 @@ function MainPage() {
                           alt={townhouse.name}
                           className="property-image"
                         />
-                        {index % 2 === 1 && townhouse.isAuction && townhouse.endTime && (
-                          <div className="property-buy-now-overlay">
-                            <span>Купить сейчас</span>
-                          </div>
-                        )}
+                        <div className="property-image-icons">
+                          <button
+                            type="button"
+                            className="property-icon-button property-icon-buy"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const hasTimer = townhouse.isAuction === true && townhouse.endTime != null && townhouse.endTime !== ''
+                              const showTimer = index % 2 === 1 && hasTimer
+                              handlePropertyClick('townhouse', townhouse.id, !showTimer, hasTimer, townhouse)
+                            }}
+                            title="Купить сейчас"
+                          >
+                            <FiShoppingCart size={20} />
+                          </button>
+                          {(townhouse.test_drive === 1 || townhouse.testDrive === true || townhouse.test_drive === true) && (
+                            <button
+                              type="button"
+                              className="property-icon-button property-icon-testdrive"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                const hasTimer = townhouse.isAuction === true && townhouse.endTime != null && townhouse.endTime !== ''
+                                const showTimer = index % 2 === 1 && hasTimer
+                                handlePropertyClick('townhouse', townhouse.id, !showTimer, hasTimer, townhouse)
+                              }}
+                              title="Тест-Драйв"
+                            >
+                              <MdDirectionsCar size={20} />
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className={`property-favorite ${
@@ -2884,11 +2989,38 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
-                    {index % 2 === 1 && property.isAuction && property.endTime && (
-                      <div className="property-buy-now-overlay">
-                        <span>Купить сейчас</span>
-                      </div>
-                    )}
+                    <div className="property-image-icons">
+                      <button
+                        type="button"
+                        className="property-icon-button property-icon-buy"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                          const showTimer = index % 2 === 1 && hasTimer
+                          handlePropertyClick('recommended', property.id, !showTimer, hasTimer, property)
+                        }}
+                        title="Купить сейчас"
+                      >
+                        <FiShoppingCart size={20} />
+                      </button>
+                      {(property.test_drive === 1 || property.testDrive === true || property.test_drive === true) && (
+                        <button
+                          type="button"
+                          className="property-icon-button property-icon-testdrive"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                            const showTimer = index % 2 === 1 && hasTimer
+                            handlePropertyClick('recommended', property.id, !showTimer, hasTimer, property)
+                          }}
+                          title="Тест-Драйв"
+                        >
+                          <MdDirectionsCar size={20} />
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       className={`property-favorite ${
@@ -2989,11 +3121,38 @@ function MainPage() {
                       alt={property.name}
                       className="property-image"
                     />
-                    {index % 2 === 1 && property.isAuction && property.endTime && (
-                      <div className="property-buy-now-overlay">
-                        <span>Купить сейчас</span>
-                      </div>
-                    )}
+                    <div className="property-image-icons">
+                      <button
+                        type="button"
+                        className="property-icon-button property-icon-buy"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                          const showTimer = index % 2 === 1 && hasTimer
+                          handlePropertyClick('nearby', property.id, !showTimer, hasTimer, property)
+                        }}
+                        title="Купить сейчас"
+                      >
+                        <FiShoppingCart size={20} />
+                      </button>
+                      {(property.test_drive === 1 || property.testDrive === true || property.test_drive === true) && (
+                        <button
+                          type="button"
+                          className="property-icon-button property-icon-testdrive"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                            const showTimer = index % 2 === 1 && hasTimer
+                            handlePropertyClick('nearby', property.id, !showTimer, hasTimer, property)
+                          }}
+                          title="Тест-Драйв"
+                        >
+                          <MdDirectionsCar size={20} />
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       className={`property-favorite ${

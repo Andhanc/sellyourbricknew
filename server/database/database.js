@@ -337,6 +337,26 @@ export function initDatabase() {
           const propertiesSql = readFileSync(join(__dirname, 'add_properties_table.sql'), 'utf8');
           db.exec(propertiesSql);
           console.log('✅ Таблица недвижимости создана');
+        } else {
+          // Таблица существует, проверяем и добавляем недостающие поля
+          const pragmaInfo = db.prepare("PRAGMA table_info(properties)").all();
+          const hasLivingArea = pragmaInfo.some(col => col.name === 'living_area');
+          const hasBuildingType = pragmaInfo.some(col => col.name === 'building_type');
+          const hasAdditionalAmenities = pragmaInfo.some(col => col.name === 'additional_amenities');
+          
+          if (!hasLivingArea || !hasBuildingType || !hasAdditionalAmenities) {
+            console.log('🔄 Обновление схемы БД: добавляем поля living_area, building_type и additional_amenities...');
+            try {
+              const migrationSql = readFileSync(join(__dirname, 'add_properties_fields.sql'), 'utf8');
+              db.exec(migrationSql);
+              console.log('✅ Поля living_area, building_type и additional_amenities добавлены в таблицу properties');
+            } catch (migrationError) {
+              // Игнорируем ошибки "duplicate column name" (поле уже существует)
+              if (!migrationError.message.includes('duplicate column name')) {
+                console.warn('⚠️ Не удалось выполнить миграцию properties:', migrationError.message);
+              }
+            }
+          }
         }
       } catch (propertiesError) {
         console.warn('⚠️ Не удалось создать таблицу недвижимости:', propertiesError.message);

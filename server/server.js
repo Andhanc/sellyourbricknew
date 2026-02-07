@@ -3309,6 +3309,8 @@ app.post('/api/properties', upload.fields([
     
     const {
       area,
+      living_area,
+      building_type,
       rooms,
       bedrooms,
       bathrooms,
@@ -3342,6 +3344,7 @@ app.post('/api/properties', upload.fields([
       photos,
       videos,
       additional_documents,
+      additional_amenities,
       test_drive_data
     } = req.body;
 
@@ -3422,13 +3425,13 @@ app.post('/api/properties', upload.fields([
       INSERT INTO properties (
         user_id, property_type, title, description, price, currency,
         is_auction, auction_start_date, auction_end_date, auction_starting_price,
-        area, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
+        area, living_area, building_type, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
         balcony, parking, elevator, land_area, garage, pool, garden,
         commercial_type, business_hours, renovation, condition, heating,
         water_supply, sewerage, electricity, internet, security, furniture,
-        photos, videos, additional_documents, ownership_document, no_debts_document,
+        photos, videos, additional_documents, additional_amenities, ownership_document, no_debts_document,
         test_drive_data, moderation_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Используем location, если он указан (он уже содержит полный адрес)
@@ -3449,13 +3452,14 @@ app.post('/api/properties', upload.fields([
     const result = stmt.run(
       user_id, property_type, title, description || null, price || null, currency,
       normalizedIsAuction, auction_start_date || null, auction_end_date || null, auction_starting_price || null,
-      area || null, rooms || null, bedrooms || null, bathrooms || null, floor || null, total_floors || null, year_built || null, finalLocation || null,
+      area || null, living_area || null, building_type || null, rooms || null, bedrooms || null, bathrooms || null, floor || null, total_floors || null, year_built || null, finalLocation || null,
       balcony ? 1 : 0, parking ? 1 : 0, elevator ? 1 : 0, land_area || null, garage ? 1 : 0, pool ? 1 : 0, garden ? 1 : 0,
       commercial_type || null, business_hours || null, renovation || null, condition || null, heating || null,
       water_supply || null, sewerage || null, electricity ? 1 : 0, internet ? 1 : 0, security ? 1 : 0, furniture ? 1 : 0,
       parsedPhotos.length > 0 ? JSON.stringify(parsedPhotos) : null,
       parsedVideos.length > 0 ? JSON.stringify(parsedVideos) : null,
       parsedAdditionalDocuments.length > 0 ? JSON.stringify(parsedAdditionalDocuments) : null,
+      additional_amenities || null,
       ownershipDocumentPath, noDebtsDocumentPath,
       test_drive_data ? JSON.stringify(test_drive_data) : null,
       'pending'
@@ -3466,6 +3470,22 @@ app.post('/api/properties', upload.fields([
 
     console.log('✅ Объявление успешно создано с ID:', propertyId);
     console.log('📋 Статус модерации из БД:', property.moderation_status);
+    console.log('📋 Сохраненные данные в БД:', {
+      rooms: property.rooms,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      area: property.area,
+      living_area: property.living_area,
+      floor: property.floor,
+      total_floors: property.total_floors,
+      year_built: property.year_built,
+      building_type: property.building_type,
+      balcony: property.balcony,
+      parking: property.parking,
+      elevator: property.elevator,
+      price: property.price,
+      auction_starting_price: property.auction_starting_price,
+    });
     
     // Проверяем, что объявление действительно создано с правильным статусом
     const checkProperty = db.prepare('SELECT id, moderation_status, title FROM properties WHERE id = ?').get(propertyId);
@@ -3665,6 +3685,8 @@ app.put('/api/properties/:id', upload.fields([
     
     const {
       area,
+      living_area,
+      building_type,
       rooms,
       bedrooms,
       bathrooms,
@@ -3698,6 +3720,7 @@ app.put('/api/properties/:id', upload.fields([
       photos,
       videos,
       additional_documents,
+      additional_amenities,
       test_drive_data
     } = req.body;
     
@@ -3783,13 +3806,13 @@ app.put('/api/properties/:id', upload.fields([
         INSERT INTO properties (
           user_id, property_type, title, description, price, currency,
           is_auction, auction_start_date, auction_end_date, auction_starting_price,
-          area, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
+          area, living_area, building_type, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
           balcony, parking, elevator, land_area, garage, pool, garden,
           commercial_type, business_hours, renovation, condition, heating,
           water_supply, sewerage, electricity, internet, security, furniture,
-          photos, videos, additional_documents, ownership_document, no_debts_document,
+          photos, videos, additional_documents, additional_amenities, ownership_document, no_debts_document,
           test_drive_data, moderation_status, rejection_reason
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       // Подготавливаем все значения для вставки
@@ -3805,6 +3828,8 @@ app.put('/api/properties/:id', upload.fields([
         auction_end_date || originalProperty.auction_end_date,
         auction_starting_price ? parseFloat(auction_starting_price) : originalProperty.auction_starting_price,
         area ? parseFloat(area) : originalProperty.area,
+        living_area ? parseFloat(living_area) : originalProperty.living_area,
+        building_type || originalProperty.building_type,
         rooms ? parseInt(rooms) : originalProperty.rooms,
         bedrooms ? parseInt(bedrooms) : originalProperty.bedrooms,
         bathrooms ? parseInt(bathrooms) : originalProperty.bathrooms,
@@ -3833,6 +3858,7 @@ app.put('/api/properties/:id', upload.fields([
         JSON.stringify(parsedPhotos.length > 0 ? parsedPhotos : (originalProperty.photos ? JSON.parse(originalProperty.photos) : [])),
         JSON.stringify(parsedVideos.length > 0 ? parsedVideos : (originalProperty.videos ? JSON.parse(originalProperty.videos) : [])),
         JSON.stringify(parsedAdditionalDocuments.length > 0 ? parsedAdditionalDocuments : (originalProperty.additional_documents ? JSON.parse(originalProperty.additional_documents) : [])),
+        additional_amenities || originalProperty.additional_amenities,
         ownershipDocumentPath,
         noDebtsDocumentPath,
         testDriveDataStr || originalProperty.test_drive_data,
@@ -4245,6 +4271,25 @@ app.get('/api/properties/:id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Объявление не найдено' });
     }
 
+    // Логируем данные из базы для отладки
+    console.log('📥 GET /api/properties/:id - Данные из БД:', {
+      id: property.id,
+      rooms: property.rooms,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      area: property.area,
+      living_area: property.living_area,
+      floor: property.floor,
+      total_floors: property.total_floors,
+      year_built: property.year_built,
+      building_type: property.building_type,
+      balcony: property.balcony,
+      parking: property.parking,
+      elevator: property.elevator,
+      price: property.price,
+      auction_starting_price: property.auction_starting_price,
+    });
+
     // Парсим JSON поля
     const formatted = { ...property };
     if (formatted.photos) {
@@ -4533,6 +4578,8 @@ app.put('/api/properties/:id/approve', (req, res) => {
           auction_end_date = ?,
           auction_starting_price = ?,
           area = ?,
+          living_area = ?,
+          building_type = ?,
           rooms = ?,
           bedrooms = ?,
           bathrooms = ?,
@@ -4561,6 +4608,7 @@ app.put('/api/properties/:id/approve', (req, res) => {
           photos = ?,
           videos = ?,
           additional_documents = ?,
+          additional_amenities = ?,
           ownership_document = ?,
           no_debts_document = ?,
           test_drive_data = ?,
@@ -4579,6 +4627,8 @@ app.put('/api/properties/:id/approve', (req, res) => {
         finalAuctionEndDate,
         property.auction_starting_price,
         property.area,
+        property.living_area || null,
+        property.building_type || null,
         property.rooms,
         property.bedrooms,
         property.bathrooms,
@@ -4607,6 +4657,7 @@ app.put('/api/properties/:id/approve', (req, res) => {
         property.photos,
         property.videos,
         property.additional_documents,
+        property.additional_amenities || null,
         property.ownership_document,
         property.no_debts_document,
         property.test_drive_data,

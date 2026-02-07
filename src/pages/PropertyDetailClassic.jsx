@@ -7,6 +7,7 @@ import {
   FiHeart,
   FiChevronLeft,
   FiChevronRight,
+  FiFileText,
 } from 'react-icons/fi'
 import { FaHeart as FaHeartSolid } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
@@ -16,9 +17,11 @@ import BiddingHistoryModal from '../components/BiddingHistoryModal'
 import LocationMap from '../components/LocationMap'
 import './PropertyDetailClassic.css'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+
 // Классическая страница объекта.
 // Для аукционных объектов дополнительно отображает таймер и историю ставок.
-function PropertyDetailClassic({ property, onBack }) {
+function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   const { t } = useTranslation()
   const { user, isLoaded: userLoaded } = useUser()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -26,6 +29,60 @@ function PropertyDetailClassic({ property, onBack }) {
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
   const [mapCoordinates, setMapCoordinates] = useState(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
+
+  // Функция для обработки URL документа
+  const processDocumentUrl = (docUrl) => {
+    if (!docUrl) return null
+    
+    // Data URL (base64) - используем как есть
+    if (docUrl.startsWith('data:')) {
+      return docUrl
+    }
+    
+    // Полный HTTP/HTTPS URL - используем как есть
+    if (docUrl.startsWith('http://') || docUrl.startsWith('https://')) {
+      return docUrl
+    }
+    
+    // Получаем базовый URL без /api
+    const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
+    
+    // Путь начинается с /uploads/ - добавляем базовый URL
+    if (docUrl.startsWith('/uploads/')) {
+      return `${baseUrl}${docUrl}`
+    }
+    
+    // Путь начинается с uploads/ без слеша - добавляем / и базовый URL
+    if (docUrl.startsWith('uploads/')) {
+      return `${baseUrl}/${docUrl}`
+    }
+    
+    // Относительный путь - добавляем /uploads/
+    return `${baseUrl}/uploads/${docUrl}`
+  }
+
+  // Функция для определения типа документа
+  const getDocumentType = (docUrl, docName) => {
+    if (!docUrl) return 'image'
+    
+    // Проверяем имя файла
+    if (docName && (docName.toLowerCase().endsWith('.pdf') || docName.toLowerCase().includes('.pdf'))) {
+      return 'pdf'
+    }
+    
+    // Проверяем URL на .pdf
+    if (typeof docUrl === 'string') {
+      if (docUrl.toLowerCase().endsWith('.pdf') || docUrl.toLowerCase().includes('.pdf')) {
+        return 'pdf'
+      }
+      // Проверяем MIME тип в base64
+      if (docUrl.startsWith('data:application/pdf') || docUrl.startsWith('data:application/octet-stream')) {
+        return 'pdf'
+      }
+    }
+    
+    return 'image'
+  }
 
   // Выводим ВСЕ данные в консоль для отладки
   console.log('🔍 PropertyDetailClassic - ВСЕ ДАННЫЕ ОБЪЕКТА:', property)
@@ -136,15 +193,18 @@ function PropertyDetailClassic({ property, onBack }) {
     name: property.title || property.name,
     sqft: property.area || property.sqft,
     area: property.area || property.sqft,
+    living_area: property.living_area || property.livingArea || null,
     beds: property.rooms ?? property.beds,
     rooms: property.rooms ?? property.beds,
     bedrooms: property.bedrooms || property.rooms,
-    bathrooms: property.bathrooms,
+    bathrooms: property.bathrooms || property.baths || 0,
     coordinates: coordinates,
-    // Убеждаемся, что все поля передаются
-    floor: property.floor,
-    total_floors: property.total_floors,
-    year_built: property.year_built,
+    // Убеждаемся, что все поля передаются (сохраняем null если есть, но не перезаписываем 0)
+    floor: property.floor !== undefined && property.floor !== null ? property.floor : null,
+    total_floors: property.total_floors !== undefined && property.total_floors !== null ? property.total_floors : null,
+    year_built: property.year_built !== undefined && property.year_built !== null ? property.year_built : null,
+    property_type: property.property_type || property.propertyType,
+    building_type: property.building_type || property.buildingType,
     land_area: property.land_area,
     renovation: property.renovation,
     condition: property.condition,
@@ -153,21 +213,49 @@ function PropertyDetailClassic({ property, onBack }) {
     sewerage: property.sewerage,
     commercial_type: property.commercial_type,
     business_hours: property.business_hours,
-    additional_amenities: property.additional_amenities,
-    // Удобства
-    balcony: property.balcony,
-    parking: property.parking,
-    elevator: property.elevator,
-    garage: property.garage,
-    pool: property.pool,
-    garden: property.garden,
-    electricity: property.electricity,
-    internet: property.internet,
-    security: property.security,
-    furniture: property.furniture,
+    additional_amenities: property.additional_amenities || property.additionalAmenities || null,
+    // Удобства - нормализуем булевы значения
+    balcony: property.balcony === true || property.balcony === 1 || property.balcony === '1',
+    parking: property.parking === true || property.parking === 1 || property.parking === '1',
+    elevator: property.elevator === true || property.elevator === 1 || property.elevator === '1',
+    garage: property.garage === true || property.garage === 1 || property.garage === '1',
+    pool: property.pool === true || property.pool === 1 || property.pool === '1',
+    garden: property.garden === true || property.garden === 1 || property.garden === '1',
+    electricity: property.electricity === true || property.electricity === 1 || property.electricity === '1',
+    internet: property.internet === true || property.internet === 1 || property.internet === '1',
+    security: property.security === true || property.security === 1 || property.security === '1',
+    furniture: property.furniture === true || property.furniture === 1 || property.furniture === '1',
+    // Цена - используем обычную стоимость объекта (минимальная цена продажи), а не начальную ставку
+    price: property.price,
+    currentBid: property.currentBid,
+    auction_starting_price: property.auction_starting_price || property.auctionStartingPrice,
+    currency: property.currency || 'USD',
+    // Документы
+    ownership_document: property.ownership_document || property.ownershipDocument,
+    no_debts_document: property.no_debts_document || property.noDebtsDocument,
+    additional_documents: property.additional_documents || property.additionalDocuments,
   }
 
   console.log('🔍 PropertyDetailClassic - displayProperty:', displayProperty)
+  console.log('🔍 PropertyDetailClassic - Жилая площадь:', {
+    living_area: displayProperty.living_area,
+    property_living_area: property.living_area,
+    property_livingArea: property.livingArea,
+    type: typeof displayProperty.living_area,
+    isNull: displayProperty.living_area === null,
+    isUndefined: displayProperty.living_area === undefined,
+    isEmpty: displayProperty.living_area === ''
+  })
+  console.log('🔍 PropertyDetailClassic - building_type:', {
+    building_type: displayProperty.building_type,
+    property_building_type: property.building_type,
+    property_buildingType: property.buildingType
+  })
+  console.log('🔍 PropertyDetailClassic - Дополнительные удобства:', {
+    additional_amenities: displayProperty.additional_amenities,
+    property_additional_amenities: property.additional_amenities,
+    property_additionalAmenities: property.additionalAmenities
+  })
 
   const images =
     displayProperty.images && displayProperty.images.length > 0
@@ -443,73 +531,80 @@ function PropertyDetailClassic({ property, onBack }) {
 
             {/* Блок с подробной информацией об объекте - под галереей */}
             <div className="property-detail-info-section">
-              {/* Основные характеристики */}
-              {(displayProperty.area || displayProperty.sqft || displayProperty.rooms || displayProperty.beds || 
-                displayProperty.bedrooms || displayProperty.bathrooms || displayProperty.floor || 
-                displayProperty.total_floors || displayProperty.year_built || displayProperty.land_area) && (
-                <div className="property-detail-info-block">
-                  <h3 className="property-detail-info-block__title">Основные характеристики</h3>
-                  <div className="property-detail-info-block__content property-detail-info-block__content--grid">
-                    {(displayProperty.area || displayProperty.sqft) && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Площадь:</span>
+              {/* Подробная информация - показываем всегда */}
+              <div className="property-detail-info-block">
+                <h3 className="property-detail-info-block__title">Подробная информация</h3>
+                <div className="property-detail-info-block__content property-detail-info-block__content--horizontal">
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Комнаты:</span>
+                      <span className="property-detail-info-value">
+                        {displayProperty.rooms || displayProperty.beds || displayProperty.bedrooms || '—'}
+                      </span>
+                    </div>
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Площадь общая:</span>
+                      <span className="property-detail-info-value">
+                        {(displayProperty.area || displayProperty.sqft) ? `${displayProperty.area || displayProperty.sqft} м²` : '—'}
+                      </span>
+                    </div>
+                    {(displayProperty.living_area !== null && displayProperty.living_area !== undefined && displayProperty.living_area !== '' && Number(displayProperty.living_area) > 0) && (
+                      <div className="property-detail-info-item property-detail-info-item--horizontal">
+                        <span className="property-detail-info-label">Площадь жилая:</span>
                         <span className="property-detail-info-value">
-                          {displayProperty.area || displayProperty.sqft} м²
+                          {displayProperty.living_area} м²
                         </span>
                       </div>
                     )}
-                    {(displayProperty.rooms || displayProperty.beds) && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Комнат:</span>
-                        <span className="property-detail-info-value">
-                          {displayProperty.rooms || displayProperty.beds || displayProperty.bedrooms}
-                        </span>
-                      </div>
-                    )}
-                    {displayProperty.bedrooms && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Спальни:</span>
-                        <span className="property-detail-info-value">{displayProperty.bedrooms}</span>
-                      </div>
-                    )}
-                    {displayProperty.bathrooms && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Ванные:</span>
-                        <span className="property-detail-info-value">{displayProperty.bathrooms}</span>
-                      </div>
-                    )}
-                    {displayProperty.floor && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Этаж:</span>
-                        <span className="property-detail-info-value">{displayProperty.floor}</span>
-                      </div>
-                    )}
-                    {displayProperty.total_floors && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Всего этажей:</span>
-                        <span className="property-detail-info-value">{displayProperty.total_floors}</span>
-                      </div>
-                    )}
-                    {displayProperty.year_built && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Год постройки:</span>
-                        <span className="property-detail-info-value">{displayProperty.year_built}</span>
-                      </div>
-                    )}
-                    {displayProperty.land_area && (
-                      <div className="property-detail-info-item">
-                        <span className="property-detail-info-label">Площадь участка:</span>
-                        <span className="property-detail-info-value">{displayProperty.land_area} м²</span>
-                      </div>
-                    )}
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Ванны:</span>
+                      <span className="property-detail-info-value">{displayProperty.bathrooms || '—'}</span>
+                    </div>
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Этаж:</span>
+                      <span className="property-detail-info-value">
+                        {(displayProperty.floor !== undefined && displayProperty.floor !== null) ? displayProperty.floor : '—'}
+                      </span>
+                    </div>
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Этажность:</span>
+                      <span className="property-detail-info-value">
+                        {(displayProperty.total_floors !== undefined && displayProperty.total_floors !== null) ? displayProperty.total_floors : '—'}
+                      </span>
+                    </div>
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Тип дома:</span>
+                      <span className="property-detail-info-value">
+                        {displayProperty.building_type ? (
+                          displayProperty.building_type === 'monolithic' ? 'Монолитный' :
+                          displayProperty.building_type === 'brick' ? 'Кирпичный' :
+                          displayProperty.building_type === 'panel' ? 'Панельный' :
+                          displayProperty.building_type === 'block' ? 'Блочный' :
+                          displayProperty.building_type === 'wood' ? 'Деревянный' :
+                          displayProperty.building_type === 'frame' ? 'Каркасный' :
+                          displayProperty.building_type === 'aerated_concrete' ? 'Газобетонный' :
+                          displayProperty.building_type === 'foam_concrete' ? 'Пенобетонный' :
+                          displayProperty.building_type === 'other' ? 'Другой' :
+                          displayProperty.building_type
+                        ) : '—'}
+                      </span>
+                    </div>
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Год постройки:</span>
+                      <span className="property-detail-info-value">
+                        {(displayProperty.year_built !== undefined && displayProperty.year_built !== null) ? displayProperty.year_built : '—'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Дополнительная информация */}
-              {(displayProperty.renovation || displayProperty.condition || displayProperty.heating || 
-                displayProperty.water_supply || displayProperty.sewerage || displayProperty.commercial_type || 
-                displayProperty.business_hours) && (
+              {/* Дополнительная информация - показываем если есть данные */}
+              {((displayProperty.renovation !== undefined && displayProperty.renovation !== null && displayProperty.renovation !== '') || 
+                (displayProperty.condition !== undefined && displayProperty.condition !== null && displayProperty.condition !== '') || 
+                (displayProperty.heating !== undefined && displayProperty.heating !== null && displayProperty.heating !== '') || 
+                (displayProperty.water_supply !== undefined && displayProperty.water_supply !== null && displayProperty.water_supply !== '') || 
+                (displayProperty.sewerage !== undefined && displayProperty.sewerage !== null && displayProperty.sewerage !== '') || 
+                (displayProperty.commercial_type !== undefined && displayProperty.commercial_type !== null && displayProperty.commercial_type !== '') || 
+                (displayProperty.business_hours !== undefined && displayProperty.business_hours !== null && displayProperty.business_hours !== '')) && (
                 <div className="property-detail-info-block">
                   <h3 className="property-detail-info-block__title">Дополнительная информация</h3>
                   <div className="property-detail-info-block__content property-detail-info-block__content--grid">
@@ -559,10 +654,10 @@ function PropertyDetailClassic({ property, onBack }) {
                 </div>
               )}
 
-              {/* Удобства - используем формат как в админке модерации */}
+              {/* Удобства - красивый горизонтальный блок */}
               <div className="property-detail-info-block">
                 <h3 className="property-detail-info-block__title">Удобства</h3>
-                <div className="property-detail-info-block__content">
+                <div className="property-detail-info-block__content property-detail-info-block__content--amenities">
                   {(() => {
                     // Функция для проверки удобства (работает с разными форматами)
                     const hasAmenity = (value) => {
@@ -572,54 +667,67 @@ function PropertyDetailClassic({ property, onBack }) {
                     const amenities = []
                     
                     if (hasAmenity(property.balcony) || hasAmenity(displayProperty.balcony)) {
-                      amenities.push(<span key="balcony" className="amenity-tag">Балкон</span>)
+                      amenities.push('Балкон')
                     }
                     if (hasAmenity(property.parking) || hasAmenity(displayProperty.parking)) {
-                      amenities.push(<span key="parking" className="amenity-tag">Парковка</span>)
+                      amenities.push('Парковка')
                     }
                     if (hasAmenity(property.elevator) || hasAmenity(displayProperty.elevator)) {
-                      amenities.push(<span key="elevator" className="amenity-tag">Лифт</span>)
+                      amenities.push('Лифт')
                     }
                     if (hasAmenity(property.garage) || hasAmenity(displayProperty.garage)) {
-                      amenities.push(<span key="garage" className="amenity-tag">Гараж</span>)
+                      amenities.push('Гараж')
                     }
                     if (hasAmenity(property.pool) || hasAmenity(displayProperty.pool)) {
-                      amenities.push(<span key="pool" className="amenity-tag">Бассейн</span>)
+                      amenities.push('Бассейн')
                     }
                     if (hasAmenity(property.garden) || hasAmenity(displayProperty.garden)) {
-                      amenities.push(<span key="garden" className="amenity-tag">Сад</span>)
+                      amenities.push('Сад')
                     }
                     if (hasAmenity(property.electricity) || hasAmenity(displayProperty.electricity)) {
-                      amenities.push(<span key="electricity" className="amenity-tag">Электричество</span>)
+                      amenities.push('Электричество')
                     }
                     if (hasAmenity(property.internet) || hasAmenity(displayProperty.internet)) {
-                      amenities.push(<span key="internet" className="amenity-tag">Интернет</span>)
+                      amenities.push('Интернет')
                     }
                     if (hasAmenity(property.security) || hasAmenity(displayProperty.security)) {
-                      amenities.push(<span key="security" className="amenity-tag">Охрана</span>)
+                      amenities.push('Охрана')
                     }
                     if (hasAmenity(property.furniture) || hasAmenity(displayProperty.furniture)) {
-                      amenities.push(<span key="furniture" className="amenity-tag">Мебель</span>)
+                      amenities.push('Мебель')
                     }
                     
                     if (amenities.length === 0) {
-                      return <span className="amenity-tag" style={{ opacity: 0.6 }}>Удобства не указаны</span>
+                      return <span className="amenity-item">Удобства не указаны</span>
                     }
                     
-                    return amenities
+                    return amenities.map((amenity, index) => (
+                      <span key={index} className="amenity-item">{amenity}</span>
+                    ))
                   })()}
                 </div>
               </div>
 
-              {/* Дополнительные удобства (текст, который пользователь написал сам) */}
-              {displayProperty.additional_amenities && (
-                <div className="property-detail-info-block">
-                  <h3 className="property-detail-info-block__title">Дополнительные удобства</h3>
-                  <div className="property-detail-info-block__content property-detail-info-block__content--text">
-                    <p>{displayProperty.additional_amenities}</p>
+              {/* Дополнительная информация (текст, который пользователь написал сам) */}
+              {(() => {
+                const additionalInfo = displayProperty.additional_amenities || property.additional_amenities || property.additionalAmenities
+                const hasAdditionalInfo = additionalInfo && typeof additionalInfo === 'string' && additionalInfo.trim() !== ''
+                console.log('🔍 Дополнительная информация:', {
+                  displayProperty_additional_amenities: displayProperty.additional_amenities,
+                  property_additional_amenities: property.additional_amenities,
+                  property_additionalAmenities: property.additionalAmenities,
+                  additionalInfo,
+                  hasAdditionalInfo
+                })
+                return hasAdditionalInfo ? (
+                  <div className="property-detail-info-block">
+                    <h3 className="property-detail-info-block__title">Дополнительная информация</h3>
+                    <div className="property-detail-info-block__content property-detail-info-block__content--text">
+                      <p>{additionalInfo}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null
+              })()}
             </div>
           </div>
 
@@ -628,6 +736,28 @@ function PropertyDetailClassic({ property, onBack }) {
             <div className="property-detail-sidebar__content">
               {/* Название */}
               <h1 className="property-detail-sidebar__title">{propertyInfo}</h1>
+
+              {/* Минимальная цена продажи для аукционных объектов */}
+              {isAuctionProperty && displayProperty.price && (
+                <div className="property-detail-sidebar__current-bid">
+                  <span className="current-bid-label">Минимальная цена продажи:</span>
+                  <span className="current-bid-value">
+                    {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                    {displayProperty.price.toLocaleString('ru-RU')}
+                  </span>
+                </div>
+              )}
+
+              {/* Цена для неаукционных объектов */}
+              {!isAuctionProperty && displayProperty.price && (
+                <div className="property-detail-sidebar__price-block">
+                  <span className="price-label">Стоимость:</span>
+                  <span className="price-value">
+                    {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                    {displayProperty.price.toLocaleString('ru-RU')}
+                  </span>
+                </div>
+              )}
 
               {/* Описание */}
               {displayProperty.description && (
@@ -649,10 +779,10 @@ function PropertyDetailClassic({ property, onBack }) {
                 <div className="property-detail-sidebar__auction-block">
                   <PropertyTimer endTime={auctionEndTime} />
                   <div className="property-detail-sidebar__current-bid">
-                    <span className="current-bid-label">Текущая ставка:</span>
+                    <span className="current-bid-label">Стартовая сумма ставки:</span>
                     <span className="current-bid-value">
                       {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
-                      {(displayProperty.currentBid || displayProperty.price || 0).toLocaleString('ru-RU')}
+                      {(displayProperty.auction_starting_price || 0).toLocaleString('ru-RU')}
                     </span>
                   </div>
                   <button
@@ -675,7 +805,7 @@ function PropertyDetailClassic({ property, onBack }) {
                     <>
                       <LocationMap
                         center={finalCoordinates}
-                        zoom={finalCoordinates && finalCoordinates[0] !== 53.9045 && finalCoordinates[1] !== 27.5615 ? 15 : 10}
+                        zoom={finalCoordinates && finalCoordinates[0] !== 53.9045 && finalCoordinates[1] !== 27.5615 ? 15 : undefined}
                         marker={finalCoordinates && finalCoordinates[0] !== 53.9045 && finalCoordinates[1] !== 27.5615 ? finalCoordinates : null}
                       />
                       {isGeocoding && (
@@ -702,6 +832,86 @@ function PropertyDetailClassic({ property, onBack }) {
                 </div>
               </div>
             </div>
+
+            {/* Документы - отдельный блок под property-detail-sidebar__content (только в кабинете продавца) */}
+            {(onBack || showDocuments) ? (() => {
+              const documents = []
+              
+              // Документ о праве собственности
+              if (displayProperty.ownership_document || property.ownership_document || property.ownershipDocument) {
+                const docUrl = displayProperty.ownership_document || property.ownership_document || property.ownershipDocument
+                const processedUrl = processDocumentUrl(docUrl)
+                documents.push({
+                  name: 'Документ о праве собственности',
+                  url: processedUrl,
+                  type: getDocumentType(docUrl, 'Документ о праве собственности')
+                })
+              }
+              
+              // Справка об отсутствии долгов
+              if (displayProperty.no_debts_document || property.no_debts_document || property.noDebtsDocument) {
+                const docUrl = displayProperty.no_debts_document || property.no_debts_document || property.noDebtsDocument
+                const processedUrl = processDocumentUrl(docUrl)
+                documents.push({
+                  name: 'Справка об отсутствии долгов',
+                  url: processedUrl,
+                  type: getDocumentType(docUrl, 'Справка об отсутствии долгов')
+                })
+              }
+              
+              // Дополнительные документы
+              let additionalDocs = []
+              const rawAdditionalDocs = displayProperty.additional_documents || property.additional_documents || property.additionalDocuments
+              if (rawAdditionalDocs) {
+                if (typeof rawAdditionalDocs === 'string') {
+                  try {
+                    additionalDocs = JSON.parse(rawAdditionalDocs)
+                  } catch (e) {
+                    console.warn('Ошибка парсинга additional_documents:', e)
+                  }
+                } else if (Array.isArray(rawAdditionalDocs)) {
+                  additionalDocs = rawAdditionalDocs
+                }
+                
+                additionalDocs.forEach((doc, index) => {
+                  const docName = typeof doc === 'string' ? doc : (doc.name || `Документ ${index + 1}`)
+                  const docUrl = typeof doc === 'object' && doc.url ? doc.url : (typeof doc === 'string' ? doc : null)
+                  const processedUrl = processDocumentUrl(docUrl)
+                  documents.push({
+                    name: docName,
+                    url: processedUrl,
+                    type: typeof doc === 'object' && doc.type ? doc.type : getDocumentType(docUrl, docName)
+                  })
+                })
+              }
+              
+              if (documents.length === 0) {
+                return null
+              }
+              
+              return (
+                <div className="property-detail-sidebar__documents">
+                  <h3 className="property-detail-sidebar__documents-title">Документы</h3>
+                  <div className="property-detail-sidebar__documents-content">
+                    {documents.map((doc, index) => (
+                      <a
+                        key={index}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="property-detail-sidebar__document-item"
+                      >
+                        <FiFileText size={20} className="property-detail-sidebar__document-icon" />
+                        <span className="property-detail-sidebar__document-name">{doc.name}</span>
+                        <span className="property-detail-sidebar__document-type">
+                          {doc.type === 'pdf' ? 'PDF' : 'Изображение'}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )
+            })() : null}
           </div>
         </div>
       </div>

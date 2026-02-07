@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
-import { MdBed, MdOutlineBathtub } from 'react-icons/md'
+import { MdBed, MdOutlineBathtub, MdDirectionsCar } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
-import { FiLayers, FiCalendar } from 'react-icons/fi'
+import { FiLayers, FiCalendar, FiShoppingCart } from 'react-icons/fi'
 import { properties } from '../data/properties'
 import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
@@ -232,6 +232,7 @@ const PropertyList = ({ auctionProperties = null }) => {
                 const propertyImages = property.images || (property.image ? [property.image] : [])
                 const propertyImage = propertyImages[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
                 const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                const hasTestDrive = property.test_drive === 1 || property.testDrive === true || property.test_drive === true
                 
                 return (
             <div 
@@ -256,11 +257,38 @@ const PropertyList = ({ auctionProperties = null }) => {
                     alt={propertyTitle}
                     className="property-image"
                   />
-                  {hasTimer && (
-                    <div className="property-buy-now-overlay">
-                      <span>Купить сейчас</span>
-                    </div>
-                  )}
+                  <div className="property-image-icons">
+                    <button
+                      className="property-icon-button property-icon-buy"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        // Здесь можно добавить логику для "Купить сейчас"
+                        navigate(`/property/${property.id}`, {
+                          state: { property }
+                        })
+                      }}
+                      title="Купить сейчас"
+                    >
+                      <FiShoppingCart size={20} />
+                    </button>
+                    {hasTestDrive && (
+                      <button
+                        className="property-icon-button property-icon-testdrive"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          // Здесь можно добавить логику для "Тест-Драйв"
+                          navigate(`/property/${property.id}`, {
+                            state: { property }
+                          })
+                        }}
+                        title="Тест-Драйв"
+                      >
+                        <MdDirectionsCar size={20} />
+                      </button>
+                    )}
+                  </div>
                   <button 
                     className={`property-favorite ${favorites.has(property.id) ? 'active' : ''}`}
                     onClick={(e) => {
@@ -323,85 +351,88 @@ const PropertyList = ({ auctionProperties = null }) => {
                   )}
                   <p className="property-location">{property.location || ''}</p>
                   
-                  {/* Основные характеристики для аукционных карточек - в стиле личного кабинета продавца */}
-                  {hasTimer && (
-                    <div className="property-card-owner__info">
-                      {(property.area || property.sqft) && (
-                        <div className="property-card-owner__info-item">
-                          <BiArea size={16} />
-                          <span>{property.area || property.sqft} м²</span>
-                        </div>
-                      )}
-                      {(property.rooms || property.beds || property.bedrooms) && (
-                        <div className="property-card-owner__info-item">
-                          <MdBed size={16} />
-                          <span>{property.rooms || property.beds || property.bedrooms}</span>
-                        </div>
-                      )}
-                      {property.bathrooms && (
-                        <div className="property-card-owner__info-item">
-                          <MdOutlineBathtub size={16} />
-                          <span>{property.bathrooms}</span>
-                        </div>
-                      )}
-                      {property.floor && (
-                        <div className="property-card-owner__info-item">
-                          <FiLayers size={16} />
-                          <span>
-                            {property.floor}
-                            {(property.total_floors || property.totalFloors) && `/${property.total_floors || property.totalFloors}`}
-                          </span>
-                        </div>
-                      )}
-                      {property.year_built && (
-                        <div className="property-card-owner__info-item">
-                          <FiCalendar size={16} />
-                          <span>{property.year_built}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {hasTimer ? (
-                    <div className="property-bid-info">
-                      <span className="bid-label">Текущая ставка:</span>
-                      <span className="bid-value">{formatPrice(property.currentBid || property.price || 0)}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="property-price">{formatPrice(property.price || 0)}</div>
-                      <div className="property-specs">
-                      {(property.rooms || property.beds) && (
-                        <div className="spec-item">
-                          <MdBed size={18} />
-                          <span>{property.rooms || property.beds}</span>
-                        </div>
-                      )}
-                      {(property.area || property.sqft) && (
-                        <div className="spec-item">
-                          <BiArea size={18} />
-                          <span>{property.area || property.sqft} м²</span>
-                        </div>
-                      )}
-                      {property.floor && (
-                        <span className="spec-item">{property.floor} этаж</span>
-                      )}
+                  {/* Обертка для данных, закрепленных снизу */}
+                  <div className="property-content-bottom">
+                    {/* Основные характеристики для аукционных карточек - в стиле личного кабинета продавца */}
+                    {hasTimer && (
+                      <div className="property-card-owner__info">
+                        {(property.area || property.sqft) && (
+                          <div className="property-card-owner__info-item">
+                            <BiArea size={16} />
+                            <span>{property.area || property.sqft} м²</span>
+                          </div>
+                        )}
+                        {(property.rooms || property.beds || property.bedrooms) && (
+                          <div className="property-card-owner__info-item">
+                            <MdBed size={16} />
+                            <span>{property.rooms || property.beds || property.bedrooms}</span>
+                          </div>
+                        )}
+                        {property.bathrooms && (
+                          <div className="property-card-owner__info-item">
+                            <MdOutlineBathtub size={16} />
+                            <span>{property.bathrooms}</span>
+                          </div>
+                        )}
+                        {property.floor && (
+                          <div className="property-card-owner__info-item">
+                            <FiLayers size={16} />
+                            <span>
+                              {property.floor}
+                              {(property.total_floors || property.totalFloors) && `/${property.total_floors || property.totalFloors}`}
+                            </span>
+                          </div>
+                        )}
+                        {property.year_built && (
+                          <div className="property-card-owner__info-item">
+                            <FiCalendar size={16} />
+                            <span>{property.year_built}</span>
+                          </div>
+                        )}
                       </div>
-                    </>
-                  )}
-                  <div className="property-actions" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      className="btn btn-primary btn-liquid-glass"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        navigate(`/property/${property.id}`, {
-                          state: { property }
-                        })
-                      }}
-                    >
-                      Сделать ставку
-                    </button>
+                    )}
+                    
+                    {hasTimer ? (
+                      <div className="property-bid-info">
+                        <span className="bid-label">Текущая ставка:</span>
+                        <span className="bid-value">{formatPrice(property.currentBid || property.price || 0)}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="property-price">{formatPrice(property.price || 0)}</div>
+                        <div className="property-specs">
+                        {(property.rooms || property.beds) && (
+                          <div className="spec-item">
+                            <MdBed size={18} />
+                            <span>{property.rooms || property.beds}</span>
+                          </div>
+                        )}
+                        {(property.area || property.sqft) && (
+                          <div className="spec-item">
+                            <BiArea size={18} />
+                            <span>{property.area || property.sqft} м²</span>
+                          </div>
+                        )}
+                        {property.floor && (
+                          <span className="spec-item">{property.floor} этаж</span>
+                        )}
+                        </div>
+                      </>
+                    )}
+                    <div className="property-actions" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        className="btn btn-primary btn-liquid-glass"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          navigate(`/property/${property.id}`, {
+                            state: { property }
+                          })
+                        }}
+                      >
+                        Сделать ставку
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -320,7 +320,7 @@ const OwnerDashboard = () => {
             location: prop.location || 'Не указано',
             price: prop.price || 0,
             image: imageUrl,
-            beds: prop.bedrooms || 0,
+            beds: prop.bedrooms || prop.rooms || 0,
             baths: prop.bathrooms || 0,
             sqft: prop.area || 0,
             status: prop.moderation_status === 'approved' ? 'active' : 
@@ -789,7 +789,7 @@ const OwnerDashboard = () => {
   }
 
   const handleViewProperty = (id) => {
-    navigate(`/property/${id}`)
+    navigate(`/property/${id}`, { state: { fromOwnerDashboard: true } })
   }
 
   const getStatusBadge = (status) => {
