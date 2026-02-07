@@ -55,6 +55,8 @@ const PropertyDetailPage = () => {
                 elevator: prop.elevator,
                 price: prop.price,
                 auction_starting_price: prop.auction_starting_price,
+                test_drive: prop.test_drive,
+                test_drive_type: typeof prop.test_drive,
               })
               console.log('📥 PropertyDetailPage - Все поля из API:', {
                 rooms: prop.rooms,
