@@ -678,9 +678,14 @@ const AddProperty = () => {
       if (formData.price) formDataToSend.append('price', String(formData.price))
       formDataToSend.append('currency', currency)
       formDataToSend.append('is_auction', formData.isAuction ? '1' : '0')
-      if (formData.testDrive !== null) {
-        formDataToSend.append('test_drive', formData.testDrive ? '1' : '0')
-      }
+      // Всегда отправляем test_drive: если null или undefined, то '0', иначе в зависимости от значения
+      const testDriveValue = (formData.testDrive === true || formData.testDrive === 1) ? '1' : '0'
+      console.log('🔍 Отправка test_drive на сервер:', {
+        formData_testDrive: formData.testDrive,
+        formData_testDrive_type: typeof formData.testDrive,
+        testDriveValue: testDriveValue
+      })
+      formDataToSend.append('test_drive', testDriveValue)
       if (formData.auctionStartDate) formDataToSend.append('auction_start_date', formData.auctionStartDate)
       if (formData.auctionEndDate) formDataToSend.append('auction_end_date', formData.auctionEndDate)
       if (formData.auctionStartingPrice) formDataToSend.append('auction_starting_price', String(formData.auctionStartingPrice))
@@ -1130,7 +1135,7 @@ const AddProperty = () => {
         // Предзаполняем форму данными объекта
         setFormData({
           propertyType: property.property_type || '',
-          testDrive: property.test_drive !== undefined ? (property.test_drive === 1 || property.test_drive === true) : null,
+          testDrive: property.test_drive !== undefined && property.test_drive !== null ? (property.test_drive === 1 || property.test_drive === true) : null,
           title: property.title || '',
           description: property.description || '',
           price: property.price ? String(property.price) : '',
@@ -1707,7 +1712,12 @@ const AddProperty = () => {
 
   // Обработчик ответа на вопрос о тест-драйве
   const handleTestDriveAnswer = (answer) => {
-    setFormData(prev => ({ ...prev, testDrive: answer }))
+    console.log('🔍 handleTestDriveAnswer вызван с answer:', answer, 'тип:', typeof answer)
+    setFormData(prev => {
+      const newData = { ...prev, testDrive: answer }
+      console.log('🔍 Обновленный formData.testDrive:', newData.testDrive)
+      return newData
+    })
     setCurrentStep('property-name')
   }
 
@@ -2934,53 +2944,6 @@ const AddProperty = () => {
             </button>
             <h1 className="page-title">{isEditMode ? 'Редактировать объявление' : 'Добавить объявление'}</h1>
           </div>
-          {isEditMode && (
-            <button
-              type="button"
-              className="view-changes-btn"
-              onClick={() => {
-                if (originalPropertyData) {
-                  setShowChangesModal(true)
-                } else {
-                  alert('Данные еще загружаются. Пожалуйста, подождите.')
-                }
-              }}
-              disabled={!originalPropertyData || isLoadingProperty}
-              style={{
-                padding: '0.625rem 1.25rem',
-                backgroundColor: originalPropertyData ? '#0ABAB5' : '#9ca3af',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: originalPropertyData ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(10, 186, 181, 0.2)',
-                opacity: originalPropertyData ? 1 : 0.6
-              }}
-              onMouseEnter={(e) => {
-                if (originalPropertyData && !e.target.disabled) {
-                  e.target.style.backgroundColor = '#089a95'
-                  e.target.style.transform = 'translateY(-1px)'
-                  e.target.style.boxShadow = '0 4px 8px rgba(10, 186, 181, 0.3)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (originalPropertyData && !e.target.disabled) {
-                  e.target.style.backgroundColor = '#0ABAB5'
-                  e.target.style.transform = 'translateY(0)'
-                  e.target.style.boxShadow = '0 2px 4px rgba(10, 186, 181, 0.2)'
-                }
-              }}
-            >
-              <FiEye size={16} />
-              {isLoadingProperty ? 'Загрузка...' : 'Посмотреть изменения'}
-            </button>
-          )}
         </div>
 
         {currentStep === 'type-selection' ? (
@@ -3709,6 +3672,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.rooms}
                           onChange={(e) => handleDetailChange('rooms', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.rooms ? 'detail-form-input--error' : ''}`}
                           placeholder="0"
                           min="0"
@@ -3725,6 +3689,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.bathrooms}
                           onChange={(e) => handleDetailChange('bathrooms', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.bathrooms ? 'detail-form-input--error' : ''}`}
                           placeholder="0"
                           min="0"
@@ -3745,6 +3710,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.area}
                           onChange={(e) => handleDetailChange('area', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.area ? 'detail-form-input--error' : ''}`}
                           placeholder="0"
                           min="0"
@@ -3762,6 +3728,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.livingArea}
                           onChange={(e) => handleDetailChange('livingArea', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.livingArea ? 'detail-form-input--error' : ''}`}
                           placeholder="0"
                           min="0"
@@ -3806,6 +3773,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.floor}
                           onChange={(e) => handleDetailChange('floor', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.floor ? 'detail-form-input--error' : ''}`}
                           placeholder="0"
                           min="0"
@@ -3822,6 +3790,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.totalFloors}
                           onChange={(e) => handleDetailChange('totalFloors', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.totalFloors ? 'detail-form-input--error' : ''}`}
                           placeholder="0"
                           min="0"
@@ -3842,6 +3811,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.yearBuilt}
                           onChange={(e) => handleDetailChange('yearBuilt', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className={`detail-form-input detail-form-input--narrow ${validationErrors.yearBuilt ? 'detail-form-input--error' : ''}`}
                           placeholder="2025"
                           max={new Date().getFullYear()}
@@ -3976,6 +3946,7 @@ const AddProperty = () => {
                           type="number"
                           value={formData.area}
                           onChange={(e) => handleDetailChange('area', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           className="apartment-size-input"
                           placeholder="0"
                           min="0"

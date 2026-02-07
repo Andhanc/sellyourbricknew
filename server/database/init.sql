@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS properties (
     no_debts_document TEXT, -- Путь к справке об отсутствии долгов
     
     -- Тест-драйв данные
+    test_drive INTEGER DEFAULT 0, -- 0 для нет, 1 для да
     test_drive_data TEXT, -- JSON данные тест-драйва
     
     -- Статус модерации

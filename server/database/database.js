@@ -343,6 +343,7 @@ export function initDatabase() {
           const hasLivingArea = pragmaInfo.some(col => col.name === 'living_area');
           const hasBuildingType = pragmaInfo.some(col => col.name === 'building_type');
           const hasAdditionalAmenities = pragmaInfo.some(col => col.name === 'additional_amenities');
+          const hasTestDrive = pragmaInfo.some(col => col.name === 'test_drive');
           
           if (!hasLivingArea || !hasBuildingType || !hasAdditionalAmenities) {
             console.log('🔄 Обновление схемы БД: добавляем поля living_area, building_type и additional_amenities...');
@@ -354,6 +355,21 @@ export function initDatabase() {
               // Игнорируем ошибки "duplicate column name" (поле уже существует)
               if (!migrationError.message.includes('duplicate column name')) {
                 console.warn('⚠️ Не удалось выполнить миграцию properties:', migrationError.message);
+              }
+            }
+          }
+          
+          // Проверяем и добавляем поле test_drive, если его нет
+          if (!hasTestDrive) {
+            console.log('🔄 Обновление схемы БД: добавляем поле test_drive...');
+            try {
+              const migrationSql = readFileSync(join(__dirname, 'add_test_drive_field.sql'), 'utf8');
+              db.exec(migrationSql);
+              console.log('✅ Поле test_drive добавлено в таблицу properties');
+            } catch (migrationError) {
+              // Игнорируем ошибки "duplicate column name" (поле уже существует)
+              if (!migrationError.message.includes('duplicate column name')) {
+                console.warn('⚠️ Не удалось добавить поле test_drive:', migrationError.message);
               }
             }
           }

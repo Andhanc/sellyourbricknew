@@ -3345,8 +3345,24 @@ app.post('/api/properties', upload.fields([
       videos,
       additional_documents,
       additional_amenities,
-      test_drive_data
+      test_drive_data,
+      test_drive = 0
     } = req.body;
+
+    // Нормализуем test_drive: может быть строкой '0'/'1', числом 0/1, или булевым значением
+    let normalizedTestDrive = 0;
+    if (typeof test_drive === 'string') {
+      normalizedTestDrive = (test_drive === '1' || test_drive === 'true') ? 1 : 0;
+    } else if (typeof test_drive === 'boolean') {
+      normalizedTestDrive = test_drive ? 1 : 0;
+    } else {
+      normalizedTestDrive = test_drive ? 1 : 0;
+    }
+    console.log('🔍 POST /api/properties - test_drive:', {
+      raw: test_drive,
+      type: typeof test_drive,
+      normalized: normalizedTestDrive
+    })
 
     // Парсим JSON-строки для медиа
     let parsedPhotos = [];
@@ -3430,8 +3446,8 @@ app.post('/api/properties', upload.fields([
         commercial_type, business_hours, renovation, condition, heating,
         water_supply, sewerage, electricity, internet, security, furniture,
         photos, videos, additional_documents, additional_amenities, ownership_document, no_debts_document,
-        test_drive_data, moderation_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        test_drive, test_drive_data, moderation_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Используем location, если он указан (он уже содержит полный адрес)
@@ -3461,9 +3477,12 @@ app.post('/api/properties', upload.fields([
       parsedAdditionalDocuments.length > 0 ? JSON.stringify(parsedAdditionalDocuments) : null,
       additional_amenities || null,
       ownershipDocumentPath, noDebtsDocumentPath,
+      normalizedTestDrive,
       test_drive_data ? JSON.stringify(test_drive_data) : null,
       'pending'
     );
+    
+    console.log('🔍 POST /api/properties - Сохранено test_drive в БД:', normalizedTestDrive, 'тип:', typeof normalizedTestDrive)
 
     const propertyId = result.lastInsertRowid;
     const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyId);
@@ -3485,6 +3504,8 @@ app.post('/api/properties', upload.fields([
       elevator: property.elevator,
       price: property.price,
       auction_starting_price: property.auction_starting_price,
+      test_drive: property.test_drive,
+      test_drive_type: typeof property.test_drive,
     });
     
     // Проверяем, что объявление действительно создано с правильным статусом
@@ -3560,8 +3581,8 @@ app.put('/api/properties/:id/delete-request', (req, res) => {
         commercial_type, business_hours, renovation, condition, heating,
         water_supply, sewerage, electricity, internet, security, furniture,
         photos, videos, additional_documents, ownership_document, no_debts_document,
-        test_drive_data, moderation_status, rejection_reason
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        test_drive, test_drive_data, moderation_status, rejection_reason
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Подготавливаем все значения для вставки (44 значения для 44 колонок)
@@ -3607,6 +3628,7 @@ app.put('/api/properties/:id/delete-request', (req, res) => {
       property.additional_documents,
       property.ownership_document,
       property.no_debts_document,
+      property.test_drive !== undefined && property.test_drive !== null ? property.test_drive : 0,
       property.test_drive_data,
       'pending', // Статус модерации для запроса на удаление
       `DELETE:${id}:${reason.trim()}` // Сохраняем ID оригинального объекта и причину
@@ -3721,8 +3743,22 @@ app.put('/api/properties/:id', upload.fields([
       videos,
       additional_documents,
       additional_amenities,
-      test_drive_data
+      test_drive_data,
+      test_drive = 0
     } = req.body;
+    
+    // Нормализуем test_drive для редактирования
+    // Если test_drive не передан в запросе, используем значение из оригинального объекта
+    let normalizedTestDriveEdit = undefined;
+    if (test_drive !== undefined && test_drive !== null) {
+      if (typeof test_drive === 'string') {
+        normalizedTestDriveEdit = (test_drive === '1' || test_drive === 'true') ? 1 : 0;
+      } else if (typeof test_drive === 'boolean') {
+        normalizedTestDriveEdit = test_drive ? 1 : 0;
+      } else {
+        normalizedTestDriveEdit = test_drive ? 1 : 0;
+      }
+    }
     
     // Парсим JSON поля
     let parsedPhotos = [];
@@ -3811,8 +3847,8 @@ app.put('/api/properties/:id', upload.fields([
           commercial_type, business_hours, renovation, condition, heating,
           water_supply, sewerage, electricity, internet, security, furniture,
           photos, videos, additional_documents, additional_amenities, ownership_document, no_debts_document,
-          test_drive_data, moderation_status, rejection_reason
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          test_drive, test_drive_data, moderation_status, rejection_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       // Подготавливаем все значения для вставки
@@ -3861,6 +3897,7 @@ app.put('/api/properties/:id', upload.fields([
         additional_amenities || originalProperty.additional_amenities,
         ownershipDocumentPath,
         noDebtsDocumentPath,
+        normalizedTestDriveEdit !== undefined ? normalizedTestDriveEdit : (originalProperty.test_drive !== undefined && originalProperty.test_drive !== null ? originalProperty.test_drive : 0),
         testDriveDataStr || originalProperty.test_drive_data,
         'pending', // Статус модерации для изменений
         `EDIT:${originalPropertyId}` // Сохраняем ID оригинального объекта в rejection_reason
@@ -4288,6 +4325,13 @@ app.get('/api/properties/:id', (req, res) => {
       elevator: property.elevator,
       price: property.price,
       auction_starting_price: property.auction_starting_price,
+      test_drive: property.test_drive,
+    });
+    
+    console.log('🔍 GET /api/properties/:id - test_drive из БД:', {
+      test_drive: property.test_drive,
+      test_drive_type: typeof property.test_drive,
+      test_drive_raw: property.test_drive
     });
 
     // Парсим JSON поля
@@ -4358,6 +4402,10 @@ app.get('/api/properties/:id', (req, res) => {
       }
     }
 
+    console.log('🔍 GET /api/properties/:id - Отправляем formatted с test_drive:', {
+      test_drive: formatted.test_drive,
+      test_drive_type: typeof formatted.test_drive
+    });
     res.json({ success: true, data: formatted });
   } catch (error) {
     console.error('Ошибка при получении объявления:', error);
@@ -4611,6 +4659,7 @@ app.put('/api/properties/:id/approve', (req, res) => {
           additional_amenities = ?,
           ownership_document = ?,
           no_debts_document = ?,
+          test_drive = ?,
           test_drive_data = ?,
           moderation_status = 'approved',
           rejection_reason = NULL,
@@ -4660,6 +4709,7 @@ app.put('/api/properties/:id/approve', (req, res) => {
         property.additional_amenities || null,
         property.ownership_document,
         property.no_debts_document,
+        property.test_drive !== undefined && property.test_drive !== null ? property.test_drive : 0,
         property.test_drive_data,
         originalPropertyId
       );
@@ -4701,6 +4751,11 @@ app.put('/api/properties/:id/approve', (req, res) => {
       });
     } else {
       // Обычное одобрение нового объявления
+      console.log('🔍 Одобрение нового объявления - test_drive перед одобрением:', {
+        test_drive: property.test_drive,
+        test_drive_type: typeof property.test_drive
+      });
+      
       db.prepare(`
         UPDATE properties 
         SET moderation_status = 'approved',
@@ -4711,8 +4766,12 @@ app.put('/api/properties/:id/approve', (req, res) => {
       `).run(reviewed_by || 'admin', id);
       
       // Проверяем, что объявление действительно одобрено и сохраняет is_auction
-      const updatedProperty = db.prepare('SELECT id, title, property_type, moderation_status, is_auction FROM properties WHERE id = ?').get(id);
+      const updatedProperty = db.prepare('SELECT id, title, property_type, moderation_status, is_auction, test_drive FROM properties WHERE id = ?').get(id);
       console.log(`✅ Объявление обновлено:`, updatedProperty);
+      console.log('🔍 Одобрение нового объявления - test_drive после одобрения:', {
+        test_drive: updatedProperty.test_drive,
+        test_drive_type: typeof updatedProperty.test_drive
+      });
 
       // Создаем уведомление для пользователя
       try {

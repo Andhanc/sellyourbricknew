@@ -14,6 +14,7 @@ import { IoLocationOutline } from 'react-icons/io5'
 import { isAuthenticated } from '../services/authService'
 import PropertyTimer from '../components/PropertyTimer'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
+import BuyNowModal from '../components/BuyNowModal'
 import LocationMap from '../components/LocationMap'
 import './PropertyDetailClassic.css'
 
@@ -27,8 +28,11 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const thumbnailScrollRef = useRef(null)
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
+  const [isBuyNowModalOpen, setIsBuyNowModalOpen] = useState(false)
   const [mapCoordinates, setMapCoordinates] = useState(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
+  const [bidAmount, setBidAmount] = useState('')
+  const [isSubmittingBid, setIsSubmittingBid] = useState(false)
 
   // Функция для обработки URL документа
   const processDocumentUrl = (docUrl) => {
@@ -234,9 +238,24 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     ownership_document: property.ownership_document || property.ownershipDocument,
     no_debts_document: property.no_debts_document || property.noDebtsDocument,
     additional_documents: property.additional_documents || property.additionalDocuments,
+    // Тест-драйв - сохраняем значение как есть из property
+    test_drive: property.test_drive,
+    testDrive: property.testDrive !== undefined ? property.testDrive : (property.test_drive !== undefined ? (property.test_drive === 1 || property.test_drive === true) : false),
   }
 
   console.log('🔍 PropertyDetailClassic - displayProperty:', displayProperty)
+  console.log('🔍 PropertyDetailClassic - test_drive:', {
+    property_test_drive: property.test_drive,
+    property_test_drive_type: typeof property.test_drive,
+    property_testDrive: property.testDrive,
+    displayProperty_test_drive: displayProperty.test_drive,
+    displayProperty_test_drive_type: typeof displayProperty.test_drive,
+    displayProperty_testDrive: displayProperty.testDrive,
+    check1: displayProperty.test_drive === 1,
+    check2: displayProperty.test_drive === true,
+    check3: displayProperty.testDrive === true,
+    willShow: (displayProperty.test_drive === 1 || displayProperty.test_drive === true || displayProperty.testDrive === true)
+  })
   console.log('🔍 PropertyDetailClassic - Жилая площадь:', {
     living_area: displayProperty.living_area,
     property_living_area: property.living_area,
@@ -375,7 +394,80 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   }
 
   const handleBookNow = () => {
-    alert(t('buyNow') || 'Заявка отправлена')
+    // Проверяем авторизацию
+    const isClerkAuth = user && userLoaded
+    const isOldAuth = isAuthenticated()
+    
+    if (!isClerkAuth && !isOldAuth) {
+      alert('Пожалуйста, войдите в систему, чтобы купить объект')
+      return
+    }
+    
+    // Открываем модальное окно с инструкциями
+    setIsBuyNowModalOpen(true)
+  }
+
+  const handleQuickBid = (amount) => {
+    const startingPrice = displayProperty.auction_starting_price || 0
+    const currentBid = displayProperty.currentBid || startingPrice
+    
+    // Если пользователь уже ввел сумму, добавляем к ней, иначе к текущей ставке
+    const currentInput = parseFloat(bidAmount) || 0
+    const baseAmount = currentInput > currentBid ? currentInput : currentBid
+    const quickBidAmount = baseAmount + amount
+    setBidAmount(quickBidAmount.toString())
+  }
+
+  const handleBidSubmit = async () => {
+    // Проверяем авторизацию
+    const isClerkAuth = user && userLoaded
+    const isOldAuth = isAuthenticated()
+    
+    if (!isClerkAuth && !isOldAuth) {
+      alert('Пожалуйста, войдите в систему, чтобы сделать ставку')
+      return
+    }
+
+    const amount = parseFloat(bidAmount)
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert('Пожалуйста, введите корректную сумму ставки')
+      return
+    }
+
+    const startingPrice = displayProperty.auction_starting_price || 0
+    const currentBid = displayProperty.currentBid || startingPrice
+    
+    if (amount <= currentBid) {
+      alert(`Ваша ставка должна быть выше текущей ставки (${currentBid.toLocaleString('ru-RU')})`)
+      return
+    }
+
+    setIsSubmittingBid(true)
+    try {
+      // Здесь будет API запрос для отправки ставки
+      // const response = await fetch(`${API_BASE_URL}/bids`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     propertyId: displayProperty.id,
+      //     amount: amount
+      //   })
+      // })
+      
+      // Пока что просто показываем сообщение
+      alert(`Ставка ${amount.toLocaleString('ru-RU')} ${displayProperty.currency || 'USD'} успешно отправлена!`)
+      setBidAmount('')
+    } catch (error) {
+      console.error('Ошибка при отправке ставки:', error)
+      alert('Произошла ошибка при отправке ставки. Попробуйте позже.')
+    } finally {
+      setIsSubmittingBid(false)
+    }
+  }
+
+  const handleBidAmountChange = (e) => {
+    const value = e.target.value.replace(/[^\d.]/g, '')
+    setBidAmount(value)
   }
 
   return (
@@ -594,6 +686,23 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                         {(displayProperty.year_built !== undefined && displayProperty.year_built !== null) ? displayProperty.year_built : '—'}
                       </span>
                     </div>
+                    <div className="property-detail-info-item property-detail-info-item--horizontal">
+                      <span className="property-detail-info-label">Есть тест-драйв:</span>
+                      <span className="property-detail-info-value">
+                        {(() => {
+                          const testDriveValue = displayProperty.test_drive;
+                          const isTestDrive = testDriveValue === 1 || testDriveValue === true || displayProperty.testDrive === true;
+                          console.log('🔍 PropertyDetailClassic - Отображение test_drive:', {
+                            testDriveValue,
+                            testDriveValue_type: typeof testDriveValue,
+                            displayProperty_testDrive: displayProperty.testDrive,
+                            isTestDrive,
+                            result: isTestDrive ? 'Да' : 'Нет'
+                          });
+                          return isTestDrive ? 'Да' : 'Нет';
+                        })()}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -739,24 +848,42 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
 
               {/* Минимальная цена продажи для аукционных объектов */}
               {isAuctionProperty && displayProperty.price && (
-                <div className="property-detail-sidebar__current-bid">
-                  <span className="current-bid-label">Минимальная цена продажи:</span>
-                  <span className="current-bid-value">
-                    {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
-                    {displayProperty.price.toLocaleString('ru-RU')}
-                  </span>
-                </div>
+                <>
+                  <div className="property-detail-sidebar__current-bid">
+                    <span className="current-bid-label">Минимальная цена продажи:</span>
+                    <span className="current-bid-value">
+                      {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                      {displayProperty.price.toLocaleString('ru-RU')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="property-detail-sidebar__buy-now-btn"
+                    onClick={handleBookNow}
+                  >
+                    Купить сейчас
+                  </button>
+                </>
               )}
 
               {/* Цена для неаукционных объектов */}
               {!isAuctionProperty && displayProperty.price && (
-                <div className="property-detail-sidebar__price-block">
-                  <span className="price-label">Стоимость:</span>
-                  <span className="price-value">
-                    {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
-                    {displayProperty.price.toLocaleString('ru-RU')}
-                  </span>
-                </div>
+                <>
+                  <div className="property-detail-sidebar__price-block">
+                    <span className="price-label">Стоимость:</span>
+                    <span className="price-value">
+                      {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                      {displayProperty.price.toLocaleString('ru-RU')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="property-detail-sidebar__buy-now-btn"
+                    onClick={handleBookNow}
+                  >
+                    Купить сейчас
+                  </button>
+                </>
               )}
 
               {/* Описание */}
@@ -785,6 +912,60 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                       {(displayProperty.auction_starting_price || 0).toLocaleString('ru-RU')}
                     </span>
                   </div>
+
+                  {/* Функционал ставки */}
+                  <div className="property-detail-sidebar__bidding-section">
+                    <div className="bidding-section__quick-buttons">
+                      <button
+                        type="button"
+                        className="bidding-section__quick-btn"
+                        onClick={() => handleQuickBid(1000)}
+                        disabled={isSubmittingBid}
+                      >
+                        +1 000
+                      </button>
+                      <button
+                        type="button"
+                        className="bidding-section__quick-btn"
+                        onClick={() => handleQuickBid(2000)}
+                        disabled={isSubmittingBid}
+                      >
+                        +2 000
+                      </button>
+                      <button
+                        type="button"
+                        className="bidding-section__quick-btn"
+                        onClick={() => handleQuickBid(3000)}
+                        disabled={isSubmittingBid}
+                      >
+                        +3 000
+                      </button>
+                    </div>
+                    
+                    <div className="bidding-section__input-wrapper">
+                      <span className="bidding-section__currency">
+                        {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : '$'}
+                      </span>
+                      <input
+                        type="text"
+                        className="bidding-section__input"
+                        placeholder="Введите сумму ставки"
+                        value={bidAmount}
+                        onChange={handleBidAmountChange}
+                        disabled={isSubmittingBid}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="bidding-section__submit-btn"
+                      onClick={handleBidSubmit}
+                      disabled={isSubmittingBid || !bidAmount}
+                    >
+                      {isSubmittingBid ? 'Отправка...' : 'Сделать ставку'}
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     className="property-detail-sidebar__history-btn"
@@ -932,6 +1113,19 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
           }}
         />
       )}
+
+      {/* Модальное окно с инструкциями по покупке */}
+      <BuyNowModal
+        isOpen={isBuyNowModalOpen}
+        onClose={() => setIsBuyNowModalOpen(false)}
+        property={{
+          id: displayProperty.id,
+          title: propertyInfo,
+          name: propertyInfo,
+          price: displayProperty.price,
+          currency: displayProperty.currency
+        }}
+      />
     </div>
   )
 }

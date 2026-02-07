@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
 import { MdBed, MdOutlineBathtub, MdDirectionsCar } from 'react-icons/md'
 import { BiArea } from 'react-icons/bi'
-import { FiLayers, FiCalendar, FiShoppingCart } from 'react-icons/fi'
+import { FiLayers, FiCalendar } from 'react-icons/fi'
 import { properties } from '../data/properties'
 import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
@@ -257,38 +257,32 @@ const PropertyList = ({ auctionProperties = null }) => {
                     alt={propertyTitle}
                     className="property-image"
                   />
-                  <div className="property-image-icons">
-                    <button
-                      className="property-icon-button property-icon-buy"
+                  <div 
+                    className="property-buy-badge"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      navigate(`/property/${property.id}`, {
+                        state: { property }
+                      })
+                    }}
+                  >
+                    <span>Купить сейчас</span>
+                  </div>
+                  {hasTestDrive && (
+                    <div 
+                      className="property-testdrive-badge"
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        // Здесь можно добавить логику для "Купить сейчас"
                         navigate(`/property/${property.id}`, {
                           state: { property }
                         })
                       }}
-                      title="Купить сейчас"
                     >
-                      <FiShoppingCart size={20} />
-                    </button>
-                    {hasTestDrive && (
-                      <button
-                        className="property-icon-button property-icon-testdrive"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          // Здесь можно добавить логику для "Тест-Драйв"
-                          navigate(`/property/${property.id}`, {
-                            state: { property }
-                          })
-                        }}
-                        title="Тест-Драйв"
-                      >
-                        <MdDirectionsCar size={20} />
-                      </button>
-                    )}
-                  </div>
+                      <span>Тест-драйв</span>
+                    </div>
+                  )}
                   <button 
                     className={`property-favorite ${favorites.has(property.id) ? 'active' : ''}`}
                     onClick={(e) => {
@@ -431,6 +425,18 @@ const PropertyList = ({ auctionProperties = null }) => {
                         }}
                       >
                         Сделать ставку
+                      </button>
+                      <button 
+                        className="btn btn-buy-now btn-liquid-glass-buy"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          navigate(`/property/${property.id}`, {
+                            state: { property }
+                          })
+                        }}
+                      >
+                        Купить сейчас
                       </button>
                     </div>
                   </div>

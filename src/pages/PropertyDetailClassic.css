@@ -684,6 +684,239 @@
   background: #1d4ed8;
 }
 
+/* Функционал ставки */
+.property-detail-sidebar__bidding-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.bidding-section__quick-buttons {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.bidding-section__quick-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background: #ffffff;
+  color: #2563eb;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.bidding-section__quick-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.bidding-section__quick-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+.bidding-section__quick-btn:hover::before {
+  width: 200px;
+  height: 200px;
+}
+
+.bidding-section__quick-btn:active {
+  transform: translateY(0);
+}
+
+.bidding-section__quick-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.bidding-section__input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.bidding-section__currency {
+  position: absolute;
+  left: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #6b7280;
+  z-index: 1;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.bidding-section__input {
+  width: 100%;
+  padding: 12px 16px 12px 36px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Montserrat', sans-serif;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.bidding-section__input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.bidding-section__input:disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.bidding-section__input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.bidding-section__submit-btn {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.bidding-section__submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.bidding-section__submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.bidding-section__submit-btn:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.bidding-section__submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.bidding-section__submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.property-detail-sidebar__buy-now-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  max-width: 70%;
+  margin: 12px auto 20px;
+  display: block;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.3px;
+}
+
+.property-detail-sidebar__buy-now-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transition: left 0.6s ease;
+}
+
+.property-detail-sidebar__buy-now-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.property-detail-sidebar__buy-now-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.property-detail-sidebar__buy-now-btn:hover::before {
+  left: 100%;
+}
+
+.property-detail-sidebar__buy-now-btn:hover::after {
+  opacity: 1;
+}
+
+.property-detail-sidebar__buy-now-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
+  transition: all 0.1s ease;
+}
+
 /* Карта */
 .property-detail-sidebar__map {
   margin-top: 24px;
