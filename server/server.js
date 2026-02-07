@@ -4916,7 +4916,14 @@ app.post('/api/users/:id/card', (req, res) => {
     const userId = req.params.id;
     const { cardNumber, cardCvv, cardType } = req.body;
     
+    console.log('📝 Сохранение карты для пользователя:', userId, {
+      cardNumber: cardNumber ? cardNumber.slice(0, 4) + '****' : 'не указан',
+      cardCvv: cardCvv ? '***' : 'не указан',
+      cardType: cardType || 'не указан'
+    });
+    
     if (!cardNumber || !cardCvv || !cardType) {
+      console.warn('❌ Недостаточно данных для сохранения карты:', { cardNumber: !!cardNumber, cardCvv: !!cardCvv, cardType: !!cardType });
       return res.status(400).json({ 
         success: false, 
         error: 'Необходимо указать номер карты, CVV и тип карты' 
@@ -4925,19 +4932,73 @@ app.post('/api/users/:id/card', (req, res) => {
     
     const db = getDatabase();
     
+    // Проверяем, существуют ли необходимые поля в таблице users
+    try {
+      const pragmaInfo = db.prepare("PRAGMA table_info(users)").all();
+      const requiredFields = ['has_card', 'card_number', 'card_cvv', 'card_type'];
+      const existingFields = pragmaInfo.map(col => col.name);
+      
+      console.log('🔍 Проверка полей в таблице users:', {
+        existing: existingFields,
+        required: requiredFields
+      });
+      
+      // Добавляем недостающие поля
+      if (!existingFields.includes('has_card')) {
+        db.prepare("ALTER TABLE users ADD COLUMN has_card INTEGER DEFAULT 0").run();
+        console.log('✅ Добавлено поле has_card');
+      }
+      if (!existingFields.includes('card_number')) {
+        db.prepare("ALTER TABLE users ADD COLUMN card_number TEXT").run();
+        console.log('✅ Добавлено поле card_number');
+      }
+      if (!existingFields.includes('card_cvv')) {
+        db.prepare("ALTER TABLE users ADD COLUMN card_cvv TEXT").run();
+        console.log('✅ Добавлено поле card_cvv');
+      }
+      if (!existingFields.includes('card_type')) {
+        db.prepare("ALTER TABLE users ADD COLUMN card_type TEXT").run();
+        console.log('✅ Добавлено поле card_type');
+      }
+    } catch (alterError) {
+      console.warn('⚠️ Ошибка при проверке/добавлении полей:', alterError.message);
+    }
+    
     // Простое шифрование (в production использовать более безопасный метод)
     const encrypt = (text) => {
-      const algorithm = 'aes-256-cbc';
-      const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || 'default-key-change-in-production', 'salt', 32);
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv(algorithm, key, iv);
-      let encrypted = cipher.update(text, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
-      return iv.toString('hex') + ':' + encrypted;
+      try {
+        const algorithm = 'aes-256-cbc';
+        const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || 'default-key-change-in-production', 'salt', 32);
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(algorithm, key, iv);
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        return iv.toString('hex') + ':' + encrypted;
+      } catch (encryptError) {
+        console.error('❌ Ошибка шифрования:', encryptError);
+        throw new Error('Ошибка при шифровании данных карты');
+      }
     };
     
-    const encryptedCardNumber = encrypt(cardNumber);
-    const encryptedCvv = encrypt(cardCvv);
+    let encryptedCardNumber, encryptedCvv;
+    try {
+      encryptedCardNumber = encrypt(cardNumber);
+      encryptedCvv = encrypt(cardCvv);
+      console.log('✅ Данные зашифрованы');
+    } catch (encryptError) {
+      console.error('❌ Ошибка шифрования:', encryptError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Ошибка при шифровании данных карты: ' + encryptError.message 
+      });
+    }
+    
+    // Проверяем, существует ли пользователь
+    const user = userQueries.getById(userId);
+    if (!user) {
+      console.warn('❌ Пользователь не найден:', userId);
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
     
     const stmt = db.prepare(`
       UPDATE users 
@@ -4948,10 +5009,21 @@ app.post('/api/users/:id/card', (req, res) => {
           updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `);
-    const result = stmt.run(encryptedCardNumber, encryptedCvv, cardType, userId);
     
-    if (result.changes === 0) {
-      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    try {
+      const result = stmt.run(encryptedCardNumber, encryptedCvv, cardType, userId);
+      console.log('✅ Карта сохранена, изменено записей:', result.changes);
+      
+      if (result.changes === 0) {
+        console.warn('⚠️ Не удалось обновить карту пользователя:', userId);
+        return res.status(404).json({ success: false, error: 'Пользователь не найден или данные не обновлены' });
+      }
+    } catch (dbError) {
+      console.error('❌ Ошибка при обновлении БД:', dbError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Ошибка при сохранении в базу данных: ' + dbError.message 
+      });
     }
     
     const updatedUser = userQueries.getById(userId);
@@ -4965,8 +5037,9 @@ app.post('/api/users/:id/card', (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Ошибка при сохранении карты:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ Ошибка при сохранении карты:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ success: false, error: error.message || 'Внутренняя ошибка сервера' });
   }
 });
 

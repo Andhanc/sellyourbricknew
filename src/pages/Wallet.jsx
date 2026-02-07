@@ -61,6 +61,13 @@ const Wallet = () => {
     return () => clearInterval(interval)
   }, [userId])
 
+  // Автоматически включаем редактирование, если карты нет
+  useEffect(() => {
+    if (!hasCard && !isEditingCard && !loading) {
+      setIsEditingCard(true)
+    }
+  }, [hasCard, loading])
+
   // Автоматический переворот карточки при заполнении номера и даты
   useEffect(() => {
     if (isEditingCard && !hasCard) {
@@ -107,12 +114,19 @@ const Wallet = () => {
               // Устанавливаем isEditingCard только если карта была сохранена (переход из false в true)
               // Не сбрасываем isEditingCard, если пользователь активно редактирует
               if (newHasCard && !prev) {
+                // Карта была сохранена - выключаем редактирование
                 setIsEditingCard(false)
               } else if (!newHasCard && prev) {
                 // Если карта была удалена, разрешаем редактирование
                 setIsEditingCard(true)
               }
               return newHasCard
+            }
+            // Если hasCard не изменился, НЕ трогаем isEditingCard
+            // Это важно для периодических обновлений - не сбрасываем состояние редактирования
+            // Но если карты нет и isEditingCard false, устанавливаем его в true (первая загрузка)
+            if (!newHasCard && !isEditingCard && showLoading) {
+              setIsEditingCard(true)
             }
             return prev
           })
@@ -226,6 +240,13 @@ const Wallet = () => {
     }
 
     try {
+      console.log('📤 Отправка данных карты:', {
+        userId,
+        cardNumber: cleanedCardNumber.slice(0, 4) + '****', // Логируем только первые 4 цифры
+        cardCvv: '***',
+        cardType: detectedType
+      })
+      
       const response = await fetch(`${API_BASE_URL}/users/${userId}/card`, {
         method: 'POST',
         headers: {
@@ -238,7 +259,27 @@ const Wallet = () => {
         })
       })
 
+      console.log('📥 Ответ сервера:', response.status, response.statusText)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Ошибка HTTP:', response.status, errorText)
+        let errorMessage = `Ошибка сервера: ${response.status}`
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch (e) {
+          // Используем стандартное сообщение
+        }
+        setCardError(errorMessage)
+        return
+      }
+
       const data = await response.json()
+      console.log('📥 Данные ответа:', data)
+      
       if (data.success) {
         setHasCard(true)
         setCardType(detectedType)
@@ -258,8 +299,8 @@ const Wallet = () => {
         setCardError(data.error || 'Ошибка при сохранении карты')
       }
     } catch (error) {
-      console.error('Ошибка сохранения карты:', error)
-      setCardError('Ошибка при сохранении карты')
+      console.error('❌ Ошибка сохранения карты:', error)
+      setCardError(`Ошибка при сохранении карты: ${error.message}`)
     }
   }
 
@@ -518,8 +559,8 @@ const Wallet = () => {
             <div
               className={`bank-card ${isCardFlipped ? 'flipped' : ''} ${isEditingCard ? 'editing' : ''}`}
               onClick={(e) => {
-                // Если пользователь кликает на карту и нет карты, начинаем редактирование
-                if (!hasCard && !isEditingCard) {
+                // Если пользователь кликает на карту и нет карты, всегда начинаем редактирование
+                if (!hasCard) {
                   setIsEditingCard(true)
                 } else if (hasCard && !isEditingCard) {
                   // Если карта есть, переворачиваем её
