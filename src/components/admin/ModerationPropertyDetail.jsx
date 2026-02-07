@@ -243,7 +243,8 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
       electricity: 'Электричество',
       internet: 'Интернет',
       security: 'Охрана',
-      furniture: 'Мебель'
+      furniture: 'Мебель',
+      test_drive: 'Есть тест-драйв'
     };
     
     // Сравниваем основные поля
@@ -265,10 +266,19 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
         return;
       }
       
-      // Обработка булевых полей удобств
-      if (['balcony', 'parking', 'elevator', 'garage', 'pool', 'garden', 'electricity', 'internet', 'security', 'furniture'].includes(key)) {
+      // Обработка булевых полей удобств и test_drive
+      if (['balcony', 'parking', 'elevator', 'garage', 'pool', 'garden', 'electricity', 'internet', 'security', 'furniture', 'test_drive'].includes(key)) {
         const oldBool = oldValue === 1 || oldValue === true;
         const newBool = newValue === 1 || newValue === true;
+        console.log(`🔍 ModerationPropertyDetail - Сравнение ${key}:`, {
+          oldValue,
+          oldValue_type: typeof oldValue,
+          newValue,
+          newValue_type: typeof newValue,
+          oldBool,
+          newBool,
+          changed: oldBool !== newBool
+        });
         if (oldBool !== newBool) {
           changes.push({
             field: fieldLabels[key],
@@ -565,11 +575,7 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
               {property.business_hours && (
                 <div><strong>Часы работы:</strong> {property.business_hours}</div>
               )}
-              {(property.test_drive === 1 || property.testDrive === true) && (
-                <div style={{ gridColumn: '1 / -1', color: '#0ABAB5', fontWeight: 'bold' }}>
-                  ✓ Тест-драйв доступен
-                </div>
-              )}
+              <div><strong>Есть тест-драйв:</strong> {(property.test_drive === 1 || property.test_drive === true || property.testDrive === true) ? 'Да' : 'Нет'}</div>
             </div>
           </div>
           
