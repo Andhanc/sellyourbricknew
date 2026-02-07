@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { FaArrowLeft, FaArrowUp, FaArrowDown, FaLock, FaWifi } from 'react-icons/fa'
 import { getUserData } from '../services/authService'
@@ -40,11 +40,13 @@ const Wallet = () => {
     }
   }, [cardNumber, cardExpiry, isEditingCard, hasCard, isCardFlipped])
   const [loading, setLoading] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [transactions, setTransactions] = useState([])
   const [analytics, setAnalytics] = useState({
     totalDeposit: 0,
     totalWithdrawal: 0
   })
+  const [userBid, setUserBid] = useState(null)
 
   // Загружаем данные пользователя
   useEffect(() => {
@@ -52,7 +54,11 @@ const Wallet = () => {
       navigate('/')
       return
     }
-    loadUserData()
+    loadUserData(true)
+    
+    // Обновляем данные каждые 5 секунд без показа загрузки
+    const interval = setInterval(() => loadUserData(false), 5000)
+    return () => clearInterval(interval)
   }, [userId])
 
   // Автоматический переворот карточки при заполнении номера и даты
@@ -71,45 +77,117 @@ const Wallet = () => {
     }
   }, [cardNumber, cardExpiry, isEditingCard, hasCard])
 
-  const loadUserData = async () => {
+  const loadUserData = async (showLoading = false) => {
     try {
-      setLoading(true)
-      const [depositRes, transactionsRes, analyticsRes] = await Promise.all([
+      if (showLoading) {
+        setLoading(true)
+      }
+      
+      const [depositRes, transactionsRes, analyticsRes, bidsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/users/${userId}/deposit`),
         fetch(`${API_BASE_URL}/users/${userId}/transactions`),
-        fetch(`${API_BASE_URL}/users/${userId}/analytics`)
+        fetch(`${API_BASE_URL}/users/${userId}/analytics`),
+        fetch(`${API_BASE_URL}/bids/user/${userId}`)
       ])
 
       if (depositRes.ok) {
         const depositData = await depositRes.json()
         if (depositData.success) {
-          setDepositAmount(depositData.data.depositAmount || 0)
-          setHasCard(depositData.data.hasCard || false)
-          setCardType(depositData.data.cardType)
-          setIsEditingCard(!depositData.data.hasCard)
+          const newDeposit = depositData.data.depositAmount || 0
+          setDepositAmount(prev => {
+            if (prev !== newDeposit) {
+              return newDeposit
+            }
+            return prev
+          })
+          
+          const newHasCard = depositData.data.hasCard || false
+          setHasCard(prev => {
+            if (prev !== newHasCard) {
+              // Устанавливаем isEditingCard только если карта была сохранена (переход из false в true)
+              // Не сбрасываем isEditingCard, если пользователь активно редактирует
+              if (newHasCard && !prev) {
+                setIsEditingCard(false)
+              } else if (!newHasCard && prev) {
+                // Если карта была удалена, разрешаем редактирование
+                setIsEditingCard(true)
+              }
+              return newHasCard
+            }
+            return prev
+          })
+          
+          const newCardType = depositData.data.cardType
+          setCardType(prev => {
+            if (prev !== newCardType) {
+              return newCardType
+            }
+            return prev
+          })
         }
       }
 
       if (transactionsRes.ok) {
         const transData = await transactionsRes.json()
         if (transData.success) {
-          setTransactions(transData.data || [])
+          const newTransactions = transData.data || []
+          setTransactions(prev => {
+            const prevStr = JSON.stringify(prev)
+            const newStr = JSON.stringify(newTransactions)
+            if (prevStr !== newStr) {
+              return newTransactions
+            }
+            return prev
+          })
         }
       }
 
       if (analyticsRes.ok) {
         const analyticsData = await analyticsRes.json()
         if (analyticsData.success) {
-          setAnalytics({
+          const newAnalytics = {
             totalDeposit: analyticsData.data.totalDeposit || 0,
             totalWithdrawal: analyticsData.data.totalWithdrawal || 0
+          }
+          setAnalytics(prev => {
+            if (prev.totalDeposit !== newAnalytics.totalDeposit || 
+                prev.totalWithdrawal !== newAnalytics.totalWithdrawal) {
+              return newAnalytics
+            }
+            return prev
+          })
+        }
+      }
+
+      // Загружаем ставки пользователя
+      if (bidsRes.ok) {
+        const bidsData = await bidsRes.json()
+        if (bidsData.success && bidsData.data && bidsData.data.length > 0) {
+          const newUserBid = bidsData.data[0]
+          setUserBid(prev => {
+            const prevStr = JSON.stringify(prev)
+            const newStr = JSON.stringify(newUserBid)
+            if (prevStr !== newStr) {
+              return newUserBid
+            }
+            return prev
+          })
+        } else {
+          setUserBid(prev => {
+            if (prev !== null) {
+              return null
+            }
+            return prev
           })
         }
       }
     } catch (error) {
       console.error('Ошибка загрузки данных:', error)
     } finally {
-      setLoading(false)
+      if (showLoading) {
+        setLoading(false)
+        setIsInitialLoad(false)
+      }
     }
   }
 
@@ -439,7 +517,15 @@ const Wallet = () => {
           <div className="wallet-cards-carousel">
             <div
               className={`bank-card ${isCardFlipped ? 'flipped' : ''} ${isEditingCard ? 'editing' : ''}`}
-              onClick={() => hasCard && !isEditingCard && setIsCardFlipped(!isCardFlipped)}
+              onClick={(e) => {
+                // Если пользователь кликает на карту и нет карты, начинаем редактирование
+                if (!hasCard && !isEditingCard) {
+                  setIsEditingCard(true)
+                } else if (hasCard && !isEditingCard) {
+                  // Если карта есть, переворачиваем её
+                  setIsCardFlipped(!isCardFlipped)
+                }
+              }}
               style={{ '--card-color': getCardColor() }}
             >
               <div className="bank-card__front">
@@ -471,13 +557,14 @@ const Wallet = () => {
                     </div>
                   </div>
                   
-                  <div className="bank-card__number">
+                  <div className="bank-card__number" onClick={(e) => e.stopPropagation()}>
                     {isEditingCard ? (
                       <input
                         type="text"
                         className="bank-card__number-input"
                         value={cardNumber}
                         onChange={(e) => handleCardNumberChange(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
                         placeholder="1234 5678 9012 3456"
                         maxLength="19"
                         autoFocus
@@ -496,7 +583,7 @@ const Wallet = () => {
                   </div>
                   
                   <div className="bank-card__bottom">
-                    <div className="bank-card__expiry">
+                    <div className="bank-card__expiry" onClick={(e) => e.stopPropagation()}>
                       {isEditingCard && !hasCard ? (
                         <input
                           type="text"
@@ -510,6 +597,7 @@ const Wallet = () => {
                             setCardExpiry(value)
                             setCardError('')
                           }}
+                          onClick={(e) => e.stopPropagation()}
                           placeholder="MM/YY"
                           maxLength="5"
                         />
@@ -523,7 +611,7 @@ const Wallet = () => {
               <div className="bank-card__back">
                 <div className="bank-card__back-content">
                   <div className="bank-card__magnetic-stripe"></div>
-                  <div className="bank-card__cvv">
+                  <div className="bank-card__cvv" onClick={(e) => e.stopPropagation()}>
                     <div className="cvv-label">CVV</div>
                     <div className="cvv-value">
                       {isEditingCard ? (
@@ -536,6 +624,7 @@ const Wallet = () => {
                             setCardCvv(value)
                             setCardError('')
                           }}
+                          onClick={(e) => e.stopPropagation()}
                           placeholder="___"
                           maxLength="4"
                         />
@@ -595,6 +684,98 @@ const Wallet = () => {
             </>
           )}
         </div>
+
+        {/* Объект с активной ставкой */}
+        {userBid && (
+          <div className="wallet-bid-object" style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            <h3 style={{ color: 'white', marginBottom: '15px', fontSize: '18px' }}>
+              Ваш объект с активной ставкой
+            </h3>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+              {(() => {
+                // Обрабатываем photos - может быть массивом или JSON строкой
+                let photos = []
+                if (userBid.photos) {
+                  if (typeof userBid.photos === 'string') {
+                    try {
+                      photos = JSON.parse(userBid.photos)
+                    } catch (e) {
+                      photos = [userBid.photos]
+                    }
+                  } else if (Array.isArray(userBid.photos)) {
+                    photos = userBid.photos
+                  }
+                }
+                
+                const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
+                const firstPhoto = photos.length > 0 ? photos[0] : null
+                const photoUrl = firstPhoto 
+                  ? (typeof firstPhoto === 'string'
+                      ? (firstPhoto.startsWith('http') 
+                          ? firstPhoto 
+                          : firstPhoto.startsWith('/uploads/') || firstPhoto.startsWith('uploads/')
+                            ? `${baseUrl}${firstPhoto.startsWith('/') ? '' : '/'}${firstPhoto}`
+                            : `${baseUrl}/uploads/${firstPhoto}`)
+                      : firstPhoto?.url || firstPhoto)
+                  : null
+                
+                return photoUrl ? (
+                  <img 
+                    src={photoUrl}
+                    alt={userBid.title}
+                    style={{
+                      width: '100px',
+                      height: '100px',
+                      objectFit: 'cover',
+                      borderRadius: '8px'
+                    }}
+                  />
+                ) : null
+              })()}
+              <div style={{ flex: 1 }}>
+                <h4 style={{ color: 'white', marginBottom: '8px', fontSize: '16px' }}>
+                  {userBid.title}
+                </h4>
+                {userBid.location && (
+                  <p style={{ color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px', fontSize: '14px' }}>
+                    {userBid.location}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '10px' }}>
+                  <div>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '12px' }}>Ваша ставка:</span>
+                    <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
+                      {formatAmount(userBid.bid_amount)}
+                    </div>
+                  </div>
+                </div>
+                <Link 
+                  to={`/property/${userBid.property_id}`}
+                  style={{
+                    display: 'inline-block',
+                    padding: '8px 16px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+                  onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+                >
+                  Перейти к объекту →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Аналитика и Транзакции в одной строке */}
         <div className="wallet-stats-transactions">

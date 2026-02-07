@@ -630,6 +630,60 @@
   gap: 16px;
 }
 
+/* Анимация изменения цены */
+.current-bid-value-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.current-bid-value-wrapper--animated {
+  animation: priceIncrease 0.6s ease-out;
+}
+
+.current-bid-value-wrapper--animated .current-bid-value {
+  color: #10b981 !important;
+  font-weight: 700;
+  transition: color 0.3s ease;
+}
+
+.current-bid-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  animation: arrowBounce 0.6s ease-out;
+  margin-left: 4px;
+}
+
+@keyframes priceIncrease {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes arrowBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(0) scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .property-detail-sidebar__current-bid {
   display: flex;
   flex-direction: column;
@@ -646,6 +700,7 @@
   font-size: 24px;
   font-weight: 700;
   color: #111827;
+  transition: color 0.3s ease, transform 0.3s ease;
 }
 
 .property-detail-sidebar__starting-price {
@@ -664,6 +719,114 @@
   font-size: 20px;
   font-weight: 600;
   color: #4b5563;
+}
+
+/* Последние две ставки */
+.property-detail-sidebar__recent-bids {
+  margin-top: 20px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.recent-bids__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.recent-bids__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recent-bid-item {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.recent-bid-item:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.recent-bid-item--highest {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+.recent-bid-item--highest:hover {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+}
+
+.recent-bid-item__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.recent-bid-item__user-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.recent-bid-item__badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #f59e0b;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: auto;
+}
+
+.recent-bid-item__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.recent-bid-item__amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2563eb;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.recent-bid-item--highest .recent-bid-item__amount {
+  color: #d97706;
+}
+
+.recent-bid-item__time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .property-detail-sidebar__history-btn {

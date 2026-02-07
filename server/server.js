@@ -5184,6 +5184,364 @@ app.get('/api/users/:id/analytics', (req, res) => {
   }
 });
 
+/**
+ * POST /api/bids - Создать ставку
+ * Логика:
+ * 1. Проверяем, что у пользователя есть депозит
+ * 2. Проверяем, что пользователь может сделать ставку только в одном объекте
+ * 3. Проверяем, что ставка не меньше минимальной суммы
+ * 4. Если ставка больше текущей - обновляем минимальную ставку (текущая ставка - цена)
+ */
+app.post('/api/bids', (req, res) => {
+  try {
+    const { user_id, property_id, bid_amount } = req.body;
+    const db = getDatabase();
+    
+    console.log('📝 Создание ставки - полученные данные:', { 
+      user_id, 
+      property_id, 
+      bid_amount,
+      user_id_type: typeof user_id,
+      property_id_type: typeof property_id,
+      bid_amount_type: typeof bid_amount,
+      body: req.body
+    });
+    
+    // Проверяем наличие всех обязательных полей
+    if (!user_id) {
+      console.error('❌ Отсутствует user_id');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать user_id' 
+      });
+    }
+    
+    if (!property_id) {
+      console.error('❌ Отсутствует property_id');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать property_id' 
+      });
+    }
+    
+    if (!bid_amount && bid_amount !== 0) {
+      console.error('❌ Отсутствует bid_amount');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать bid_amount' 
+      });
+    }
+    
+    // Проверяем типы данных
+    const userIdNum = parseInt(user_id);
+    const propertyIdNum = parseInt(property_id);
+    const bidAmountNum = parseFloat(bid_amount);
+    
+    if (isNaN(userIdNum) || userIdNum <= 0) {
+      console.error('❌ Некорректный user_id:', user_id);
+      return res.status(400).json({ 
+        success: false, 
+        error: `Некорректный user_id: ${user_id}` 
+      });
+    }
+    
+    if (isNaN(propertyIdNum) || propertyIdNum <= 0) {
+      console.error('❌ Некорректный property_id:', property_id);
+      return res.status(400).json({ 
+        success: false, 
+        error: `Некорректный property_id: ${property_id}` 
+      });
+    }
+    
+    if (isNaN(bidAmountNum) || bidAmountNum <= 0) {
+      console.error('❌ Некорректный bid_amount:', bid_amount);
+      return res.status(400).json({ 
+        success: false, 
+        error: `Некорректный bid_amount: ${bid_amount}` 
+      });
+    }
+    
+    console.log('✅ Валидация пройдена:', { userIdNum, propertyIdNum, bidAmountNum });
+    
+    // Проверяем и создаем таблицу bids, если её нет
+    try {
+      const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bids'").get();
+      if (!tableCheck) {
+        console.log('⚠️ Таблица bids не существует, создаем...');
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS bids (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            property_id INTEGER NOT NULL,
+            bid_amount REAL NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+          );
+          CREATE INDEX IF NOT EXISTS idx_bids_user_id ON bids(user_id);
+          CREATE INDEX IF NOT EXISTS idx_bids_property_id ON bids(property_id);
+          CREATE INDEX IF NOT EXISTS idx_bids_created_at ON bids(created_at);
+          CREATE INDEX IF NOT EXISTS idx_bids_user_property ON bids(user_id, property_id);
+        `);
+        console.log('✅ Таблица bids создана');
+      }
+    } catch (tableError) {
+      console.error('❌ Ошибка при проверке/создании таблицы bids:', tableError);
+    }
+    
+    // Проверяем, существует ли пользователь
+    const user = userQueries.getById(userIdNum);
+    if (!user) {
+      console.error(`❌ Пользователь с ID ${userIdNum} не найден в БД`);
+      return res.status(404).json({ success: false, error: `Пользователь с ID ${userIdNum} не найден` });
+    }
+    console.log('✅ Пользователь найден:', { id: user.id, name: `${user.first_name} ${user.last_name}` });
+    
+    // Проверяем, что у пользователя есть депозит
+    const depositAmount = user.deposit_amount || 0;
+    if (depositAmount <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Для участия в аукционе необходим депозит. Пожалуйста, пополните депозит.' 
+      });
+    }
+    
+    // Проверяем, существует ли объект недвижимости
+    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyIdNum);
+    if (!property) {
+      console.error(`❌ Объект недвижимости с ID ${propertyIdNum} не найден в БД`);
+      return res.status(404).json({ success: false, error: `Объект недвижимости с ID ${propertyIdNum} не найден` });
+    }
+    console.log('✅ Объект найден:', { id: property.id, title: property.title, is_auction: property.is_auction });
+    
+    // Проверяем, что это аукцион
+    if (property.is_auction !== 1) {
+      console.error('❌ Объект не является аукционом:', { id: property.id, is_auction: property.is_auction });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Этот объект не является аукционом' 
+      });
+    }
+    
+    // Проверяем, что пользователь может сделать ставку только в одном объекте
+    const existingBids = db.prepare(`
+      SELECT property_id FROM bids 
+      WHERE user_id = ? AND property_id != ?
+      LIMIT 1
+    `).get(userIdNum, propertyIdNum);
+    
+    if (existingBids) {
+      console.error(`❌ Пользователь ${userIdNum} уже сделал ставку в объекте ${existingBids.property_id}`);
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Вы уже сделали ставку в другом объекте. Вы можете сделать ставку только в одном объекте.' 
+      });
+    }
+    console.log('✅ Пользователь может сделать ставку в этом объекте');
+    
+    // Получаем текущую максимальную ставку для этого объекта
+    let currentMaxBid = property.auction_starting_price || property.price || 0;
+    try {
+      const maxBid = db.prepare(`
+        SELECT MAX(bid_amount) as max_bid 
+        FROM bids 
+        WHERE property_id = ?
+      `).get(propertyIdNum);
+      
+      if (maxBid && maxBid.max_bid) {
+        currentMaxBid = maxBid.max_bid;
+      }
+    } catch (bidError) {
+      console.warn('⚠️ Не удалось получить максимальную ставку:', bidError);
+    }
+    
+    // Вычисляем минимальную ставку
+    // Если есть поле auction_minimum_bid, используем его, иначе вычисляем как текущая ставка + 5%
+    let minimumBid = property.auction_minimum_bid;
+    if (!minimumBid || minimumBid <= 0) {
+      minimumBid = currentMaxBid + (currentMaxBid * 0.05); // 5% от текущей ставки
+    }
+    
+    console.log(`💰 Ставки: текущая максимальная=${currentMaxBid}, минимальная=${minimumBid}, предложенная=${bidAmountNum}`);
+    
+    // Проверяем, что ставка не меньше минимальной
+    if (bidAmountNum < minimumBid) {
+      console.error(`❌ Ставка ${bidAmountNum} меньше минимальной ${minimumBid}`);
+      return res.status(400).json({ 
+        success: false, 
+        error: `Ставка должна быть не меньше ${minimumBid.toFixed(2)}` 
+      });
+    }
+    console.log('✅ Ставка прошла проверку минимальной суммы');
+    
+    // Создаем ставку
+    const stmt = db.prepare(`
+      INSERT INTO bids (user_id, property_id, bid_amount, created_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+    const result = stmt.run(userIdNum, propertyIdNum, bidAmountNum);
+    const bidId = result.lastInsertRowid;
+    
+    console.log(`✅ Ставка создана с ID: ${bidId}, user_id: ${user_id}, property_id: ${property_id}, amount: ${bidAmountValue}`);
+    console.log(`📊 Результат INSERT: changes=${result.changes}, lastInsertRowid=${bidId}`);
+    
+    // Сразу проверяем, что ставка сохранилась
+    const verifyBid = db.prepare('SELECT * FROM bids WHERE id = ?').get(bidId);
+    if (!verifyBid) {
+      console.error(`❌ КРИТИЧЕСКАЯ ОШИБКА: Ставка не найдена в БД сразу после создания! ID: ${bidId}`);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Ставка не была сохранена в базу данных' 
+      });
+    }
+    
+    console.log(`✅ Ставка подтверждена в БД:`, verifyBid);
+    
+    // Проверяем общее количество ставок для этого объекта
+    const allBids = db.prepare('SELECT COUNT(*) as count FROM bids WHERE property_id = ?').get(property_id);
+    console.log(`📊 Всего ставок для объекта ${property_id}: ${allBids.count}`);
+    
+    // Обновляем минимальную ставку для объекта
+    // Если ставка больше минимальной - обновляем минимальную на: наша ставка + 5%
+    const newMaxBid = bidAmountValue;
+    let newMinimumBid = newMaxBid + (newMaxBid * 0.05);
+    
+    // Обновляем auction_minimum_bid в properties
+    try {
+      const updateStmt = db.prepare(`
+        UPDATE properties 
+        SET auction_minimum_bid = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+      `);
+      const updateResult = updateStmt.run(newMinimumBid, property_id);
+      console.log(`✅ Обновлена минимальная ставка для объекта ${property_id}: ${newMinimumBid} (changes: ${updateResult.changes})`);
+    } catch (updateError) {
+      // Если поле auction_minimum_bid не существует, пытаемся добавить его
+      console.warn('Не удалось обновить auction_minimum_bid, пытаемся добавить поле:', updateError.message);
+      try {
+        db.exec('ALTER TABLE properties ADD COLUMN auction_minimum_bid REAL');
+        const updateStmt2 = db.prepare(`
+          UPDATE properties 
+          SET auction_minimum_bid = ?, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `);
+        updateStmt2.run(newMinimumBid, property_id);
+        console.log(`✅ Поле auction_minimum_bid добавлено и обновлено для объекта ${property_id}`);
+      } catch (addError) {
+        console.warn('Не удалось добавить поле auction_minimum_bid:', addError.message);
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        bid_id: result.lastInsertRowid,
+        bid_amount: parseFloat(bid_amount),
+        minimum_bid: newMinimumBid
+      }
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при создании ставки:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Внутренняя ошибка сервера' 
+    });
+  }
+});
+
+/**
+ * GET /api/bids/property/:id - Получить историю ставок для объекта
+ */
+app.get('/api/bids/property/:id', (req, res) => {
+  try {
+    const propertyId = req.params.id;
+    const db = getDatabase();
+    
+    console.log(`📊 Запрос истории ставок для объекта ${propertyId}`);
+    
+    // Проверяем, существует ли таблица ставок
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bids'").get();
+    if (!tableExists) {
+      console.log('⚠️ Таблица bids не существует');
+      return res.json({ success: true, data: [] });
+    }
+    
+    const bids = db.prepare(`
+      SELECT 
+        b.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number
+      FROM bids b
+      LEFT JOIN users u ON b.user_id = u.id
+      WHERE b.property_id = ?
+      ORDER BY b.bid_amount DESC, b.created_at DESC
+    `).all(propertyId);
+    
+    console.log(`✅ Найдено ${bids.length} ставок для объекта ${propertyId}`);
+    
+    res.json({ success: true, data: bids });
+  } catch (error) {
+    console.error('❌ Ошибка при получении истории ставок:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/bids/user/:id - Получить ставки пользователя
+ */
+app.get('/api/bids/user/:id', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const db = getDatabase();
+    
+    // Проверяем, существует ли таблица ставок
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bids'").get();
+    if (!tableExists) {
+      return res.json({ success: true, data: [] });
+    }
+    
+    const bids = db.prepare(`
+      SELECT 
+        b.*,
+        p.title,
+        p.location,
+        p.price,
+        p.auction_starting_price,
+        p.auction_minimum_bid,
+        p.photos,
+        p.is_auction,
+        p.auction_end_date
+      FROM bids b
+      LEFT JOIN properties p ON b.property_id = p.id
+      WHERE b.user_id = ?
+      ORDER BY b.created_at DESC
+    `).all(userId);
+    
+    // Парсим JSON поля
+    const formattedBids = bids.map(bid => {
+      const formatted = { ...bid };
+      if (formatted.photos) {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      } else {
+        formatted.photos = [];
+      }
+      return formatted;
+    });
+    
+    res.json({ success: true, data: formattedBids });
+  } catch (error) {
+    console.error('Ошибка при получении ставок пользователя:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Обработка ошибок
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);

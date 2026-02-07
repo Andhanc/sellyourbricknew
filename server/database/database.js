@@ -490,6 +490,67 @@ export function initDatabase() {
       } catch (transactionsError) {
         console.warn('⚠️ Не удалось создать таблицу транзакций:', transactionsError.message);
       }
+
+      // Создаем таблицу ставок (bids), если её нет
+      try {
+        const bidsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bids'").get();
+        if (!bidsTable) {
+          console.log('🔄 Создание таблицы ставок...');
+          const bidsSql = readFileSync(join(__dirname, 'add_bids_table.sql'), 'utf8');
+          db.exec(bidsSql);
+          console.log('✅ Таблица ставок создана');
+        }
+      } catch (bidsError) {
+        // Если файл не найден, создаем таблицу напрямую
+        if (bidsError.code === 'ENOENT') {
+          try {
+            db.exec(`
+              CREATE TABLE IF NOT EXISTS bids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                property_id INTEGER NOT NULL,
+                bid_amount REAL NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+              );
+              CREATE INDEX IF NOT EXISTS idx_bids_user_id ON bids(user_id);
+              CREATE INDEX IF NOT EXISTS idx_bids_property_id ON bids(property_id);
+              CREATE INDEX IF NOT EXISTS idx_bids_created_at ON bids(created_at);
+              CREATE INDEX IF NOT EXISTS idx_bids_user_property ON bids(user_id, property_id);
+            `);
+            console.log('✅ Таблица ставок создана');
+          } catch (fallbackError) {
+            console.warn('⚠️ Не удалось создать таблицу ставок:', fallbackError.message);
+          }
+        } else {
+          console.warn('⚠️ Не удалось создать таблицу ставок:', bidsError.message);
+        }
+      }
+
+      // Проверяем и добавляем поле auction_minimum_bid в таблицу properties
+      try {
+        const propertiesTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='properties'").get();
+        if (propertiesTable) {
+          const pragmaInfo = db.prepare("PRAGMA table_info(properties)").all();
+          const hasAuctionMinimumBid = pragmaInfo.some(col => col.name === 'auction_minimum_bid');
+          
+          if (!hasAuctionMinimumBid) {
+            console.log('🔄 Обновление схемы БД: добавляем поле auction_minimum_bid...');
+            try {
+              db.exec('ALTER TABLE properties ADD COLUMN auction_minimum_bid REAL');
+              console.log('✅ Поле auction_minimum_bid добавлено в таблицу properties');
+            } catch (migrationError) {
+              // Игнорируем ошибки "duplicate column name" (поле уже существует)
+              if (!migrationError.message.includes('duplicate column name')) {
+                console.warn('⚠️ Не удалось добавить поле auction_minimum_bid:', migrationError.message);
+              }
+            }
+          }
+        }
+      } catch (auctionBidError) {
+        console.warn('⚠️ Не удалось проверить/добавить поле auction_minimum_bid:', auctionBidError.message);
+      }
     } catch (migrationError) {
       console.warn('⚠️ Не удалось обновить схему документов:', migrationError.message);
     }
