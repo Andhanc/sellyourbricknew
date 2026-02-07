@@ -34,8 +34,195 @@ const PropertyDetail = () => {
   const [bidAmount, setBidAmount] = useState('')
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
   const [userDeposit, setUserDeposit] = useState(0)
+  const [minimumBid, setMinimumBid] = useState(0)
+  const [currentBid, setCurrentBid] = useState(0)
+  const [isSubmittingBid, setIsSubmittingBid] = useState(false)
+  const [bidError, setBidError] = useState('')
+  const [bidHistoryRefresh, setBidHistoryRefresh] = useState(0)
   const userData = getUserData()
   const userId = userData?.id
+
+  // Функция для загрузки данных объекта
+  const loadPropertyData = async (propertyId) => {
+    if (!propertyId) return null
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          return result.data
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки объявления:', err)
+    }
+    return null
+  }
+
+  // Функция для обработки данных объекта
+  const processPropertyData = async (prop) => {
+    // Получаем базовый URL без /api
+    const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
+    
+    // Обрабатываем фотографии
+    let processedImages = []
+    if (prop.photos && Array.isArray(prop.photos) && prop.photos.length > 0) {
+      processedImages = prop.photos.map(photo => {
+        if (typeof photo === 'string') {
+          const photoStr = photo.trim()
+          if (photoStr.startsWith('data:')) return photoStr
+          else if (photoStr.startsWith('http://') || photoStr.startsWith('https://')) return photoStr
+          else if (photoStr.startsWith('/uploads/')) return `${baseUrl}${photoStr}`
+          else if (photoStr.startsWith('uploads/')) return `${baseUrl}/${photoStr}`
+          else return `${baseUrl}/uploads/${photoStr}`
+        } else if (photo && typeof photo === 'object' && photo.url) {
+          const photoUrl = String(photo.url).trim()
+          if (photoUrl.startsWith('data:')) return photoUrl
+          else if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl
+          else if (photoUrl.startsWith('/uploads/')) return `${baseUrl}${photoUrl}`
+          else if (photoUrl.startsWith('uploads/')) return `${baseUrl}/${photoUrl}`
+          else return `${baseUrl}/uploads/${photoUrl}`
+        }
+        return photo
+      })
+    }
+    if (processedImages.length === 0) {
+      processedImages = ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80']
+    }
+    
+    // Обрабатываем видео
+    let processedVideos = []
+    if (prop.videos && Array.isArray(prop.videos) && prop.videos.length > 0) {
+      processedVideos = prop.videos.map(video => {
+        if (typeof video === 'string') {
+          const youtubeMatch = video.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
+          if (youtubeMatch) {
+            return {
+              type: 'youtube',
+              videoId: youtubeMatch[1],
+              url: video
+            }
+          }
+          const driveMatch = video.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
+          if (driveMatch) {
+            return {
+              type: 'googledrive',
+              videoId: driveMatch[1],
+              url: video
+            }
+          }
+          return {
+            type: 'file',
+            url: video
+          }
+        } else if (video && typeof video === 'object') {
+          return video
+        }
+        return video
+      })
+    }
+    
+    // Обрабатываем координаты
+    let coordinates = [28.1000, -16.7200]
+    if (prop.coordinates) {
+      try {
+        if (typeof prop.coordinates === 'string') {
+          const parsed = JSON.parse(prop.coordinates)
+          if (Array.isArray(parsed) && parsed.length >= 2) {
+            coordinates = [parseFloat(parsed[0]), parseFloat(parsed[1])]
+          }
+        } else if (Array.isArray(prop.coordinates) && prop.coordinates.length >= 2) {
+          coordinates = [parseFloat(prop.coordinates[0]), parseFloat(prop.coordinates[1])]
+        }
+      } catch (e) {
+        console.warn('Ошибка парсинга coordinates:', e)
+      }
+    }
+    
+      // Получаем текущую максимальную ставку
+      // Сначала показываем стартовую цену, если есть ставки - показываем максимальную ставку
+      let currentMaxBid = prop.auction_starting_price || prop.price || 0
+      let minBid = prop.auction_minimum_bid || (currentMaxBid + (currentMaxBid * 0.05))
+      
+      // Загружаем ставки для этого объекта, чтобы получить актуальную максимальную ставку
+      try {
+        const bidsResponse = await fetch(`${API_BASE_URL}/bids/property/${prop.id}`)
+        if (bidsResponse.ok) {
+          const bidsData = await bidsResponse.json()
+          if (bidsData.success && bidsData.data && bidsData.data.length > 0) {
+            // Если есть ставки - показываем максимальную ставку
+            const maxBid = Math.max(...bidsData.data.map(b => b.bid_amount))
+            currentMaxBid = maxBid
+            console.log(`✅ Найдены ставки, текущая максимальная: ${currentMaxBid}`)
+          } else {
+            // Если ставок нет - показываем стартовую цену
+            console.log(`📊 Ставок нет, показываем стартовую цену: ${currentMaxBid}`)
+          }
+          // Обновляем минимальную ставку на основе актуальных данных
+          minBid = prop.auction_minimum_bid || (currentMaxBid + (currentMaxBid * 0.05))
+        }
+      } catch (bidsError) {
+        console.warn('Не удалось загрузить ставки:', bidsError)
+      }
+    
+    const formattedProperty = {
+      id: prop.id,
+      title: prop.title,
+      name: prop.title,
+      description: prop.description || '',
+      location: prop.location || '',
+      price: prop.price || 0,
+      currentBid: currentMaxBid,
+      area: prop.area || 0,
+      sqft: prop.area || 0,
+      rooms: prop.rooms || 0,
+      beds: prop.bedrooms || prop.rooms || 0,
+      bathrooms: prop.bathrooms || 0,
+      floor: prop.floor || null,
+      total_floors: prop.total_floors || null,
+      year_built: prop.year_built || null,
+      property_type: prop.property_type || 'apartment',
+      coordinates: coordinates,
+      images: processedImages,
+      videos: processedVideos,
+      balcony: prop.balcony === 1,
+      parking: prop.parking === 1,
+      elevator: prop.elevator === 1,
+      land_area: prop.land_area || null,
+      garage: prop.garage === 1,
+      pool: prop.pool === 1,
+      garden: prop.garden === 1,
+      renovation: prop.renovation || null,
+      condition: prop.condition || null,
+      heating: prop.heating || null,
+      water_supply: prop.water_supply || null,
+      sewerage: prop.sewerage || null,
+      electricity: prop.electricity === 1,
+      internet: prop.internet === 1,
+      security: prop.security === 1,
+      furniture: prop.furniture === 1,
+      commercial_type: prop.commercial_type || null,
+      business_hours: prop.business_hours || null,
+      currency: prop.currency || 'USD',
+      is_auction: prop.is_auction === 1 || prop.is_auction === true,
+      auction_start_date: prop.auction_start_date || null,
+      auction_end_date: prop.auction_end_date || null,
+      auction_starting_price: prop.auction_starting_price || null,
+      auction_minimum_bid: prop.auction_minimum_bid || null,
+      endTime: prop.auction_end_date || null,
+      additional_amenities: prop.additional_amenities || null,
+      seller: prop.first_name && prop.last_name 
+        ? `${prop.first_name} ${prop.last_name}` 
+        : 'Продавец',
+    }
+    
+    setProperty(formattedProperty)
+    setCurrentBid(currentMaxBid)
+    setMinimumBid(minBid)
+    
+    return formattedProperty
+  }
 
   // Загружаем данные объявления
   useEffect(() => {
@@ -45,6 +232,11 @@ const PropertyDetail = () => {
       if (propertyFromState) {
         setProperty(propertyFromState)
         setIsLoading(false)
+        // Загружаем актуальные данные с сервера в фоне
+        const prop = await loadPropertyData(propertyFromState.id)
+        if (prop) {
+          processPropertyData(prop)
+        }
         return
       }
 
@@ -52,147 +244,9 @@ const PropertyDetail = () => {
       if (id) {
         try {
           setIsLoading(true)
-          const response = await fetch(`${API_BASE_URL}/properties/${id}`)
-          if (response.ok) {
-            const result = await response.json()
-            if (result.success && result.data) {
-              const prop = result.data
-              
-              // Получаем базовый URL без /api
-              const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
-              
-              // Обрабатываем фотографии
-              let processedImages = []
-              if (prop.photos && Array.isArray(prop.photos) && prop.photos.length > 0) {
-                processedImages = prop.photos.map(photo => {
-                  if (typeof photo === 'string') {
-                    const photoStr = photo.trim()
-                    if (photoStr.startsWith('data:')) return photoStr
-                    else if (photoStr.startsWith('http://') || photoStr.startsWith('https://')) return photoStr
-                    else if (photoStr.startsWith('/uploads/')) return `${baseUrl}${photoStr}`
-                    else if (photoStr.startsWith('uploads/')) return `${baseUrl}/${photoStr}`
-                    else return `${baseUrl}/uploads/${photoStr}`
-                  } else if (photo && typeof photo === 'object' && photo.url) {
-                    const photoUrl = String(photo.url).trim()
-                    if (photoUrl.startsWith('data:')) return photoUrl
-                    else if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl
-                    else if (photoUrl.startsWith('/uploads/')) return `${baseUrl}${photoUrl}`
-                    else if (photoUrl.startsWith('uploads/')) return `${baseUrl}/${photoUrl}`
-                    else return `${baseUrl}/uploads/${photoUrl}`
-                  }
-                  return photo
-                })
-              }
-              if (processedImages.length === 0) {
-                processedImages = ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80']
-              }
-              
-              // Обрабатываем видео
-              let processedVideos = []
-              if (prop.videos && Array.isArray(prop.videos) && prop.videos.length > 0) {
-                processedVideos = prop.videos.map(video => {
-                  // Если видео - строка, пытаемся определить тип
-                  if (typeof video === 'string') {
-                    // Проверяем, является ли это YouTube URL
-                    const youtubeMatch = video.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
-                    if (youtubeMatch) {
-                      return {
-                        type: 'youtube',
-                        videoId: youtubeMatch[1],
-                        url: video
-                      }
-                    }
-                    // Проверяем, является ли это Google Drive URL
-                    const driveMatch = video.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
-                    if (driveMatch) {
-                      return {
-                        type: 'googledrive',
-                        videoId: driveMatch[1],
-                        url: video
-                      }
-                    }
-                    // Иначе считаем обычным URL
-                    return {
-                      type: 'file',
-                      url: video
-                    }
-                  } else if (video && typeof video === 'object') {
-                    // Если видео - объект, используем его как есть
-                    return video
-                  }
-                  return video
-                })
-              }
-              
-              // Обрабатываем координаты
-              let coordinates = [28.1000, -16.7200]
-              if (prop.coordinates) {
-                try {
-                  if (typeof prop.coordinates === 'string') {
-                    const parsed = JSON.parse(prop.coordinates)
-                    if (Array.isArray(parsed) && parsed.length >= 2) {
-                      coordinates = [parseFloat(parsed[0]), parseFloat(parsed[1])]
-                    }
-                  } else if (Array.isArray(prop.coordinates) && prop.coordinates.length >= 2) {
-                    coordinates = [parseFloat(prop.coordinates[0]), parseFloat(prop.coordinates[1])]
-                  }
-                } catch (e) {
-                  console.warn('Ошибка парсинга coordinates:', e)
-                }
-              }
-              
-              const formattedProperty = {
-                id: prop.id,
-                title: prop.title,
-                name: prop.title,
-                description: prop.description || '',
-                location: prop.location || '',
-                price: prop.price || 0,
-                currentBid: prop.price || 0,
-                area: prop.area || 0,
-                sqft: prop.area || 0,
-                rooms: prop.rooms || 0,
-                beds: prop.bedrooms || prop.rooms || 0,
-                bathrooms: prop.bathrooms || 0,
-                floor: prop.floor || null,
-                total_floors: prop.total_floors || null,
-                year_built: prop.year_built || null,
-                property_type: prop.property_type || 'apartment',
-                coordinates: coordinates,
-                images: processedImages,
-                videos: processedVideos,
-                balcony: prop.balcony === 1,
-                parking: prop.parking === 1,
-                elevator: prop.elevator === 1,
-                land_area: prop.land_area || null,
-                garage: prop.garage === 1,
-                pool: prop.pool === 1,
-                garden: prop.garden === 1,
-                renovation: prop.renovation || null,
-                condition: prop.condition || null,
-                heating: prop.heating || null,
-                water_supply: prop.water_supply || null,
-                sewerage: prop.sewerage || null,
-                electricity: prop.electricity === 1,
-                internet: prop.internet === 1,
-                security: prop.security === 1,
-                furniture: prop.furniture === 1,
-                commercial_type: prop.commercial_type || null,
-                business_hours: prop.business_hours || null,
-                currency: prop.currency || 'USD',
-                is_auction: prop.is_auction === 1 || prop.is_auction === true,
-                auction_start_date: prop.auction_start_date || null,
-                auction_end_date: prop.auction_end_date || null,
-                auction_starting_price: prop.auction_starting_price || null,
-                endTime: prop.auction_end_date || null,
-                additional_amenities: prop.additional_amenities || null,
-                seller: prop.first_name && prop.last_name 
-                  ? `${prop.first_name} ${prop.last_name}` 
-                  : 'Продавец',
-              }
-              
-              setProperty(formattedProperty)
-            }
+          const prop = await loadPropertyData(id)
+          if (prop) {
+            await processPropertyData(prop)
           }
         } catch (err) {
           console.error('Ошибка загрузки объявления:', err)
@@ -206,6 +260,27 @@ const PropertyDetail = () => {
 
     loadProperty()
   }, [id, location.state])
+
+  // Функция для загрузки депозита пользователя
+  const loadUserDeposit = async () => {
+    if (!userId) {
+      setUserDeposit(0)
+      return
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setUserDeposit(data.data.depositAmount || 0)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки депозита:', error)
+      setUserDeposit(0)
+    }
+  }
 
   // Нормализуем данные объекта для совместимости с разными форматами
   const normalizedProperty = property ? {
@@ -238,31 +313,48 @@ const PropertyDetail = () => {
 
   // Загружаем депозит пользователя
   useEffect(() => {
-    const loadUserDeposit = async () => {
-      if (!userId) {
-        setUserDeposit(0)
-        return
-      }
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
-            setUserDeposit(data.data.depositAmount || 0)
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки депозита:', error)
-        setUserDeposit(0)
-      }
-    }
-    
     loadUserDeposit()
     // Обновляем каждые 5 секунд для актуальности данных
     const interval = setInterval(loadUserDeposit, 5000)
     return () => clearInterval(interval)
   }, [userId])
+
+  // Периодическое обновление данных объекта (ставки, текущая ставка)
+  useEffect(() => {
+    if (!normalizedProperty?.id || !normalizedProperty?.is_auction) return
+    
+    const updateBids = async () => {
+      try {
+        // Загружаем актуальные ставки
+        const bidsResponse = await fetch(`${API_BASE_URL}/bids/property/${normalizedProperty.id}`)
+        if (bidsResponse.ok) {
+          const bidsData = await bidsResponse.json()
+          if (bidsData.success && bidsData.data && bidsData.data.length > 0) {
+            const maxBid = Math.max(...bidsData.data.map(b => b.bid_amount))
+            if (maxBid !== currentBid) {
+              setCurrentBid(maxBid)
+              setProperty({
+                ...normalizedProperty,
+                currentBid: maxBid
+              })
+              // Обновляем минимальную ставку
+              const prop = await loadPropertyData(normalizedProperty.id)
+              if (prop) {
+                const newMinBid = prop.auction_minimum_bid || (maxBid + (maxBid * 0.05))
+                setMinimumBid(newMinBid)
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка обновления ставок:', error)
+      }
+    }
+    
+    // Обновляем каждые 3 секунды
+    const interval = setInterval(updateBids, 3000)
+    return () => clearInterval(interval)
+  }, [normalizedProperty?.id, normalizedProperty?.is_auction, currentBid])
 
   if (isLoading) {
     return (
@@ -306,13 +398,125 @@ const PropertyDetail = () => {
     return `$${price.toLocaleString('en-US')}`
   }
 
-  const handleBid = (e) => {
+  const handleBid = async (e) => {
     e.preventDefault()
-    if (bidAmount && parseFloat(bidAmount) > normalizedProperty.currentBid) {
-      alert(`Ставка ${formatPrice(parseFloat(bidAmount))} принята!`)
-      setBidAmount('')
-    } else {
-      alert('Ставка должна быть выше текущей!')
+    setBidError('')
+    
+    if (!userId) {
+      setBidError('Необходимо войти в систему')
+      return
+    }
+    
+    if (!bidAmount || parseFloat(bidAmount) <= 0) {
+      setBidError('Введите сумму ставки')
+      return
+    }
+    
+    const bidAmountNum = parseFloat(bidAmount)
+    
+    // Проверяем минимальную ставку
+    if (bidAmountNum < minimumBid) {
+      setBidError(`Ставка должна быть не меньше ${formatPrice(minimumBid)}`)
+      return
+    }
+    
+    // Проверяем депозит
+    if (userDeposit <= 0) {
+      setBidError('Для участия в аукционе необходим депозит. Пожалуйста, пополните депозит.')
+      return
+    }
+    
+    setIsSubmittingBid(true)
+    
+    const requestData = {
+      user_id: parseInt(userId),
+      property_id: parseInt(normalizedProperty.id),
+      bid_amount: parseFloat(bidAmountNum)
+    }
+    
+    console.log('📤 Отправка ставки:', requestData)
+    console.log('📤 Типы данных:', {
+      user_id: typeof requestData.user_id,
+      property_id: typeof requestData.property_id,
+      bid_amount: typeof requestData.bid_amount
+    })
+    console.log('📤 API_BASE_URL:', API_BASE_URL)
+    console.log('📤 Полный URL:', `${API_BASE_URL}/bids`)
+    console.log('📤 userId:', userId, '->', requestData.user_id)
+    console.log('📤 property_id:', normalizedProperty.id, '->', requestData.property_id)
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/bids`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      })
+      
+      console.log('📥 Ответ сервера:', response.status, response.statusText)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Ошибка HTTP:', response.status, errorText)
+        setBidError(`Ошибка сервера: ${response.status}`)
+        setIsSubmittingBid(false)
+        return
+      }
+      
+      const data = await response.json()
+      console.log('📥 Данные ответа:', data)
+      
+      if (data.success) {
+        console.log('✅ Ставка успешно создана на сервере:', data)
+        setBidAmount('')
+        setBidError('')
+        
+        // Сразу обновляем историю ставок
+        setBidHistoryRefresh(prev => prev + 1)
+        
+        // Перезагружаем данные объекта с сервера для получения актуальной информации
+        try {
+          const prop = await loadPropertyData(normalizedProperty.id)
+          if (prop) {
+            await processPropertyData(prop)
+            console.log('✅ Данные объекта обновлены')
+          }
+        } catch (err) {
+          console.error('Ошибка обновления данных объекта:', err)
+        }
+        
+        // Обновляем депозит
+        await loadUserDeposit()
+        
+        // Показываем успешное сообщение
+        alert(`Ставка ${formatPrice(bidAmountNum)} успешно принята!`)
+        
+        // Перезагружаем данные и историю через небольшую задержку для гарантии
+        setTimeout(async () => {
+          try {
+            const prop = await loadPropertyData(normalizedProperty.id)
+            if (prop) {
+              await processPropertyData(prop)
+            }
+            // Еще раз обновляем историю
+            setBidHistoryRefresh(prev => prev + 1)
+            console.log('✅ Повторное обновление данных выполнено')
+          } catch (err) {
+            console.error('Ошибка повторного обновления:', err)
+          }
+        }, 1500)
+      } else {
+        console.error('❌ Ошибка создания ставки:', data)
+        setBidError(data.error || 'Ошибка при создании ставки')
+        alert(`Ошибка: ${data.error || 'Ошибка при создании ставки'}`)
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при создании ставки:', error)
+      setBidError('Ошибка при создании ставки. Попробуйте позже.')
+      alert(`Ошибка сети: ${error.message}`)
+    } finally {
+      setIsSubmittingBid(false)
     }
   }
 
@@ -639,7 +843,7 @@ const PropertyDetail = () => {
 
               <div className="current-bid glass-panel">
                 <div className="bid-label">Текущая ставка</div>
-                <div className="bid-amount">{formatPrice(normalizedProperty.currentBid)}</div>
+                <div className="bid-amount">{formatPrice(currentBid || normalizedProperty.currentBid)}</div>
               </div>
 
               <form onSubmit={handleBid} className="bid-form">
@@ -648,14 +852,27 @@ const PropertyDetail = () => {
                   <input
                     type="number"
                     value={bidAmount}
-                    onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder={`Минимум ${formatPrice(normalizedProperty.currentBid + (normalizedProperty.currentBid * 0.05))}`}
-                    min={normalizedProperty.currentBid + (normalizedProperty.currentBid * 0.05)}
+                    onChange={(e) => {
+                      setBidAmount(e.target.value)
+                      setBidError('')
+                    }}
+                    placeholder={`Минимум ${formatPrice(minimumBid || (normalizedProperty.currentBid + (normalizedProperty.currentBid * 0.05)))}`}
+                    min={minimumBid || (normalizedProperty.currentBid + (normalizedProperty.currentBid * 0.05))}
                     step="1000"
+                    disabled={isSubmittingBid}
                   />
+                  {bidError && (
+                    <div className="bid-error" style={{ color: 'red', fontSize: '12px', marginTop: '5px' }}>
+                      {bidError}
+                    </div>
+                  )}
                 </div>
-                <button type="submit" className="btn btn-bid glass-button">
-                  Сделать ставку сейчас
+                <button 
+                  type="submit" 
+                  className="btn btn-bid glass-button"
+                  disabled={isSubmittingBid}
+                >
+                  {isSubmittingBid ? 'Отправка...' : 'Сделать ставку сейчас'}
                 </button>
               </form>
 
@@ -694,6 +911,7 @@ const PropertyDetail = () => {
       <BiddingHistoryModal
         isOpen={isBidHistoryOpen}
         onClose={() => setIsBidHistoryOpen(false)}
+        refreshTrigger={bidHistoryRefresh}
         property={{
           id: normalizedProperty.id,
           title: normalizedProperty.title,

@@ -8,6 +8,9 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiFileText,
+  FiUser,
+  FiClock,
+  FiArrowUp,
 } from 'react-icons/fi'
 import { FaHeart as FaHeartSolid } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
@@ -16,6 +19,7 @@ import PropertyTimer from '../components/PropertyTimer'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
 import BuyNowModal from '../components/BuyNowModal'
 import LocationMap from '../components/LocationMap'
+import { showToast } from '../components/ToastContainer'
 import './PropertyDetailClassic.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -33,6 +37,25 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
   const [isSubmittingBid, setIsSubmittingBid] = useState(false)
+  const [currentBid, setCurrentBid] = useState(null)
+  const [recentBids, setRecentBids] = useState([])
+  const [userLastBid, setUserLastBid] = useState(null) // Последняя ставка пользователя
+  const [bidOutbidShown, setBidOutbidShown] = useState(false) // Флаг, что уведомление о перебитии уже показано
+  const [previousLeaderId, setPreviousLeaderId] = useState(null) // ID предыдущего лидера (кто делал максимальную ставку)
+  const [priceAnimation, setPriceAnimation] = useState(false) // Флаг для анимации изменения цены
+  const [prevBid, setPrevBid] = useState(null) // Предыдущая ставка для сравнения
+  
+  // Отслеживаем изменения currentBid и запускаем анимацию при росте
+  useEffect(() => {
+    if (currentBid !== null && prevBid !== null && currentBid > prevBid) {
+      console.log('🎬 Запуск анимации цены:', { prevBid, currentBid })
+      setPriceAnimation(true)
+      const timer = setTimeout(() => {
+        setPriceAnimation(false)
+      }, 2000) // Анимация длится 2 секунды
+      return () => clearTimeout(timer)
+    }
+  }, [currentBid, prevBid])
 
   // Функция для обработки URL документа
   const processDocumentUrl = (docUrl) => {
@@ -187,6 +210,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
 
     geocodeAddress()
   }, [property.location, property.address, coordinates])
+
 
   // Используем геокодированные координаты или исходные
   const finalCoordinates = mapCoordinates || coordinates
@@ -367,6 +391,161 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     displayProperty.auction_end_date ||
     null
 
+  // Загружаем ставки для аукционных объектов и обновляем текущую ставку
+  useEffect(() => {
+    if (!isAuctionProperty || !displayProperty.id) return
+
+    const loadBids = async () => {
+      try {
+        // Получаем userId для проверки ставок пользователя
+        const isClerkAuth = user && userLoaded
+        const isOldAuth = isAuthenticated()
+        
+        let userId = null
+        if (isClerkAuth && user) {
+          const savedUserId = localStorage.getItem('userId')
+          if (savedUserId && /^\d+$/.test(savedUserId)) {
+            userId = parseInt(savedUserId)
+          } else {
+            // Пытаемся получить из БД по email
+            try {
+              const userEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress
+              if (userEmail) {
+                const userResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail)}`)
+                if (userResponse.ok) {
+                  const userData = await userResponse.json()
+                  if (userData.success && userData.data && userData.data.id) {
+                    userId = userData.data.id
+                    localStorage.setItem('userId', String(userId))
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('Не удалось получить userId:', e)
+            }
+          }
+        } else if (isOldAuth) {
+          const { getUserData } = await import('../services/authService')
+          const userData = getUserData()
+          userId = userData?.id
+        }
+
+        const response = await fetch(`${API_BASE_URL}/bids/property/${displayProperty.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data && data.data.length > 0) {
+            // Сортируем ставки по убыванию суммы и дате
+            const sortedBids = [...data.data].sort((a, b) => {
+              if (b.bid_amount !== a.bid_amount) {
+                return b.bid_amount - a.bid_amount
+              }
+              return new Date(b.created_at) - new Date(a.created_at)
+            })
+            
+            // Если есть ставки - показываем максимальную ставку
+            const maxBid = sortedBids[0].bid_amount
+            const currentLeaderId = sortedBids[0].user_id // ID текущего лидера (кто сделал максимальную ставку)
+            const prevMaxBid = currentBid
+            
+            // Проверяем, изменился ли лидер
+            // Если предыдущий лидер был текущий пользователь, а теперь лидер - другой, значит ставку перебили
+            if (userId && previousLeaderId !== null && previousLeaderId === userId && currentLeaderId !== userId && !bidOutbidShown) {
+              // Предыдущий лидер был текущий пользователь, а теперь лидер - другой
+              // Значит ставку пользователя перебили
+              console.log('🚨 Ставка перебита!', {
+                previousLeaderId,
+                currentLeaderId,
+                userId,
+                maxBid,
+                prevMaxBid,
+                bidOutbidShown
+              })
+              showToast(`Вашу ставку перебили! Текущая максимальная ставка: ${maxBid.toLocaleString('ru-RU')}`, 'warning', 5000)
+              setBidOutbidShown(true)
+            }
+            
+            // Обновляем ID текущего лидера (после проверки перебития)
+            setPreviousLeaderId(currentLeaderId)
+            
+            setCurrentBid(prev => {
+              if (prev !== maxBid) {
+                setPrevBid(prev !== null ? prev : maxBid)
+                return maxBid
+              }
+              return prev
+            })
+            
+            // Обновляем userLastBid для отслеживания ставок пользователя
+            if (userId) {
+              const userBids = data.data.filter(b => b.user_id === userId)
+              if (userBids.length > 0) {
+                const userMaxBid = Math.max(...userBids.map(b => b.bid_amount))
+                // Если пользователь сделал новую ставку (стал лидером), сбрасываем флаг
+                if (currentLeaderId === userId) {
+                  setBidOutbidShown(false)
+                }
+                setUserLastBid(userMaxBid)
+              } else {
+                if (userLastBid !== null) {
+                  setUserLastBid(null)
+                  setBidOutbidShown(false)
+                }
+              }
+            }
+            
+            // Сохраняем последние две ставки (сортируем по дате для отображения последних)
+            const sortedByDate = [...data.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            const newRecentBids = sortedByDate.slice(0, 2)
+            setRecentBids(prev => {
+              const prevStr = JSON.stringify(prev)
+              const newStr = JSON.stringify(newRecentBids)
+              if (prevStr !== newStr) {
+                return newRecentBids
+              }
+              return prev
+            })
+          } else {
+            // Если ставок нет - показываем стартовую цену
+            const startingPrice = displayProperty.auction_starting_price || 0
+            setCurrentBid(prev => {
+              if (prev !== startingPrice) {
+                return startingPrice
+              }
+              return prev
+            })
+            setRecentBids(prev => {
+              if (prev.length > 0) {
+                return []
+              }
+              return prev
+            })
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка загрузки ставок:', error)
+        // В случае ошибки показываем стартовую цену
+        const startingPrice = displayProperty.auction_starting_price || 0
+        setCurrentBid(prev => {
+          if (prev !== startingPrice) {
+            return startingPrice
+          }
+          return prev
+        })
+        setRecentBids(prev => {
+          if (prev.length > 0) {
+            return []
+          }
+          return prev
+        })
+      }
+    }
+
+    loadBids()
+    // Обновляем каждые 3 секунды
+    const interval = setInterval(loadBids, 3000)
+    return () => clearInterval(interval)
+  }, [displayProperty.id, isAuctionProperty, displayProperty.auction_starting_price])
+
   const handleToggleFavorite = () => {
     // Проверяем авторизацию через Clerk или старую систему
     const isClerkAuth = user && userLoaded
@@ -374,7 +553,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     
     // Разрешаем удаление из избранного без авторизации, но добавление требует авторизации
     if (!isFavorite && !isClerkAuth && !isOldAuth) {
-      alert('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное')
+      showToast('Пожалуйста, войдите в систему, чтобы добавлять объявления в избранное', 'warning')
       return
     }
     
@@ -399,7 +578,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     const isOldAuth = isAuthenticated()
     
     if (!isClerkAuth && !isOldAuth) {
-      alert('Пожалуйста, войдите в систему, чтобы купить объект')
+      showToast('Пожалуйста, войдите в систему, чтобы купить объект', 'warning')
       return
     }
     
@@ -408,14 +587,33 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   }
 
   const handleQuickBid = (amount) => {
+    // Используем текущую максимальную ставку (currentBid), которая обновляется динамически
+    // Если currentBid еще не загружен, используем значение из displayProperty или стартовую цену
     const startingPrice = displayProperty.auction_starting_price || 0
-    const currentBid = displayProperty.currentBid || startingPrice
+    const effectiveCurrentBid = currentBid !== null ? currentBid : (displayProperty.currentBid || startingPrice)
     
-    // Если пользователь уже ввел сумму, добавляем к ней, иначе к текущей ставке
+    // Если пользователь уже ввел сумму в поле, используем её как базу
+    // Иначе используем текущую максимальную ставку
     const currentInput = parseFloat(bidAmount) || 0
-    const baseAmount = currentInput > currentBid ? currentInput : currentBid
+    
+    // Базой должна быть либо введенная пользователем сумма (если она больше текущей ставки),
+    // либо текущая максимальная ставка
+    let baseAmount = effectiveCurrentBid
+    if (currentInput > 0 && currentInput > effectiveCurrentBid) {
+      baseAmount = currentInput
+    }
+    
+    // Добавляем значение кнопки к базовой сумме
     const quickBidAmount = baseAmount + amount
     setBidAmount(quickBidAmount.toString())
+    
+    console.log('🔢 handleQuickBid:', {
+      amount,
+      currentInput,
+      effectiveCurrentBid,
+      baseAmount,
+      quickBidAmount
+    })
   }
 
   const handleBidSubmit = async () => {
@@ -424,42 +622,206 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     const isOldAuth = isAuthenticated()
     
     if (!isClerkAuth && !isOldAuth) {
-      alert('Пожалуйста, войдите в систему, чтобы сделать ставку')
+      showToast('Пожалуйста, войдите в систему, чтобы сделать ставку', 'warning')
       return
     }
 
     const amount = parseFloat(bidAmount)
     if (!amount || isNaN(amount) || amount <= 0) {
-      alert('Пожалуйста, введите корректную сумму ставки')
+      showToast('Пожалуйста, введите корректную сумму ставки', 'error')
       return
     }
 
+    // Используем текущую максимальную ставку для проверки
     const startingPrice = displayProperty.auction_starting_price || 0
-    const currentBid = displayProperty.currentBid || startingPrice
+    const effectiveCurrentBid = currentBid !== null ? currentBid : (displayProperty.currentBid || startingPrice)
     
-    if (amount <= currentBid) {
-      alert(`Ваша ставка должна быть выше текущей ставки (${currentBid.toLocaleString('ru-RU')})`)
+    console.log('📤 handleBidSubmit:', {
+      bidAmount,
+      amount,
+      currentBid,
+      effectiveCurrentBid,
+      startingPrice
+    })
+    
+    if (amount <= effectiveCurrentBid) {
+      showToast(`Ваша ставка должна быть выше текущей ставки (${effectiveCurrentBid.toLocaleString('ru-RU')})`, 'error')
       return
     }
 
     setIsSubmittingBid(true)
+    
     try {
-      // Здесь будет API запрос для отправки ставки
-      // const response = await fetch(`${API_BASE_URL}/bids`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     propertyId: displayProperty.id,
-      //     amount: amount
-      //   })
-      // })
+      // Получаем user_id
+      let userId = null
       
-      // Пока что просто показываем сообщение
-      alert(`Ставка ${amount.toLocaleString('ru-RU')} ${displayProperty.currency || 'USD'} успешно отправлена!`)
-      setBidAmount('')
+      if (isClerkAuth && user) {
+        // Для Clerk - получаем внутренний user_id из БД
+        // Сначала проверяем localStorage
+        const savedUserId = localStorage.getItem('userId')
+        if (savedUserId && /^\d+$/.test(savedUserId)) {
+          userId = parseInt(savedUserId)
+          console.log('📋 Используем user_id из localStorage:', userId)
+        } else {
+          // Пытаемся получить из БД по email или phone
+          try {
+            const userEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress
+            if (userEmail) {
+              const userResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail)}`)
+              if (userResponse.ok) {
+                const userData = await userResponse.json()
+                if (userData.success && userData.data && userData.data.id) {
+                  userId = userData.data.id
+                  localStorage.setItem('userId', String(userId))
+                  console.log('✅ Найден user_id по email:', userId)
+                }
+              }
+            }
+            
+            // Если не нашли по email, пробуем по телефону
+            if (!userId) {
+              const userPhone = user.primaryPhoneNumber?.phoneNumber || user.phoneNumbers?.[0]?.phoneNumber
+              if (userPhone) {
+                const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${encodeURIComponent(userPhone)}`)
+                if (phoneResponse.ok) {
+                  const phoneData = await phoneResponse.json()
+                  if (phoneData.success && phoneData.data && phoneData.data.id) {
+                    userId = phoneData.data.id
+                    localStorage.setItem('userId', String(userId))
+                    console.log('✅ Найден user_id по телефону:', userId)
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ Не удалось получить user_id из БД:', e)
+          }
+        }
+      } else if (isOldAuth) {
+        // Для старой системы авторизации
+        const { getUserData } = await import('../services/authService')
+        const userData = getUserData()
+        userId = userData?.id
+        console.log('📋 Используем user_id из старой системы:', userId)
+      }
+      
+      if (!userId) {
+        console.error('❌ Не удалось определить user_id')
+        showToast('Не удалось определить пользователя. Пожалуйста, войдите в систему.', 'error')
+        setIsSubmittingBid(false)
+        return
+      }
+      
+      console.log('✅ Используем user_id:', userId)
+
+      const requestBody = {
+        user_id: parseInt(userId),
+        property_id: parseInt(displayProperty.id),
+        bid_amount: parseFloat(amount)
+      }
+      
+      console.log('📤 Отправка ставки:', requestBody)
+      console.log('📤 Типы данных:', {
+        user_id: typeof requestBody.user_id,
+        property_id: typeof requestBody.property_id,
+        bid_amount: typeof requestBody.bid_amount
+      })
+      console.log('📤 URL:', `${API_BASE_URL}/bids`)
+      
+      // Отправляем ставку на сервер
+      const response = await fetch(`${API_BASE_URL}/bids`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(requestBody)
+      })
+      
+      console.log('📥 Ответ сервера:', response.status, response.statusText)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Ошибка HTTP:', response.status, errorText)
+        let errorMessage = `Ошибка сервера: ${response.status}`
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch (e) {
+          // Используем стандартное сообщение
+        }
+        showToast(errorMessage, 'error')
+        setIsSubmittingBid(false)
+        return
+      }
+      
+      const data = await response.json()
+      console.log('📥 Данные ответа:', data)
+      
+      if (data.success) {
+        console.log('✅ Ставка успешно создана на сервере:', data)
+        setBidAmount('')
+        
+        // Сохраняем ставку пользователя для проверки перебития
+        setUserLastBid(amount)
+        setBidOutbidShown(false) // Сбрасываем флаг при новой ставке
+        // После успешной ставки пользователь становится лидером
+        setPreviousLeaderId(userId)
+        
+        // Обновляем текущую ставку сразу после успешной ставки
+        setCurrentBid(prev => {
+          setPrevBid(prev !== null ? prev : amount)
+          return amount
+        })
+        console.log(`✅ Обновлена текущая ставка на: ${amount}`)
+        
+        // Перезагружаем данные через небольшую задержку для синхронизации с сервером
+        setTimeout(async () => {
+          try {
+            const bidsResponse = await fetch(`${API_BASE_URL}/bids/property/${displayProperty.id}`)
+            if (bidsResponse.ok) {
+              const bidsData = await bidsResponse.json()
+              if (bidsData.success && bidsData.data && bidsData.data.length > 0) {
+                // Сортируем по дате для получения последних ставок
+                const sortedByDate = [...bidsData.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                setRecentBids(sortedByDate.slice(0, 2))
+                
+                const maxBid = Math.max(...bidsData.data.map(b => b.bid_amount))
+                setCurrentBid(prev => {
+                  if (prev !== maxBid) {
+                    setPrevBid(prev !== null ? prev : maxBid)
+                    return maxBid
+                  }
+                  return prev
+                })
+                console.log(`✅ Обновлена текущая ставка после синхронизации: ${maxBid}`)
+                
+                // Обновляем userLastBid, если пользователь сделал ставку
+                if (userId) {
+                  const userBids = bidsData.data.filter(b => b.user_id === userId)
+                  if (userBids.length > 0) {
+                    const userMaxBid = Math.max(...userBids.map(b => b.bid_amount))
+                    setUserLastBid(userMaxBid)
+                    setBidOutbidShown(false)
+                    console.log('✅ Обновлена userLastBid после синхронизации:', userMaxBid)
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('Ошибка обновления ставок после создания:', err)
+          }
+        }, 1000)
+        
+        showToast(`Ставка ${amount.toLocaleString('ru-RU')} ${displayProperty.currency || 'USD'} успешно отправлена!`, 'success', 4000)
+      } else {
+        console.error('❌ Ошибка создания ставки:', data)
+        showToast(data.error || 'Ошибка при создании ставки', 'error')
+      }
     } catch (error) {
-      console.error('Ошибка при отправке ставки:', error)
-      alert('Произошла ошибка при отправке ставки. Попробуйте позже.')
+      console.error('❌ Ошибка при отправке ставки:', error)
+      showToast(`Ошибка сети: ${error.message}`, 'error')
     } finally {
       setIsSubmittingBid(false)
     }
@@ -906,11 +1268,22 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                 <div className="property-detail-sidebar__auction-block">
                   <PropertyTimer endTime={auctionEndTime} />
                   <div className="property-detail-sidebar__current-bid">
-                    <span className="current-bid-label">Стартовая сумма ставки:</span>
-                    <span className="current-bid-value">
-                      {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
-                      {(displayProperty.auction_starting_price || 0).toLocaleString('ru-RU')}
+                    <span className="current-bid-label">
+                      {currentBid !== null && currentBid !== displayProperty.auction_starting_price
+                        ? 'Текущая максимальная ставка:'
+                        : 'Стартовая сумма ставки:'}
                     </span>
+                    <div className={`current-bid-value-wrapper ${priceAnimation ? 'current-bid-value-wrapper--animated' : ''}`}>
+                      <span className="current-bid-value">
+                        {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                        {(currentBid !== null ? currentBid : (displayProperty.auction_starting_price || 0)).toLocaleString('ru-RU')}
+                      </span>
+                      {priceAnimation && (
+                        <span className="current-bid-arrow">
+                          <FiArrowUp size={20} />
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Функционал ставки */}
@@ -965,6 +1338,52 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                       {isSubmittingBid ? 'Отправка...' : 'Сделать ставку'}
                     </button>
                   </div>
+
+                  {/* Последние две ставки */}
+                  {recentBids.length > 0 && (() => {
+                    // Находим максимальную ставку для определения лидера
+                    const maxBidAmount = Math.max(...recentBids.map(b => b.bid_amount))
+                    return (
+                      <div className="property-detail-sidebar__recent-bids">
+                        <div className="recent-bids__title">Последние ставки</div>
+                        <div className="recent-bids__list">
+                          {recentBids.map((bid, index) => {
+                            const isHighest = bid.bid_amount === maxBidAmount
+                            return (
+                              <div key={bid.id || index} className={`recent-bid-item ${isHighest ? 'recent-bid-item--highest' : ''}`}>
+                                <div className="recent-bid-item__user">
+                                  <FiUser size={14} />
+                                  <span className="recent-bid-item__user-name">
+                                    {bid.first_name && bid.last_name
+                                      ? `${bid.first_name} ${bid.last_name}`
+                                      : bid.email || bid.phone_number || 'Анонимный пользователь'}
+                                  </span>
+                                  {isHighest && (
+                                    <span className="recent-bid-item__badge">Лидер</span>
+                                  )}
+                                </div>
+                                <div className="recent-bid-item__info">
+                                  <div className="recent-bid-item__amount">
+                                    {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : '$'}
+                                    {bid.bid_amount.toLocaleString('ru-RU')}
+                                  </div>
+                                  <div className="recent-bid-item__time">
+                                    <FiClock size={12} />
+                                    {new Date(bid.created_at).toLocaleString('ru-RU', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   <button
                     type="button"

@@ -18,6 +18,7 @@ import Footer from './components/Footer'
 import ClerkAuthSync from './components/ClerkAuthSync'
 import ClerkAuthHandler from './components/ClerkAuthHandler'
 import BlockedUserModal from './components/BlockedUserModal'
+import ToastContainer from './components/ToastContainer'
 import { validateSession, getUserData } from './services/authService'
 import './App.css'
 
@@ -231,6 +232,7 @@ function App() {
         <Footer />
       </div>
       {isBlocked && <BlockedUserModal isOpen={true} />}
+      <ToastContainer />
     </Router>
   )
 }
