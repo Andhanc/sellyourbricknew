@@ -8,13 +8,16 @@ const DepositButton = ({ amount = 0 }) => {
   const [isHovered, setIsHovered] = useState(false)
 
   const formatAmount = (amount) => {
+    if (amount === 0) {
+      return '0 - Пополните депозит'
+    }
     if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(2)}M`
+      return `€${(amount / 1000000).toFixed(2)}M`
     }
     if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(2)}K`
+      return `€${(amount / 1000).toFixed(2)}K`
     }
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `€${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   return (

@@ -4,6 +4,7 @@ import Hero from '../components/Hero'
 import PropertyList from '../components/PropertyList'
 import FAQ from '../components/FAQ'
 import DepositButton from '../components/DepositButton'
+import { getUserData } from '../services/authService'
 import './Home.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -11,6 +12,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 function Home() {
   const [auctionProperties, setAuctionProperties] = useState([])
   const [loading, setLoading] = useState(true)
+  const [userDeposit, setUserDeposit] = useState(0)
+  const userData = getUserData()
+  const userId = userData?.id
 
   // Загрузка аукционных и не аукционных объявлений из API
   useEffect(() => {
@@ -112,8 +116,33 @@ function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  // Получаем депозит пользователя (пока используем моковые данные)
-  const userDeposit = 786898.67
+  // Загружаем депозит пользователя
+  useEffect(() => {
+    const loadUserDeposit = async () => {
+      if (!userId) {
+        setUserDeposit(0)
+        return
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            setUserDeposit(data.data.depositAmount || 0)
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки депозита:', error)
+        setUserDeposit(0)
+      }
+    }
+    
+    loadUserDeposit()
+    // Обновляем каждые 5 секунд для актуальности данных
+    const interval = setInterval(loadUserDeposit, 5000)
+    return () => clearInterval(interval)
+  }, [userId])
 
   return (
     <div className="home-page">

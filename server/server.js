@@ -4847,6 +4847,285 @@ app.delete('/api/properties/:id', (req, res) => {
 });
 
 // Обработка ошибок БД
+// ========== РОУТЫ ДЛЯ КАРТЫ И ДЕПОЗИТА ==========
+
+/**
+ * POST /api/users/:id/card - Сохранить карту пользователя
+ */
+app.post('/api/users/:id/card', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { cardNumber, cardCvv, cardType } = req.body;
+    
+    if (!cardNumber || !cardCvv || !cardType) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать номер карты, CVV и тип карты' 
+      });
+    }
+    
+    const db = getDatabase();
+    
+    // Простое шифрование (в production использовать более безопасный метод)
+    const encrypt = (text) => {
+      const algorithm = 'aes-256-cbc';
+      const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || 'default-key-change-in-production', 'salt', 32);
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv(algorithm, key, iv);
+      let encrypted = cipher.update(text, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      return iv.toString('hex') + ':' + encrypted;
+    };
+    
+    const encryptedCardNumber = encrypt(cardNumber);
+    const encryptedCvv = encrypt(cardCvv);
+    
+    const stmt = db.prepare(`
+      UPDATE users 
+      SET has_card = 1, 
+          card_number = ?, 
+          card_cvv = ?, 
+          card_type = ?,
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `);
+    const result = stmt.run(encryptedCardNumber, encryptedCvv, cardType, userId);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    const updatedUser = userQueries.getById(userId);
+    
+    res.json({
+      success: true,
+      data: {
+        id: updatedUser.id,
+        hasCard: updatedUser.has_card === 1,
+        cardType: updatedUser.card_type,
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при сохранении карты:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/users/:id/deposit - Получить депозит пользователя
+ */
+app.get('/api/users/:id/deposit', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = userQueries.getById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        depositAmount: user.deposit_amount || 0,
+        hasCard: user.has_card === 1,
+        cardType: user.card_type || null
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при получении депозита:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/users/:id/deposit/top-up - Пополнить депозит на 3000 евро
+ */
+app.post('/api/users/:id/deposit/top-up', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const db = getDatabase();
+    
+    const user = userQueries.getById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    if (user.has_card !== 1) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо сначала добавить карту' 
+      });
+    }
+    
+    const currentDeposit = user.deposit_amount || 0;
+    const newDeposit = currentDeposit + 3000;
+    
+    const stmt = db.prepare('UPDATE users SET deposit_amount = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    stmt.run(newDeposit, userId);
+    
+    // Создаем запись о транзакции
+    try {
+      db.prepare(`
+        INSERT INTO transactions (user_id, type, amount, description, created_at)
+        VALUES (?, 'deposit', 3000, 'Пополнение депозита', CURRENT_TIMESTAMP)
+      `).run(userId);
+    } catch (e) {
+      // Таблица транзакций может не существовать, это нормально
+      console.warn('Не удалось создать транзакцию:', e.message);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        depositAmount: newDeposit,
+        added: 3000
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при пополнении депозита:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/users/:id/deposit/withdraw - Вывести средства из депозита
+ */
+app.post('/api/users/:id/deposit/withdraw', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { amount } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать сумму для вывода' 
+      });
+    }
+    
+    const db = getDatabase();
+    const user = userQueries.getById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    const currentDeposit = user.deposit_amount || 0;
+    if (currentDeposit < amount) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Недостаточно средств на депозите' 
+      });
+    }
+    
+    const newDeposit = currentDeposit - amount;
+    const stmt = db.prepare('UPDATE users SET deposit_amount = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    stmt.run(newDeposit, userId);
+    
+    // Создаем запись о транзакции
+    try {
+      db.prepare(`
+        INSERT INTO transactions (user_id, type, amount, description, created_at)
+        VALUES (?, 'withdrawal', ?, 'Вывод средств', CURRENT_TIMESTAMP)
+      `).run(userId, -amount);
+    } catch (e) {
+      console.warn('Не удалось создать транзакцию:', e.message);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        depositAmount: newDeposit,
+        withdrawn: amount
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при выводе средств:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/users/:id/transactions - Получить транзакции пользователя
+ */
+app.get('/api/users/:id/transactions', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const db = getDatabase();
+    
+    // Проверяем, существует ли таблица транзакций
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'").get();
+    
+    if (!tableExists) {
+      // Если таблицы нет, возвращаем пустой массив
+      return res.json({ success: true, data: [] });
+    }
+    
+    const transactions = db.prepare(`
+      SELECT * FROM transactions 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT 50
+    `).all(userId);
+    
+    res.json({ success: true, data: transactions });
+  } catch (error) {
+    console.error('Ошибка при получении транзакций:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/users/:id/analytics - Получить аналитику пользователя
+ */
+app.get('/api/users/:id/analytics', (req, res) => {
+  try {
+    const userId = req.params.id;
+    const db = getDatabase();
+    
+    const user = userQueries.getById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    // Проверяем, существует ли таблица транзакций
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'").get();
+    
+    let totalDeposit = 0;
+    let totalWithdrawal = 0;
+    
+    if (tableExists) {
+      const depositStats = db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total 
+        FROM transactions 
+        WHERE user_id = ? AND type = 'deposit'
+      `).get(userId);
+      
+      const withdrawalStats = db.prepare(`
+        SELECT COALESCE(SUM(ABS(amount)), 0) as total 
+        FROM transactions 
+        WHERE user_id = ? AND type = 'withdrawal'
+      `).get(userId);
+      
+      totalDeposit = depositStats?.total || 0;
+      totalWithdrawal = withdrawalStats?.total || 0;
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        currentDeposit: user.deposit_amount || 0,
+        totalDeposit,
+        totalWithdrawal,
+        hasCard: user.has_card === 1
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при получении аналитики:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Обработка ошибок
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);
   
