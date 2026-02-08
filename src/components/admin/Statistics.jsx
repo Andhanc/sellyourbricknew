@@ -13,6 +13,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import { getApiBaseUrl } from '../../utils/apiConfig';
 import './Statistics.css';
 import StatCard from './StatCard';
 import NearestAuctionsSlider from './NearestAuctionsSlider';
@@ -69,7 +70,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     const fetchUsersCount = async () => {
       try {
         setIsLoadingUsersCount(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         const response = await fetch(`${API_BASE_URL}/admin/users/count`);
         
         if (response.ok) {
@@ -103,7 +104,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         
         // Загружаем статистику по странам
         const countryResponse = await fetch(`${API_BASE_URL}/admin/users/country-stats`);
@@ -139,7 +140,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     const fetchCounts = async () => {
       try {
         setIsLoadingCounts(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         
         // Загружаем количество одобренных объектов
         let approvedCount = 0;
@@ -206,7 +207,7 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
     const fetchAuctions = async () => {
       try {
         setIsLoadingAuctions(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         
         // Загружаем все типы аукционных объявлений
         const types = ['commercial', 'villa', 'apartment', 'house'];

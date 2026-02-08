@@ -14,9 +14,8 @@ import { IoLocationOutline } from 'react-icons/io5'
 import { properties } from '../data/properties'
 import LoginModal from './LoginModal'
 import { getUserData, clearUserData } from '../services/authService'
+import { getApiBaseUrl } from '../utils/apiConfig'
 import '../pages/MainPage.css'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 const resortLocations = [
   'Costa Adeje, Tenerife',
@@ -104,6 +103,7 @@ const Header = () => {
           // Если фотографии нет в localStorage, пытаемся загрузить из БД
           if (!photo && userData.id) {
             try {
+              const API_BASE_URL = await getApiBaseUrl()
               const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
               
               // Если пользователь в БД не найден (например, был удален админом) —
@@ -121,9 +121,10 @@ const Header = () => {
                 if (result.success && result.data && result.data.user_photo) {
                   // Если user_photo начинается с /uploads, добавляем базовый URL
                   const photoPath = result.data.user_photo
+                  const baseUrl = API_BASE_URL.replace('/api', '')
                   photo = photoPath.startsWith('http') 
                     ? photoPath 
-                    : `${API_BASE_URL.replace('/api', '')}${photoPath}`
+                    : `${baseUrl}${photoPath}`
                   
                   // Обновляем localStorage с фотографией
                   const updatedUserData = {

@@ -22,7 +22,10 @@ import LocationMap from '../components/LocationMap'
 import { showToast } from '../components/ToastContainer'
 import './PropertyDetailClassic.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
+
+// Используем синхронную версию для инициализации, затем обновим при загрузке
+let API_BASE_URL = getApiBaseUrlSync()
 
 // Классическая страница объекта.
 // Для аукционных объектов дополнительно отображает таймер и историю ставок.
@@ -211,6 +214,14 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     geocodeAddress()
   }, [property.location, property.address, coordinates])
 
+  // Инициализируем API URL при монтировании компонента
+  useEffect(() => {
+    const initApiUrl = async () => {
+      const url = await getApiBaseUrl()
+      API_BASE_URL = url
+    }
+    initApiUrl()
+  }, [])
 
   // Используем геокодированные координаты или исходные
   const finalCoordinates = mapCoordinates || coordinates
@@ -540,11 +551,12 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
       }
     }
 
-    loadBids()
+    loadBids() 
     // Обновляем каждые 3 секунды
     const interval = setInterval(loadBids, 3000)
     return () => clearInterval(interval)
-  }, [displayProperty.id, isAuctionProperty, displayProperty.auction_starting_price])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayProperty.id, isAuctionProperty])
 
   const handleToggleFavorite = () => {
     // Проверяем авторизацию через Clerk или старую систему
@@ -726,7 +738,6 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
         property_id: typeof requestBody.property_id,
         bid_amount: typeof requestBody.bid_amount
       })
-      console.log('📤 URL:', `${API_BASE_URL}/bids`)
       
       // Отправляем ставку на сервер
       const response = await fetch(`${API_BASE_URL}/bids`, {

@@ -4,8 +4,9 @@ import { IoLocationOutline as IoLocation } from 'react-icons/io5';
 import { MdBed, MdOutlineBathtub } from 'react-icons/md';
 import { BiArea } from 'react-icons/bi';
 import './ModerationPropertyDetail.css';
+import { getApiBaseUrlSync } from '../../utils/apiConfig';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getApiBaseUrlSync();
 
 // Моковые изображения для недвижимости
 const mockPropertyImages = [

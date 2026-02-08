@@ -1,18 +1,35 @@
 import { FiX, FiClock, FiDollarSign, FiUser } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import CountdownTimer from './CountdownTimer'
+import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
 import './BiddingHistoryModal.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+// Используем синхронную версию для инициализации, затем обновим при загрузке
+let API_BASE_URL = getApiBaseUrlSync()
 
 const BiddingHistoryModal = ({ isOpen, onClose, property, refreshTrigger }) => {
   const [bids, setBids] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   
+  // Инициализируем API URL при монтировании компонента
+  useEffect(() => {
+    const initApiUrl = async () => {
+      const url = await getApiBaseUrl()
+      API_BASE_URL = url
+      console.log('🔗 API Base URL установлен:', API_BASE_URL)
+    }
+    initApiUrl()
+  }, [])
+
   useEffect(() => {
     if (isOpen && property?.id) {
-      loadBids(true)
+      const initAndLoad = async () => {
+        const url = await getApiBaseUrl()
+        API_BASE_URL = url
+        await loadBids(true)
+      }
+      initAndLoad()
       // Обновляем историю каждые 3 секунды, пока модальное окно открыто (без показа загрузки)
       const interval = setInterval(() => loadBids(false), 3000)
       return () => clearInterval(interval)

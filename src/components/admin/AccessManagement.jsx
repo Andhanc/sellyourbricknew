@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
 import './AccessManagement.css';
+import { getApiBaseUrlSync } from '../../utils/apiConfig';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = getApiBaseUrlSync();
 
 const AccessManagement = () => {
   const [administrators, setAdministrators] = useState([]);

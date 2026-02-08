@@ -4,11 +4,11 @@
 
 import emailjs from '@emailjs/browser'
 
-import { getApiBaseUrl, getEmailJsConfig, isDevelopment } from '../utils/env'
+import { getEmailJsConfig, isDevelopment } from '../utils/env'
+import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
 
-// Используем proxy из vite.config.js или полный URL
-// Поддержка как REACT_APP_ (Create React App), так и VITE_ (Vite)
-const API_BASE_URL = getApiBaseUrl()
+// Используем dev tunnel для API
+const API_BASE_URL = getApiBaseUrlSync()
 
 // EmailJS настройки
 const emailJsConfig = getEmailJsConfig()
@@ -996,8 +996,8 @@ export const validateSession = async () => {
   }
   
   try {
-    // Используем proxy из vite.config.js или полный URL
-const API_BASE_URL = getApiBaseUrl()
+    // Используем dev tunnel для API
+    const API_BASE_URL = await getApiBaseUrl()
     const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
       method: 'GET',
       headers: {
@@ -1052,7 +1052,7 @@ export const logout = async () => {
   if (userId) {
     try {
       // Используем proxy из vite.config.js или полный URL
-const API_BASE_URL = getApiBaseUrl()
+      const API_BASE_URL = await getApiBaseUrl()
       await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {

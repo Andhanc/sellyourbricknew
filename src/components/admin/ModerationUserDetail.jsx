@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { FiArrowLeft, FiUser, FiMail, FiCalendar, FiFileText, FiPhone, FiCreditCard, FiGlobe, FiHash, FiImage, FiDollarSign, FiCheck, FiXCircle } from 'react-icons/fi';
+import { getApiBaseUrlSync } from '../../utils/apiConfig';
 import './ModerationUserDetail.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getApiBaseUrlSync();
 
 const ModerationUserDetail = ({ user, onBack, onApprove, onReject, onRefresh }) => {
   const [selectedDocument, setSelectedDocument] = useState(null);

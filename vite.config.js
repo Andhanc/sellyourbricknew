@@ -5,13 +5,8 @@ export default defineConfig(({ mode }) => {
   // Загружаем переменные окружения
   const env = loadEnv(mode, process.cwd(), '')
   
-  // Получаем API URL из переменной окружения или используем localhost по умолчанию
-  // Если установлен полный URL (например, dev tunnels), используем его
-  // Иначе используем localhost для локальной разработки
-  const apiBaseUrl = env.VITE_API_BASE_URL || env.REACT_APP_API_BASE_URL || '/api'
-  const apiUrl = apiBaseUrl.startsWith('http') 
-    ? apiBaseUrl.replace('/api', '') 
-    : 'http://localhost:3000'
+  // Всегда используем dev tunnel для бэкенда
+  const apiUrl = 'https://5f5ntx8k-3000.euw.devtunnels.ms'
   
   return {
     plugins: [react()],
@@ -21,14 +16,11 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
           secure: false,
-          // Если используем внешний URL (dev tunnels), не перезаписываем origin
+          // Для HTTPS dev tunnels
           configure: (proxy, _options) => {
-            if (apiUrl.startsWith('https://')) {
-              proxy.on('proxyReq', (proxyReq, req, res) => {
-                // Для HTTPS dev tunnels может потребоваться дополнительная настройка
-                console.log(`[Proxy] ${req.method} ${req.url} -> ${apiUrl}${req.url}`)
-              })
-            }
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log(`[Proxy] ${req.method} ${req.url} -> ${apiUrl}${req.url}`)
+            })
           }
         }
       }

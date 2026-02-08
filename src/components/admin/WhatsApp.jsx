@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiSend, FiUsers, FiFilter, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi';
+import { getApiBaseUrl } from '../../utils/apiConfig';
 import './WhatsApp.css';
 
 // Функция для получения названия языка по коду
@@ -62,7 +63,8 @@ const WhatsApp = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/whatsapp/users?limit=1000');
+      const API_BASE_URL = await getApiBaseUrl();
+      const response = await fetch(`${API_BASE_URL}/whatsapp/users?limit=1000`);
       const data = await response.json();
       
       if (data.success) {
@@ -163,7 +165,8 @@ const WhatsApp = () => {
         })
         .filter(phone => phone); // Убираем пустые значения
 
-      const response = await fetch('/api/whatsapp/broadcast', {
+      const API_BASE_URL = await getApiBaseUrl();
+      const response = await fetch(`${API_BASE_URL}/whatsapp/broadcast`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

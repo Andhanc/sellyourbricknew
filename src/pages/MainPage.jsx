@@ -54,7 +54,10 @@ import '../components/PropertyList.css'
 import { askPropertyAssistant, filterPropertiesByLocation } from '../services/aiService'
 import { getUserData, clearUserData, isAuthenticated } from '../services/authService'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
+
+// Используем синхронную версию для инициализации, затем обновим при загрузке
+let API_BASE_URL = getApiBaseUrlSync()
 
 const resortLocations = [
   'Costa Adeje, Tenerife',

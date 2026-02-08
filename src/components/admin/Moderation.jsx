@@ -4,10 +4,10 @@ import { FaBuilding } from 'react-icons/fa';
 import ModerationPropertyDetail from './ModerationPropertyDetail';
 import ModerationUserDetail from './ModerationUserDetail';
 import './Moderation.css';
+import { getApiBaseUrlSync } from '../../utils/apiConfig';
 
-// Используем proxy из vite.config.js или полный URL
-// В режиме разработки всегда используем относительный путь через proxy
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Используем dev tunnel для API
+const API_BASE_URL = getApiBaseUrlSync();
 
 // Моковые данные для модерации пользователей (fallback)
 const mockUsersForModeration = [

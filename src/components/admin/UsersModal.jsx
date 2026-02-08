@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FiSearch, FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiShield, FiShieldOff } from 'react-icons/fi';
+import { getApiBaseUrl, getApiBaseUrlSync } from '../../utils/apiConfig';
 import './UsersModal.css';
+
+// Константа для базового URL без /api (для изображений)
+const API_BASE_URL_WITHOUT_API = getApiBaseUrlSync().replace('/api', '');
 
 const UsersModal = ({ isOpen, onClose, businessInfo }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,7 +22,7 @@ const UsersModal = ({ isOpen, onClose, businessInfo }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const API_BASE_URL = await getApiBaseUrl();
       const response = await fetch(`${API_BASE_URL}/users?limit=1000`);
       
       if (response.ok) {
@@ -138,7 +142,7 @@ const UsersModal = ({ isOpen, onClose, businessInfo }) => {
                         <div className="users-modal-user-info">
                           {user.user_photo ? (
                             <img 
-                              src={user.user_photo.startsWith('http') ? user.user_photo : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}${user.user_photo}`}
+                              src={user.user_photo.startsWith('http') ? user.user_photo : `${API_BASE_URL_WITHOUT_API}${user.user_photo}`}
                               alt={getFullName(user)}
                               className="users-modal-avatar"
                               onError={(e) => {
