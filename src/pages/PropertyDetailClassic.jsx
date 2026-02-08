@@ -20,6 +20,7 @@ import BiddingHistoryModal from '../components/BiddingHistoryModal'
 import BuyNowModal from '../components/BuyNowModal'
 import LocationMap from '../components/LocationMap'
 import { showToast } from '../components/ToastContainer'
+import BidOutbidNotification from '../components/BidOutbidNotification'
 import './PropertyDetailClassic.css'
 
 import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
@@ -47,6 +48,10 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   const [previousLeaderId, setPreviousLeaderId] = useState(null) // ID предыдущего лидера (кто делал максимальную ставку)
   const [priceAnimation, setPriceAnimation] = useState(false) // Флаг для анимации изменения цены
   const [prevBid, setPrevBid] = useState(null) // Предыдущая ставка для сравнения
+  const [outbidNotification, setOutbidNotification] = useState(null) // Уведомление о перебитой ставке
+  const shownNotificationIdsRef = useRef(new Set()) // ID показанных уведомлений
+  const [isUserLeader, setIsUserLeader] = useState(false) // Флаг, что пользователь является лидером
+  const [currentLeaderId, setCurrentLeaderId] = useState(null) // ID текущего лидера
   
   // Отслеживаем изменения currentBid и запускаем анимацию при росте
   useEffect(() => {
@@ -455,17 +460,28 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
             
             // Если есть ставки - показываем максимальную ставку
             const maxBid = sortedBids[0].bid_amount
-            const currentLeaderId = sortedBids[0].user_id // ID текущего лидера (кто сделал максимальную ставку)
+            const newCurrentLeaderId = sortedBids[0].user_id // ID текущего лидера (кто сделал максимальную ставку)
             const prevMaxBid = currentBid
+            
+            // Обновляем ID текущего лидера
+            setCurrentLeaderId(newCurrentLeaderId)
+            
+            // Проверяем, является ли текущий пользователь лидером
+            if (userId && newCurrentLeaderId === userId) {
+              setIsUserLeader(true)
+              console.log('🏆 Пользователь является лидером!', { userId, newCurrentLeaderId, maxBid })
+            } else {
+              setIsUserLeader(false)
+            }
             
             // Проверяем, изменился ли лидер
             // Если предыдущий лидер был текущий пользователь, а теперь лидер - другой, значит ставку перебили
-            if (userId && previousLeaderId !== null && previousLeaderId === userId && currentLeaderId !== userId && !bidOutbidShown) {
+            if (userId && previousLeaderId !== null && previousLeaderId === userId && newCurrentLeaderId !== userId && !bidOutbidShown) {
               // Предыдущий лидер был текущий пользователь, а теперь лидер - другой
               // Значит ставку пользователя перебили
               console.log('🚨 Ставка перебита!', {
                 previousLeaderId,
-                currentLeaderId,
+                newCurrentLeaderId,
                 userId,
                 maxBid,
                 prevMaxBid,
@@ -475,8 +491,8 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
               setBidOutbidShown(true)
             }
             
-            // Обновляем ID текущего лидера (после проверки перебития)
-            setPreviousLeaderId(currentLeaderId)
+            // Обновляем ID предыдущего лидера (после проверки перебития)
+            setPreviousLeaderId(newCurrentLeaderId)
             
             setCurrentBid(prev => {
               if (prev !== maxBid) {
@@ -492,7 +508,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
               if (userBids.length > 0) {
                 const userMaxBid = Math.max(...userBids.map(b => b.bid_amount))
                 // Если пользователь сделал новую ставку (стал лидером), сбрасываем флаг
-                if (currentLeaderId === userId) {
+                if (newCurrentLeaderId === userId) {
                   setBidOutbidShown(false)
                 }
                 setUserLastBid(userMaxBid)
@@ -557,6 +573,114 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayProperty.id, isAuctionProperty])
+
+  // Проверяем уведомления о перебитой ставке для текущего объекта
+  useEffect(() => {
+    if (!isAuctionProperty || !displayProperty.id) return
+
+    const checkNotifications = async () => {
+      try {
+        // Получаем userId
+        const isClerkAuth = user && userLoaded
+        const isOldAuth = isAuthenticated()
+        
+        let userId = null
+        if (isClerkAuth && user) {
+          const savedUserId = localStorage.getItem('userId')
+          if (savedUserId && /^\d+$/.test(savedUserId)) {
+            userId = parseInt(savedUserId)
+          } else {
+            try {
+              const userEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress
+              if (userEmail) {
+                const userResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail)}`)
+                if (userResponse.ok) {
+                  const userData = await userResponse.json()
+                  if (userData.success && userData.data && userData.data.id) {
+                    userId = userData.data.id
+                    localStorage.setItem('userId', String(userId))
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('Не удалось получить userId:', e)
+            }
+          }
+        } else if (isOldAuth) {
+          const { getUserData } = await import('../services/authService')
+          const userData = getUserData()
+          userId = userData?.id
+        }
+
+        if (!userId) return
+
+        // Загружаем уведомления пользователя
+        const response = await fetch(`${API_BASE_URL}/notifications/user/${userId}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            console.log('🔍 Проверка уведомлений для объекта:', displayProperty.id)
+            console.log('🔍 Все уведомления:', data.data)
+            console.log('🔍 Уведомления bid_outbid:', data.data.filter(n => n.type === 'bid_outbid'))
+            
+            // Ищем уведомления о перебитой ставке для текущего объекта
+            const outbidNotifs = data.data.filter(n => {
+              if (n.type !== 'bid_outbid') return false
+              if (shownNotificationIdsRef.current.has(n.id)) return false
+              if (n.view_count !== 0) return false
+              
+              // Парсим data, если это строка
+              let notificationData = n.data
+              if (typeof notificationData === 'string') {
+                try {
+                  notificationData = JSON.parse(notificationData)
+                } catch (e) {
+                  console.warn('Ошибка парсинга data уведомления:', e)
+                  return false
+                }
+              }
+              
+              // Сравниваем property_id (может быть число или строка)
+              const notifPropertyId = notificationData?.property_id
+              const currentPropertyId = displayProperty.id
+              
+              console.log('🔍 Сравнение property_id:', {
+                notifPropertyId,
+                currentPropertyId,
+                notifPropertyIdType: typeof notifPropertyId,
+                currentPropertyIdType: typeof currentPropertyId,
+                match: notifPropertyId == currentPropertyId || parseInt(notifPropertyId) === parseInt(currentPropertyId)
+              })
+              
+              return notifPropertyId && (
+                notifPropertyId == currentPropertyId || 
+                parseInt(notifPropertyId) === parseInt(currentPropertyId)
+              )
+            })
+
+            if (outbidNotifs.length > 0) {
+              // Берем самое свежее уведомление
+              const latestNotif = outbidNotifs.sort((a, b) => 
+                new Date(b.created_at) - new Date(a.created_at)
+              )[0]
+              
+              setOutbidNotification(latestNotif)
+              shownNotificationIdsRef.current.add(latestNotif.id)
+              console.log('🔔 Показано уведомление о перебитой ставке на странице объекта:', latestNotif.id)
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка проверки уведомлений:', error)
+      }
+    }
+
+    checkNotifications()
+    // Проверяем каждые 5 секунд
+    const interval = setInterval(checkNotifications, 5000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayProperty.id, isAuctionProperty, user, userLoaded])
 
   const handleToggleFavorite = () => {
     // Проверяем авторизацию через Clerk или старую систему
@@ -843,8 +967,29 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     setBidAmount(value)
   }
 
+  const handleCloseOutbidNotification = () => {
+    setOutbidNotification(null)
+  }
+
+  const handleGoToPropertyFromNotification = (propertyId) => {
+    // Если мы уже на странице этого объекта, просто прокручиваем к форме ставки
+    if (propertyId === displayProperty.id) {
+      const bidForm = document.querySelector('.property-detail-sidebar__bid-form')
+      if (bidForm) {
+        bidForm.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }
+  }
+
   return (
     <div className="property-detail-page-new">
+      {outbidNotification && (
+        <BidOutbidNotification
+          notification={outbidNotification}
+          onClose={handleCloseOutbidNotification}
+          onGoToProperty={handleGoToPropertyFromNotification}
+        />
+      )}
       {/* Заголовок */}
       <div className="property-detail-header">
         <div className="property-detail-header__container">
@@ -905,6 +1050,21 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                       className="property-detail-gallery__main-image"
                     />
                   )
+                )}
+                {/* Анимация изменения цены поверх изображения */}
+                {priceAnimation && currentBid !== null && isAuctionProperty && (
+                  <div className="property-detail-gallery__price-overlay">
+                    <div className="price-overlay__content">
+                      <div className="price-overlay__label">Новая ставка</div>
+                      <div className="price-overlay__value-wrapper">
+                        <span className="price-overlay__value">
+                          {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                          {currentBid.toLocaleString('ru-RU')}
+                        </span>
+                        <FiArrowUp className="price-overlay__arrow" size={24} />
+                      </div>
+                    </div>
+                  </div>
                 )}
                 {galleryMedia.length > 1 && (
                   <>
@@ -1304,7 +1464,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                         type="button"
                         className="bidding-section__quick-btn"
                         onClick={() => handleQuickBid(1000)}
-                        disabled={isSubmittingBid}
+                        disabled={isSubmittingBid || isUserLeader}
                       >
                         +1 000
                       </button>
@@ -1312,7 +1472,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                         type="button"
                         className="bidding-section__quick-btn"
                         onClick={() => handleQuickBid(2000)}
-                        disabled={isSubmittingBid}
+                        disabled={isSubmittingBid || isUserLeader}
                       >
                         +2 000
                       </button>
@@ -1320,7 +1480,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                         type="button"
                         className="bidding-section__quick-btn"
                         onClick={() => handleQuickBid(3000)}
-                        disabled={isSubmittingBid}
+                        disabled={isSubmittingBid || isUserLeader}
                       >
                         +3 000
                       </button>
@@ -1333,20 +1493,20 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                       <input
                         type="text"
                         className="bidding-section__input"
-                        placeholder="Введите сумму ставки"
+                        placeholder={isUserLeader ? 'Вы лидируете в аукционе' : 'Введите сумму ставки'}
                         value={bidAmount}
                         onChange={handleBidAmountChange}
-                        disabled={isSubmittingBid}
+                        disabled={isSubmittingBid || isUserLeader}
                       />
                     </div>
 
                     <button
                       type="button"
-                      className="bidding-section__submit-btn"
+                      className={`bidding-section__submit-btn ${isUserLeader ? 'bidding-section__submit-btn--winner' : ''}`}
                       onClick={handleBidSubmit}
-                      disabled={isSubmittingBid || !bidAmount}
+                      disabled={isSubmittingBid || !bidAmount || isUserLeader}
                     >
-                      {isSubmittingBid ? 'Отправка...' : 'Сделать ставку'}
+                      {isSubmittingBid ? 'Отправка...' : isUserLeader ? 'Вы выигрываете' : 'Сделать ставку'}
                     </button>
                   </div>
 

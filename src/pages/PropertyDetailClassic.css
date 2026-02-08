@@ -135,7 +135,7 @@
   color: #111827;
   cursor: pointer;
   transition: all 0.2s ease;
-  z-index: 3;
+  z-index: 15;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(4px);
 }
@@ -684,6 +684,103 @@
   }
 }
 
+/* Анимация изменения цены поверх изображения */
+.property-detail-gallery__price-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border-radius: 12px;
+  z-index: 12;
+  animation: priceOverlayFadeIn 0.6s ease-out;
+  pointer-events: none;
+}
+
+.price-overlay__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: priceOverlayScale 0.6s ease-out;
+}
+
+.price-overlay__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.price-overlay__value-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.price-overlay__value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #10b981;
+  font-family: 'Montserrat', sans-serif;
+  animation: priceOverlayValuePulse 0.6s ease-out;
+}
+
+.price-overlay__arrow {
+  color: #10b981;
+  animation: arrowBounce 0.6s ease-out;
+  flex-shrink: 0;
+}
+
+@keyframes priceOverlayFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes priceOverlayScale {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes priceOverlayValuePulse {
+  0% {
+    transform: scale(1);
+    color: #111827;
+  }
+  50% {
+    transform: scale(1.15);
+    color: #10b981;
+  }
+  100% {
+    transform: scale(1);
+    color: #10b981;
+  }
+}
+
 .property-detail-sidebar__current-bid {
   display: flex;
   flex-direction: column;
@@ -1011,6 +1108,22 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+.bidding-section__submit-btn--winner {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25) !important;
+}
+
+.bidding-section__submit-btn--winner:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35) !important;
+}
+
+.bidding-section__submit-btn--winner:disabled {
+  opacity: 1 !important;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25) !important;
 }
 
 .property-detail-sidebar__buy-now-btn {
