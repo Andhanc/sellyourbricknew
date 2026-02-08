@@ -5447,6 +5447,38 @@ app.post('/api/bids', (req, res) => {
     }
     console.log('✅ Ставка прошла проверку минимальной суммы');
     
+    // Находим предыдущего максимального ставщика (лидера ДО создания новой ставки)
+    let previousHighestBidder = null;
+    try {
+      // Находим максимальную ставку среди всех ставок для этого объекта (ДО создания новой ставки)
+      const maxBidResult = db.prepare(`
+        SELECT user_id, bid_amount 
+        FROM bids 
+        WHERE property_id = ?
+        ORDER BY bid_amount DESC, created_at DESC
+        LIMIT 1
+      `).get(propertyIdNum);
+      
+      console.log(`🔍 Поиск предыдущего лидера для property_id=${propertyIdNum}, userIdNum=${userIdNum}`);
+      console.log(`🔍 Результат запроса максимальной ставки:`, maxBidResult);
+      
+      // Если есть максимальная ставка и она принадлежит другому пользователю
+      if (maxBidResult && maxBidResult.user_id && maxBidResult.user_id !== userIdNum) {
+        previousHighestBidder = {
+          user_id: maxBidResult.user_id,
+          bid_amount: maxBidResult.bid_amount
+        };
+        console.log(`📋 ✅ Найден предыдущий лидер (максимальный ставщик): user_id=${previousHighestBidder.user_id}, bid_amount=${previousHighestBidder.bid_amount}`);
+      } else if (maxBidResult && maxBidResult.user_id === userIdNum) {
+        console.log('📋 Текущий пользователь уже является лидером, уведомление не требуется');
+      } else {
+        console.log('📋 Предыдущих ставок не найдено (это первая ставка или ставок нет)');
+      }
+    } catch (prevBidError) {
+      console.error('❌ Ошибка при поиске предыдущего ставщика:', prevBidError);
+      console.error('❌ Stack trace:', prevBidError.stack);
+    }
+    
     // Создаем ставку
     const stmt = db.prepare(`
       INSERT INTO bids (user_id, property_id, bid_amount, created_at)
@@ -5455,7 +5487,7 @@ app.post('/api/bids', (req, res) => {
     const result = stmt.run(userIdNum, propertyIdNum, bidAmountNum);
     const bidId = result.lastInsertRowid;
     
-    console.log(`✅ Ставка создана с ID: ${bidId}, user_id: ${user_id}, property_id: ${property_id}, amount: ${bidAmountValue}`);
+    console.log(`✅ Ставка создана с ID: ${bidId}, user_id: ${user_id}, property_id: ${property_id}, amount: ${bidAmountNum}`);
     console.log(`📊 Результат INSERT: changes=${result.changes}, lastInsertRowid=${bidId}`);
     
     // Сразу проверяем, что ставка сохранилась
@@ -5470,13 +5502,58 @@ app.post('/api/bids', (req, res) => {
     
     console.log(`✅ Ставка подтверждена в БД:`, verifyBid);
     
+    // Отправляем уведомление предыдущему ставщику, если его ставку перебили
+    if (previousHighestBidder && previousHighestBidder.user_id !== userIdNum && bidAmountNum > previousHighestBidder.bid_amount) {
+      try {
+        const propertyTitle = property.title || 'объект';
+        const currency = property.currency || 'USD';
+        const formattedNewBid = new Intl.NumberFormat('ru-RU', {
+          style: 'currency',
+          currency: currency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(bidAmountNum);
+        
+        const notificationData = {
+          user_id: previousHighestBidder.user_id,
+          type: 'bid_outbid',
+          title: 'Вашу ставку перебили',
+          message: `Ваша ставка на объект "${propertyTitle}" была перебита. Новая максимальная ставка: ${formattedNewBid}. Вы можете сделать новую ставку, чтобы вернуться в игру!`,
+          data: JSON.stringify({ 
+            property_id: propertyIdNum,
+            property_title: propertyTitle,
+            new_bid_amount: bidAmountNum,
+            previous_bid_amount: previousHighestBidder.bid_amount
+          }),
+          is_read: 0,
+          view_count: 0
+        };
+        
+        const notifResult = notificationQueries.create(notificationData);
+        console.log(`📬 Уведомление отправлено предыдущему ставщику (user_id: ${previousHighestBidder.user_id}) о перебитой ставке. ID уведомления: ${notifResult.lastInsertRowid}`);
+        console.log(`📬 Данные уведомления:`, notificationData);
+      } catch (notifError) {
+        console.error('❌ Ошибка при отправке уведомления предыдущему ставщику:', notifError);
+        console.error('❌ Stack trace:', notifError.stack);
+        // Не прерываем выполнение, если уведомление не отправилось
+      }
+    } else {
+      if (!previousHighestBidder) {
+        console.log('📭 Предыдущего ставщика не найдено, уведомление не отправляется');
+      } else if (previousHighestBidder.user_id === userIdNum) {
+        console.log('📭 Текущий пользователь уже был лидером, уведомление не требуется');
+      } else if (bidAmountNum <= previousHighestBidder.bid_amount) {
+        console.log(`📭 Новая ставка (${bidAmountNum}) не больше предыдущей (${previousHighestBidder.bid_amount}), уведомление не отправляется`);
+      }
+    }
+    
     // Проверяем общее количество ставок для этого объекта
     const allBids = db.prepare('SELECT COUNT(*) as count FROM bids WHERE property_id = ?').get(property_id);
     console.log(`📊 Всего ставок для объекта ${property_id}: ${allBids.count}`);
     
     // Обновляем минимальную ставку для объекта
     // Если ставка больше минимальной - обновляем минимальную на: наша ставка + 5%
-    const newMaxBid = bidAmountValue;
+    const newMaxBid = bidAmountNum;
     let newMinimumBid = newMaxBid + (newMaxBid * 0.05);
     
     // Обновляем auction_minimum_bid в properties

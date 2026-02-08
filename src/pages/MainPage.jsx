@@ -48,6 +48,7 @@ import {
   PiWarehouse,
 } from 'react-icons/pi'
 import PropertyTimer from '../components/PropertyTimer'
+import { showToast } from '../components/ToastContainer'
 import LoginModal from '../components/LoginModal'
 import VerificationSuccessNotification from '../components/VerificationSuccessNotification'
 import '../components/PropertyList.css'
@@ -713,6 +714,25 @@ function MainPage() {
               setShowVerificationSuccess(true);
             }
             
+            // Проверяем новые уведомления о перебитой ставке
+            const currentNotificationIds = new Set(notificationsList.map(n => n.id));
+            const newBidOutbidNotifications = notificationsList.filter(
+              n => n.type === 'bid_outbid' && 
+                   !previousNotificationIds.current.has(n.id) &&
+                   n.view_count === 0
+            );
+            
+            if (newBidOutbidNotifications.length > 0) {
+              newBidOutbidNotifications.forEach(notif => {
+                const message = notif.message || notif.title || 'Вашу ставку перебили!';
+                showToast(message, 'warning', 5000);
+                console.log('🔔 Показано toast-уведомление о перебитой ставке:', notif.id);
+              });
+            }
+            
+            // Обновляем множество ID предыдущих уведомлений
+            previousNotificationIds.current = currentNotificationIds;
+            
             if (notificationsList && notificationsList.length > 0) {
               console.log('📄 Первое уведомление:', notificationsList[0]);
             }
@@ -795,6 +815,7 @@ function MainPage() {
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [showVerificationSuccess, setShowVerificationSuccess] = useState(false)
   const [verificationNotification, setVerificationNotification] = useState(null)
+  const previousNotificationIds = useRef(new Set())
   const [activeCategory, setActiveCategory] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [filteredProperties, setFilteredProperties] = useState(null)
@@ -1520,10 +1541,20 @@ function MainPage() {
                         ) : notifications.length === 0 ? (
                           <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Нет уведомлений</div>
                         ) : (
-                          notifications.map((notification) => (
+                          notifications.map((notification) => {
+                            let notificationClass = 'notification-item--property';
+                            if (notification.type === 'verification_success') {
+                              notificationClass = 'notification-item--success';
+                            } else if (notification.type === 'verification_rejected') {
+                              notificationClass = 'notification-item--error';
+                            } else if (notification.type === 'bid_outbid') {
+                              notificationClass = 'notification-item--warning';
+                            }
+                            
+                            return (
                             <div 
                               key={notification.id} 
-                              className={`notification-item ${notification.type === 'verification_success' ? 'notification-item--success' : notification.type === 'verification_rejected' ? 'notification-item--error' : 'notification-item--property'}`}
+                              className={`notification-item ${notificationClass}`}
                               onClick={() => handleNotificationView(notification.id)}
                             >
                               <div className="notification-item__content">
@@ -1574,7 +1605,8 @@ function MainPage() {
                                 )}
                               </div>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -1977,10 +2009,20 @@ function MainPage() {
                   ) : notifications.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Нет уведомлений</div>
                   ) : (
-                    notifications.map((notification) => (
+                    notifications.map((notification) => {
+                      let notificationClass = 'notification-item--property';
+                      if (notification.type === 'verification_success') {
+                        notificationClass = 'notification-item--success';
+                      } else if (notification.type === 'verification_rejected') {
+                        notificationClass = 'notification-item--error';
+                      } else if (notification.type === 'bid_outbid') {
+                        notificationClass = 'notification-item--warning';
+                      }
+                      
+                      return (
                       <div 
                         key={notification.id} 
-                        className={`notification-item ${notification.type === 'verification_success' ? 'notification-item--success' : notification.type === 'verification_rejected' ? 'notification-item--error' : 'notification-item--property'}`}
+                        className={`notification-item ${notificationClass}`}
                         onClick={() => handleNotificationView(notification.id)}
                       >
                         <div className="notification-item__content">
@@ -2031,7 +2073,8 @@ function MainPage() {
                           )}
                         </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>

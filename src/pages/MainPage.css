@@ -446,6 +446,15 @@
   color: #dc2626;
 }
 
+.notification-item--warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #f59e0b;
+}
+
+.notification-item--warning .notification-item__title {
+  color: #d97706;
+}
+
 .notification-item__message {
   font-size: 14px;
   color: #6b7280;
