@@ -5651,6 +5651,11 @@ app.use((err, req, res, next) => {
 });
 
 // Запуск сервера
+// Health check endpoint для проверки доступности сервера
+app.get('/api/users/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' })
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 API доступен по адресу: http://localhost:${PORT}/api`);

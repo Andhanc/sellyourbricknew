@@ -1,7 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiUser, FiUserCheck, FiShield, FiShieldOff, FiX } from 'react-icons/fi';
 import UserDetailModal from './UserDetailModal';
+import { getApiBaseUrl, getApiBaseUrlSync } from '../../utils/apiConfig';
 import './UsersList.css';
+
+// Константа для базового URL без /api (для изображений)
+const API_BASE_URL_WITHOUT_API = getApiBaseUrlSync().replace('/api', '');
 
 const UsersList = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +23,7 @@ const UsersList = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         const response = await fetch(`${API_BASE_URL}/users?limit=1000`);
         
         if (response.ok) {
@@ -33,7 +37,7 @@ const UsersList = () => {
                 if (user.user_photo.startsWith('http')) {
                   avatarUrl = user.user_photo;
                 } else {
-                  avatarUrl = `${API_BASE_URL.replace('/api', '')}${user.user_photo}`;
+                  avatarUrl = `${API_BASE_URL_WITHOUT_API}${user.user_photo}`;
                 }
               }
               
@@ -107,7 +111,7 @@ const UsersList = () => {
     
     if (window.confirm(`Вы уверены, что хотите ${action} этого пользователя?`)) {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         const endpoint = user?.isBlocked 
           ? `${API_BASE_URL}/users/${userId}/unblock`
           : `${API_BASE_URL}/users/${userId}/block`;

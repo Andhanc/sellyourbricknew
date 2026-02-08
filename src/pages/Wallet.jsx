@@ -1,16 +1,44 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { FaArrowLeft, FaArrowUp, FaArrowDown, FaLock, FaWifi } from 'react-icons/fa'
-import { getUserData } from '../services/authService'
+import { useUser } from '@clerk/clerk-react'
+import { getUserData, isAuthenticated } from '../services/authService'
 import { validateLuhn, detectCardType, formatCardNumber, maskCardNumber } from '../utils/cardValidation'
+import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
 import './Wallet.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+// Используем синхронную версию для инициализации, затем обновим при загрузке
+let API_BASE_URL = getApiBaseUrlSync()
 
 const Wallet = () => {
   const navigate = useNavigate()
+  const { user, isLoaded: userLoaded } = useUser()
   const userData = getUserData()
-  const userId = userData?.id
+  const [dbUserId, setDbUserId] = useState(null)
+  
+  // Получаем числовой ID из БД
+  const getUserId = () => {
+    // Если уже есть числовой ID в состоянии, используем его
+    if (dbUserId) {
+      return dbUserId
+    }
+    
+    // Проверяем, является ли ID из getUserData числовым
+    const savedUserId = localStorage.getItem('userId')
+    if (savedUserId && /^\d+$/.test(savedUserId)) {
+      return parseInt(savedUserId)
+    }
+    
+    // Если ID не числовой (Clerk ID), возвращаем null - нужно получить из БД
+    const userId = userData?.id
+    if (userId && /^\d+$/.test(userId.toString())) {
+      return parseInt(userId)
+    }
+    
+    return null
+  }
+  
+  const userId = getUserId()
 
   const [depositAmount, setDepositAmount] = useState(0)
   const [hasCard, setHasCard] = useState(false)
@@ -48,18 +76,100 @@ const Wallet = () => {
   })
   const [userBid, setUserBid] = useState(null)
 
-  // Загружаем данные пользователя
+  // Получаем числовой ID из БД для Clerk пользователей
   useEffect(() => {
-    if (!userId) {
-      navigate('/')
+    // Если dbUserId уже установлен, не делаем ничего
+    if (dbUserId) {
       return
     }
-    loadUserData(true)
+    
+    const fetchDbUserId = async () => {
+      // Проверяем localStorage сначала
+      const savedUserId = localStorage.getItem('userId')
+      if (savedUserId && /^\d+$/.test(savedUserId)) {
+        setDbUserId(parseInt(savedUserId))
+        return
+      }
+      
+      // Если userLoaded еще не загружен, ждем
+      if (!userLoaded) {
+        return
+      }
+      
+      const isClerkAuth = user && userLoaded
+      const isOldAuth = isAuthenticated()
+      
+      // Для Clerk пользователей получаем ID из БД
+      if (isClerkAuth && user) {
+        try {
+          if (!API_BASE_URL || API_BASE_URL.includes('localhost')) {
+            API_BASE_URL = await getApiBaseUrl()
+          }
+          
+          const userEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress
+          if (userEmail) {
+            const userResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail)}`)
+            if (userResponse.ok) {
+              const userData = await userResponse.json()
+              if (userData.success && userData.data && userData.data.id) {
+                const numericId = userData.data.id
+                setDbUserId(numericId)
+                localStorage.setItem('userId', String(numericId))
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Не удалось получить userId из БД:', e)
+        }
+      } else if (isOldAuth) {
+        // Для старой системы авторизации используем ID из getUserData
+        const currentUserData = getUserData()
+        const userId = currentUserData?.id
+        if (userId && /^\d+$/.test(userId.toString())) {
+          setDbUserId(parseInt(userId))
+        }
+      }
+    }
+    
+    fetchDbUserId()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLoaded, user?.id, user?.primaryEmailAddress?.emailAddress])
+
+  // Инициализируем API URL при монтировании компонента
+  useEffect(() => {
+    const initApiUrl = async () => {
+      const url = await getApiBaseUrl()
+      API_BASE_URL = url
+    }
+    initApiUrl()
+  }, [])
+
+  // Загружаем данные пользователя
+  useEffect(() => {
+    if (!dbUserId) {
+      // Ждем получения числового ID из БД
+      return
+    }
+    
+    // Инициализируем API URL и загружаем данные
+    const initAndLoad = async () => {
+      if (!API_BASE_URL || API_BASE_URL.includes('localhost')) {
+        const url = await getApiBaseUrl()
+        API_BASE_URL = url
+      }
+      await loadUserData(true)
+    }
+    initAndLoad()
     
     // Обновляем данные каждые 5 секунд без показа загрузки
-    const interval = setInterval(() => loadUserData(false), 5000)
+    const interval = setInterval(() => {
+      if (API_BASE_URL && !API_BASE_URL.includes('localhost')) {
+        loadUserData(false)
+      }
+    }, 5000)
     return () => clearInterval(interval)
-  }, [userId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbUserId])
 
   // Автоматически включаем редактирование, если карты нет
   useEffect(() => {
@@ -85,16 +195,20 @@ const Wallet = () => {
   }, [cardNumber, cardExpiry, isEditingCard, hasCard])
 
   const loadUserData = async (showLoading = false) => {
+    if (!dbUserId) {
+      return
+    }
+    
     try {
       if (showLoading) {
         setLoading(true)
       }
       
       const [depositRes, transactionsRes, analyticsRes, bidsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/users/${userId}/deposit`),
-        fetch(`${API_BASE_URL}/users/${userId}/transactions`),
-        fetch(`${API_BASE_URL}/users/${userId}/analytics`),
-        fetch(`${API_BASE_URL}/bids/user/${userId}`)
+        fetch(`${API_BASE_URL}/users/${dbUserId}/deposit`),
+        fetch(`${API_BASE_URL}/users/${dbUserId}/transactions`),
+        fetch(`${API_BASE_URL}/users/${dbUserId}/analytics`),
+        fetch(`${API_BASE_URL}/bids/user/${dbUserId}`)
       ])
 
       if (depositRes.ok) {
@@ -241,13 +355,13 @@ const Wallet = () => {
 
     try {
       console.log('📤 Отправка данных карты:', {
-        userId,
+        userId: dbUserId,
         cardNumber: cleanedCardNumber.slice(0, 4) + '****', // Логируем только первые 4 цифры
         cardCvv: '***',
         cardType: detectedType
       })
       
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/card`, {
+      const response = await fetch(`${API_BASE_URL}/users/${dbUserId}/card`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -311,7 +425,7 @@ const Wallet = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit/top-up`, {
+      const response = await fetch(`${API_BASE_URL}/users/${dbUserId}/deposit/top-up`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -342,7 +456,7 @@ const Wallet = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit/withdraw`, {
+      const response = await fetch(`${API_BASE_URL}/users/${dbUserId}/deposit/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -511,12 +625,13 @@ const Wallet = () => {
     setIsCardDataVisible(!isCardDataVisible)
   }
 
-  if (loading) {
+  // Показываем загрузку, если данные еще не загружены или dbUserId не получен
+  if (loading || !dbUserId) {
     return (
       <div className="wallet-page">
         <div className="wallet-container">
           <div style={{ textAlign: 'center', padding: '50px', color: 'white' }}>
-            Загрузка...
+            {!dbUserId ? 'Получение данных пользователя...' : 'Загрузка...'}
           </div>
         </div>
       </div>

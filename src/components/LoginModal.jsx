@@ -7,6 +7,7 @@ import WhatsAppVerificationModal from './WhatsAppVerificationModal'
 import EmailVerificationModal from './EmailVerificationModal'
 import VerificationDocumentsModal from './VerificationDocumentsModal'
 import { registerWithEmail, loginWithEmail, validatePassword } from '../services/authService'
+import { getApiBaseUrl } from '../utils/apiConfig'
 import './LoginModal.css'
 
 const LoginModal = ({ isOpen, onClose }) => {
@@ -50,7 +51,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     if (isLogin) {
       // Сначала пробуем войти как администратор (по username или email)
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+        const API_BASE_URL = await getApiBaseUrl();
         const response = await fetch(`${API_BASE_URL}/admin/auth/login`, {
           method: 'POST',
           headers: {
@@ -153,7 +154,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               console.log('💾 Сохранен ID заблокированного пользователя:', result.user.id);
             } else {
               // Если ID нет в результате, пытаемся получить из БД
-              const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+              const API_BASE_URL = await getApiBaseUrl();
               try {
                 const userResponse = await fetch(`${API_BASE_URL}/users/email/${formData.email}`);
                 if (userResponse.ok) {

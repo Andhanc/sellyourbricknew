@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FiSend, FiPhone, FiMessageSquare } from 'react-icons/fi';
 import PhoneInput from '../PhoneInput';
+import { getApiBaseUrl } from '../../utils/apiConfig';
 import './Clients.css';
 
 const Clients = () => {
@@ -48,7 +49,7 @@ const Clients = () => {
     setSendResult(null);
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const API_BASE_URL = await getApiBaseUrl();
       
       const response = await fetch(`${API_BASE_URL}/whatsapp/send-message`, {
         method: 'POST',

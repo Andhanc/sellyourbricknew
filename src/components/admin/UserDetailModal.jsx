@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiX, FiUser, FiMail, FiPhone, FiMapPin, FiShield, FiShieldOff, FiCalendar, FiImage, FiCreditCard, FiHash } from 'react-icons/fi';
+import { getApiBaseUrl, getApiBaseUrlSync } from '../../utils/apiConfig';
 import './UserDetailModal.css';
+
+// Константа для базового URL без /api (для изображений)
+const API_BASE_URL_WITHOUT_API = getApiBaseUrlSync().replace('/api', '');
 
 const UserDetailModal = ({ isOpen, onClose, userId }) => {
   const [user, setUser] = useState(null);
@@ -13,7 +17,7 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
     setError(null);
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const API_BASE_URL = await getApiBaseUrl();
       
       // Загружаем информацию о пользователе
       const userResponse = await fetch(`${API_BASE_URL}/users/${userId}`);
@@ -47,7 +51,7 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
         if (userData.user_photo.startsWith('http')) {
           userPhotoUrl = userData.user_photo;
         } else {
-          userPhotoUrl = `${API_BASE_URL.replace('/api', '')}${userData.user_photo}`;
+          userPhotoUrl = `${API_BASE_URL_WITHOUT_API}${userData.user_photo}`;
         }
       }
 
@@ -56,7 +60,7 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
         if (userData.passport_photo.startsWith('http')) {
           passportPhotoUrl = userData.passport_photo;
         } else {
-          passportPhotoUrl = `${API_BASE_URL.replace('/api', '')}${userData.passport_photo}`;
+          passportPhotoUrl = `${API_BASE_URL_WITHOUT_API}${userData.passport_photo}`;
         }
       }
 
@@ -67,7 +71,7 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
           if (doc.document_photo.startsWith('http')) {
             docUrl = doc.document_photo;
           } else {
-            docUrl = `${API_BASE_URL.replace('/api', '')}${doc.document_photo}`;
+            docUrl = `${API_BASE_URL_WITHOUT_API}${doc.document_photo}`;
           }
         }
         return { ...doc, document_photo_url: docUrl };
@@ -132,7 +136,7 @@ const UserDetailModal = ({ isOpen, onClose, userId }) => {
     
     if (window.confirm(`Вы уверены, что хотите ${action} этого пользователя?`)) {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const API_BASE_URL = await getApiBaseUrl();
         const endpoint = user.is_blocked === 1 
           ? `${API_BASE_URL}/users/${userId}/unblock`
           : `${API_BASE_URL}/users/${userId}/block`;

@@ -5,8 +5,9 @@ import { BiArea } from 'react-icons/bi';
 import PropertyTimer from '../PropertyTimer';
 import BiddingHistoryModal from '../BiddingHistoryModal';
 import './ObjectsList.css';
+import { getApiBaseUrlSync } from '../../utils/apiConfig';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getApiBaseUrlSync();
 
 const ObjectsList = () => {
   const [searchQuery, setSearchQuery] = useState('');

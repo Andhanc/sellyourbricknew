@@ -1,25 +1,30 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useUser } from '@clerk/clerk-react'
 import Header from '../components/Header'
 import Hero from '../components/Hero'
 import PropertyList from '../components/PropertyList'
 import FAQ from '../components/FAQ'
 import DepositButton from '../components/DepositButton'
-import { getUserData } from '../services/authService'
+import { getUserData, isAuthenticated } from '../services/authService'
 import './Home.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+import { getApiBaseUrl } from '../utils/apiConfig'
 
 function Home() {
   const [auctionProperties, setAuctionProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [userDeposit, setUserDeposit] = useState(0)
+  const { user, isLoaded: userLoaded } = useUser()
   const userData = getUserData()
-  const userId = userData?.id
+  const [dbUserId, setDbUserId] = useState(null)
 
   // Загрузка аукционных и не аукционных объявлений из API
   useEffect(() => {
     const loadProperties = async () => {
       try {
+        // Убеждаемся, что API URL инициализирован ПЕРЕД загрузкой
+        const API_BASE_URL = await getApiBaseUrl()
+        
         setLoading(true)
         // Загружаем объявления по типам
         const types = [
@@ -36,16 +41,20 @@ function Home() {
           try {
             // Загружаем аукционные объявления
             const auctionUrl = `${API_BASE_URL}/properties/auctions?type=${apiType}`
+            console.log('📡 Запрос аукционных:', auctionUrl)
             const auctionResponse = await fetch(auctionUrl)
             if (auctionResponse.ok) {
               const data = await auctionResponse.json()
               if (data.success && data.data) {
                 allAuctionProperties.push(...data.data)
               }
+            } else {
+              console.warn(`⚠️ Ошибка загрузки аукционных объявлений типа ${apiType}:`, auctionResponse.status)
             }
 
             // Загружаем не аукционные объявления (одобренные)
             const approvedUrl = `${API_BASE_URL}/properties/approved?type=${apiType}`
+            console.log('📡 Запрос одобренных:', approvedUrl)
             const approvedResponse = await fetch(approvedUrl)
             if (approvedResponse.ok) {
               const data = await approvedResponse.json()
@@ -116,16 +125,74 @@ function Home() {
     return () => clearInterval(interval)
   }, [])
 
+  // Получаем числовой ID из БД для Clerk пользователей
+  useEffect(() => {
+    // Если dbUserId уже установлен, не делаем ничего
+    if (dbUserId) {
+      return
+    }
+    
+    const fetchDbUserId = async () => {
+      // Проверяем localStorage сначала
+      const savedUserId = localStorage.getItem('userId')
+      if (savedUserId && /^\d+$/.test(savedUserId)) {
+        setDbUserId(parseInt(savedUserId))
+        return
+      }
+      
+      // Если userLoaded еще не загружен, ждем
+      if (!userLoaded) {
+        return
+      }
+      
+      const isClerkAuth = user && userLoaded
+      const isOldAuth = isAuthenticated()
+      
+      // Для Clerk пользователей получаем ID из БД
+      if (isClerkAuth && user) {
+        try {
+          const API_BASE_URL = await getApiBaseUrl()
+          
+          const userEmail = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress
+          if (userEmail) {
+            const userResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail)}`)
+            if (userResponse.ok) {
+              const userData = await userResponse.json()
+              if (userData.success && userData.data && userData.data.id) {
+                const numericId = userData.data.id
+                setDbUserId(numericId)
+                localStorage.setItem('userId', String(numericId))
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Не удалось получить userId из БД:', e)
+        }
+      } else if (isOldAuth) {
+        // Для старой системы авторизации используем ID из getUserData
+        const currentUserData = getUserData()
+        const userId = currentUserData?.id
+        if (userId && /^\d+$/.test(userId.toString())) {
+          setDbUserId(parseInt(userId))
+        }
+      }
+    }
+    
+    fetchDbUserId()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLoaded, user?.id, user?.primaryEmailAddress?.emailAddress])
+
   // Загружаем депозит пользователя
   useEffect(() => {
     const loadUserDeposit = async () => {
-      if (!userId) {
+      if (!dbUserId) {
         setUserDeposit(0)
         return
       }
       
       try {
-        const response = await fetch(`${API_BASE_URL}/users/${userId}/deposit`)
+        const API_BASE_URL = await getApiBaseUrl()
+        const response = await fetch(`${API_BASE_URL}/users/${dbUserId}/deposit`)
         if (response.ok) {
           const data = await response.json()
           if (data.success) {
@@ -142,7 +209,7 @@ function Home() {
     // Обновляем каждые 5 секунд для актуальности данных
     const interval = setInterval(loadUserDeposit, 5000)
     return () => clearInterval(interval)
-  }, [userId])
+  }, [dbUserId])
 
   return (
     <div className="home-page">
