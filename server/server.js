@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import multer from 'multer';
 import fs from 'fs';
+const { readFileSync } = fs;
 import crypto from 'crypto';
 import qrcode from 'qrcode-terminal';
 import whatsappPkg from 'whatsapp-web.js';
@@ -123,6 +124,19 @@ const upload = multer({
 
 // Статическая папка для загрузок
 app.use('/uploads', express.static(uploadsDir));
+
+// Middleware для логирования запросов к test-timer (для диагностики)
+app.use('/api/properties', (req, res, next) => {
+  if (req.path.includes('test-timer')) {
+    console.log('🔍 Middleware: Запрос к test-timer:', {
+      method: req.method,
+      path: req.path,
+      url: req.url,
+      originalUrl: req.originalUrl
+    });
+  }
+  next();
+});
 
 // Инициализация базы данных
 initDatabase();
@@ -4182,16 +4196,17 @@ app.get('/api/properties/auctions', (req, res) => {
     const db = getDatabase();
     const { type } = req.query; // Опциональный фильтр по типу
     
-    // Запрос для получения объявлений с аукционом
+    // Запрос для получения объявлений с аукционом (включая тестовые таймеры)
     let query = `
       SELECT p.*, 
              u.first_name, u.last_name, u.email, u.phone_number
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.moderation_status = 'approved' 
-        AND p.is_auction = 1
-        AND p.auction_end_date IS NOT NULL
-        AND p.auction_end_date != ''
+        AND (
+          (p.is_auction = 1 AND p.auction_end_date IS NOT NULL AND p.auction_end_date != '')
+          OR (p.test_timer_end_date IS NOT NULL AND p.test_timer_end_date != '')
+        )
     `;
     
     const params = [];
@@ -4251,7 +4266,8 @@ app.get('/api/properties/auctions', (req, res) => {
         hasSamolyot: false,
         isAuction: true,
         currentBid: prop.auction_starting_price || prop.price || 0,
-        endTime: prop.auction_end_date || null,
+        endTime: prop.test_timer_end_date || prop.auction_end_date || null,
+        test_timer_end_date: prop.test_timer_end_date || null,
         beds: prop.bedrooms || prop.rooms || 0,
         baths: prop.bathrooms || 0,
         sqft: prop.area || 0,
@@ -4284,12 +4300,285 @@ app.get('/api/properties/auctions', (req, res) => {
 });
 
 /**
- * GET /api/properties/:id - Получить объявление по ID
+ * GET /api/properties/test-timers - Получить все объявления с тестовыми таймерами
+ * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе он будет перехвачен
  */
-app.get('/api/properties/:id', (req, res) => {
+app.get('/api/properties/test-timers', (req, res) => {
+  try {
+    console.log('📥 GET /api/properties/test-timers - Запрос получен');
+    const db = getDatabase();
+    
+    // Запрос для получения объявлений с тестовыми таймерами
+    const query = `
+      SELECT p.*, 
+             u.first_name, u.last_name, u.email, u.phone_number
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.test_timer_end_date IS NOT NULL
+        AND p.test_timer_end_date != ''
+      ORDER BY p.test_timer_end_date ASC
+    `;
+    
+    const properties = db.prepare(query).all();
+    
+    // Преобразуем данные в формат для фронтенда
+    const formattedProperties = properties.map(prop => {
+      // Парсим JSON поля
+      let photos = [];
+      let videos = [];
+      
+      if (prop.photos) {
+        try {
+          photos = typeof prop.photos === 'string' ? JSON.parse(prop.photos) : prop.photos;
+        } catch (e) {
+          photos = [];
+        }
+      }
+      
+      if (prop.videos) {
+        try {
+          videos = typeof prop.videos === 'string' ? JSON.parse(prop.videos) : prop.videos;
+        } catch (e) {
+          videos = [];
+        }
+      }
+      
+      return {
+        id: prop.id,
+        name: prop.title,
+        title: prop.title,
+        location: prop.location || '',
+        price: prop.price || 0,
+        coordinates: prop.coordinates ? (
+          typeof prop.coordinates === 'string' 
+            ? (prop.coordinates.startsWith('[') || prop.coordinates.startsWith('{') 
+                ? JSON.parse(prop.coordinates) 
+                : prop.coordinates.split(',').map(Number))
+            : prop.coordinates
+        ) : null,
+        owner: {
+          firstName: prop.first_name || '',
+          lastName: prop.last_name || '',
+          email: prop.email || ''
+        },
+        image: photos && photos.length > 0 ? photos[0] : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+        images: photos || [],
+        videos: videos || [],
+        hasSamolyot: false,
+        isAuction: true,
+        currentBid: prop.auction_starting_price || prop.price || 0,
+        endTime: prop.test_timer_end_date || null,
+        test_timer_end_date: prop.test_timer_end_date || null,
+        beds: prop.bedrooms || prop.rooms || 0,
+        baths: prop.bathrooms || 0,
+        sqft: prop.area || 0,
+        area: prop.area || 0,
+        rooms: prop.bedrooms || prop.rooms || 0,
+        description: prop.description || '',
+        property_type: prop.property_type,
+        currency: prop.currency || 'USD',
+        originalPrice: prop.price || null,
+        auctionStartingPrice: prop.auction_starting_price || null
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: formattedProperties
+    });
+  } catch (error) {
+    console.error('Ошибка при получении объявлений с тестовыми таймерами:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/properties/:id/test-timer - Установить тестовый таймер для объявления
+ * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе он будет перехвачен
+ */
+console.log('📝 Регистрирую маршрут: POST /api/properties/:id/test-timer');
+app.post('/api/properties/:id/test-timer', (req, res) => {
+  console.log('🔵🔵🔵 POST /api/properties/:id/test-timer - МАРШРУТ ВЫЗВАН!');
+  console.log('🔵 URL:', req.url);
+  console.log('🔵 Original URL:', req.originalUrl);
+  console.log('🔵 Path:', req.path);
+  console.log('🔵 Method:', req.method);
+  console.log('🔵 Params:', req.params);
+  console.log('🔵 Body:', req.body);
+  console.log('🔵 POST /api/properties/:id/test-timer - Маршрут вызван!');
+  console.log('🔵 URL:', req.url);
+  console.log('🔵 Method:', req.method);
+  console.log('🔵 Params:', req.params);
+  console.log('🔵 Body:', req.body);
+  
   try {
     const db = getDatabase();
     const { id } = req.params;
+    const { test_timer_end_date, test_timer_duration } = req.body;
+    
+    console.log('📥 POST /api/properties/:id/test-timer - Запрос:', { id, test_timer_end_date, test_timer_duration });
+    
+    if (!test_timer_end_date) {
+      return res.status(400).json({ success: false, error: 'Не указана дата окончания таймера' });
+    }
+    
+    // Проверяем, существует ли объявление
+    const property = db.prepare('SELECT id FROM properties WHERE id = ?').get(id);
+    if (!property) {
+      console.error('❌ Объявление не найдено:', id);
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+    
+    // Проверяем, существует ли поле test_timer_end_date в таблице
+    try {
+      const pragmaInfo = db.prepare("PRAGMA table_info(properties)").all();
+      const hasTestTimerField = pragmaInfo.some(col => col.name === 'test_timer_end_date');
+      const hasTestTimerDurationField = pragmaInfo.some(col => col.name === 'test_timer_duration');
+      
+      if (!hasTestTimerField) {
+        console.log('🔄 Поле test_timer_end_date отсутствует, добавляем...');
+        try {
+          const migrationPath = join(__dirname, 'database', 'add_test_timer_field.sql');
+          console.log('📁 Путь к миграции:', migrationPath);
+          const migrationSql = readFileSync(migrationPath, 'utf8');
+          db.exec(migrationSql);
+          console.log('✅ Поле test_timer_end_date добавлено');
+        } catch (migrationError) {
+          console.error('❌ Ошибка при добавлении поля:', migrationError);
+          // Пытаемся добавить напрямую
+          try {
+            db.exec("ALTER TABLE properties ADD COLUMN test_timer_end_date TEXT");
+            console.log('✅ Поле test_timer_end_date добавлено напрямую');
+          } catch (directError) {
+            console.error('❌ Ошибка при прямом добавлении поля:', directError);
+            return res.status(500).json({ 
+              success: false, 
+              error: 'Поле test_timer_end_date не существует и не может быть создано. Ошибка: ' + directError.message 
+            });
+          }
+        }
+      }
+      
+      if (!hasTestTimerDurationField) {
+        console.log('🔄 Поле test_timer_duration отсутствует, добавляем...');
+        try {
+          const migrationPath = join(__dirname, 'database', 'add_test_timer_duration_field.sql');
+          console.log('📁 Путь к миграции:', migrationPath);
+          const migrationSql = readFileSync(migrationPath, 'utf8');
+          db.exec(migrationSql);
+          console.log('✅ Поле test_timer_duration добавлено');
+        } catch (migrationError) {
+          console.error('❌ Ошибка при добавлении поля:', migrationError);
+          // Пытаемся добавить напрямую
+          try {
+            db.exec("ALTER TABLE properties ADD COLUMN test_timer_duration INTEGER");
+            console.log('✅ Поле test_timer_duration добавлено напрямую');
+          } catch (directError) {
+            console.error('❌ Ошибка при прямом добавлении поля:', directError);
+            // Не критично, продолжаем
+          }
+        }
+      }
+    } catch (checkError) {
+      console.error('❌ Ошибка при проверке структуры таблицы:', checkError);
+    }
+    
+    // Обновляем тестовый таймер
+    try {
+      let result;
+      if (test_timer_duration !== undefined && test_timer_duration !== null) {
+        // Обновляем и дату окончания, и длительность
+        result = db.prepare(`
+          UPDATE properties 
+          SET test_timer_end_date = ?, test_timer_duration = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(test_timer_end_date, test_timer_duration, id);
+        console.log('✅ Тестовый таймер обновлен с длительностью:', { id, duration: test_timer_duration, changes: result.changes });
+      } else {
+        // Обновляем только дату окончания (для обратной совместимости)
+        result = db.prepare(`
+          UPDATE properties 
+          SET test_timer_end_date = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(test_timer_end_date, id);
+        console.log('✅ Тестовый таймер обновлен (без длительности):', { id, changes: result.changes });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Тестовый таймер успешно установлен'
+      });
+    } catch (updateError) {
+      console.error('❌ Ошибка при обновлении таймера:', updateError);
+      throw updateError;
+    }
+  } catch (error) {
+    console.error('❌ Ошибка при установке тестового таймера:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Не удалось сохранить таймер',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+/**
+ * DELETE /api/properties/:id/test-timer - Удалить тестовый таймер для объявления
+ */
+app.delete('/api/properties/:id/test-timer', (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+    
+    // Проверяем, существует ли объявление
+    const property = db.prepare('SELECT id FROM properties WHERE id = ?').get(id);
+    if (!property) {
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+    
+    // Удаляем тестовый таймер и его длительность
+    const pragmaInfo = db.prepare("PRAGMA table_info(properties)").all();
+    const hasTestTimerDurationField = pragmaInfo.some(col => col.name === 'test_timer_duration');
+    
+    if (hasTestTimerDurationField) {
+      db.prepare(`
+        UPDATE properties 
+        SET test_timer_end_date = NULL, test_timer_duration = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(id);
+    } else {
+      db.prepare(`
+        UPDATE properties 
+        SET test_timer_end_date = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(id);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Тестовый таймер успешно удален'
+    });
+  } catch (error) {
+    console.error('Ошибка при удалении тестового таймера:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/properties/:id - Получить объявление по ID
+ * ВАЖНО: Этот маршрут должен быть ПОСЛЕ всех специфичных маршрутов
+ */
+app.get('/api/properties/:id', (req, res) => {
+  const { id } = req.params;
+  
+  // Игнорируем специальные пути, которые должны обрабатываться другими маршрутами
+  if (id === 'test-timers' || id === 'pending' || id === 'approved' || id === 'auctions' || id === 'user') {
+    console.log('⚠️ GET /api/properties/:id - Игнорируем специальный путь:', id);
+    return res.status(404).json({ success: false, error: 'Маршрут не найден' });
+  }
+  
+  try {
+    const db = getDatabase();
     
     const property = db.prepare(`
       SELECT 
@@ -4303,6 +4592,10 @@ app.get('/api/properties/:id', (req, res) => {
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = ?
     `).get(id);
+    
+    // Проверяем наличие поля test_timer_duration
+    const pragmaInfo = db.prepare("PRAGMA table_info(properties)").all();
+    const hasTestTimerDurationField = pragmaInfo.some(col => col.name === 'test_timer_duration');
 
     if (!property) {
       return res.status(404).json({ success: false, error: 'Объявление не найдено' });
@@ -4402,9 +4695,26 @@ app.get('/api/properties/:id', (req, res) => {
       }
     }
 
+    // Если есть тестовый таймер, используем его для endTime
+    if (formatted.test_timer_end_date) {
+      formatted.endTime = formatted.test_timer_end_date;
+      formatted.isAuction = true;
+    } else if (formatted.auction_end_date && formatted.is_auction) {
+      formatted.endTime = formatted.auction_end_date;
+      formatted.isAuction = true;
+    }
+
+    // Убеждаемся, что test_timer_duration возвращается (если поле существует)
+    if (hasTestTimerDurationField && formatted.test_timer_duration !== undefined) {
+      formatted.test_timer_duration = formatted.test_timer_duration || null;
+    }
+    
     console.log('🔍 GET /api/properties/:id - Отправляем formatted с test_drive:', {
       test_drive: formatted.test_drive,
-      test_drive_type: typeof formatted.test_drive
+      test_drive_type: typeof formatted.test_drive,
+      test_timer_end_date: formatted.test_timer_end_date,
+      test_timer_duration: formatted.test_timer_duration,
+      endTime: formatted.endTime
     });
     res.json({ success: true, data: formatted });
   } catch (error) {
@@ -5261,7 +5571,7 @@ app.get('/api/users/:id/analytics', (req, res) => {
  * POST /api/bids - Создать ставку
  * Логика:
  * 1. Проверяем, что у пользователя есть депозит
- * 2. Проверяем, что пользователь может сделать ставку только в одном объекте
+ * 2. Проверка на несколько объектов отключена - пользователь может делать ставки в нескольких объектах
  * 3. Проверяем, что ставка не меньше минимальной суммы
  * 4. Если ставка больше текущей - обновляем минимальную ставку (текущая ставка - цена)
  */
@@ -5396,21 +5706,21 @@ app.post('/api/bids', (req, res) => {
       });
     }
     
-    // Проверяем, что пользователь может сделать ставку только в одном объекте
-    const existingBids = db.prepare(`
-      SELECT property_id FROM bids 
-      WHERE user_id = ? AND property_id != ?
-      LIMIT 1
-    `).get(userIdNum, propertyIdNum);
-    
-    if (existingBids) {
-      console.error(`❌ Пользователь ${userIdNum} уже сделал ставку в объекте ${existingBids.property_id}`);
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Вы уже сделали ставку в другом объекте. Вы можете сделать ставку только в одном объекте.' 
-      });
-    }
-    console.log('✅ Пользователь может сделать ставку в этом объекте');
+    // Проверка отключена: пользователь может делать ставки в нескольких объектах
+    // const existingBids = db.prepare(`
+    //   SELECT property_id FROM bids 
+    //   WHERE user_id = ? AND property_id != ?
+    //   LIMIT 1
+    // `).get(userIdNum, propertyIdNum);
+    // 
+    // if (existingBids) {
+    //   console.error(`❌ Пользователь ${userIdNum} уже сделал ставку в объекте ${existingBids.property_id}`);
+    //   return res.status(400).json({ 
+    //     success: false, 
+    //     error: 'Вы уже сделали ставку в другом объекте. Вы можете сделать ставку только в одном объекте.' 
+    //   });
+    // }
+    console.log('✅ Пользователь может сделать ставку в этом объекте (проверка на несколько объектов отключена)');
     
     // Получаем текущую максимальную ставку для этого объекта
     let currentMaxBid = property.auction_starting_price || property.price || 0;
@@ -5733,9 +6043,59 @@ app.get('/api/users/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })
 })
 
+// Обработчик для необработанных маршрутов (для диагностики)
+app.use((req, res, next) => {
+  if (req.path.includes('test-timer')) {
+    console.log('⚠️ Необработанный запрос к test-timer:', {
+      method: req.method,
+      path: req.path,
+      url: req.url,
+      originalUrl: req.originalUrl
+    });
+  }
+  next();
+});
+
+// Обработчик 404 для всех остальных маршрутов
+app.use((req, res) => {
+  if (req.path.includes('test-timer')) {
+    console.error('❌ 404 для test-timer маршрута:', {
+      method: req.method,
+      path: req.path,
+      url: req.url
+    });
+  }
+  res.status(404).json({ 
+    success: false, 
+    error: 'Маршрут не найден',
+    method: req.method,
+    path: req.path,
+    url: req.url
+  });
+});
+
+// Проверяем зарегистрированные маршруты перед запуском
+const registeredRoutes = [];
+app._router?.stack?.forEach((middleware) => {
+  if (middleware.route) {
+    registeredRoutes.push(`${Object.keys(middleware.route.methods).join(',').toUpperCase()} ${middleware.route.path}`);
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 API доступен по адресу: http://localhost:${PORT}/api`);
+  console.log(`✅ Маршрут POST /api/properties/:id/test-timer зарегистрирован`);
+  console.log(`✅ Маршрут GET /api/properties/test-timers зарегистрирован`);
+  console.log(`✅ Маршрут DELETE /api/properties/:id/test-timer зарегистрирован`);
+  
+  // Выводим все маршруты, связанные с test-timer
+  const testTimerRoutes = registeredRoutes.filter(r => r.includes('test-timer'));
+  if (testTimerRoutes.length > 0) {
+    console.log(`📋 Зарегистрированные test-timer маршруты:`, testTimerRoutes);
+  } else {
+    console.warn(`⚠️ ВНИМАНИЕ: Маршруты test-timer не найдены в списке зарегистрированных!`);
+  }
 });
 
 // Graceful shutdown

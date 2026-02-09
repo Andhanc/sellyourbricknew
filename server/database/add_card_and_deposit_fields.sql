@@ -19,3 +19,4 @@ ALTER TABLE users ADD COLUMN deposit_amount REAL DEFAULT 0;
 -- Создаем индекс для оптимизации запросов по has_card
 CREATE INDEX IF NOT EXISTS idx_users_has_card ON users(has_card);
 
+

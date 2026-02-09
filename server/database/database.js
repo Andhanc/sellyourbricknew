@@ -434,6 +434,22 @@ export function initDatabase() {
               }
             }
           }
+          
+          // Проверяем и добавляем поле test_timer_end_date, если его нет
+          const hasTestTimer = pragmaInfo.some(col => col.name === 'test_timer_end_date');
+          if (!hasTestTimer) {
+            console.log('🔄 Обновление схемы БД: добавляем поле test_timer_end_date...');
+            try {
+              const migrationSql = readFileSync(join(__dirname, 'add_test_timer_field.sql'), 'utf8');
+              db.exec(migrationSql);
+              console.log('✅ Поле test_timer_end_date добавлено в таблицу properties');
+            } catch (migrationError) {
+              // Игнорируем ошибки "duplicate column name" (поле уже существует)
+              if (!migrationError.message.includes('duplicate column name')) {
+                console.warn('⚠️ Не удалось добавить поле test_timer_end_date:', migrationError.message);
+              }
+            }
+          }
         }
       } catch (propertiesError) {
         console.warn('⚠️ Не удалось создать таблицу недвижимости:', propertiesError.message);

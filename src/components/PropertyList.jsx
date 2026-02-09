@@ -7,6 +7,7 @@ import { FiLayers, FiCalendar } from 'react-icons/fi'
 import { properties } from '../data/properties'
 import { isAuthenticated } from '../services/authService'
 import PropertyTimer from './PropertyTimer'
+import CircularTimer from './CircularTimer'
 import './PropertyList.css'
 
 const PropertyList = ({ auctionProperties = null }) => {
@@ -231,8 +232,25 @@ const PropertyList = ({ auctionProperties = null }) => {
                 const propertyTitle = property.title || property.name || ''
                 const propertyImages = property.images || (property.image ? [property.image] : [])
                 const propertyImage = propertyImages[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
-                const hasTimer = property.isAuction === true && property.endTime != null && property.endTime !== ''
+                const hasTestTimer = property.test_timer_end_date != null && property.test_timer_end_date !== ''
+                const hasTimer = (property.isAuction === true && property.endTime != null && property.endTime !== '') || hasTestTimer
                 const hasTestDrive = property.test_drive === 1 || property.testDrive === true || property.test_drive === true
+                
+                // Проверяем, закончился ли таймер
+                const checkTimerExpired = () => {
+                  if (hasTestTimer && property.test_timer_end_date) {
+                    const now = new Date().getTime();
+                    const end = new Date(property.test_timer_end_date).getTime();
+                    return end <= now;
+                  }
+                  if (property.endTime) {
+                    const now = new Date().getTime();
+                    const end = new Date(property.endTime).getTime();
+                    return end <= now;
+                  }
+                  return false;
+                };
+                const isTimerExpired = checkTimerExpired();
                 
                 return (
             <div 
@@ -269,6 +287,24 @@ const PropertyList = ({ auctionProperties = null }) => {
                   >
                     <span>Купить сейчас</span>
                   </div>
+                  {hasTestTimer && (
+                    <div 
+                      className="property-auction-badge"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        navigate(`/property/${property.id}`, {
+                          state: { property }
+                        })
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      <span>Аукцион</span>
+                    </div>
+                  )}
                   {hasTestDrive && (
                     <div 
                       className="property-testdrive-badge"
@@ -337,7 +373,17 @@ const PropertyList = ({ auctionProperties = null }) => {
                 </div>
                 <div className="property-content">
                   {hasTimer && (
-                    <PropertyTimer endTime={property.endTime} compact={true} />
+                    <div className="property-timer-wrapper">
+                      {hasTestTimer ? (
+                        <CircularTimer 
+                          endTime={property.test_timer_end_date} 
+                          size={120} 
+                          strokeWidth={6} 
+                        />
+                      ) : (
+                        <PropertyTimer endTime={property.endTime} compact={true} />
+                      )}
+                    </div>
                   )}
                   <h3 className="property-title">{propertyTitle}</h3>
                   {!hasTimer && property.description && (
