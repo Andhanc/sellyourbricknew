@@ -36,6 +36,24 @@ function Home() {
 
         const allAuctionProperties = []
         const allNonAuctionProperties = []
+        const allTestProperties = []
+
+        // Загружаем тестовые объявления (они уже включают все типы)
+        try {
+          const testUrl = `${API_BASE_URL}/properties/test-timers`
+          console.log('📡 Запрос тестовых объявлений:', testUrl)
+          const testResponse = await fetch(testUrl)
+          if (testResponse.ok) {
+            const data = await testResponse.json()
+            if (data.success && data.data) {
+              allTestProperties.push(...data.data)
+            }
+          } else {
+            console.warn('⚠️ Ошибка загрузки тестовых объявлений:', testResponse.status)
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки тестовых объявлений:', error)
+        }
 
         for (const { apiType } of types) {
           try {
@@ -46,7 +64,11 @@ function Home() {
             if (auctionResponse.ok) {
               const data = await auctionResponse.json()
               if (data.success && data.data) {
-                allAuctionProperties.push(...data.data)
+                // Исключаем тестовые объявления, чтобы не дублировать
+                const nonTestAuction = data.data.filter(prop => 
+                  !prop.test_timer_end_date
+                )
+                allAuctionProperties.push(...nonTestAuction)
               }
             } else {
               console.warn(`⚠️ Ошибка загрузки аукционных объявлений типа ${apiType}:`, auctionResponse.status)
@@ -79,8 +101,9 @@ function Home() {
           location: prop.location || '',
           price: prop.price || (isAuction ? prop.auction_starting_price : 0) || 0,
           currentBid: isAuction ? (prop.currentBid || prop.auction_starting_price || prop.price || 0) : null,
-          endTime: isAuction ? (prop.endTime || prop.auction_end_date || null) : null,
+          endTime: isAuction ? (prop.test_timer_end_date || prop.endTime || prop.auction_end_date || null) : null,
           isAuction: isAuction,
+          test_timer_end_date: prop.test_timer_end_date || null,
           images: prop.images || (prop.image ? [prop.image] : []),
           image: prop.image || (prop.images && prop.images[0] ? prop.images[0] : null),
           // Основные характеристики
@@ -103,12 +126,14 @@ function Home() {
         })
 
         const formattedAuction = allAuctionProperties.map(prop => formatProperty(prop, true))
+        const formattedTest = allTestProperties.map(prop => formatProperty(prop, true))
         const formattedNonAuction = allNonAuctionProperties.map(prop => formatProperty(prop, false))
         
-        // Объединяем аукционные и не аукционные объекты
-        const allProperties = [...formattedAuction, ...formattedNonAuction]
+        // Объединяем тестовые, аукционные и не аукционные объекты (тестовые первыми)
+        const allProperties = [...formattedTest, ...formattedAuction, ...formattedNonAuction]
 
         setAuctionProperties(allProperties)
+        console.log('✅ Загружено тестовых объявлений:', formattedTest.length)
         console.log('✅ Загружено аукционных объявлений:', formattedAuction.length)
         console.log('✅ Загружено не аукционных объявлений:', formattedNonAuction.length)
       } catch (error) {

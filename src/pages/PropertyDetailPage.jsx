@@ -258,7 +258,8 @@ const PropertyDetailPage = () => {
                 auction_start_date: prop.auction_start_date || null,
                 auction_end_date: prop.auction_end_date || null,
                 auction_starting_price: prop.auction_starting_price || null,
-                endTime: prop.auction_end_date || null, // Для компонента PropertyDetail
+                endTime: prop.test_timer_end_date || prop.auction_end_date || null, // Для компонента PropertyDetail (приоритет у тестового таймера)
+                test_timer_end_date: prop.test_timer_end_date || null,
                 additional_amenities: prop.additional_amenities || null,
                 // Информация о продавце
                 seller: prop.first_name && prop.last_name 
@@ -356,6 +357,7 @@ const PropertyDetailPage = () => {
 
   const hasEndTime =
     (property.endTime != null && property.endTime !== '') ||
+    (property.test_timer_end_date != null && property.test_timer_end_date !== '') ||
     (property.auction_end_date != null && property.auction_end_date !== '')
 
   const isAuction = hasAuctionFlag && hasEndTime

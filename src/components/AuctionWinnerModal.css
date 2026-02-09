@@ -1,0 +1,278 @@
+/* Затемненный фон */
+.auction-winner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 9998;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Модальное окно */
+.auction-winner-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  z-index: 9999;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.auction-winner-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b7280;
+  z-index: 10;
+}
+
+.auction-winner-modal__close:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+  transform: rotate(90deg);
+}
+
+.auction-winner-modal__content {
+  text-align: center;
+  position: relative;
+  z-index: 5;
+}
+
+.auction-winner-modal__icon {
+  margin: 0 auto 24px;
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.4);
+  animation: trophyBounce 0.6s ease-out 0.3s both;
+}
+
+.auction-winner-modal__title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1f2937;
+  margin: 0 0 32px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auction-winner-modal__winner-info {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 16px;
+  border: 2px solid #fbbf24;
+}
+
+.auction-winner-modal__winner-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.auction-winner-modal__winner-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #78350f;
+  line-height: 1.3;
+}
+
+.auction-winner-modal__bid-info {
+  padding: 20px;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-radius: 16px;
+  border: 2px solid #10b981;
+}
+
+.auction-winner-modal__bid-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #065f46;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.auction-winner-modal__bid-amount {
+  font-size: 36px;
+  font-weight: 800;
+  color: #047857;
+  line-height: 1.2;
+}
+
+/* Конфетти */
+.auction-winner-modal__confetti {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fbbf24;
+  animation: confettiFall 3s ease-out infinite;
+}
+
+.confetti-piece:nth-child(1) {
+  left: 10%;
+  animation-delay: 0s;
+  background: #fbbf24;
+}
+
+.confetti-piece:nth-child(2) {
+  left: 20%;
+  animation-delay: 0.2s;
+  background: #f59e0b;
+}
+
+.confetti-piece:nth-child(3) {
+  left: 30%;
+  animation-delay: 0.4s;
+  background: #10b981;
+}
+
+.confetti-piece:nth-child(4) {
+  left: 40%;
+  animation-delay: 0.6s;
+  background: #3b82f6;
+}
+
+.confetti-piece:nth-child(5) {
+  left: 50%;
+  animation-delay: 0.8s;
+  background: #8b5cf6;
+}
+
+.confetti-piece:nth-child(6) {
+  left: 60%;
+  animation-delay: 1s;
+  background: #ec4899;
+}
+
+.confetti-piece:nth-child(7) {
+  left: 70%;
+  animation-delay: 1.2s;
+  background: #f59e0b;
+}
+
+.confetti-piece:nth-child(8) {
+  left: 80%;
+  animation-delay: 1.4s;
+  background: #10b981;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes trophyBounce {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(600px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Адаптивность */
+@media (max-width: 640px) {
+  .auction-winner-modal {
+    padding: 32px 24px;
+    max-width: 95%;
+  }
+  
+  .auction-winner-modal__title {
+    font-size: 24px;
+  }
+  
+  .auction-winner-modal__icon {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .auction-winner-modal__winner-name {
+    font-size: 20px;
+  }
+  
+  .auction-winner-modal__bid-amount {
+    font-size: 28px;
+  }
+}
+

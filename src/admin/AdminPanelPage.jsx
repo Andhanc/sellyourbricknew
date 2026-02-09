@@ -13,6 +13,7 @@ import AdminChat from '../components/admin/AdminChat';
 import WhatsApp from '../components/admin/WhatsApp';
 import Clients from '../components/admin/Clients';
 import AccessManagement from '../components/admin/AccessManagement';
+import Testing from '../components/admin/Testing';
 import { mockBusinessInfo } from '../data/mockData';
 import { clearUserData } from '../services/authService';
 import '../styles/admin/global.css';
@@ -61,6 +62,7 @@ const AdminPanelPage = () => {
     objects: 'Объекты',
     whatsapp: 'WhatsApp',
     clients: 'Клиенты',
+    testing: 'Тестирование',
     access_management: 'Доступы'
   };
 
@@ -79,6 +81,7 @@ const AdminPanelPage = () => {
       objects: adminPermissions.can_access_objects,
       whatsapp: adminPermissions.can_access_whatsapp,
       clients: adminPermissions.can_access_clients,
+      testing: adminPermissions.can_access_objects,
       access_management: adminPermissions.can_access_access_management
     };
 
@@ -138,6 +141,8 @@ const AdminPanelPage = () => {
         return <WhatsApp />;
       case 'clients':
         return <Clients />;
+      case 'testing':
+        return <Testing />;
       case 'access_management':
         return <AccessManagement />;
       default:

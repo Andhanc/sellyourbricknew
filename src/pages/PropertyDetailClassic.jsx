@@ -16,11 +16,13 @@ import { FaHeart as FaHeartSolid } from 'react-icons/fa'
 import { IoLocationOutline } from 'react-icons/io5'
 import { isAuthenticated } from '../services/authService'
 import PropertyTimer from '../components/PropertyTimer'
+import CircularTimer from '../components/CircularTimer'
 import BiddingHistoryModal from '../components/BiddingHistoryModal'
 import BuyNowModal from '../components/BuyNowModal'
 import LocationMap from '../components/LocationMap'
 import { showToast } from '../components/ToastContainer'
 import BidOutbidNotification from '../components/BidOutbidNotification'
+import AuctionWinnerModal from '../components/AuctionWinnerModal'
 import './PropertyDetailClassic.css'
 
 import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
@@ -30,9 +32,10 @@ let API_BASE_URL = getApiBaseUrlSync()
 
 // Классическая страница объекта.
 // Для аукционных объектов дополнительно отображает таймер и историю ставок.
-function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
+function PropertyDetailClassic({ property: initialProperty, onBack, showDocuments = false }) {
   const { t } = useTranslation()
   const { user, isLoaded: userLoaded } = useUser()
+  const [property, setProperty] = useState(initialProperty)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const thumbnailScrollRef = useRef(null)
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false)
@@ -52,6 +55,11 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
   const shownNotificationIdsRef = useRef(new Set()) // ID показанных уведомлений
   const [isUserLeader, setIsUserLeader] = useState(false) // Флаг, что пользователь является лидером
   const [currentLeaderId, setCurrentLeaderId] = useState(null) // ID текущего лидера
+  const [currentLeader, setCurrentLeader] = useState(null) // Информация о текущем лидере (игрок с наивысшей ставкой)
+  const [originalTestTimer, setOriginalTestTimer] = useState(null) // Исходное значение тестового таймера (дата окончания)
+  const [originalTestTimerDuration, setOriginalTestTimerDuration] = useState(null) // Исходная длительность таймера в миллисекундах
+  const [timerExpired, setTimerExpired] = useState(false) // Флаг окончания таймера
+  const [showWinnerModal, setShowWinnerModal] = useState(false) // Флаг показа модального окна победителя
   
   // Отслеживаем изменения currentBid и запускаем анимацию при росте
   useEffect(() => {
@@ -281,6 +289,10 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     // Тест-драйв - сохраняем значение как есть из property
     test_drive: property.test_drive,
     testDrive: property.testDrive !== undefined ? property.testDrive : (property.test_drive !== undefined ? (property.test_drive === 1 || property.test_drive === true) : false),
+    // Тестовый таймер
+    test_timer_end_date: property.test_timer_end_date || null,
+    test_timer_duration: property.test_timer_duration || null, // Исходная длительность таймера в миллисекундах
+    endTime: property.test_timer_end_date || property.endTime || null,
   }
 
   console.log('🔍 PropertyDetailClassic - displayProperty:', displayProperty)
@@ -403,9 +415,39 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     displayProperty.is_auction === 1
 
   const auctionEndTime =
+    displayProperty.test_timer_end_date ||
     displayProperty.endTime ||
     displayProperty.auction_end_date ||
     null
+
+  // Сохраняем исходное значение тестового таймера и его длительность при первой загрузке
+  useEffect(() => {
+    if (displayProperty.test_timer_end_date) {
+      if (!originalTestTimer) {
+        setOriginalTestTimer(displayProperty.test_timer_end_date);
+      }
+      // Используем сохраненную длительность из базы данных, если она есть
+      if (displayProperty.test_timer_duration && !originalTestTimerDuration) {
+        setOriginalTestTimerDuration(displayProperty.test_timer_duration);
+        console.log('💾 Сохранена исходная длительность таймера из БД:', displayProperty.test_timer_duration, 'мс (', Math.floor(displayProperty.test_timer_duration / 60000), 'мин', Math.floor((displayProperty.test_timer_duration % 60000) / 1000), 'сек)');
+      } else if (!displayProperty.test_timer_duration && !originalTestTimerDuration) {
+        // Fallback: вычисляем длительность как разницу между датой окончания и текущим временем
+        const endDate = new Date(displayProperty.test_timer_end_date);
+        const now = new Date();
+        const duration = Math.max(0, endDate.getTime() - now.getTime());
+        
+        if (duration > 0) {
+          setOriginalTestTimerDuration(duration);
+          console.log('💾 Вычислена исходная длительность таймера:', duration, 'мс (', Math.floor(duration / 60000), 'мин', Math.floor((duration % 60000) / 1000), 'сек)');
+        } else {
+          // Если таймер истек и длительность не сохранена, используем значение по умолчанию
+          const defaultDuration = 10 * 60 * 1000; // 10 минут по умолчанию
+          setOriginalTestTimerDuration(defaultDuration);
+          console.log('⚠️ Таймер истек, используем длительность по умолчанию:', defaultDuration, 'мс');
+        }
+      }
+    }
+  }, [displayProperty.test_timer_end_date, displayProperty.test_timer_duration]);
 
   // Загружаем ставки для аукционных объектов и обновляем текущую ставку
   useEffect(() => {
@@ -460,8 +502,19 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
             
             // Если есть ставки - показываем максимальную ставку
             const maxBid = sortedBids[0].bid_amount
-            const newCurrentLeaderId = sortedBids[0].user_id // ID текущего лидера (кто сделал максимальную ставку)
+            const leaderBid = sortedBids[0] // Полная информация о лидере
+            const newCurrentLeaderId = leaderBid.user_id // ID текущего лидера (кто сделал максимальную ставку)
             const prevMaxBid = currentBid
+            
+            // Сохраняем информацию о лидере
+            setCurrentLeader({
+              id: leaderBid.user_id,
+              firstName: leaderBid.first_name || '',
+              lastName: leaderBid.last_name || '',
+              email: leaderBid.email || '',
+              bidAmount: maxBid,
+              bidDate: leaderBid.created_at
+            })
             
             // Обновляем ID текущего лидера
             setCurrentLeaderId(newCurrentLeaderId)
@@ -546,6 +599,9 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
               }
               return prev
             })
+            // Сбрасываем лидера когда нет ставок
+            setCurrentLeader(null)
+            setCurrentLeaderId(null)
           }
         }
       } catch (error) {
@@ -573,6 +629,66 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayProperty.id, isAuctionProperty])
+
+  // Периодически обновляем данные объекта с сервера для синхронизации таймера
+  useEffect(() => {
+    if (!displayProperty.id || !displayProperty.test_timer_end_date) return;
+
+    const updatePropertyData = async () => {
+      try {
+        const propResponse = await fetch(`${API_BASE_URL}/properties/${displayProperty.id}`);
+        if (propResponse.ok) {
+          const propData = await propResponse.json();
+          if (propData.success && propData.data) {
+            const updatedProp = propData.data;
+            // Обновляем только таймер, если он изменился
+            if (updatedProp.test_timer_end_date !== property.test_timer_end_date) {
+              setProperty(prev => ({
+                ...prev,
+                test_timer_end_date: updatedProp.test_timer_end_date,
+                test_timer_duration: updatedProp.test_timer_duration
+              }));
+              console.log('🔄 Таймер обновлен с сервера:', updatedProp.test_timer_end_date);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка обновления данных объекта:', error);
+      }
+    };
+
+    // Обновляем каждые 2 секунды для синхронизации таймера
+    const interval = setInterval(updatePropertyData, 2000);
+    return () => clearInterval(interval);
+  }, [displayProperty.id, displayProperty.test_timer_end_date, property.test_timer_end_date]);
+
+  // Проверяем, закончился ли таймер и показываем модальное окно победителя
+  // Используем только значение из базы данных для синхронизации между всеми пользователями
+  useEffect(() => {
+    if (!auctionEndTime) return;
+    
+    const checkTimer = () => {
+      const now = new Date().getTime();
+      const end = new Date(auctionEndTime).getTime();
+      if (end <= now) {
+        setTimerExpired(true);
+        // Показываем модальное окно победителя, если есть лидер и модальное окно еще не показывалось
+        if (currentLeader && !showWinnerModal) {
+          setShowWinnerModal(true);
+        }
+      } else {
+        setTimerExpired(false);
+        // Скрываем модальное окно, если таймер сброшен
+        if (showWinnerModal) {
+          setShowWinnerModal(false);
+        }
+      }
+    };
+    
+    checkTimer();
+    const interval = setInterval(checkTimer, 1000);
+    return () => clearInterval(interval);
+  }, [auctionEndTime, currentLeader, showWinnerModal]);
 
   // Проверяем уведомления о перебитой ставке для текущего объекта
   useEffect(() => {
@@ -898,6 +1014,65 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
         console.log('✅ Ставка успешно создана на сервере:', data)
         setBidAmount('')
         
+        // Если это тестовый таймер - сбрасываем его до исходного значения
+        if (displayProperty.test_timer_end_date && originalTestTimerDuration !== null) {
+          console.log('🔄 Сброс тестового таймера до исходного значения');
+          try {
+            // Вычисляем новую дату окончания на основе текущего времени + исходная длительность
+            const now = new Date();
+            const newEndDate = new Date(now.getTime() + originalTestTimerDuration);
+            
+            console.log('🔄 Вычислена новая дата окончания:', {
+              now: now.toISOString(),
+              duration: originalTestTimerDuration,
+              newEndDate: newEndDate.toISOString()
+            });
+            
+            const resetResponse = await fetch(`${API_BASE_URL}/properties/${displayProperty.id}/test-timer`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                test_timer_end_date: newEndDate.toISOString(),
+                test_timer_duration: originalTestTimerDuration // Сохраняем исходную длительность
+              })
+            });
+            
+            if (resetResponse.ok) {
+              const resetData = await resetResponse.json();
+              if (resetData.success) {
+                console.log('✅ Тестовый таймер сброшен на сервере до исходного значения');
+                setTimerExpired(false);
+                // Обновляем данные объекта с сервера для синхронизации таймера со всеми пользователями
+                try {
+                  const propResponse = await fetch(`${API_BASE_URL}/properties/${displayProperty.id}`);
+                  if (propResponse.ok) {
+                    const propData = await propResponse.json();
+                    if (propData.success && propData.data) {
+                      const updatedProp = propData.data;
+                      // Обновляем свойство для синхронизации таймера
+                      setProperty(prev => ({
+                        ...prev,
+                        test_timer_end_date: updatedProp.test_timer_end_date,
+                        test_timer_duration: updatedProp.test_timer_duration
+                      }));
+                      console.log('✅ Данные объекта обновлены с сервера:', updatedProp.test_timer_end_date);
+                    }
+                  }
+                } catch (propError) {
+                  console.error('❌ Ошибка при обновлении данных объекта:', propError);
+                }
+              }
+            } else {
+              const errorData = await resetResponse.json().catch(() => ({}));
+              console.error('❌ Ошибка при сбросе таймера на сервере:', errorData);
+            }
+          } catch (resetError) {
+            console.error('❌ Ошибка при сбросе таймера:', resetError);
+          }
+        }
+        
         // Сохраняем ставку пользователя для проверки перебития
         setUserLastBid(amount)
         setBidOutbidShown(false) // Сбрасываем флаг при новой ставке
@@ -922,7 +1097,28 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                 const sortedByDate = [...bidsData.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                 setRecentBids(sortedByDate.slice(0, 2))
                 
-                const maxBid = Math.max(...bidsData.data.map(b => b.bid_amount))
+                // Сортируем ставки для определения лидера
+                const sortedBids = [...bidsData.data].sort((a, b) => {
+                  if (b.bid_amount !== a.bid_amount) {
+                    return b.bid_amount - a.bid_amount
+                  }
+                  return new Date(b.created_at) - new Date(a.created_at)
+                })
+                
+                const maxBid = sortedBids[0].bid_amount
+                const leaderBid = sortedBids[0]
+                
+                // Обновляем информацию о лидере
+                setCurrentLeader({
+                  id: leaderBid.user_id,
+                  firstName: leaderBid.first_name || '',
+                  lastName: leaderBid.last_name || '',
+                  email: leaderBid.email || '',
+                  bidAmount: maxBid,
+                  bidDate: leaderBid.created_at
+                })
+                setCurrentLeaderId(leaderBid.user_id)
+                
                 setCurrentBid(prev => {
                   if (prev !== maxBid) {
                     setPrevBid(prev !== null ? prev : maxBid)
@@ -939,6 +1135,7 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
                     const userMaxBid = Math.max(...userBids.map(b => b.bid_amount))
                     setUserLastBid(userMaxBid)
                     setBidOutbidShown(false)
+                    setIsUserLeader(leaderBid.user_id === userId)
                     console.log('✅ Обновлена userLastBid после синхронизации:', userMaxBid)
                   }
                 }
@@ -1437,7 +1634,82 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
               {/* Блок таймера аукциона, текущей ставки и истории ставок */}
               {isAuctionProperty && auctionEndTime && (
                 <div className="property-detail-sidebar__auction-block">
-                  <PropertyTimer endTime={auctionEndTime} />
+                  {displayProperty.test_timer_end_date ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1rem' }}>
+                      {!timerExpired && (
+                        <CircularTimer 
+                          endTime={displayProperty.test_timer_end_date} 
+                          size={150} 
+                          strokeWidth={8}
+                          originalDuration={displayProperty.test_timer_duration || originalTestTimerDuration}
+                        />
+                      )}
+                      {/* Отображение лидера под таймером */}
+                      {currentLeader && !timerExpired && (
+                        <div className="auction-leader-card">
+                          <div className="auction-leader-label">Лидер аукциона</div>
+                          <div className="auction-leader-name">
+                            {currentLeader.firstName && currentLeader.lastName 
+                              ? `${currentLeader.firstName} ${currentLeader.lastName}`
+                              : currentLeader.email || 'Игрок'}
+                          </div>
+                          <div className="auction-leader-bid">
+                            Ставка: {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                            {currentLeader.bidAmount.toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      )}
+                      {/* Победитель когда таймер закончился */}
+                      {timerExpired && currentLeader && (
+                        <div className="auction-winner-card">
+                          <div className="auction-winner-label">🏆 Победитель аукциона</div>
+                          <div className="auction-winner-name">
+                            {currentLeader.firstName && currentLeader.lastName 
+                              ? `${currentLeader.firstName} ${currentLeader.lastName}`
+                              : currentLeader.email || 'Игрок'}
+                          </div>
+                          <div className="auction-winner-bid">
+                            Выигрышная ставка: {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                            {currentLeader.bidAmount.toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <PropertyTimer endTime={auctionEndTime} />
+                      {/* Отображение лидера для обычных аукционов */}
+                      {currentLeader && !timerExpired && (
+                        <div className="auction-leader-card">
+                          <div className="auction-leader-label">Лидер аукциона</div>
+                          <div className="auction-leader-name">
+                            {currentLeader.firstName && currentLeader.lastName 
+                              ? `${currentLeader.firstName} ${currentLeader.lastName}`
+                              : currentLeader.email || 'Игрок'}
+                          </div>
+                          <div className="auction-leader-bid">
+                            Ставка: {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                            {currentLeader.bidAmount.toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      )}
+                      {/* Победитель когда таймер закончился */}
+                      {timerExpired && currentLeader && (
+                        <div className="auction-winner-card">
+                          <div className="auction-winner-label">🏆 Победитель аукциона</div>
+                          <div className="auction-winner-name">
+                            {currentLeader.firstName && currentLeader.lastName 
+                              ? `${currentLeader.firstName} ${currentLeader.lastName}`
+                              : currentLeader.email || 'Игрок'}
+                          </div>
+                          <div className="auction-winner-bid">
+                            Выигрышная ставка: {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                            {currentLeader.bidAmount.toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                   <div className="property-detail-sidebar__current-bid">
                     <span className="current-bid-label">
                       {currentBid !== null && currentBid !== displayProperty.auction_starting_price
@@ -1703,6 +1975,14 @@ function PropertyDetailClassic({ property, onBack, showDocuments = false }) {
           }}
         />
       )}
+
+      {/* Модальное окно победителя аукциона */}
+      <AuctionWinnerModal
+        isOpen={showWinnerModal && timerExpired && currentLeader !== null}
+        onClose={() => setShowWinnerModal(false)}
+        winner={currentLeader}
+        currency={displayProperty.currency || 'USD'}
+      />
 
       {/* Модальное окно с инструкциями по покупке */}
       <BuyNowModal

@@ -532,6 +532,43 @@
 }
 
 /* Плашка "Купить сейчас" в левом углу - стиль как FOR SALE */
+/* Кнопка для победителя аукциона */
+.property-winner-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  animation: winnerButtonPulse 2s ease-in-out infinite;
+}
+
+.property-winner-button:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+}
+
+@keyframes winnerButtonPulse {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.7);
+  }
+}
+
 .property-buy-badge {
   position: absolute;
   top: 12px;
@@ -554,6 +591,42 @@
 }
 
 /* Плашка "Тест-драйв" в правом углу */
+.property-auction-badge {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  z-index: 4;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.property-auction-badge svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+.property-auction-badge:hover {
+  background: linear-gradient(135deg, #ff7b45 0%, #ffa33e 100%);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.5);
+  transform: translateY(-1px);
+}
+
 .property-testdrive-badge {
   position: absolute;
   top: 12px;
@@ -697,6 +770,14 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+.property-timer-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 8px 0;
 }
 
 .property-title {
