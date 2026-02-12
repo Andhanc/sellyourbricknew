@@ -5,3 +5,4 @@
 -- Добавляем поле test_timer_duration, если его нет
 ALTER TABLE properties ADD COLUMN test_timer_duration INTEGER;
 
+

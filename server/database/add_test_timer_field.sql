@@ -4,3 +4,4 @@
 -- Добавляем поле test_timer_end_date, если его нет
 ALTER TABLE properties ADD COLUMN test_timer_end_date TEXT;
 
+

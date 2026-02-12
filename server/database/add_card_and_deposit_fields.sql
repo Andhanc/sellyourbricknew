@@ -20,3 +20,4 @@ ALTER TABLE users ADD COLUMN deposit_amount REAL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_users_has_card ON users(has_card);
 
 
+

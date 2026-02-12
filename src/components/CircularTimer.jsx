@@ -106,8 +106,27 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
 
   return (
     <div className="circular-timer" style={{ width: size, height: size }}>
-      <svg className="circular-timer-svg" width={size} height={size}>
-        {/* Фоновый круг (светло-серый) */}
+      <svg className="circular-timer-svg" width={size} height={size} style={{ overflow: 'visible' }}>
+        <defs>
+          {/* Красивый градиент для оранжевого прогресса */}
+          <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff8c42" stopOpacity="1" />
+            <stop offset="50%" stopColor="#ff6b35" stopOpacity="1" />
+            <stop offset="100%" stopColor="#ff5722" stopOpacity="1" />
+          </linearGradient>
+          {/* Красивый градиент для красного прогресса */}
+          <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff4444" stopOpacity="1" />
+            <stop offset="50%" stopColor="#dc2626" stopOpacity="1" />
+            <stop offset="100%" stopColor="#b91c1c" stopOpacity="1" />
+          </linearGradient>
+          {/* Радиальный градиент для более объемного вида */}
+          <radialGradient id="orangeRadial" cx="50%" cy="50%">
+            <stop offset="0%" stopColor="#ffa366" stopOpacity="1" />
+            <stop offset="100%" stopColor="#ff6b35" stopOpacity="1" />
+          </radialGradient>
+        </defs>
+        {/* Фоновый круг */}
         <circle
           className="circular-timer-bg"
           cx={size / 2}
@@ -117,21 +136,21 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Прогресс круг (оранжевый) - под красной обводкой */}
+        {/* Прогресс круг (оранжевый) с градиентом - под красной обводкой */}
         <circle
           className="circular-timer-progress"
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
+          stroke="url(#orangeGradient)"
+          strokeWidth={strokeWidth + 1}
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{
-            transition: 'stroke-dashoffset 0.5s ease'
+            transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         />
         {/* Красная обводка (показывает прогресс окончания таймера) - поверх оранжевой */}
@@ -140,7 +159,7 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={redColor}
+          stroke="url(#redGradient)"
           strokeWidth={strokeWidth + 3}
           fill="none"
           strokeDasharray={circumference}
@@ -149,8 +168,7 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{
             transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)',
-            opacity: redProgressValue > 0 ? 1 : 0,
-            filter: 'drop-shadow(0 0 8px rgba(220, 38, 38, 0.7))'
+            opacity: redProgressValue > 0 ? 1 : 0
           }}
         />
       </svg>

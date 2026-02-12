@@ -777,7 +777,8 @@
   justify-content: center;
   align-items: center;
   margin-bottom: 12px;
-  padding: 8px 0;
+  padding: 12px 0;
+  overflow: visible;
 }
 
 .property-title {

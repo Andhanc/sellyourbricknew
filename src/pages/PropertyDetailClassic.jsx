@@ -22,7 +22,6 @@ import BuyNowModal from '../components/BuyNowModal'
 import LocationMap from '../components/LocationMap'
 import { showToast } from '../components/ToastContainer'
 import BidOutbidNotification from '../components/BidOutbidNotification'
-import AuctionWinnerModal from '../components/AuctionWinnerModal'
 import './PropertyDetailClassic.css'
 
 import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
@@ -59,7 +58,6 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
   const [originalTestTimer, setOriginalTestTimer] = useState(null) // Исходное значение тестового таймера (дата окончания)
   const [originalTestTimerDuration, setOriginalTestTimerDuration] = useState(null) // Исходная длительность таймера в миллисекундах
   const [timerExpired, setTimerExpired] = useState(false) // Флаг окончания таймера
-  const [showWinnerModal, setShowWinnerModal] = useState(false) // Флаг показа модального окна победителя
   
   // Отслеживаем изменения currentBid и запускаем анимацию при росте
   useEffect(() => {
@@ -662,7 +660,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     return () => clearInterval(interval);
   }, [displayProperty.id, displayProperty.test_timer_end_date, property.test_timer_end_date]);
 
-  // Проверяем, закончился ли таймер и показываем модальное окно победителя
+  // Проверяем, закончился ли таймер
   // Используем только значение из базы данных для синхронизации между всеми пользователями
   useEffect(() => {
     if (!auctionEndTime) return;
@@ -672,23 +670,15 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
       const end = new Date(auctionEndTime).getTime();
       if (end <= now) {
         setTimerExpired(true);
-        // Показываем модальное окно победителя, если есть лидер и модальное окно еще не показывалось
-        if (currentLeader && !showWinnerModal) {
-          setShowWinnerModal(true);
-        }
       } else {
         setTimerExpired(false);
-        // Скрываем модальное окно, если таймер сброшен
-        if (showWinnerModal) {
-          setShowWinnerModal(false);
-        }
       }
     };
     
     checkTimer();
     const interval = setInterval(checkTimer, 1000);
     return () => clearInterval(interval);
-  }, [auctionEndTime, currentLeader, showWinnerModal]);
+  }, [auctionEndTime]);
 
   // Проверяем уведомления о перебитой ставке для текущего объекта
   useEffect(() => {
@@ -844,27 +834,35 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     const startingPrice = displayProperty.auction_starting_price || 0
     const effectiveCurrentBid = currentBid !== null ? currentBid : (displayProperty.currentBid || startingPrice)
     
-    // Если пользователь уже ввел сумму в поле, используем её как базу
+    // Если пользователь уже ввел сумму в поле, используем её как базу только если она >= текущей ставки
     // Иначе используем текущую максимальную ставку
     const currentInput = parseFloat(bidAmount) || 0
     
-    // Базой должна быть либо введенная пользователем сумма (если она больше текущей ставки),
+    // Базой должна быть либо введенная пользователем сумма (если она >= текущей ставки),
     // либо текущая максимальная ставка
     let baseAmount = effectiveCurrentBid
-    if (currentInput > 0 && currentInput > effectiveCurrentBid) {
+    if (currentInput > 0 && currentInput >= effectiveCurrentBid) {
       baseAmount = currentInput
     }
     
     // Добавляем значение кнопки к базовой сумме
     const quickBidAmount = baseAmount + amount
-    setBidAmount(quickBidAmount.toString())
+    
+    // Убеждаемся, что итоговая сумма не меньше минимальной ставки (текущая + 1000)
+    const minBidStep = 1000
+    const minimumBid = effectiveCurrentBid + minBidStep
+    const finalBidAmount = Math.max(quickBidAmount, minimumBid)
+    
+    setBidAmount(finalBidAmount.toString())
     
     console.log('🔢 handleQuickBid:', {
       amount,
       currentInput,
       effectiveCurrentBid,
       baseAmount,
-      quickBidAmount
+      quickBidAmount,
+      minimumBid,
+      finalBidAmount
     })
   }
 
@@ -888,16 +886,22 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     const startingPrice = displayProperty.auction_starting_price || 0
     const effectiveCurrentBid = currentBid !== null ? currentBid : (displayProperty.currentBid || startingPrice)
     
+    // Минимальный шаг ставки - самая низкая сумма из кнопок (1000)
+    const minBidStep = 1000
+    const minimumBid = effectiveCurrentBid + minBidStep
+    
     console.log('📤 handleBidSubmit:', {
       bidAmount,
       amount,
       currentBid,
       effectiveCurrentBid,
-      startingPrice
+      startingPrice,
+      minBidStep,
+      minimumBid
     })
     
-    if (amount <= effectiveCurrentBid) {
-      showToast(`Ваша ставка должна быть выше текущей ставки (${effectiveCurrentBid.toLocaleString('ru-RU')})`, 'error')
+    if (amount < minimumBid) {
+      showToast(`Минимальная ставка: ${minimumBid.toLocaleString('ru-RU')} (текущая ставка + ${minBidStep.toLocaleString('ru-RU')})`, 'error')
       return
     }
 
@@ -1975,14 +1979,6 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
           }}
         />
       )}
-
-      {/* Модальное окно победителя аукциона */}
-      <AuctionWinnerModal
-        isOpen={showWinnerModal && timerExpired && currentLeader !== null}
-        onClose={() => setShowWinnerModal(false)}
-        winner={currentLeader}
-        currency={displayProperty.currency || 'USD'}
-      />
 
       {/* Модальное окно с инструкциями по покупке */}
       <BuyNowModal

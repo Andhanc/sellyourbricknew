@@ -75,3 +75,4 @@ const BidOutbidNotification = ({ notification, onClose, onGoToProperty }) => {
 export default BidOutbidNotification
 
 
+

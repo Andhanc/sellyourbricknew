@@ -101,10 +101,12 @@ const Header = () => {
           let photo = userData.picture || null
           
           // Если фотографии нет в localStorage, пытаемся загрузить из БД
-          if (!photo && userData.id) {
+          // Используем числовой ID из БД (из localStorage), а не Clerk ID
+          const dbUserId = localStorage.getItem('userId')
+          if (!photo && dbUserId && /^\d+$/.test(dbUserId)) {
             try {
               const API_BASE_URL = await getApiBaseUrl()
-              const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+              const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`)
               
               // Если пользователь в БД не найден (например, был удален админом) —
               // принудительно сбрасываем локальную сессию
