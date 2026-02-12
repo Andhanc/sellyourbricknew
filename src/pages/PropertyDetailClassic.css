@@ -3,6 +3,290 @@
   display: flex;
   flex-direction: column;
   background: #f9fafb;
+  position: relative;
+}
+
+/* Анимация победы */
+.winner-celebration {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10004;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: fadeInOut 7s ease-in-out forwards;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Шарики */
+.winner-celebration__balloons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.balloon {
+  position: absolute;
+  font-size: 60px;
+  animation: balloonFloat 4s ease-in-out infinite, balloonFadeIn 1s ease-out forwards;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+  opacity: 0;
+}
+
+@keyframes balloonFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.balloon--1 {
+  left: 10%;
+  top: 20%;
+  animation-delay: 0s;
+  animation-duration: 3s;
+}
+
+.balloon--2 {
+  left: 25%;
+  top: 10%;
+  animation-delay: 0.5s;
+  animation-duration: 3.5s;
+}
+
+.balloon--3 {
+  left: 50%;
+  top: 15%;
+  animation-delay: 1s;
+  animation-duration: 4s;
+}
+
+.balloon--4 {
+  left: 75%;
+  top: 20%;
+  animation-delay: 1.5s;
+  animation-duration: 3.2s;
+}
+
+.balloon--5 {
+  left: 90%;
+  top: 10%;
+  animation-delay: 0.8s;
+  animation-duration: 3.8s;
+}
+
+.balloon--6 {
+  left: 40%;
+  top: 5%;
+  animation-delay: 1.2s;
+  animation-duration: 3.6s;
+}
+
+@keyframes balloonFloat {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px) rotate(5deg);
+  }
+  50% {
+    transform: translateY(-10px) translateX(-10px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-25px) translateX(5px) rotate(3deg);
+  }
+}
+
+/* Эмодзи анимации */
+.winner-celebration__emojis {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.celebration-emoji {
+  position: absolute;
+  font-size: 50px;
+  animation: emojiBounce 4s ease-in-out infinite, emojiFadeIn 1s ease-out forwards;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  opacity: 0;
+}
+
+@keyframes emojiFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(180deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.celebration-emoji--1 {
+  left: 15%;
+  top: 30%;
+  animation-delay: 0s;
+  animation-duration: 2s;
+}
+
+.celebration-emoji--2 {
+  left: 50%;
+  top: 25%;
+  animation-delay: 0.3s;
+  animation-duration: 2.2s;
+  font-size: 60px;
+}
+
+.celebration-emoji--3 {
+  left: 85%;
+  top: 30%;
+  animation-delay: 0.6s;
+  animation-duration: 2.1s;
+}
+
+.celebration-emoji--4 {
+  left: 20%;
+  top: 60%;
+  animation-delay: 0.9s;
+  animation-duration: 2.3s;
+}
+
+.celebration-emoji--5 {
+  left: 50%;
+  top: 65%;
+  animation-delay: 1.2s;
+  animation-duration: 2s;
+}
+
+.celebration-emoji--6 {
+  left: 80%;
+  top: 60%;
+  animation-delay: 1.5s;
+  animation-duration: 2.4s;
+}
+
+.celebration-emoji--7 {
+  left: 35%;
+  top: 45%;
+  animation-delay: 0.4s;
+  animation-duration: 2.1s;
+}
+
+.celebration-emoji--8 {
+  left: 65%;
+  top: 45%;
+  animation-delay: 0.7s;
+  animation-duration: 2.2s;
+}
+
+@keyframes emojiBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-30px) scale(1.2) rotate(15deg);
+  }
+  50% {
+    transform: translateY(-15px) scale(1.1) rotate(-15deg);
+  }
+  75% {
+    transform: translateY(-25px) scale(1.15) rotate(10deg);
+  }
+}
+
+/* Сообщение о победе */
+.winner-celebration__message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  animation: messagePulse 4s ease-in-out infinite, messageFadeIn 1.5s ease-out forwards;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 40px 60px;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+}
+
+@keyframes messageFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) translateY(50px);
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1.1) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+}
+
+.winner-celebration__title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #10b981;
+  margin: 0 0 12px 0;
+  font-family: 'Montserrat', sans-serif;
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.winner-celebration__subtitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+@keyframes messagePulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
 }
 
 /* Заголовок */
@@ -628,6 +912,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
 }
 
 /* Карточка лидера аукциона */
@@ -638,8 +923,67 @@
   border-radius: 16px;
   border: 2px solid #f0f0f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  animation: slideInUp 0.4s ease-out;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Анимация входа - новая карточка поднимается вверх (только при смене лидера) */
+.auction-leader-card--entering {
+  animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Анимация выхода - старая карточка разрывается и падает вниз */
+.auction-leader-card--exiting {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  animation: breakAndFall 0.6s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+  pointer-events: none;
+}
+
+@keyframes slideInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(100px) scale(0.8);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes breakAndFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: blur(0px);
+  }
+  30% {
+    opacity: 0.8;
+    transform: translateY(10px) scale(1.1) rotate(5deg);
+    filter: blur(2px);
+    border-color: #ef4444;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  }
+  60% {
+    opacity: 0.5;
+    transform: translateY(50px) scale(1.2) rotate(15deg);
+    filter: blur(4px);
+    border-color: #dc2626;
+    box-shadow: 0 0 30px rgba(220, 38, 38, 0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(200px) scale(0.5) rotate(45deg);
+    filter: blur(8px);
+    border-color: #991b1b;
+    box-shadow: 0 0 40px rgba(153, 27, 27, 0.8);
+  }
 }
 
 .auction-leader-card:hover {
@@ -1307,6 +1651,76 @@
   transform: translateY(0);
   box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
   transition: all 0.1s ease;
+}
+
+/* Кнопка для победителя аукциона */
+.property-detail-sidebar__buy-btn {
+  padding: 14px 24px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  max-width: 100%;
+  margin: 16px 0 20px;
+  display: block;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.property-detail-sidebar__buy-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease;
+}
+
+.property-detail-sidebar__buy-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 50%, #92400e 100%);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5), 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.property-detail-sidebar__buy-btn:hover::before {
+  left: 100%;
+}
+
+.property-detail-sidebar__buy-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  transition: all 0.1s ease;
+}
+
+.property-detail-sidebar__buy-btn--winner {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: winnerPulse 2s ease-in-out infinite;
+}
+
+.property-detail-sidebar__buy-btn--winner:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes winnerPulse {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.6), 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
 }
 
 /* Карта */

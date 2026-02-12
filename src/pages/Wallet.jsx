@@ -1,10 +1,12 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { FaArrowLeft, FaArrowUp, FaArrowDown, FaLock, FaWifi } from 'react-icons/fa'
+import { FiClock } from 'react-icons/fi'
 import { useUser } from '@clerk/clerk-react'
 import { getUserData, isAuthenticated } from '../services/authService'
 import { validateLuhn, detectCardType, formatCardNumber, maskCardNumber } from '../utils/cardValidation'
 import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
+import UserBidHistoryModal from '../components/UserBidHistoryModal'
 import './Wallet.css'
 
 // Используем синхронную версию для инициализации, затем обновим при загрузке
@@ -69,12 +71,14 @@ const Wallet = () => {
   }, [cardNumber, cardExpiry, isEditingCard, hasCard, isCardFlipped])
   const [loading, setLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [analytics, setAnalytics] = useState({
     totalDeposit: 0,
     totalWithdrawal: 0
   })
   const [userBid, setUserBid] = useState(null)
+  const [showBidHistory, setShowBidHistory] = useState(false)
 
   // Получаем числовой ID из БД для Clerk пользователей
   useEffect(() => {
@@ -204,14 +208,30 @@ const Wallet = () => {
         setLoading(true)
       }
       
-      const [depositRes, transactionsRes, analyticsRes, bidsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/users/${dbUserId}/deposit`),
-        fetch(`${API_BASE_URL}/users/${dbUserId}/transactions`),
-        fetch(`${API_BASE_URL}/users/${dbUserId}/analytics`),
-        fetch(`${API_BASE_URL}/bids/user/${dbUserId}`)
+      // Делаем запросы независимо, чтобы ошибка одного не блокировала остальные
+      const fetchWithErrorHandling = async (url, errorMessage) => {
+        try {
+          const response = await fetch(url)
+          return { ok: response.ok, response }
+        } catch (error) {
+          console.warn(`${errorMessage}:`, error)
+          return { ok: false, response: null, error }
+        }
+      }
+      
+      const [depositResult, transactionsResult, analyticsResult, bidsResult] = await Promise.allSettled([
+        fetchWithErrorHandling(`${API_BASE_URL}/users/${dbUserId}/deposit`, 'Ошибка загрузки депозита'),
+        fetchWithErrorHandling(`${API_BASE_URL}/users/${dbUserId}/transactions`, 'Ошибка загрузки транзакций'),
+        fetchWithErrorHandling(`${API_BASE_URL}/users/${dbUserId}/analytics`, 'Ошибка загрузки аналитики'),
+        fetchWithErrorHandling(`${API_BASE_URL}/bids/user/${dbUserId}`, 'Ошибка загрузки ставок')
       ])
+      
+      const depositRes = depositResult.status === 'fulfilled' ? depositResult.value.response : null
+      const transactionsRes = transactionsResult.status === 'fulfilled' ? transactionsResult.value.response : null
+      const analyticsRes = analyticsResult.status === 'fulfilled' ? analyticsResult.value.response : null
+      const bidsRes = bidsResult.status === 'fulfilled' ? bidsResult.value.response : null
 
-      if (depositRes.ok) {
+      if (depositRes && depositRes.ok) {
         const depositData = await depositRes.json()
         if (depositData.success) {
           const newDeposit = depositData.data.depositAmount || 0
@@ -255,7 +275,7 @@ const Wallet = () => {
         }
       }
 
-      if (transactionsRes.ok) {
+      if (transactionsRes && transactionsRes.ok) {
         const transData = await transactionsRes.json()
         if (transData.success) {
           const newTransactions = transData.data || []
@@ -270,7 +290,7 @@ const Wallet = () => {
         }
       }
 
-      if (analyticsRes.ok) {
+      if (analyticsRes && analyticsRes.ok) {
         const analyticsData = await analyticsRes.json()
         if (analyticsData.success) {
           const newAnalytics = {
@@ -288,7 +308,7 @@ const Wallet = () => {
       }
 
       // Загружаем ставки пользователя
-      if (bidsRes.ok) {
+      if (bidsRes && bidsRes.ok) {
         const bidsData = await bidsRes.json()
         if (bidsData.success && bidsData.data && bidsData.data.length > 0) {
           const newUserBid = bidsData.data[0]
@@ -629,9 +649,45 @@ const Wallet = () => {
   if (loading || !dbUserId) {
     return (
       <div className="wallet-page">
+        <div className="wallet-background">
+          <div className="wallet-background__gradient"></div>
+          <div className="wallet-background__pattern"></div>
+        </div>
         <div className="wallet-container">
-          <div style={{ textAlign: 'center', padding: '50px', color: 'white' }}>
-            {!dbUserId ? 'Получение данных пользователя...' : 'Загрузка...'}
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '50px', 
+            color: loadError ? '#dc2626' : '#1f2937',
+            fontSize: '18px',
+            fontWeight: '600',
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '12px',
+            margin: '50px auto',
+            maxWidth: '500px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+          }}>
+            {loadError ? (
+              <>
+                <p style={{ marginBottom: '20px' }}>{loadError}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  style={{
+                    padding: '10px 20px',
+                    background: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}
+                >
+                  Обновить страницу
+                </button>
+              </>
+            ) : (
+              !dbUserId ? 'Получение данных пользователя...' : 'Загрузка...'
+            )}
           </div>
         </div>
       </div>
@@ -869,30 +925,66 @@ const Wallet = () => {
                   }
                 }
                 
-                const baseUrl = API_BASE_URL.replace('/api', '').replace(/\/$/, '')
+                // Формируем URL для фото
                 const firstPhoto = photos.length > 0 ? photos[0] : null
-                const photoUrl = firstPhoto 
-                  ? (typeof firstPhoto === 'string'
-                      ? (firstPhoto.startsWith('http') 
-                          ? firstPhoto 
-                          : firstPhoto.startsWith('/uploads/') || firstPhoto.startsWith('uploads/')
-                            ? `${baseUrl}${firstPhoto.startsWith('/') ? '' : '/'}${firstPhoto}`
-                            : `${baseUrl}/uploads/${firstPhoto}`)
-                      : firstPhoto?.url || firstPhoto)
-                  : null
+                let photoUrl = null
+                
+                if (firstPhoto) {
+                  if (typeof firstPhoto === 'string') {
+                    if (firstPhoto.startsWith('http://') || firstPhoto.startsWith('https://')) {
+                      // Полный URL
+                      photoUrl = firstPhoto
+                    } else {
+                      // Относительный путь - формируем полный URL
+                      const baseUrl = API_BASE_URL ? API_BASE_URL.replace('/api', '').replace(/\/$/, '') : ''
+                      if (baseUrl) {
+                        const cleanPath = firstPhoto.startsWith('/') ? firstPhoto : `/${firstPhoto}`
+                        if (firstPhoto.startsWith('/uploads/') || firstPhoto.startsWith('uploads/')) {
+                          photoUrl = `${baseUrl}${cleanPath}`
+                        } else {
+                          photoUrl = `${baseUrl}/uploads${cleanPath}`
+                        }
+                      }
+                    }
+                  } else if (typeof firstPhoto === 'object' && firstPhoto !== null) {
+                    // Объект с url
+                    photoUrl = firstPhoto.url || firstPhoto.path || null
+                  }
+                }
                 
                 return photoUrl ? (
                   <img 
                     src={photoUrl}
-                    alt={userBid.title}
+                    alt={userBid.title || 'Объект недвижимости'}
                     style={{
                       width: '100px',
                       height: '100px',
                       objectFit: 'cover',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                    onError={(e) => {
+                      // Скрываем изображение при ошибке загрузки
+                      e.target.style.display = 'none'
                     }}
                   />
-                ) : null
+                ) : (
+                  <div style={{
+                    width: '100px',
+                    height: '100px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    fontSize: '12px',
+                    textAlign: 'center',
+                    padding: '8px'
+                  }}>
+                    Нет фото
+                  </div>
+                )
               })()}
               <div style={{ flex: 1 }}>
                 <h4 style={{ color: 'white', marginBottom: '8px', fontSize: '16px' }}>
@@ -911,26 +1003,64 @@ const Wallet = () => {
                     </div>
                   </div>
                 </div>
-                <Link 
-                  to={`/property/${userBid.property_id}`}
-                  style={{
-                    display: 'inline-block',
-                    padding: '8px 16px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
-                  onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
-                >
-                  Перейти к объекту →
-                </Link>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setShowBidHistory(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                      fontFamily: 'inherit'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+                    onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+                  >
+                    <FiClock size={16} />
+                    История
+                  </button>
+                  <Link 
+                    to={`/property/${userBid.property_id}`}
+                    style={{
+                      display: 'inline-block',
+                      padding: '8px 16px',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      textDecoration: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+                    onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+                  >
+                    Перейти к объекту →
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Модальное окно истории ставок */}
+        {userBid && (
+          <UserBidHistoryModal
+            isOpen={showBidHistory}
+            onClose={() => setShowBidHistory(false)}
+            property={{
+              id: userBid.property_id,
+              title: userBid.title,
+              location: userBid.location
+            }}
+            userId={dbUserId}
+          />
         )}
 
         {/* Аналитика и Транзакции в одной строке */}

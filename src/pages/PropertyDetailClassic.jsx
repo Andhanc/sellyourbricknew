@@ -22,6 +22,7 @@ import BuyNowModal from '../components/BuyNowModal'
 import LocationMap from '../components/LocationMap'
 import { showToast } from '../components/ToastContainer'
 import BidOutbidNotification from '../components/BidOutbidNotification'
+import Confetti from 'react-confetti'
 import './PropertyDetailClassic.css'
 
 import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
@@ -48,6 +49,8 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
   const [userLastBid, setUserLastBid] = useState(null) // Последняя ставка пользователя
   const [bidOutbidShown, setBidOutbidShown] = useState(false) // Флаг, что уведомление о перебитии уже показано
   const [previousLeaderId, setPreviousLeaderId] = useState(null) // ID предыдущего лидера (кто делал максимальную ставку)
+  const wasUserLeaderRef = useRef(false) // Ref для отслеживания, был ли пользователь лидером в предыдущем цикле
+  const isInitialLoadRef = useRef(true) // Ref для отслеживания первой загрузки
   const [priceAnimation, setPriceAnimation] = useState(false) // Флаг для анимации изменения цены
   const [prevBid, setPrevBid] = useState(null) // Предыдущая ставка для сравнения
   const [outbidNotification, setOutbidNotification] = useState(null) // Уведомление о перебитой ставке
@@ -55,9 +58,17 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
   const [isUserLeader, setIsUserLeader] = useState(false) // Флаг, что пользователь является лидером
   const [currentLeaderId, setCurrentLeaderId] = useState(null) // ID текущего лидера
   const [currentLeader, setCurrentLeader] = useState(null) // Информация о текущем лидере (игрок с наивысшей ставкой)
+  const [previousLeader, setPreviousLeader] = useState(null) // Предыдущий лидер для анимации
+  const [isLeaderChanging, setIsLeaderChanging] = useState(false) // Флаг анимации смены лидера
   const [originalTestTimer, setOriginalTestTimer] = useState(null) // Исходное значение тестового таймера (дата окончания)
   const [originalTestTimerDuration, setOriginalTestTimerDuration] = useState(null) // Исходная длительность таймера в миллисекундах
   const [timerExpired, setTimerExpired] = useState(false) // Флаг окончания таймера
+  const [showConfetti, setShowConfetti] = useState(false) // Флаг показа конфетти для победителя
+  const confettiShownRef = useRef(false) // Ref для отслеживания, было ли показано конфетти
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  })
   
   // Отслеживаем изменения currentBid и запускаем анимацию при росте
   useEffect(() => {
@@ -70,6 +81,32 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
       return () => clearTimeout(timer)
     }
   }, [currentBid, prevBid])
+
+  // Отслеживаем размер окна для конфетти
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      })
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Отслеживаем истечение таймера и показываем конфетти для победителя
+  useEffect(() => {
+    if (timerExpired && isUserLeader && !confettiShownRef.current) {
+      setShowConfetti(true);
+      confettiShownRef.current = true;
+      // Скрываем конфетти через 7 секунд
+      const timer = setTimeout(() => {
+        setShowConfetti(false);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [timerExpired, isUserLeader])
+
 
   // Функция для обработки URL документа
   const processDocumentUrl = (docUrl) => {
@@ -504,6 +541,20 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
             const newCurrentLeaderId = leaderBid.user_id // ID текущего лидера (кто сделал максимальную ставку)
             const prevMaxBid = currentBid
             
+            // Проверяем, изменился ли лидер перед обновлением
+            const leaderChanged = currentLeaderId !== null && currentLeaderId !== newCurrentLeaderId
+            
+            // Если лидер изменился, сохраняем предыдущего лидера для анимации
+            if (leaderChanged && currentLeader) {
+              setPreviousLeader(currentLeader)
+              setIsLeaderChanging(true)
+              // После завершения анимации падения старой карточки, убираем её
+              setTimeout(() => {
+                setPreviousLeader(null)
+                setIsLeaderChanging(false)
+              }, 600) // Время анимации падения
+            }
+            
             // Сохраняем информацию о лидере
             setCurrentLeader({
               id: leaderBid.user_id,
@@ -518,28 +569,36 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
             setCurrentLeaderId(newCurrentLeaderId)
             
             // Проверяем, является ли текущий пользователь лидером
-            if (userId && newCurrentLeaderId === userId) {
+            const isUserCurrentlyLeader = userId && newCurrentLeaderId === userId
+            if (isUserCurrentlyLeader) {
               setIsUserLeader(true)
               console.log('🏆 Пользователь является лидером!', { userId, newCurrentLeaderId, maxBid })
             } else {
               setIsUserLeader(false)
             }
             
-            // Проверяем, изменился ли лидер
-            // Если предыдущий лидер был текущий пользователь, а теперь лидер - другой, значит ставку перебили
-            if (userId && previousLeaderId !== null && previousLeaderId === userId && newCurrentLeaderId !== userId && !bidOutbidShown) {
-              // Предыдущий лидер был текущий пользователь, а теперь лидер - другой
-              // Значит ставку пользователя перебили
+            // Проверяем, изменился ли лидер (только если это не первая загрузка)
+            // Если пользователь был лидером в предыдущем цикле, а теперь не лидер - значит ставку перебили
+            if (!isInitialLoadRef.current && userId && wasUserLeaderRef.current && !isUserCurrentlyLeader && !bidOutbidShown) {
+              // Пользователь был лидером, а теперь не лидер - значит ставку перебили
               console.log('🚨 Ставка перебита!', {
-                previousLeaderId,
-                newCurrentLeaderId,
+                wasUserLeader: wasUserLeaderRef.current,
+                isUserCurrentlyLeader,
                 userId,
+                newCurrentLeaderId,
                 maxBid,
-                prevMaxBid,
-                bidOutbidShown
+                prevMaxBid
               })
               showToast(`Вашу ставку перебили! Текущая максимальная ставка: ${maxBid.toLocaleString('ru-RU')}`, 'warning', 5000)
               setBidOutbidShown(true)
+            }
+            
+            // Обновляем ref для следующего цикла
+            wasUserLeaderRef.current = isUserCurrentlyLeader
+            
+            // После первой загрузки сбрасываем флаг
+            if (isInitialLoadRef.current) {
+              isInitialLoadRef.current = false
             }
             
             // Обновляем ID предыдущего лидера (после проверки перебития)
@@ -561,6 +620,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                 // Если пользователь сделал новую ставку (стал лидером), сбрасываем флаг
                 if (newCurrentLeaderId === userId) {
                   setBidOutbidShown(false)
+                  wasUserLeaderRef.current = true
                 }
                 setUserLastBid(userMaxBid)
               } else {
@@ -1080,6 +1140,8 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
         // Сохраняем ставку пользователя для проверки перебития
         setUserLastBid(amount)
         setBidOutbidShown(false) // Сбрасываем флаг при новой ставке
+        // После новой ставки пользователь становится лидером
+        wasUserLeaderRef.current = true
         // После успешной ставки пользователь становится лидером
         setPreviousLeaderId(userId)
         
@@ -1111,6 +1173,21 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                 
                 const maxBid = sortedBids[0].bid_amount
                 const leaderBid = sortedBids[0]
+                const newCurrentLeaderId = leaderBid.user_id
+                
+                // Проверяем, изменился ли лидер перед обновлением
+                const leaderChanged = currentLeaderId !== null && currentLeaderId !== newCurrentLeaderId
+                
+                // Если лидер изменился, сохраняем предыдущего лидера для анимации
+                if (leaderChanged && currentLeader) {
+                  setPreviousLeader(currentLeader)
+                  setIsLeaderChanging(true)
+                  // После завершения анимации падения старой карточки, убираем её
+                  setTimeout(() => {
+                    setPreviousLeader(null)
+                    setIsLeaderChanging(false)
+                  }, 600) // Время анимации падения
+                }
                 
                 // Обновляем информацию о лидере
                 setCurrentLeader({
@@ -1121,7 +1198,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                   bidAmount: maxBid,
                   bidDate: leaderBid.created_at
                 })
-                setCurrentLeaderId(leaderBid.user_id)
+                setCurrentLeaderId(newCurrentLeaderId)
                 
                 setCurrentBid(prev => {
                   if (prev !== maxBid) {
@@ -1139,7 +1216,9 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                     const userMaxBid = Math.max(...userBids.map(b => b.bid_amount))
                     setUserLastBid(userMaxBid)
                     setBidOutbidShown(false)
-                    setIsUserLeader(leaderBid.user_id === userId)
+                    const isUserLeaderNow = leaderBid.user_id === userId
+                    setIsUserLeader(isUserLeaderNow)
+                    wasUserLeaderRef.current = isUserLeaderNow
                     console.log('✅ Обновлена userLastBid после синхронизации:', userMaxBid)
                   }
                 }
@@ -1184,6 +1263,52 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
 
   return (
     <div className="property-detail-page-new">
+      {showConfetti && (
+        <>
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={false}
+            numberOfPieces={400}
+            gravity={0.3}
+            wind={0.05}
+            colors={['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#fbbf24']}
+            confettiSource={{
+              x: windowSize.width / 2,
+              y: windowSize.height / 2,
+              w: 0,
+              h: 0
+            }}
+            initialVelocityX={15}
+            initialVelocityY={30}
+            tweenDuration={7000}
+          />
+          <div className="winner-celebration">
+            <div className="winner-celebration__balloons">
+              <div className="balloon balloon--1">🎈</div>
+              <div className="balloon balloon--2">🎈</div>
+              <div className="balloon balloon--3">🎈</div>
+              <div className="balloon balloon--4">🎈</div>
+              <div className="balloon balloon--5">🎈</div>
+              <div className="balloon balloon--6">🎈</div>
+            </div>
+            <div className="winner-celebration__emojis">
+              <div className="celebration-emoji celebration-emoji--1">🎉</div>
+              <div className="celebration-emoji celebration-emoji--2">🏆</div>
+              <div className="celebration-emoji celebration-emoji--3">✨</div>
+              <div className="celebration-emoji celebration-emoji--4">🎊</div>
+              <div className="celebration-emoji celebration-emoji--5">🌟</div>
+              <div className="celebration-emoji celebration-emoji--6">💫</div>
+              <div className="celebration-emoji celebration-emoji--7">🎁</div>
+              <div className="celebration-emoji celebration-emoji--8">🥳</div>
+            </div>
+            <div className="winner-celebration__message">
+              <h2 className="winner-celebration__title">Объект Ваш!</h2>
+              <p className="winner-celebration__subtitle">Вы выиграли аукцион! 🎉</p>
+            </div>
+          </div>
+        </>
+      )}
       {outbidNotification && (
         <BidOutbidNotification
           notification={outbidNotification}
@@ -1581,7 +1706,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
               <h1 className="property-detail-sidebar__title">{propertyInfo}</h1>
 
               {/* Минимальная цена продажи для аукционных объектов */}
-              {isAuctionProperty && displayProperty.price && (
+              {isAuctionProperty && displayProperty.price && !timerExpired && (
                 <>
                   <div className="property-detail-sidebar__current-bid">
                     <span className="current-bid-label">Минимальная цена продажи:</span>
@@ -1598,6 +1723,15 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                     Купить сейчас
                   </button>
                 </>
+              )}
+              {/* Кнопка для победителя аукциона */}
+              {isAuctionProperty && timerExpired && isUserLeader && (
+                <button
+                  className="property-detail-sidebar__buy-btn property-detail-sidebar__buy-btn--winner"
+                  onClick={handleBookNow}
+                >
+                  Перейти к покупке
+                </button>
               )}
 
               {/* Цена для неаукционных объектов */}
@@ -1646,11 +1780,28 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                           size={150} 
                           strokeWidth={8}
                           originalDuration={displayProperty.test_timer_duration || originalTestTimerDuration}
+                          isUserLeader={isUserLeader}
                         />
                       )}
                       {/* Отображение лидера под таймером */}
+                      {/* Старая карточка лидера (уходит вниз) */}
+                      {previousLeader && !timerExpired && isLeaderChanging && (
+                        <div className="auction-leader-card auction-leader-card--exiting">
+                          <div className="auction-leader-label">Лидер аукциона</div>
+                          <div className="auction-leader-name">
+                            {previousLeader.firstName && previousLeader.lastName 
+                              ? `${previousLeader.firstName} ${previousLeader.lastName}`
+                              : previousLeader.email || 'Игрок'}
+                          </div>
+                          <div className="auction-leader-bid">
+                            Ставка: {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                            {previousLeader.bidAmount.toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      )}
+                      {/* Новая карточка лидера (поднимается вверх) */}
                       {currentLeader && !timerExpired && (
-                        <div className="auction-leader-card">
+                        <div className={`auction-leader-card ${isLeaderChanging ? 'auction-leader-card--entering' : ''}`}>
                           <div className="auction-leader-label">Лидер аукциона</div>
                           <div className="auction-leader-name">
                             {currentLeader.firstName && currentLeader.lastName 
@@ -1683,8 +1834,24 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                     <>
                       <PropertyTimer endTime={auctionEndTime} />
                       {/* Отображение лидера для обычных аукционов */}
+                      {/* Старая карточка лидера (уходит вниз) */}
+                      {previousLeader && !timerExpired && isLeaderChanging && (
+                        <div className="auction-leader-card auction-leader-card--exiting">
+                          <div className="auction-leader-label">Лидер аукциона</div>
+                          <div className="auction-leader-name">
+                            {previousLeader.firstName && previousLeader.lastName 
+                              ? `${previousLeader.firstName} ${previousLeader.lastName}`
+                              : previousLeader.email || 'Игрок'}
+                          </div>
+                          <div className="auction-leader-bid">
+                            Ставка: {displayProperty.currency === 'USD' ? '$' : displayProperty.currency === 'EUR' ? '€' : displayProperty.currency === 'BYN' ? 'Br' : ''}
+                            {previousLeader.bidAmount.toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      )}
+                      {/* Новая карточка лидера (поднимается вверх) */}
                       {currentLeader && !timerExpired && (
-                        <div className="auction-leader-card">
+                        <div className={`auction-leader-card ${isLeaderChanging ? 'auction-leader-card--entering' : ''}`}>
                           <div className="auction-leader-label">Лидер аукциона</div>
                           <div className="auction-leader-name">
                             {currentLeader.firstName && currentLeader.lastName 
@@ -1733,7 +1900,8 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                     </div>
                   </div>
 
-                  {/* Функционал ставки */}
+                  {/* Функционал ставки - скрываем когда таймер истек */}
+                  {!timerExpired && (
                   <div className="property-detail-sidebar__bidding-section">
                     <div className="bidding-section__quick-buttons">
                       <button
@@ -1785,6 +1953,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                       {isSubmittingBid ? 'Отправка...' : isUserLeader ? 'Вы выигрываете' : 'Сделать ставку'}
                     </button>
                   </div>
+                  )}
 
                   {/* Последние две ставки */}
                   {recentBids.length > 0 && (() => {
@@ -1989,7 +2158,9 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
           title: propertyInfo,
           name: propertyInfo,
           price: displayProperty.price,
-          currency: displayProperty.currency
+          currency: displayProperty.currency,
+          isAuction: isAuctionProperty,
+          currentBid: currentBid || displayProperty.currentBid || displayProperty.auction_starting_price || displayProperty.price
         }}
       />
     </div>
