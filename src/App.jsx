@@ -152,10 +152,12 @@ function App() {
       const userData = getUserData();
       console.log('🔍 Данные пользователя:', { isLoggedIn: userData.isLoggedIn, id: userData.id });
       
-      if (userData.isLoggedIn && userData.id) {
+      // Используем числовой ID из БД (из localStorage), а не Clerk ID
+      const dbUserId = localStorage.getItem('userId')
+      if (userData.isLoggedIn && dbUserId && /^\d+$/.test(dbUserId)) {
         try {
           const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
-          const response = await fetch(`${API_BASE_URL}/users/${userData.id}`);
+          const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`);
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data && result.data.is_blocked === 1) {

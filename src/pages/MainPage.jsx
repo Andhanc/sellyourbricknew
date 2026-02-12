@@ -540,9 +540,11 @@ function MainPage() {
         const userData = getUserData()
         let profileIncomplete = false
         
-        if (userData && userData.id) {
+        // Используем числовой ID из БД (из localStorage), а не Clerk ID
+        const dbUserId = localStorage.getItem('userId')
+        if (userData && dbUserId && /^\d+$/.test(dbUserId)) {
           try {
-            const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+            const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`)
             if (response.ok) {
               const result = await response.json()
               if (result.success && result.data) {
@@ -581,9 +583,11 @@ function MainPage() {
           let profileIncomplete = false
           
           // Загружаем данные из БД для проверки заполненности
-          if (userData.id) {
+          // Используем числовой ID из БД (из localStorage), а не Clerk ID
+          const dbUserId = localStorage.getItem('userId')
+          if (dbUserId && /^\d+$/.test(dbUserId)) {
             try {
-              const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+              const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`)
               
               // Если пользователь не найден в БД (404) — сессия устарела, очищаем её
               if (response.status === 404) {
@@ -782,9 +786,10 @@ function MainPage() {
         method: 'PUT'
       })
       // Обновляем список уведомлений
-      const userData = getUserData()
-      if (userData && userData.id) {
-        const response = await fetch(`${API_BASE_URL}/notifications/user/${userData.id}`)
+      // Используем числовой ID из БД (из localStorage), а не Clerk ID
+      const dbUserId = localStorage.getItem('userId')
+      if (dbUserId && /^\d+$/.test(dbUserId)) {
+        const response = await fetch(`${API_BASE_URL}/notifications/user/${dbUserId}`)
         if (response.ok) {
           const data = await response.json()
           if (data.success) {

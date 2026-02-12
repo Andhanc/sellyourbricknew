@@ -997,8 +997,49 @@ export const validateSession = async () => {
   
   try {
     // Используем dev tunnel для API
+    // Используем числовой ID из БД (из localStorage), а не Clerk ID
     const API_BASE_URL = await getApiBaseUrl()
-    const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
+    let dbUserId = localStorage.getItem('userId')
+    
+    // Если нет числового ID, пытаемся найти пользователя по email/телефону
+    if (!dbUserId || !/^\d+$/.test(dbUserId)) {
+      const userEmail = userData.email
+      const userPhone = userData.phone || userData.phoneFormatted
+      
+      if (userEmail) {
+        const emailResponse = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(userEmail.toLowerCase())}`)
+        if (emailResponse.ok) {
+          const emailData = await emailResponse.json()
+          if (emailData.success && emailData.data && emailData.data.id) {
+            dbUserId = String(emailData.data.id)
+            localStorage.setItem('userId', dbUserId)
+          }
+        }
+      }
+      
+      // Если не нашли по email, пробуем по телефону
+      if ((!dbUserId || !/^\d+$/.test(dbUserId)) && userPhone) {
+        const phoneDigits = userPhone.replace(/\D/g, '')
+        if (phoneDigits) {
+          const phoneResponse = await fetch(`${API_BASE_URL}/users/phone/${phoneDigits}`)
+          if (phoneResponse.ok) {
+            const phoneData = await phoneResponse.json()
+            if (phoneData.success && phoneData.data && phoneData.data.id) {
+              dbUserId = String(phoneData.data.id)
+              localStorage.setItem('userId', dbUserId)
+            }
+          }
+        }
+      }
+    }
+    
+    // Если все еще нет числового ID, возвращаем ошибку
+    if (!dbUserId || !/^\d+$/.test(dbUserId)) {
+      console.warn('⚠️ Не удалось найти числовой ID пользователя в БД')
+      return { valid: true, user: userData, error: 'No numeric user ID found' }
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -1007,7 +1048,7 @@ export const validateSession = async () => {
     
     // Если пользователь не найден в БД (404) — сессия устарела, очищаем её
     if (response.status === 404) {
-      console.warn('⚠️ Локальная сессия устарела: пользователь с ID', userData.id, 'не найден в БД. Очищаем данные.')
+      console.warn('⚠️ Локальная сессия устарела: пользователь с ID', dbUserId, 'не найден в БД. Очищаем данные.')
       clearUserData()
       return { valid: false, user: null, cleared: true }
     }

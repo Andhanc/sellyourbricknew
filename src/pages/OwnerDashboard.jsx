@@ -171,9 +171,11 @@ const OwnerDashboard = () => {
 
         // Дополнительно загружаем актуальные данные из БД (если есть ID)
         const loadFromDb = async () => {
-          if (!userData.id) return
+          // Используем числовой ID из БД (из localStorage), а не Clerk ID
+          const dbUserId = localStorage.getItem('userId')
+          if (!dbUserId || !/^\d+$/.test(dbUserId)) return
           try {
-            const response = await fetch(`${API_BASE_URL}/users/${userData.id}`)
+            const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`)
             if (response.ok) {
               const result = await response.json()
               if (result.success && result.data) {
@@ -612,13 +614,21 @@ const OwnerDashboard = () => {
         updateData.password = ownerProfile.password
       }
 
+      // Используем числовой ID из БД (из localStorage), а не Clerk ID
+      const dbUserId = localStorage.getItem('userId')
+      if (!dbUserId || !/^\d+$/.test(dbUserId)) {
+        alert('Ошибка: ID пользователя не найден. Пожалуйста, обновите страницу.')
+        console.error('userId не установлен:', dbUserId)
+        return
+      }
+
       console.log('💾 Сохранение данных профиля в БД:', {
-        userId: userData.id,
+        userId: dbUserId,
         updateData
       })
 
       // Обновляем данные в БД
-      const response = await fetch(`${API_BASE_URL}/users/${userData.id}`, {
+      const response = await fetch(`${API_BASE_URL}/users/${dbUserId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -663,7 +673,7 @@ const OwnerDashboard = () => {
       saveUserData(updatedUserData, userData.loginMethod || 'whatsapp')
       
       // Перезагружаем статус верификации после сохранения
-      await loadVerificationStatus(userData.id)
+      await loadVerificationStatus(dbUserId)
       
       // Отправляем событие для обновления статуса верификации
       window.dispatchEvent(new Event('verification-status-update'))

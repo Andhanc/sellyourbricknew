@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_users_country ON whatsapp_users(country)
 CREATE INDEX IF NOT EXISTS idx_whatsapp_users_is_active ON whatsapp_users(is_active);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_users_last_message_at ON whatsapp_users(last_message_at);
 
+

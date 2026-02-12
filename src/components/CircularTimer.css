@@ -3,34 +3,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
 
 .circular-timer-svg {
   transform: rotate(-90deg);
+  overflow: visible;
 }
 
 .circular-timer-bg {
-  opacity: 1;
+  opacity: 0.2;
 }
 
 .circular-timer-progress {
-  transition: stroke-dashoffset 0.5s ease;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 6px rgba(255, 107, 53, 0.5));
 }
 
 .circular-timer-red-progress {
   transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: redPulse 2s ease-in-out infinite;
-}
-
-@keyframes redPulse {
-  0%, 100% {
-    opacity: 1;
-    filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.6));
-  }
-  50% {
-    opacity: 0.95;
-    filter: drop-shadow(0 0 10px rgba(220, 38, 38, 0.8));
-  }
+  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.6));
 }
 
 .circular-timer-content {
@@ -43,6 +35,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
+  z-index: 10;
 }
 
 .circular-timer-time {
