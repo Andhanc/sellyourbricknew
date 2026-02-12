@@ -6002,6 +6002,65 @@ app.get('/api/bids/user/:id', (req, res) => {
   }
 });
 
+/**
+ * GET /api/bids/user/:userId/property/:propertyId - Получить историю ставок пользователя по конкретному объекту
+ */
+app.get('/api/bids/user/:userId/property/:propertyId', (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const propertyId = req.params.propertyId;
+    const db = getDatabase();
+    
+    console.log(`📊 Запрос истории ставок пользователя ${userId} по объекту ${propertyId}`);
+    
+    // Проверяем, существует ли таблица ставок
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bids'").get();
+    if (!tableExists) {
+      console.log('⚠️ Таблица bids не существует');
+      return res.json({ success: true, data: [] });
+    }
+    
+    const bids = db.prepare(`
+      SELECT 
+        b.*,
+        p.title,
+        p.location,
+        p.price,
+        p.auction_starting_price,
+        p.auction_minimum_bid,
+        p.photos,
+        p.is_auction,
+        p.auction_end_date
+      FROM bids b
+      LEFT JOIN properties p ON b.property_id = p.id
+      WHERE b.user_id = ? AND b.property_id = ?
+      ORDER BY b.created_at DESC
+    `).all(userId, propertyId);
+    
+    // Парсим JSON поля
+    const formattedBids = bids.map(bid => {
+      const formatted = { ...bid };
+      if (formatted.photos) {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      } else {
+        formatted.photos = [];
+      }
+      return formatted;
+    });
+    
+    console.log(`✅ Найдено ${formattedBids.length} ставок пользователя ${userId} по объекту ${propertyId}`);
+    
+    res.json({ success: true, data: formattedBids });
+  } catch (error) {
+    console.error('❌ Ошибка при получении истории ставок пользователя по объекту:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Обработка ошибок
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);

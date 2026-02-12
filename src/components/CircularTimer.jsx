@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './CircularTimer.css';
 
-const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration = null }) => {
+const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration = null, isUserLeader = false }) => {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -85,10 +85,8 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
   const offset = circumference - (progressValue / 100) * circumference;
   const redOffset = circumference - (redProgressValue / 100) * circumference;
 
-  // Оранжевый цвет для основного прогресса
-  const color = '#ff6b35';
-  // Темно-красный цвет для обводки окончания (более контрастный)
-  const redColor = '#dc2626';
+  // Определяем цвета в зависимости от того, является ли пользователь лидером
+  const isLeader = isUserLeader;
 
   // Форматируем время для отображения в формате MM:SS или HH:MM:SS
   const formatTime = () => {
@@ -105,20 +103,32 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
   };
 
   return (
-    <div className="circular-timer" style={{ width: size, height: size }}>
+    <div className={`circular-timer ${isLeader ? 'circular-timer--leader' : ''}`} style={{ width: size, height: size }}>
       <svg className="circular-timer-svg" width={size} height={size} style={{ overflow: 'visible' }}>
         <defs>
-          {/* Красивый градиент для оранжевого прогресса */}
+          {/* Красивый градиент для оранжевого прогресса (когда не лидер) */}
           <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#ff8c42" stopOpacity="1" />
             <stop offset="50%" stopColor="#ff6b35" stopOpacity="1" />
             <stop offset="100%" stopColor="#ff5722" stopOpacity="1" />
           </linearGradient>
-          {/* Красивый градиент для красного прогресса */}
+          {/* Красивый градиент для красного прогресса (когда не лидер) */}
           <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#ff4444" stopOpacity="1" />
             <stop offset="50%" stopColor="#dc2626" stopOpacity="1" />
             <stop offset="100%" stopColor="#b91c1c" stopOpacity="1" />
+          </linearGradient>
+          {/* Зелено-сероватый градиент для основного прогресса (когда лидер) */}
+          <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#6ee7b7" stopOpacity="1" />
+            <stop offset="50%" stopColor="#34d399" stopOpacity="1" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="1" />
+          </linearGradient>
+          {/* Сероватый градиент для обводки окончания (когда лидер) */}
+          <linearGradient id="grayGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#9ca3af" stopOpacity="1" />
+            <stop offset="50%" stopColor="#6b7280" stopOpacity="1" />
+            <stop offset="100%" stopColor="#4b5563" stopOpacity="1" />
           </linearGradient>
           {/* Радиальный градиент для более объемного вида */}
           <radialGradient id="orangeRadial" cx="50%" cy="50%">
@@ -132,17 +142,17 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#e5e7eb"
+          stroke={isLeader ? "#d1d5db" : "#e5e7eb"}
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Прогресс круг (оранжевый) с градиентом - под красной обводкой */}
+        {/* Прогресс круг с градиентом - меняется в зависимости от лидерства */}
         <circle
           className="circular-timer-progress"
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="url(#orangeGradient)"
+          stroke={isLeader ? "url(#grayGradient)" : "url(#orangeGradient)"}
           strokeWidth={strokeWidth + 1}
           fill="none"
           strokeDasharray={circumference}
@@ -150,16 +160,16 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{
-            transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease'
           }}
         />
-        {/* Красная обводка (показывает прогресс окончания таймера) - поверх оранжевой */}
+        {/* Обводка окончания (красная когда не лидер, зеленая когда лидер) - поверх основной */}
         <circle
           className="circular-timer-red-progress"
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="url(#redGradient)"
+          stroke={isLeader ? "url(#greenGradient)" : "url(#redGradient)"}
           strokeWidth={strokeWidth + 3}
           fill="none"
           strokeDasharray={circumference}
@@ -167,7 +177,7 @@ const CircularTimer = ({ endTime, size = 120, strokeWidth = 6, originalDuration 
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{
-            transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease',
             opacity: redProgressValue > 0 ? 1 : 0
           }}
         />

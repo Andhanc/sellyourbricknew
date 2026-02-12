@@ -16,13 +16,23 @@
 }
 
 .circular-timer-progress {
-  transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease, filter 0.3s ease;
   filter: drop-shadow(0 0 6px rgba(255, 107, 53, 0.5));
 }
 
+/* Сероватое свечение для основного круга когда пользователь лидер */
+.circular-timer--leader .circular-timer-progress {
+  filter: drop-shadow(0 0 6px rgba(107, 114, 128, 0.5));
+}
+
 .circular-timer-red-progress {
-  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease, filter 0.3s ease;
   filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.6));
+}
+
+/* Зеленое свечение для обводки окончания когда пользователь лидер */
+.circular-timer--leader .circular-timer-red-progress {
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.6));
 }
 
 .circular-timer-content {

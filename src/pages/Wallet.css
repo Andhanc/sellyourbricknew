@@ -803,11 +803,25 @@
 }
 
 .wallet-action-btn.deposit-action {
-  background: linear-gradient(135deg, #0ABAB5 0%, #089a95 100%);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.wallet-action-btn.deposit-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
 }
 
 .wallet-action-btn.withdraw-action {
-  background: linear-gradient(135deg, #EB001B 0%, #F79E1B 100%);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.wallet-action-btn.withdraw-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
 }
 
 .wallet-action-btn {
@@ -833,25 +847,28 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(10, 186, 181, 0.2), rgba(8, 154, 149, 0.2));
+  background: rgba(255, 255, 255, 0.05);
   opacity: 0;
   transition: opacity 0.4s;
 }
 
 .wallet-action-btn:hover {
   transform: translateY(-6px);
-  border-color: rgba(10, 186, 181, 0.5);
-  box-shadow: 0 12px 30px rgba(10, 186, 181, 0.3);
 }
 
 .wallet-action-btn:hover::before {
   opacity: 1;
 }
 
-.wallet-action-btn.active {
-  background: rgba(10, 186, 181, 0.3);
-  border-color: rgba(10, 186, 181, 0.6);
-  box-shadow: 0 8px 25px rgba(10, 186, 181, 0.4);
+.wallet-action-btn:hover::before {
+  opacity: 1;
+}
+
+.wallet-action-btn.deposit-action.active,
+.wallet-action-btn.withdraw-action.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   transform: translateY(-4px) scale(1.05);
 }
 
@@ -863,29 +880,58 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 186, 181, 0.2);
   border-radius: 16px;
   transition: all 0.4s;
 }
 
-.wallet-action-btn:hover .wallet-action-icon-wrapper,
-.wallet-action-btn.active .wallet-action-icon-wrapper {
-  background: rgba(10, 186, 181, 0.4);
+.wallet-action-btn.deposit-action .wallet-action-icon-wrapper {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.wallet-action-btn.withdraw-action .wallet-action-icon-wrapper {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.wallet-action-btn.deposit-action:hover .wallet-action-icon-wrapper,
+.wallet-action-btn.deposit-action.active .wallet-action-icon-wrapper {
+  background: rgba(16, 185, 129, 0.25);
+  transform: scale(1.1) rotate(5deg);
+}
+
+.wallet-action-btn.withdraw-action:hover .wallet-action-icon-wrapper,
+.wallet-action-btn.withdraw-action.active .wallet-action-icon-wrapper {
+  background: rgba(59, 130, 246, 0.25);
   transform: scale(1.1) rotate(5deg);
 }
 
 .wallet-action-icon {
   font-size: 28px;
-  color: #0ABAB5;
   transition: all 0.4s;
   position: relative;
   z-index: 1;
 }
 
+.wallet-action-btn.deposit-action .wallet-action-icon {
+  color: #10b981;
+}
+
+.wallet-action-btn.withdraw-action .wallet-action-icon {
+  color: #3b82f6;
+}
+
 .wallet-action-btn:hover .wallet-action-icon,
 .wallet-action-btn.active .wallet-action-icon {
-  color: white;
   transform: scale(1.1);
+}
+
+.wallet-action-btn.deposit-action:hover .wallet-action-icon,
+.wallet-action-btn.deposit-action.active .wallet-action-icon {
+  color: #10b981;
+}
+
+.wallet-action-btn.withdraw-action:hover .wallet-action-icon,
+.wallet-action-btn.withdraw-action.active .wallet-action-icon {
+  color: #3b82f6;
 }
 
 /* Аналитика */
