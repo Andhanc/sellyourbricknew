@@ -1,0 +1,602 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { FiSearch, FiShoppingCart, FiCheck, FiX, FiClock, FiFileText, FiExternalLink } from 'react-icons/fi';
+import { getApiBaseUrl } from '../../utils/apiConfig';
+import './PurchaseRequests.css';
+
+const PurchaseRequests = () => {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [requests, setRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [adminNotes, setAdminNotes] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [propertyDetails, setPropertyDetails] = useState(null);
+  const [loadingPropertyDetails, setLoadingPropertyDetails] = useState(false);
+
+  // Загружаем запросы на покупку из БД
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const API_BASE_URL = await getApiBaseUrl();
+      const response = await fetch(`${API_BASE_URL}/purchase-requests?limit=1000`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setRequests(result.data);
+        } else {
+          setError('Не удалось загрузить запросы');
+        }
+      } else {
+        setError('Ошибка при загрузке запросов');
+      }
+    } catch (err) {
+      console.error('❌ Ошибка при загрузке запросов на покупку:', err);
+      setError('Произошла ошибка при загрузке запросов');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredRequests = useMemo(() => {
+    if (!searchQuery && statusFilter === 'all') {
+      return requests;
+    }
+    
+    return requests.filter(request => {
+      // Поиск по имени покупателя, email, телефону или названию объекта
+      const matchesSearch = !searchQuery || (() => {
+        const searchLower = searchQuery.toLowerCase();
+        const buyerName = (request.buyer_name || '').toLowerCase();
+        const buyerEmail = (request.buyer_email || '').toLowerCase();
+        const buyerPhone = (request.buyer_phone || '').toLowerCase();
+        const propertyTitle = (request.property_title || '').toLowerCase();
+        return buyerName.includes(searchLower) || 
+               buyerEmail.includes(searchLower) || 
+               buyerPhone.includes(searchLower) ||
+               propertyTitle.includes(searchLower);
+      })();
+      
+      // Фильтр по статусу
+      const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchQuery, statusFilter, requests]);
+
+  const handleStatusUpdate = async (requestId, newStatus) => {
+    if (updatingStatus) return;
+    
+    setUpdatingStatus(true);
+    try {
+      const API_BASE_URL = await getApiBaseUrl();
+      const response = await fetch(`${API_BASE_URL}/purchase-requests/${requestId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          adminNotes: adminNotes || null
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Обновляем локальное состояние
+          setRequests(requests.map(req => 
+            req.id === requestId ? { ...req, status: newStatus, admin_notes: adminNotes || req.admin_notes } : req
+          ));
+          setAdminNotes('');
+          setIsDetailModalOpen(false);
+          setSelectedRequest(null);
+          setPropertyDetails(null);
+        } else {
+          alert(`Ошибка: ${result.error || 'Не удалось обновить статус'}`);
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`Ошибка: ${errorData.error || 'Не удалось обновить статус'}`);
+      }
+    } catch (error) {
+      console.error('Ошибка при обновлении статуса:', error);
+      alert('Произошла ошибка при обновлении статуса');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleDelete = async (requestId) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот запрос?')) {
+      return;
+    }
+
+    try {
+      const API_BASE_URL = await getApiBaseUrl();
+      const response = await fetch(`${API_BASE_URL}/purchase-requests/${requestId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setRequests(requests.filter(req => req.id !== requestId));
+          alert('Запрос успешно удален');
+        } else {
+          alert(`Ошибка: ${result.error || 'Не удалось удалить запрос'}`);
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`Ошибка: ${errorData.error || 'Не удалось удалить запрос'}`);
+      }
+    } catch (error) {
+      console.error('Ошибка при удалении запроса:', error);
+      alert('Произошла ошибка при удалении запроса');
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      pending: 'Ожидает',
+      processing: 'В обработке',
+      completed: 'Завершен',
+      cancelled: 'Отменен'
+    };  
+    return statusMap[status] || status;
+  };
+
+  const getStatusBadgeClass = (status) => {
+    const classMap = {
+      pending: 'status-badge--pending',
+      processing: 'status-badge--processing',
+      completed: 'status-badge--completed',
+      cancelled: 'status-badge--cancelled'
+    };
+    return classMap[status] || '';
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'pending':
+        return <FiClock size={16} />;
+      case 'processing':
+        return <FiFileText size={16} />;
+      case 'completed':
+        return <FiCheck size={16} />;
+      case 'cancelled':
+        return <FiX size={16} />;
+      default:
+        return <FiClock size={16} />;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Не указано';
+    try {
+      return new Date(dateString).toLocaleString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Не указано';
+    }
+  };
+
+  const formatPrice = (price, currency) => {
+    if (!price) return 'Не указано';
+    const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency || '';
+    return `${currencySymbol}${price.toLocaleString('ru-RU')}`;
+  };
+
+  return (
+    <div className="purchase-requests-container">
+      <div className="purchase-requests-filter">
+        <div className="filter-search">
+          <FiSearch className="search-icon" size={20} />
+          <input
+            type="text"
+            placeholder="Поиск по имени, email, телефону или объекту..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="filter-input"
+          />
+          {searchQuery && (
+            <button 
+              className="clear-search"
+              onClick={() => setSearchQuery('')}
+              aria-label="Очистить поиск"
+            >
+              <FiX size={18} />
+            </button>
+          )}
+        </div>
+        
+        <div className="filter-buttons">
+          <div className="filter-group">
+            <label className="filter-label">Статус:</label>
+            <div className="filter-options">
+              <button
+                className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('all')}
+              >
+                Все
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('pending')}
+              >
+                Ожидает
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'processing' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('processing')}
+              >
+                В обработке
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'completed' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('completed')}
+              >
+                Завершен
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'cancelled' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('cancelled')}
+              >
+                Отменен
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="purchase-requests-loading">
+          <p>Загрузка запросов...</p>
+        </div>
+      ) : error ? (
+        <div className="purchase-requests-error">
+          <p>Ошибка: {error}</p>
+          <button onClick={fetchRequests}>Попробовать снова</button>
+        </div>
+      ) : (
+        <div className="purchase-requests-list">
+          {filteredRequests.length === 0 ? (
+            <div className="purchase-requests-empty">
+              <FiShoppingCart size={48} />
+              <p>Запросы на покупку не найдены</p>
+            </div>
+          ) : (
+            filteredRequests.map(request => (
+              <div 
+                key={request.id} 
+                className="purchase-request-card"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  
+                  setSelectedRequest(request);
+                  setAdminNotes(request.admin_notes || '');
+                  setIsDetailModalOpen(true);
+                  
+                  // Загружаем полную информацию об объекте
+                  if (request.property_id) {
+                    setLoadingPropertyDetails(true);
+                    try {
+                      const API_BASE_URL = await getApiBaseUrl();
+                      const response = await fetch(`${API_BASE_URL}/properties/${request.property_id}`);
+                      if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                          setPropertyDetails(result.data);
+                        }
+                      }
+                    } catch (err) {
+                      console.error('Ошибка при загрузке данных объекта:', err);
+                    } finally {
+                      setLoadingPropertyDetails(false);
+                    }
+                  } else {
+                    setPropertyDetails(null);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="purchase-request-card__header">
+                  <div className="purchase-request-card__title">
+                    <FiShoppingCart size={20} />
+                    <h3>{request.property_title || 'Объект не указан'}</h3>
+                  </div>
+                  <span 
+                    className={`status-badge ${getStatusBadgeClass(request.status)}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    {getStatusIcon(request.status)}
+                    {getStatusLabel(request.status)}
+                  </span>
+                </div>
+                
+                <div className="purchase-request-card__info">
+                  <div className="purchase-request-info-item">
+                    <span className="info-label">Покупатель:</span>
+                    <span className="info-value">{request.buyer_name || 'Не указано'}</span>
+                  </div>
+                  
+                  {request.buyer_email && (
+                    <div className="purchase-request-info-item">
+                      <span className="info-label">Email:</span>
+                      <span className="info-value">{request.buyer_email}</span>
+                    </div>
+                  )}
+                  
+                  {request.buyer_phone && (
+                    <div className="purchase-request-info-item">
+                      <span className="info-label">Телефон:</span>
+                      <span className="info-value">{request.buyer_phone}</span>
+                    </div>
+                  )}
+                  
+                  {request.property_price && (
+                    <div className="purchase-request-info-item">
+                      <span className="info-label">Цена:</span>
+                      <span className="info-value info-value--price">
+                        {formatPrice(request.property_price, request.property_currency)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {request.property_location && (
+                    <div className="purchase-request-info-item">
+                      <span className="info-label">Местоположение:</span>
+                      <span className="info-value">{request.property_location}</span>
+                    </div>
+                  )}
+                  
+                  <div className="purchase-request-info-item">
+                    <span className="info-label">Дата запроса:</span>
+                    <span className="info-value">{formatDate(request.request_date || request.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <div className="purchase-requests-stats">
+          <div className="stat-item">
+            <span className="stat-label">Всего запросов:</span>
+            <span className="stat-value">{requests.length}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Найдено:</span>
+            <span className="stat-value">{filteredRequests.length}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно с деталями запроса */}
+      {isDetailModalOpen && selectedRequest && createPortal(
+        <div className="purchase-request-modal-overlay" onClick={() => {
+          setIsDetailModalOpen(false);
+          setSelectedRequest(null);
+          setAdminNotes('');
+          setPropertyDetails(null);
+        }}>
+          <div className="purchase-request-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="purchase-request-modal__header">
+              <h2>Детали запроса на покупку</h2>
+              <button 
+                className="modal-close-btn"
+                onClick={() => {
+                  setIsDetailModalOpen(false);
+                  setSelectedRequest(null);
+                  setAdminNotes('');
+                  setPropertyDetails(null);
+                }}
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <div className="purchase-request-modal__content">
+              <div className="modal-section">
+                <h3>Информация о покупателе</h3>
+                <div className="modal-info-grid">
+                  <div className="modal-info-item">
+                    <span className="modal-info-label">Имя:</span>
+                    <span className="modal-info-value">{selectedRequest.buyer_name || 'Не указано'}</span>
+                  </div>
+                  <div className="modal-info-item">
+                    <span className="modal-info-label">Телефон:</span>
+                    <span className="modal-info-value">{selectedRequest.buyer_phone || 'Не указано'}</span>
+                  </div>
+                  <div className="modal-info-item">
+                    <span className="modal-info-label">Почта:</span>
+                    <span className="modal-info-value">{selectedRequest.buyer_email || 'Не указано'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <h3>Информация о владельце объекта</h3>
+                <div className="modal-info-grid">
+                  <div className="modal-info-item">
+                    <span className="modal-info-label">Имя:</span>
+                    <span className="modal-info-value">
+                      {propertyDetails?.first_name && propertyDetails?.last_name
+                        ? `${propertyDetails.first_name} ${propertyDetails.last_name}`
+                        : selectedRequest.seller_name || 'Владелец не указан'}
+                    </span>
+                  </div>
+                  {(propertyDetails?.email || selectedRequest.seller_email) && (
+                    <div className="modal-info-item">
+                      <span className="modal-info-label">Email:</span>
+                      <span className="modal-info-value">
+                        {propertyDetails?.email || selectedRequest.seller_email}
+                      </span>
+                    </div>
+                  )}
+                  <div className="modal-info-item">
+                    <span className="modal-info-label">Телефон:</span>
+                    <span className="modal-info-value">
+                      {propertyDetails?.phone_number || selectedRequest.seller_phone || 'Не указано'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <h3>Информация об объекте</h3>
+                {loadingPropertyDetails ? (
+                  <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280' }}>
+                    Загрузка данных объекта...
+                  </div>
+                ) : (
+                  <div className="modal-info-grid">
+                    <div className="modal-info-item">
+                      <span className="modal-info-label">Название:</span>
+                      <span className="modal-info-value">
+                        {propertyDetails?.title || selectedRequest.property_title || 'Не указано'}
+                      </span>
+                    </div>
+                    
+                    {(propertyDetails?.price || selectedRequest.property_price) && (
+                      <div className="modal-info-item">
+                        <span className="modal-info-label">Цена:</span>
+                        <span className="modal-info-value">
+                          {formatPrice(
+                            propertyDetails?.price || selectedRequest.property_price,
+                            propertyDetails?.currency || selectedRequest.property_currency
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {(propertyDetails?.location || selectedRequest.property_location) && (
+                      <div className="modal-info-item modal-info-item--full">
+                        <span className="modal-info-label">Местоположение:</span>
+                        <span className="modal-info-value">
+                          {propertyDetails?.location || selectedRequest.property_location}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-section">
+                <h3>Статус и заметки</h3>
+                <div className="modal-info-grid">
+                  {(selectedRequest.property_id || propertyDetails?.id) && (
+                    <div className="modal-info-item">
+                      <span className="modal-info-label">Ссылка на объект:</span>
+                      <span className="modal-info-value">
+                        <a
+                          href={`/property/${selectedRequest.property_id || propertyDetails?.id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/property/${selectedRequest.property_id || propertyDetails?.id}`);
+                            setIsDetailModalOpen(false);
+                          }}
+                          style={{
+                            color: '#0ABAB5',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontWeight: 500
+                          }}
+                        >
+                          Перейти к объекту
+                          <FiExternalLink size={16} />
+                        </a>
+                      </span>
+                    </div>
+                  )}
+                  <div className="modal-info-item">
+                    <span className="modal-info-label">Дата запроса:</span>
+                    <span className="modal-info-value">
+                      {formatDate(selectedRequest.request_date || selectedRequest.created_at)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="modal-notes">
+                  <label className="modal-notes-label">Заметки администратора:</label>
+                  <textarea
+                    className="modal-notes-textarea"
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Добавьте заметки о запросе..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="purchase-request-modal__actions">
+              <div className="modal-actions-group">
+                <button
+                  className="modal-action-btn modal-action-btn--processing"
+                  onClick={() => handleStatusUpdate(selectedRequest.id, 'processing')}
+                  disabled={updatingStatus || selectedRequest.status === 'processing'}
+                >
+                  <FiFileText />
+                  В обработку
+                </button>
+                <button
+                  className="modal-action-btn modal-action-btn--completed"
+                  onClick={() => handleStatusUpdate(selectedRequest.id, 'completed')}
+                  disabled={updatingStatus || selectedRequest.status === 'completed'}
+                >
+                  <FiCheck />
+                  Завершить
+                </button>
+                <button
+                  className="modal-action-btn modal-action-btn--cancelled"
+                  onClick={() => handleStatusUpdate(selectedRequest.id, 'cancelled')}
+                  disabled={updatingStatus || selectedRequest.status === 'cancelled'}
+                >
+                  <FiX />
+                  Отменить
+                </button>
+              </div>
+              <button
+                className="modal-action-btn modal-action-btn--delete"
+                onClick={() => {
+                  setIsDetailModalOpen(false);
+                  handleDelete(selectedRequest.id);
+                }}
+                disabled={updatingStatus}
+              >
+                <FiX />
+                Удалить запрос
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
+export default PurchaseRequests;

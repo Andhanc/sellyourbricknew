@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import { initDatabase, closeDatabase, getDatabase } from './database/database.js';
-import { userQueries, documentQueries, notificationQueries, administratorQueries, whatsappUserQueries } from './database/database.js';
+import { userQueries, documentQueries, notificationQueries, administratorQueries, whatsappUserQueries, purchaseRequestQueries, apartmentQueries, houseQueries, propertyQueries } from './database/database.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import multer from 'multer';
@@ -2023,6 +2023,249 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
 });
 
 /**
+ * POST /api/purchase-requests - Создать новый запрос на покупку
+ */
+app.post('/api/purchase-requests', async (req, res) => {
+  try {
+    const {
+      buyerId, buyerName, buyerEmail, buyerPhone,
+      sellerId, sellerName, sellerEmail, sellerPhone,
+      propertyId, propertyTitle, propertyDescription, propertyPrice, propertyCurrency,
+      propertyLocation, propertyType, propertyArea,
+      propertyRooms, propertyBedrooms, propertyBathrooms,
+      propertyFloor, propertyTotalFloors, propertyYearBuilt,
+      propertyLivingArea, propertyLandArea, propertyBuildingType,
+      propertyRenovation, propertyCondition, propertyHeating,
+      propertyWaterSupply, propertySewerage,
+      propertyBalcony, propertyParking, propertyElevator,
+      propertyGarage, propertyPool, propertyGarden,
+      propertyElectricity, propertyInternet, propertySecurity, propertyFurniture,
+      propertyCommercialType, propertyBusinessHours,
+      requestDate, status
+    } = req.body;
+
+    // Валидация обязательных полей
+    if (!buyerName) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать имя покупателя' });
+    }
+
+    if (!propertyTitle) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать название объекта' });
+    }
+
+    // Создаем запрос со всеми данными об объекте
+    const result = purchaseRequestQueries.create({
+      buyerId: buyerId || null,
+      buyerName,
+      buyerEmail: buyerEmail || null,
+      buyerPhone: buyerPhone || null,
+      sellerId: sellerId || null,
+      sellerName: sellerName || null,
+      sellerEmail: sellerEmail || null,
+      sellerPhone: sellerPhone || null,
+      propertyId: propertyId || null,
+      propertyTitle,
+      propertyDescription: propertyDescription || null,
+      propertyPrice: propertyPrice || null,
+      propertyCurrency: propertyCurrency || 'USD',
+      propertyLocation: propertyLocation || null,
+      propertyType: propertyType || null,
+      propertyArea: propertyArea || null,
+      propertyRooms: propertyRooms || null,
+      propertyBedrooms: propertyBedrooms || null,
+      propertyBathrooms: propertyBathrooms || null,
+      propertyFloor: propertyFloor !== undefined && propertyFloor !== null ? propertyFloor : null,
+      propertyTotalFloors: propertyTotalFloors !== undefined && propertyTotalFloors !== null ? propertyTotalFloors : null,
+      propertyYearBuilt: propertyYearBuilt !== undefined && propertyYearBuilt !== null ? propertyYearBuilt : null,
+      propertyLivingArea: propertyLivingArea || null,
+      propertyLandArea: propertyLandArea || null,
+      propertyBuildingType: propertyBuildingType || null,
+      propertyRenovation: propertyRenovation || null,
+      propertyCondition: propertyCondition || null,
+      propertyHeating: propertyHeating || null,
+      propertyWaterSupply: propertyWaterSupply || null,
+      propertySewerage: propertySewerage || null,
+      propertyBalcony: propertyBalcony === 1 || propertyBalcony === true ? 1 : 0,
+      propertyParking: propertyParking === 1 || propertyParking === true ? 1 : 0,
+      propertyElevator: propertyElevator === 1 || propertyElevator === true ? 1 : 0,
+      propertyGarage: propertyGarage === 1 || propertyGarage === true ? 1 : 0,
+      propertyPool: propertyPool === 1 || propertyPool === true ? 1 : 0,
+      propertyGarden: propertyGarden === 1 || propertyGarden === true ? 1 : 0,
+      propertyElectricity: propertyElectricity === 1 || propertyElectricity === true ? 1 : 0,
+      propertyInternet: propertyInternet === 1 || propertyInternet === true ? 1 : 0,
+      propertySecurity: propertySecurity === 1 || propertySecurity === true ? 1 : 0,
+      propertyFurniture: propertyFurniture === 1 || propertyFurniture === true ? 1 : 0,
+      propertyCommercialType: propertyCommercialType || null,
+      propertyBusinessHours: propertyBusinessHours || null,
+      requestDate: requestDate || new Date().toISOString(),
+      status: status || 'pending'
+    });
+
+    const newRequest = purchaseRequestQueries.getById(result.lastInsertRowid);
+    
+    console.log('✅ Создан новый запрос на покупку:', {
+      id: newRequest.id,
+      buyer: buyerName,
+      property: propertyTitle,
+      price: propertyPrice,
+      currency: propertyCurrency
+    });
+
+    // Отправляем WhatsApp сообщение покупателю (асинхронно, не блокируя основной ответ)
+    if (buyerPhone && waClientReady && waClient) {
+      // Форматируем номер телефона (убираем все кроме цифр)
+      const digits = String(buyerPhone).replace(/\D/g, '');
+      
+      if (digits && digits.length >= 10) {
+        // Формируем сообщение
+        const whatsappMessage = `Вы отправили запрос на покупку объекта "${propertyTitle}". Наш менеджер скоро с вами свяжется.`;
+        
+        // Отправляем сообщение асинхронно, не ожидая результата
+        setImmediate(async () => {
+          try {
+            const chatId = `${digits}@c.us`;
+            
+            // Применяем патч sendSeen перед отправкой
+            await applySendSeenPatch();
+            
+            // Отправляем сообщение
+            await waClient.sendMessage(chatId, whatsappMessage);
+            
+            console.log('📱 WhatsApp сообщение отправлено покупателю:', {
+              phone: digits,
+              buyer: buyerName,
+              property: propertyTitle
+            });
+          } catch (whatsappError) {
+            console.error('❌ Ошибка отправки WhatsApp сообщения покупателю:', {
+              error: whatsappError.message,
+              phone: digits,
+              buyer: buyerName
+            });
+          }
+        });
+      }
+    }
+
+    res.json({ success: true, data: newRequest, message: 'Запрос на покупку успешно создан' });
+  } catch (error) {
+    console.error('❌ Ошибка создания запроса на покупку:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/purchase-requests - Получить все запросы на покупку
+ */
+app.get('/api/purchase-requests', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    const status = req.query.status;
+
+    let requests;
+    if (status) {
+      requests = purchaseRequestQueries.getByStatus(status, limit, offset);
+    } else {
+      requests = purchaseRequestQueries.getAll(limit, offset);
+    }
+
+    const total = status 
+      ? purchaseRequestQueries.getCountByStatus(status)
+      : purchaseRequestQueries.getCount();
+
+    res.json({ 
+      success: true, 
+      data: requests, 
+      total,
+      limit,
+      offset 
+    });
+  } catch (error) {
+    console.error('❌ Ошибка получения запросов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/purchase-requests/:id - Получить запрос по ID
+ */
+app.get('/api/purchase-requests/:id', (req, res) => {
+  try {
+    const request = purchaseRequestQueries.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Запрос не найден' });
+    }
+    res.json({ success: true, data: request });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/purchase-requests/buyer/:buyerId - Получить запросы покупателя
+ */
+app.get('/api/purchase-requests/buyer/:buyerId', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const requests = purchaseRequestQueries.getByBuyerId(req.params.buyerId, limit, offset);
+    res.json({ success: true, data: requests });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/purchase-requests/:id/status - Обновить статус запроса
+ */
+app.put('/api/purchase-requests/:id/status', (req, res) => {
+  try {
+    const { status, adminNotes } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать статус' });
+    }
+
+    const request = purchaseRequestQueries.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Запрос не найден' });
+    }
+
+    purchaseRequestQueries.updateStatus(req.params.id, status, adminNotes);
+    const updatedRequest = purchaseRequestQueries.getById(req.params.id);
+    
+    console.log(`✅ Статус запроса #${req.params.id} обновлен: ${status}`);
+    
+    res.json({ success: true, data: updatedRequest, message: 'Статус обновлен' });
+  } catch (error) {
+    console.error('❌ Ошибка обновления статуса:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/purchase-requests/:id - Удалить запрос
+ */
+app.delete('/api/purchase-requests/:id', (req, res) => {
+  try {
+    const request = purchaseRequestQueries.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Запрос не найден' });
+    }
+
+    purchaseRequestQueries.delete(req.params.id);
+    console.log(`✅ Запрос #${req.params.id} удален`);
+    
+    res.json({ success: true, message: 'Запрос успешно удален' });
+  } catch (error) {
+    console.error('❌ Ошибка удаления запроса:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/auth/email/register - Регистрация через Email
  */
 app.post('/api/auth/email/register', async (req, res) => {
@@ -3285,17 +3528,6 @@ app.post('/api/properties', upload.fields([
     
     const db = getDatabase();
     
-    // Проверяем существование таблицы properties
-    try {
-      db.prepare('SELECT 1 FROM properties LIMIT 1').get();
-    } catch (tableError) {
-      console.error('❌ Таблица properties не существует:', tableError);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Таблица properties не существует. Необходимо выполнить миграцию БД.' 
-      });
-    }
-    
     const {
       user_id,
       property_type,
@@ -3308,6 +3540,14 @@ app.post('/api/properties', upload.fields([
       auction_end_date,
       auction_starting_price
     } = req.body;
+    
+    // Проверяем, что property_type валиден для новых таблиц
+    if (!property_type || !['apartment', 'commercial', 'house', 'villa'].includes(property_type)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать корректный property_type: apartment, commercial, house или villa' 
+      });
+    }
     
     // Нормализуем is_auction: может быть строкой '0'/'1', числом 0/1, или булевым значением
     let normalizedIsAuction = 0;
@@ -3451,27 +3691,12 @@ app.post('/api/properties', upload.fields([
       }
     }
 
-    const stmt = db.prepare(`
-      INSERT INTO properties (
-        user_id, property_type, title, description, price, currency,
-        is_auction, auction_start_date, auction_end_date, auction_starting_price,
-        area, living_area, building_type, rooms, bedrooms, bathrooms, floor, total_floors, year_built, location,
-        balcony, parking, elevator, land_area, garage, pool, garden,
-        commercial_type, business_hours, renovation, condition, heating,
-        water_supply, sewerage, electricity, internet, security, furniture,
-        photos, videos, additional_documents, additional_amenities, ownership_document, no_debts_document,
-        test_drive, test_drive_data, moderation_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
     // Используем location, если он указан (он уже содержит полный адрес)
     // Если location не указан, формируем его из отдельных полей
     let finalLocation = location || '';
     if (!finalLocation && (address || apartment || city || country)) {
       const locationParts = [];
       if (address) locationParts.push(address);
-      // Убираем автоматическое добавление квартиры, чтобы избежать дублирования
-      // if (apartment) locationParts.push(`кв. ${apartment}`);
       if (city) locationParts.push(city);
       if (country) locationParts.push(country);
       if (locationParts.length > 0) {
@@ -3479,27 +3704,87 @@ app.post('/api/properties', upload.fields([
       }
     }
 
-    const result = stmt.run(
-      user_id, property_type, title, description || null, price || null, currency,
-      normalizedIsAuction, auction_start_date || null, auction_end_date || null, auction_starting_price || null,
-      area || null, living_area || null, building_type || null, rooms || null, bedrooms || null, bathrooms || null, floor || null, total_floors || null, year_built || null, finalLocation || null,
-      balcony ? 1 : 0, parking ? 1 : 0, elevator ? 1 : 0, land_area || null, garage ? 1 : 0, pool ? 1 : 0, garden ? 1 : 0,
-      commercial_type || null, business_hours || null, renovation || null, condition || null, heating || null,
-      water_supply || null, sewerage || null, electricity ? 1 : 0, internet ? 1 : 0, security ? 1 : 0, furniture ? 1 : 0,
-      parsedPhotos.length > 0 ? JSON.stringify(parsedPhotos) : null,
-      parsedVideos.length > 0 ? JSON.stringify(parsedVideos) : null,
-      parsedAdditionalDocuments.length > 0 ? JSON.stringify(parsedAdditionalDocuments) : null,
-      additional_amenities || null,
-      ownershipDocumentPath, noDebtsDocumentPath,
-      normalizedTestDrive,
-      test_drive_data ? JSON.stringify(test_drive_data) : null,
-      'pending'
-    );
+    // Подготавливаем данные для сохранения
+    const propertyData = {
+      user_id: parseInt(user_id),
+      property_type,
+      title,
+      description: description || null,
+      price: price ? parseFloat(price) : null,
+      currency: currency || 'USD',
+      is_auction: normalizedIsAuction,
+      auction_start_date: auction_start_date || null,
+      auction_end_date: auction_end_date || null,
+      auction_starting_price: auction_starting_price ? parseFloat(auction_starting_price) : null,
+      area: area ? parseFloat(area) : null,
+      living_area: living_area ? parseFloat(living_area) : null,
+      building_type: building_type || null,
+      rooms: rooms ? parseInt(rooms) : null,
+      bathrooms: bathrooms ? parseInt(bathrooms) : null,
+      floor: floor ? parseInt(floor) : null,
+      total_floors: total_floors ? parseInt(total_floors) : null,
+      year_built: year_built ? parseInt(year_built) : null,
+      location: finalLocation || null,
+      address: address || null,
+      apartment: apartment || null,
+      country: country || null,
+      city: city || null,
+      coordinates: coordinates ? (typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates) : null,
+      balcony: balcony ? 1 : 0,
+      parking: parking ? 1 : 0,
+      elevator: elevator ? 1 : 0,
+      electricity: electricity ? 1 : 0,
+      internet: internet ? 1 : 0,
+      security: security ? 1 : 0,
+      furniture: furniture ? 1 : 0,
+      commercial_type: commercial_type || null,
+      business_hours: business_hours || null,
+      renovation: renovation || null,
+      condition: condition || null,
+      heating: heating || null,
+      water_supply: water_supply || null,
+      sewerage: sewerage || null,
+      additional_amenities: additional_amenities || null,
+      photos: parsedPhotos.length > 0 ? parsedPhotos : null,
+      videos: parsedVideos.length > 0 ? parsedVideos : null,
+      additional_documents: parsedAdditionalDocuments.length > 0 ? parsedAdditionalDocuments : null,
+      ownership_document: ownershipDocumentPath,
+      no_debts_document: noDebtsDocumentPath,
+      test_drive: normalizedTestDrive,
+      test_drive_data: test_drive_data ? (typeof test_drive_data === 'string' ? JSON.parse(test_drive_data) : test_drive_data) : null,
+      moderation_status: 'pending'
+    };
+
+    // Добавляем поля для домов/вилл
+    if (property_type === 'house' || property_type === 'villa') {
+      propertyData.land_area = land_area ? parseFloat(land_area) : null;
+      propertyData.bedrooms = bedrooms ? parseInt(bedrooms) : null;
+      propertyData.floors = req.body.floors ? parseInt(req.body.floors) : null;
+      propertyData.pool = pool ? 1 : 0;
+      propertyData.garden = garden ? 1 : 0;
+      propertyData.garage = garage ? 1 : 0;
+    }
+
+    // Используем соответствующий query в зависимости от типа
+    let result;
+    let property;
+    
+    if (property_type === 'apartment' || property_type === 'commercial') {
+      result = apartmentQueries.create(propertyData);
+      property = apartmentQueries.getById(result.lastInsertRowid);
+    } else if (property_type === 'house' || property_type === 'villa') {
+      result = houseQueries.create(propertyData);
+      property = houseQueries.getById(result.lastInsertRowid);
+    } else {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Неизвестный тип недвижимости' 
+      });
+    }
     
     console.log('🔍 POST /api/properties - Сохранено test_drive в БД:', normalizedTestDrive, 'тип:', typeof normalizedTestDrive)
 
     const propertyId = result.lastInsertRowid;
-    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyId);
 
     console.log('✅ Объявление успешно создано с ID:', propertyId);
     console.log('📋 Статус модерации из БД:', property.moderation_status);
@@ -3522,13 +3807,16 @@ app.post('/api/properties', upload.fields([
       test_drive_type: typeof property.test_drive,
     });
     
-    // Проверяем, что объявление действительно создано с правильным статусом
-    const checkProperty = db.prepare('SELECT id, moderation_status, title FROM properties WHERE id = ?').get(propertyId);
-    console.log('🔍 Проверка объявления в БД:', checkProperty);
-    
     // Проверяем количество объявлений на модерации
-    const pendingCount = db.prepare('SELECT COUNT(*) as count FROM properties WHERE moderation_status = ?').get('pending');
-    console.log('📊 Всего объявлений на модерации:', pendingCount.count);
+    let pendingCount = 0;
+    try {
+      const apartmentsPending = db.prepare('SELECT COUNT(*) as count FROM properties_apartments WHERE moderation_status = ?').get('pending');
+      const housesPending = db.prepare('SELECT COUNT(*) as count FROM properties_houses WHERE moderation_status = ?').get('pending');
+      pendingCount = (apartmentsPending?.count || 0) + (housesPending?.count || 0);
+    } catch (e) {
+      console.warn('⚠️ Не удалось получить количество объявлений на модерации:', e.message);
+    }
+    console.log('📊 Всего объявлений на модерации:', pendingCount);
 
     res.json({ 
       success: true, 
@@ -3958,22 +4246,10 @@ app.put('/api/properties/:id', upload.fields([
  */
 app.get('/api/properties/pending', (req, res) => {
   try {
-    const db = getDatabase();
     console.log('📥 Запрос объявлений на модерации');
     
-    const properties = db.prepare(`
-      SELECT 
-        p.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.phone_number,
-        u.role
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.moderation_status = 'pending'
-      ORDER BY p.created_at DESC
-    `).all();
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const properties = propertyQueries.getPending();
 
     console.log(`✅ Найдено объявлений на модерации: ${properties.length}`);
     if (properties.length > 0) {
@@ -3981,101 +4257,37 @@ app.get('/api/properties/pending', (req, res) => {
       console.log('📋 Статусы:', properties.map(p => p.moderation_status).join(', '));
     }
 
-    // Парсим JSON поля
+    // Парсим JSON поля (если еще не распарсены)
     const formattedProperties = properties.map(prop => {
       const formatted = { ...prop };
-      if (formatted.photos) {
+      if (formatted.photos && typeof formatted.photos === 'string') {
         try {
           formatted.photos = JSON.parse(formatted.photos);
         } catch (e) {
           formatted.photos = [];
         }
+      } else if (!formatted.photos) {
+        formatted.photos = [];
       }
-      if (formatted.videos) {
+      if (formatted.videos && typeof formatted.videos === 'string') {
         try {
           formatted.videos = JSON.parse(formatted.videos);
         } catch (e) {
           formatted.videos = [];
         }
+      } else if (!formatted.videos) {
+        formatted.videos = [];
       }
-      if (formatted.additional_documents) {
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
         try {
           formatted.additional_documents = JSON.parse(formatted.additional_documents);
         } catch (e) {
           formatted.additional_documents = [];
         }
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
       }
-      if (formatted.test_drive_data) {
-        try {
-          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
-        } catch (e) {
-          formatted.test_drive_data = null;
-        }
-      }
-      return formatted;
-    });
-
-    res.json({ success: true, data: formattedProperties });
-  } catch (error) {
-    console.error('Ошибка при получении объявлений на модерации:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/properties/pending - Получить все объявления на модерации
- * ВАЖНО: Этот маршрут должен быть ПЕРЕД /api/properties/:id, иначе "pending" будет интерпретироваться как ID
- */
-app.get('/api/properties/pending', (req, res) => {
-  try {
-    const db = getDatabase();
-    console.log('📥 Запрос объявлений на модерации');
-    
-    const properties = db.prepare(`
-      SELECT 
-        p.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.phone_number,
-        u.role
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.moderation_status = 'pending'
-      ORDER BY p.created_at DESC
-    `).all();
-
-    console.log(`✅ Найдено объявлений на модерации: ${properties.length}`);
-    if (properties.length > 0) {
-      console.log('📋 ID объявлений:', properties.map(p => p.id).join(', '));
-      console.log('📋 Статусы:', properties.map(p => p.moderation_status).join(', '));
-    }
-
-    // Парсим JSON поля
-    const formattedProperties = properties.map(prop => {
-      const formatted = { ...prop };
-      if (formatted.photos) {
-        try {
-          formatted.photos = JSON.parse(formatted.photos);
-        } catch (e) {
-          formatted.photos = [];
-        }
-      }
-      if (formatted.videos) {
-        try {
-          formatted.videos = JSON.parse(formatted.videos);
-        } catch (e) {
-          formatted.videos = [];
-        }
-      }
-      if (formatted.additional_documents) {
-        try {
-          formatted.additional_documents = JSON.parse(formatted.additional_documents);
-        } catch (e) {
-          formatted.additional_documents = [];
-        }
-      }
-      if (formatted.test_drive_data) {
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
         try {
           formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
         } catch (e) {
@@ -4098,28 +4310,10 @@ app.get('/api/properties/pending', (req, res) => {
  */
 app.get('/api/properties/approved', (req, res) => {
   try {
-    const db = getDatabase();
     const { type } = req.query; // Опциональный фильтр по типу
     
-    // Теперь делаем основной запрос
-    let query = `
-      SELECT p.*, 
-             u.first_name, u.last_name, u.email, u.phone_number
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.moderation_status = 'approved' 
-        AND (p.is_auction = 0 OR p.is_auction IS NULL)
-    `;
-    
-    const params = [];
-    if (type) {
-      query += ' AND p.property_type = ?';
-      params.push(type);
-    }
-    
-    query += ' ORDER BY p.reviewed_at DESC, p.created_at DESC';
-    
-    const properties = db.prepare(query).all(...params);
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const properties = propertyQueries.getApproved(type || null);
     
     // Преобразуем данные в формат для фронтенда
     const formattedProperties = properties.map(prop => {
@@ -4193,31 +4387,63 @@ app.get('/api/properties/approved', (req, res) => {
  */
 app.get('/api/properties/auctions', (req, res) => {
   try {
-    const db = getDatabase();
     const { type } = req.query; // Опциональный фильтр по типу
     
-    // Запрос для получения объявлений с аукционом (включая тестовые таймеры)
-    let query = `
-      SELECT p.*, 
-             u.first_name, u.last_name, u.email, u.phone_number
-      FROM properties p
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    let properties = propertyQueries.getAuctions(type || null);
+    
+    // Также получаем объекты с тестовыми таймерами
+    const db = getDatabase();
+    let testTimerQuery = `
+      SELECT 
+        p.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number,
+        u.role
+      FROM properties_apartments p
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.moderation_status = 'approved' 
-        AND (
-          (p.is_auction = 1 AND p.auction_end_date IS NOT NULL AND p.auction_end_date != '')
-          OR (p.test_timer_end_date IS NOT NULL AND p.test_timer_end_date != '')
-        )
+      WHERE p.moderation_status = 'approved'
+        AND p.test_timer_end_date IS NOT NULL
+        AND p.test_timer_end_date != ''
     `;
     
-    const params = [];
+    const testTimerParams = [];
     if (type) {
-      query += ' AND p.property_type = ?';
-      params.push(type);
+      testTimerQuery += ' AND p.property_type = ?';
+      testTimerParams.push(type);
     }
     
-    query += ' ORDER BY p.auction_end_date ASC, p.reviewed_at DESC, p.created_at DESC';
+    testTimerQuery += ' ORDER BY p.test_timer_end_date ASC';
     
-    const properties = db.prepare(query).all(...params);
+    let apartmentsWithTestTimer = [];
+    let housesWithTestTimer = [];
+    
+    try {
+      apartmentsWithTestTimer = db.prepare(testTimerQuery).all(...testTimerParams);
+    } catch (e) {
+      console.warn('Ошибка при получении apartments с тестовыми таймерами:', e);
+    }
+    
+    try {
+      const housesTestTimerQuery = testTimerQuery.replace('properties_apartments', 'properties_houses');
+      housesWithTestTimer = db.prepare(housesTestTimerQuery).all(...testTimerParams);
+    } catch (e) {
+      console.warn('Ошибка при получении houses с тестовыми таймерами:', e);
+    }
+    
+    // Объединяем аукционы и тестовые таймеры
+    const allProperties = [...properties, ...apartmentsWithTestTimer, ...housesWithTestTimer];
+    
+    // Удаляем дубликаты по ID и сортируем
+    properties = Array.from(
+      new Map(allProperties.map(p => [p.id, p])).values()
+    ).sort((a, b) => {
+      const aDate = a.test_timer_end_date || a.auction_end_date || '';
+      const bDate = b.test_timer_end_date || b.auction_end_date || '';
+      return new Date(aDate) - new Date(bDate);
+    });
     
     // Преобразуем данные в формат для фронтенда
     const formattedProperties = properties.map(prop => {
@@ -4578,27 +4804,33 @@ app.get('/api/properties/:id', (req, res) => {
   }
   
   try {
-    const db = getDatabase();
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const property = propertyQueries.getById(id);
     
-    const property = db.prepare(`
-      SELECT 
-        p.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.phone_number,
-        u.role
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.id = ?
-    `).get(id);
-    
-    // Проверяем наличие поля test_timer_duration
-    const pragmaInfo = db.prepare("PRAGMA table_info(properties)").all();
-    const hasTestTimerDurationField = pragmaInfo.some(col => col.name === 'test_timer_duration');
-
     if (!property) {
       return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+    
+    // Получаем информацию о пользователе
+    const user = userQueries.getById(property.user_id);
+    if (user) {
+      property.first_name = user.first_name;
+      property.last_name = user.last_name;
+      property.email = user.email;
+      property.phone_number = user.phone_number;
+      property.role = user.role;
+    }
+    
+    const db = getDatabase();
+    // Проверяем наличие поля test_timer_duration в новых таблицах
+    let hasTestTimerDurationField = false;
+    try {
+      const apartmentsPragma = db.prepare("PRAGMA table_info(properties_apartments)").all();
+      const housesPragma = db.prepare("PRAGMA table_info(properties_houses)").all();
+      hasTestTimerDurationField = apartmentsPragma.some(col => col.name === 'test_timer_duration') ||
+                                   housesPragma.some(col => col.name === 'test_timer_duration');
+    } catch (e) {
+      // Игнорируем ошибку
     }
 
     // Логируем данные из базы для отладки
@@ -4627,41 +4859,56 @@ app.get('/api/properties/:id', (req, res) => {
       test_drive_raw: property.test_drive
     });
 
-    // Парсим JSON поля
+    // Парсим JSON поля (если они еще не распарсены)
     const formatted = { ...property };
-    if (formatted.photos) {
+    
+    // Проверяем, нужно ли парсить (если это строка, значит еще не распарсено)
+    if (formatted.photos && typeof formatted.photos === 'string') {
       try {
         formatted.photos = JSON.parse(formatted.photos);
       } catch (e) {
         formatted.photos = [];
       }
-    } else {
+    } else if (!formatted.photos) {
       formatted.photos = [];
     }
-    if (formatted.videos) {
+    
+    if (formatted.videos && typeof formatted.videos === 'string') {
       try {
         formatted.videos = JSON.parse(formatted.videos);
       } catch (e) {
         formatted.videos = [];
       }
-    } else {
+    } else if (!formatted.videos) {
       formatted.videos = [];
     }
-    if (formatted.additional_documents) {
+    
+    if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
       try {
         formatted.additional_documents = JSON.parse(formatted.additional_documents);
       } catch (e) {
         formatted.additional_documents = [];
       }
-    } else {
+    } else if (!formatted.additional_documents) {
       formatted.additional_documents = [];
     }
-    if (formatted.test_drive_data) {
+    
+    if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
       try {
         formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
       } catch (e) {
         formatted.test_drive_data = null;
       }
+    }
+    
+    if (formatted.amenities && typeof formatted.amenities === 'string') {
+      try {
+        formatted.amenities = JSON.parse(formatted.amenities);
+      } catch (e) {
+        formatted.amenities = [];
+      }
+    } else if (!formatted.amenities) {
+      formatted.amenities = [];
     }
     
     // Обрабатываем координаты
@@ -4728,58 +4975,82 @@ app.get('/api/properties/:id', (req, res) => {
  */
 app.get('/api/properties/user/:userId', (req, res) => {
   try {
-    const db = getDatabase();
     const { userId } = req.params;
+    console.log('📥 Запрос объявлений пользователя:', userId);
     
-    const properties = db.prepare(`
-      SELECT 
-        p.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.phone_number,
-        u.role
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.user_id = ?
-      ORDER BY p.created_at DESC
-    `).all(userId);
+    const db = getDatabase();
+    
+    // Получаем информацию о пользователе
+    const user = userQueries.getById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const properties = propertyQueries.getByUserId(userId);
+    
+    console.log(`✅ Найдено объявлений пользователя: ${properties.length}`);
 
-    // Парсим JSON поля
+    // Добавляем информацию о пользователе к каждому объекту и парсим JSON поля
     const formattedProperties = properties.map(prop => {
       const formatted = { ...prop };
-      if (formatted.photos) {
+      
+      // Добавляем информацию о пользователе
+      formatted.first_name = user.first_name;
+      formatted.last_name = user.last_name;
+      formatted.email = user.email;
+      formatted.phone_number = user.phone_number;
+      formatted.role = user.role;
+      
+      // Парсим JSON поля безопасно
+      if (formatted.photos && typeof formatted.photos === 'string') {
         try {
           formatted.photos = JSON.parse(formatted.photos);
         } catch (e) {
           formatted.photos = [];
         }
-      } else {
+      } else if (!formatted.photos) {
         formatted.photos = [];
       }
-      if (formatted.videos) {
+      if (formatted.videos && typeof formatted.videos === 'string') {
         try {
           formatted.videos = JSON.parse(formatted.videos);
         } catch (e) {
           formatted.videos = [];
         }
-      } else {
+      } else if (!formatted.videos) {
         formatted.videos = [];
       }
-      if (formatted.additional_documents) {
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
         try {
           formatted.additional_documents = JSON.parse(formatted.additional_documents);
         } catch (e) {
           formatted.additional_documents = [];
         }
-      } else {
+      } else if (!formatted.additional_documents) {
         formatted.additional_documents = [];
       }
-      if (formatted.test_drive_data) {
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
         try {
           formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
         } catch (e) {
           formatted.test_drive_data = null;
+        }
+      }
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          formatted.amenities = JSON.parse(formatted.amenities);
+        } catch (e) {
+          formatted.amenities = [];
+        }
+      } else if (!formatted.amenities) {
+        formatted.amenities = [];
+      }
+      if (formatted.coordinates && typeof formatted.coordinates === 'string') {
+        try {
+          formatted.coordinates = JSON.parse(formatted.coordinates);
+        } catch (e) {
+          formatted.coordinates = null;
         }
       }
       return formatted;
@@ -4797,11 +5068,11 @@ app.get('/api/properties/user/:userId', (req, res) => {
  */
 app.put('/api/properties/:id/approve', (req, res) => {
   try {
-    const db = getDatabase();
     const { id } = req.params;
     const { reviewed_by } = req.body;
 
-    const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(id);
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const property = propertyQueries.getById(id);
     if (!property) {
       return res.status(404).json({ success: false, error: 'Объявление не найдено' });
     }
@@ -5066,18 +5337,26 @@ app.put('/api/properties/:id/approve', (req, res) => {
         test_drive_type: typeof property.test_drive
       });
       
-      db.prepare(`
-        UPDATE properties 
-        SET moderation_status = 'approved',
-            reviewed_by = ?,
-            reviewed_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(reviewed_by || 'admin', id);
+      // Используем функцию из propertyQueries, которая работает с новыми таблицами
+      const result = propertyQueries.updateModerationStatus(id, 'approved', reviewed_by, null);
       
-      // Проверяем, что объявление действительно одобрено и сохраняет is_auction
-      const updatedProperty = db.prepare('SELECT id, title, property_type, moderation_status, is_auction, test_drive FROM properties WHERE id = ?').get(id);
-      console.log(`✅ Объявление обновлено:`, updatedProperty);
+      if (result.changes === 0) {
+        return res.status(404).json({ success: false, error: 'Объявление не найдено или не было изменено' });
+      }
+      
+      // Получаем обновленное объявление для проверки
+      const updatedProperty = propertyQueries.getById(id);
+      if (!updatedProperty) {
+        return res.status(404).json({ success: false, error: 'Объявление не найдено после обновления' });
+      }
+      console.log(`✅ Объявление обновлено:`, {
+        id: updatedProperty.id,
+        title: updatedProperty.title,
+        property_type: updatedProperty.property_type,
+        moderation_status: updatedProperty.moderation_status,
+        is_auction: updatedProperty.is_auction,
+        test_drive: updatedProperty.test_drive
+      });
       console.log('🔍 Одобрение нового объявления - test_drive после одобрения:', {
         test_drive: updatedProperty.test_drive,
         test_drive_type: typeof updatedProperty.test_drive
