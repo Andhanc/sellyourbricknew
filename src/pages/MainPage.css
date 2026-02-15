@@ -1012,6 +1012,36 @@
   transform: scale(1.05);
 }
 
+/* Бейдж "Забронирован" на карточке */
+.property-reserved-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(255, 167, 38, 0.4);
+  animation: fadeInBadge 0.3s ease-in;
+}
+
+@keyframes fadeInBadge {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .property-favorite {
   position: absolute;
   top: 12px;

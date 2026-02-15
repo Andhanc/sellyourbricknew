@@ -408,10 +408,20 @@ const Header = () => {
                     const localRole = localStorage.getItem('userRole')
                     const storedRole = userData.role || localRole
                     const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+                    const isAdminFlag = localStorage.getItem('isAdminLoggedIn') === 'true'
                     const isOwner =
                       storedRole === 'seller' ||
                       storedRole === 'owner' ||
                       isOwnerFlag
+                    const isAdmin =
+                      storedRole === 'admin' ||
+                      isAdminFlag
+
+                    // Если по локальным данным видно, что это администратор — ведем в админ-панель
+                    if (isAdmin) {
+                      navigate('/admin')
+                      return
+                    }
 
                     // Если по локальным данным видно, что это продавец — ведем в кабинет продавца
                     if (isOwner) {

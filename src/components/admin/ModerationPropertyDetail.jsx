@@ -27,6 +27,29 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
   const [showChangesModal, setShowChangesModal] = useState(false); // Модальное окно с изменениями
   const [loadingOriginal, setLoadingOriginal] = useState(false);
   
+  // Отладочная информация об объекте
+  console.log('🔍 ModerationPropertyDetail - Полученный объект:', {
+    id: property.id,
+    title: property.title,
+    photos: property.photos,
+    photos_type: typeof property.photos,
+    photos_is_array: Array.isArray(property.photos),
+    photos_length: Array.isArray(property.photos) ? property.photos.length : 'N/A',
+    ownership_document: property.ownership_document,
+    no_debts_document: property.no_debts_document,
+    additional_documents: property.additional_documents,
+    area: property.area,
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
+    rooms: property.rooms,
+    living_area: property.living_area,
+    amenities: property.amenities,
+    is_shared_ownership: property.is_shared_ownership,
+    total_shares: property.total_shares,
+    shares_sold: property.shares_sold,
+    price: property.price
+  });
+  
   // Функция для обработки URL документа
   const processDocumentUrl = (docUrl) => {
     if (!docUrl) return null;
@@ -87,21 +110,35 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
     images = property.photos;
   } else if (property.imageUrls && Array.isArray(property.imageUrls)) {
     images = property.imageUrls;
-  } else {
-    images = mockPropertyImages.slice(0, property.images || 5);
-  }
-  
-  // Парсим photos если это JSON строка
-  if (images.length === 0 && property.photos && typeof property.photos === 'string') {
+  } else if (property.photos && typeof property.photos === 'string') {
+    // Парсим photos если это JSON строка
     try {
       const parsed = JSON.parse(property.photos);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         images = parsed;
       }
     } catch (e) {
       console.warn('Ошибка парсинга photos:', e);
     }
   }
+  
+  // Если фото не найдены, используем дефолтные
+  if (images.length === 0) {
+    images = mockPropertyImages.slice(0, property.images || 5);
+  }
+  
+  // Обрабатываем URL фотографий (добавляем базовый URL, если нужно)
+  images = images.map(img => {
+    if (typeof img === 'string') {
+      // Если это data URL или полный HTTP/HTTPS URL, используем как есть
+      if (img.startsWith('data:') || img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      }
+      // Иначе обрабатываем как путь к файлу
+      return processDocumentUrl(img);
+    }
+    return img;
+  });
   
   // Получаем видео из property
   let videos = [];
@@ -154,6 +191,31 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
       house: 'Дом'
     };
     return types[type] || type;
+  };
+
+  // Функция для проверки наличия удобства (проверяет и отдельное поле, и массив amenities)
+  const hasAmenity = (amenityName) => {
+    // Проверяем отдельное поле
+    if (property[amenityName] === 1 || property[amenityName] === true) {
+      return true;
+    }
+    
+    // Проверяем массив amenities
+    if (property.amenities) {
+      try {
+        let amenitiesArray = [];
+        if (typeof property.amenities === 'string') {
+          amenitiesArray = JSON.parse(property.amenities);
+        } else if (Array.isArray(property.amenities)) {
+          amenitiesArray = property.amenities;
+        }
+        return amenitiesArray.includes(amenityName);
+      } catch (e) {
+        console.warn('Ошибка парсинга amenities:', e);
+      }
+    }
+    
+    return false;
   };
 
   // Функция для определения типа запроса
@@ -512,23 +574,57 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
           </div>
 
           <div className="moderation-property-detail__price">
-            {property.price ? `${property.price.toLocaleString('ru-RU')} ${property.currency || 'USD'}` : 'Цена не указана'}
-            <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-              <strong>Аукцион:</strong> {property.is_auction === 1 || property.isAuction ? 'Да' : 'Нет'}
-              {(property.is_auction === 1 || property.isAuction) && (
-                <>
-                  {property.auction_start_date && (
-                    <div>Начало: {new Date(property.auction_start_date).toLocaleDateString('ru-RU')}</div>
+            {(property.is_shared_ownership === 1 || property.is_shared_ownership === true || property.is_shared_ownership === '1') ? (
+              <>
+                <div style={{ 
+                  display: 'inline-block',
+                  padding: '4px 12px',
+                  backgroundColor: '#e0f2fe',
+                  color: '#0369a1',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  marginBottom: '8px'
+                }}>
+                  Долевая продажа
+                </div>
+                <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '8px', color: '#0ea5e9' }}>
+                  {property.price && property.total_shares 
+                    ? `${Math.ceil(property.price / property.total_shares).toLocaleString('ru-RU')} ${property.currency || 'USD'} за долю`
+                    : 'Цена не указана'}
+                </div>
+                <div style={{ marginTop: '12px', fontSize: '14px', color: '#666', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                  <div style={{ marginBottom: '6px' }}><strong>Всего долей:</strong> {property.total_shares || 0}</div>
+                  <div style={{ marginBottom: '6px' }}><strong>Продано долей:</strong> {property.shares_sold || 0}</div>
+                  <div style={{ marginBottom: '6px', color: '#0ea5e9', fontWeight: '600' }}>
+                    <strong>Доступно долей:</strong> {(property.total_shares || 0) - (property.shares_sold || 0)}
+                  </div>
+                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e5e7eb', fontSize: '13px', color: '#9ca3af' }}>
+                    <strong>Общая стоимость объекта:</strong> {property.price ? `${property.price.toLocaleString('ru-RU')} ${property.currency || 'USD'}` : 'Не указана'}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {property.price ? `${property.price.toLocaleString('ru-RU')} ${property.currency || 'USD'}` : 'Цена не указана'}
+                <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
+                  <strong>Аукцион:</strong> {property.is_auction === 1 || property.isAuction ? 'Да' : 'Нет'}
+                  {(property.is_auction === 1 || property.isAuction) && (
+                    <>
+                      {property.auction_start_date && (
+                        <div>Начало: {new Date(property.auction_start_date).toLocaleDateString('ru-RU')}</div>
+                      )}
+                      {property.auction_end_date && (
+                        <div>Окончание: {new Date(property.auction_end_date).toLocaleDateString('ru-RU')}</div>
+                      )}
+                      {property.auction_starting_price && (
+                        <div>Стартовая цена: {property.auction_starting_price.toLocaleString('ru-RU')} {property.currency || 'USD'}</div>
+                      )}
+                    </>
                   )}
-                  {property.auction_end_date && (
-                    <div>Окончание: {new Date(property.auction_end_date).toLocaleDateString('ru-RU')}</div>
-                  )}
-                  {property.auction_starting_price && (
-                    <div>Стартовая цена: {property.auction_starting_price.toLocaleString('ru-RU')} {property.currency || 'USD'}</div>
-                  )}
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
 
           {property.description && (
@@ -541,7 +637,7 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
           {/* Дополнительная информация */}
           <div className="moderation-property-detail__additional-info">
             <h3>Дополнительная информация</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '10px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               {property.floor && (
                 <div><strong>Этаж:</strong> {property.floor}</div>
               )}
@@ -553,6 +649,9 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
               )}
               {property.land_area && (
                 <div><strong>Площадь участка:</strong> {property.land_area} м²</div>
+              )}
+              {property.living_area && (
+                <div><strong>Жилая площадь:</strong> {property.living_area} м²</div>
               )}
               {property.renovation && (
                 <div><strong>Ремонт:</strong> {property.renovation}</div>
@@ -583,82 +682,147 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
           <div className="moderation-property-detail__amenities">
             <h3>Удобства</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-              {(property.balcony === 1 || property.balcony === true) && (
+              {hasAmenity('balcony') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Балкон</span>
               )}
-              {(property.parking === 1 || property.parking === true) && (
+              {hasAmenity('parking') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Парковка</span>
               )}
-              {(property.elevator === 1 || property.elevator === true) && (
+              {hasAmenity('elevator') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Лифт</span>
               )}
-              {(property.garage === 1 || property.garage === true) && (
+              {hasAmenity('garage') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Гараж</span>
               )}
-              {(property.pool === 1 || property.pool === true) && (
+              {hasAmenity('pool') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Бассейн</span>
               )}
-              {(property.garden === 1 || property.garden === true) && (
+              {hasAmenity('garden') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Сад</span>
               )}
-              {(property.electricity === 1 || property.electricity === true) && (
+              {hasAmenity('electricity') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Электричество</span>
               )}
-              {(property.internet === 1 || property.internet === true) && (
+              {hasAmenity('internet') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Интернет</span>
               )}
-              {(property.security === 1 || property.security === true) && (
+              {hasAmenity('security') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Охрана</span>
               )}
-              {(property.furniture === 1 || property.furniture === true) && (
+              {hasAmenity('furniture') && (
                 <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Мебель</span>
               )}
-              {(property.feature1 === 1 || property.feature1 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 1</span>
+              {hasAmenity('feature1') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Гараж</span>
               )}
-              {(property.feature2 === 1 || property.feature2 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 2</span>
+              {hasAmenity('feature2') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Навес для машины</span>
               )}
-              {(property.feature3 === 1 || property.feature3 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 3</span>
+              {hasAmenity('feature3') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Сигнализация</span>
               )}
-              {(property.feature4 === 1 || property.feature4 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 4</span>
+              {hasAmenity('feature4') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>"Умный дом"</span>
               )}
-              {(property.feature5 === 1 || property.feature5 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 5</span>
+              {hasAmenity('feature5') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Баня/Сауна</span>
               )}
-              {(property.feature6 === 1 || property.feature6 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 6</span>
+              {hasAmenity('feature6') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Видеонаблюдение</span>
               )}
-              {(property.feature7 === 1 || property.feature7 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 7</span>
+              {hasAmenity('feature7') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Освещение участка</span>
               )}
-              {(property.feature8 === 1 || property.feature8 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 8</span>
+              {hasAmenity('feature8') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Спортивная площадка</span>
               )}
-              {(property.feature9 === 1 || property.feature9 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 9</span>
+              {hasAmenity('feature9') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Беседка</span>
               )}
-              {(property.feature10 === 1 || property.feature10 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 10</span>
+              {hasAmenity('feature10') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Кладовая</span>
               )}
-              {(property.feature11 === 1 || property.feature11 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 11</span>
+              {hasAmenity('feature11') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Газ</span>
               )}
-              {(property.feature12 === 1 || property.feature12 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 12</span>
+              {hasAmenity('feature12') && (
+                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Камин</span>
+              )}
+              {/* Если нет ни одного удобства, показываем сообщение */}
+              {!(hasAmenity('balcony') || hasAmenity('parking') || hasAmenity('elevator') ||
+                 hasAmenity('garage') || hasAmenity('pool') || hasAmenity('garden') ||
+                 hasAmenity('electricity') || hasAmenity('internet') || hasAmenity('security') ||
+                 hasAmenity('furniture') || hasAmenity('feature1') || hasAmenity('feature2') ||
+                 hasAmenity('feature3') || hasAmenity('feature4') || hasAmenity('feature5') ||
+                 hasAmenity('feature6') || hasAmenity('feature7') || hasAmenity('feature8') ||
+                 hasAmenity('feature9') || hasAmenity('feature10') || hasAmenity('feature11') ||
+                 hasAmenity('feature12')) && (
+                <span style={{ padding: '5px 10px', color: '#999', fontSize: '14px' }}>Удобства не указаны</span>
               )}
             </div>
-            {/* Дополнительные удобства */}
-            {property.additional_amenities && property.additional_amenities.trim() && (
-              <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>Дополнительно:</h4>
-                <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                  {property.additional_amenities}
-                </p>
-              </div>
-            )}
+            {/* Дополнительные удобства - только текст, БЕЗ изображений */}
+            {property.additional_amenities && property.additional_amenities.trim() && (() => {
+              const additionalAmenities = property.additional_amenities.trim();
+              
+              // Проверяем, является ли это изображением или JSON с изображениями
+              const isImage = additionalAmenities.startsWith('data:image/') || 
+                             additionalAmenities.includes('base64') ||
+                             (additionalAmenities.startsWith('[') && additionalAmenities.includes('data:image/')) ||
+                             (additionalAmenities.startsWith('{') && additionalAmenities.includes('data:image/'));
+              
+              // Если это изображение - НЕ показываем блок "Дополнительно"
+              if (isImage) {
+                return null;
+              }
+              
+              // Если это JSON массив, пытаемся распарсить
+              if (additionalAmenities.startsWith('[')) {
+                try {
+                  const parsed = JSON.parse(additionalAmenities);
+                  if (Array.isArray(parsed)) {
+                    // Проверяем, что это не массив изображений
+                    const hasImages = parsed.some(item => 
+                      typeof item === 'string' && (item.startsWith('data:image/') || item.includes('base64'))
+                    );
+                    if (hasImages) {
+                      return null; // Не показываем изображения
+                    }
+                    // Если это массив текстовых значений, объединяем их
+                    const textContent = parsed.join(', ');
+                    if (textContent.trim()) {
+                      return (
+                        <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>Дополнительно:</h4>
+                          <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                            {textContent}
+                          </p>
+                        </div>
+                      );
+                    }
+                  }
+                } catch (e) {
+                  // Не валидный JSON, продолжаем как обычный текст
+                }
+              }
+              
+              // Показываем обычный текст
+              return (
+                <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>Дополнительно:</h4>
+                  <p style={{ 
+                    margin: 0, 
+                    fontSize: '14px', 
+                    color: '#666', 
+                    lineHeight: '1.5', 
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    maxWidth: '100%'
+                  }}>
+                    {additionalAmenities.length > 1000 ? additionalAmenities.substring(0, 1000) + '...' : additionalAmenities}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="moderation-property-detail__owner">
@@ -888,10 +1052,20 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
             {/* Дополнительные документы */}
             {property.documents && Array.isArray(property.documents) && property.documents.length > 0 && property.documents.map((doc, index) => {
               const documentName = typeof doc === 'string' ? doc : doc.name;
-              const documentUrl = typeof doc === 'object' && doc.url ? doc.url : null;
+              let documentUrl = null;
+              
+              if (typeof doc === 'string') {
+                documentUrl = processDocumentUrl(doc);
+              } else if (typeof doc === 'object' && doc.url) {
+                documentUrl = processDocumentUrl(doc.url);
+              }
+              
               const documentType = typeof doc === 'object' && doc.type 
                 ? doc.type 
                 : getDocumentType(documentUrl, documentName);
+              
+              // Не показываем документ, если нет URL
+              if (!documentUrl) return null;
               
               return (
                 <div 
@@ -900,7 +1074,7 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
                   onClick={() => {
                     setSelectedDocument({ 
                       type: documentType, 
-                      url: documentUrl || 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80', 
+                      url: documentUrl, 
                       name: documentName 
                     });
                   }}
@@ -933,10 +1107,20 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
               
               return additionalDocs.map((doc, index) => {
                 const documentName = typeof doc === 'string' ? doc : (doc.name || `Документ ${index + 1}`);
-                const documentUrl = typeof doc === 'object' && doc.url ? doc.url : null;
+                let documentUrl = null;
+                
+                if (typeof doc === 'string') {
+                  documentUrl = processDocumentUrl(doc);
+                } else if (typeof doc === 'object' && doc.url) {
+                  documentUrl = processDocumentUrl(doc.url);
+                }
+                
                 const documentType = typeof doc === 'object' && doc.type 
                   ? doc.type 
                   : getDocumentType(documentUrl, documentName);
+                
+                // Не показываем документ, если нет URL
+                if (!documentUrl) return null;
                 
                 return (
                   <div 
@@ -945,7 +1129,7 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
                     onClick={() => {
                       setSelectedDocument({ 
                         type: documentType, 
-                        url: documentUrl || 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80', 
+                        url: documentUrl, 
                         name: documentName 
                       });
                     }}

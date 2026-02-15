@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './LocationMap.css'
@@ -8,6 +8,7 @@ const LocationMap = ({ center, zoom = 10, marker }) => {
   const mapRef = useRef(null)
   const markerRef = useRef(null)
   const lastCenterRef = useRef(null) // Для отслеживания последних координат, чтобы не обновлять карту постоянно
+  const [webglError, setWebglError] = useState(false)
 
   // Логируем полученные пропсы
   useEffect(() => {
@@ -67,17 +68,71 @@ const LocationMap = ({ center, zoom = 10, marker }) => {
       ]
     }
 
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: osmStyle,
-      center: initialCenter,
-      zoom: initialZoom,
-      attributionControl: false
-    })
+    let map
+    try {
+      map = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: osmStyle,
+        center: initialCenter,
+        zoom: initialZoom,
+        attributionControl: false,
+        failIfMajorPerformanceCaveat: false
+      })
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+      // Обработка ошибок WebGL при создании карты
+      map.on('error', (e) => {
+        console.error('❌ LocationMap: ошибка карты', e)
+        // Проверяем различные типы ошибок WebGL
+        const errorMessage = e.error?.message || e.error?.toString() || ''
+        if (errorMessage.includes('WebGL') || 
+            errorMessage.includes('webglcontextcreationerror') ||
+            errorMessage.includes('Failed to initialize WebGL')) {
+          console.error('❌ LocationMap: ошибка WebGL', e.error)
+          setWebglError(true)
+          if (mapRef.current) {
+            try {
+              mapRef.current.remove()
+            } catch (removeError) {
+              console.warn('⚠️ LocationMap: ошибка при удалении карты', removeError)
+            }
+            mapRef.current = null
+          }
+        }
+      })
+      
+      // Также обрабатываем событие webglcontextcreationerror
+      map.on('webglcontextcreationerror', (e) => {
+        console.error('❌ LocationMap: ошибка создания WebGL контекста', e)
+        setWebglError(true)
+        if (mapRef.current) {
+          try {
+            mapRef.current.remove()
+          } catch (removeError) {
+            console.warn('⚠️ LocationMap: ошибка при удалении карты', removeError)
+          }
+          mapRef.current = null
+        }
+      })
 
-    mapRef.current = map
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
+      mapRef.current = map
+    } catch (error) {
+      console.error('❌ LocationMap: ошибка при создании карты', error)
+      // Проверяем, является ли ошибка ошибкой WebGL
+      const errorMessage = error?.message || error?.toString() || JSON.stringify(error) || ''
+      if (errorMessage.includes('WebGL') || 
+          errorMessage.includes('webglcontextcreationerror') ||
+          errorMessage.includes('Failed to initialize WebGL') ||
+          (error?.type && error.type === 'webglcontextcreationerror')) {
+        console.warn('⚠️ LocationMap: WebGL недоступен, используем альтернативный способ отображения карты')
+        setWebglError(true)
+        return
+      }
+      // Если это другая ошибка, пробуем показать fallback
+      setWebglError(true)
+      return
+    }
 
     // Функция для создания маркера
     const createMarker = (coords) => {
@@ -124,11 +179,21 @@ const LocationMap = ({ center, zoom = 10, marker }) => {
 
     return () => {
       if (markerRef.current) {
-        markerRef.current.remove()
+        try {
+          markerRef.current.remove()
+        } catch (e) {
+          console.warn('⚠️ LocationMap: ошибка при удалении маркера', e)
+        }
         markerRef.current = null
       }
-      map.remove()
-      mapRef.current = null
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove()
+        } catch (e) {
+          console.warn('⚠️ LocationMap: ошибка при удалении карты', e)
+        }
+        mapRef.current = null
+      }
     }
   }, [])
 
@@ -260,6 +325,46 @@ const LocationMap = ({ center, zoom = 10, marker }) => {
       }
     }
   }, [marker])
+
+  // Если WebGL недоступен, показываем альтернативную карту через iframe
+  if (webglError) {
+    // Определяем координаты для альтернативной карты
+    let mapLat = 55.7558 // Дефолтные координаты (Москва)
+    let mapLng = 37.6173
+    let mapZoom = 10
+    
+    if (Array.isArray(center) && center.length === 2) {
+      const lat = parseFloat(center[0])
+      const lng = parseFloat(center[1])
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        mapLat = lat
+        mapLng = lng
+        mapZoom = zoom || 15
+      }
+    }
+    
+    // Используем Leaflet через iframe как альтернативу
+    const leafletUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${mapLng - 0.01},${mapLat - 0.01},${mapLng + 0.01},${mapLat + 0.01}&layer=mapnik&marker=${mapLat},${mapLng}`
+    
+    return (
+      <div className="location-map-container">
+        <div className="location-map-fallback">
+          <iframe
+            src={leafletUrl}
+            width="100%"
+            height="100%"
+            style={{
+              border: 'none',
+              borderRadius: '12px',
+              minHeight: '500px'
+            }}
+            title="OpenStreetMap"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="location-map-container">

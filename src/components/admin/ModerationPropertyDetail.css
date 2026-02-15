@@ -536,4 +536,49 @@
   }
 }
 
+/* Дополнительная информация и удобства */
+.moderation-property-detail__additional-info {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+.moderation-property-detail__additional-info > div {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.moderation-property-detail__additional-info h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.moderation-property-detail__amenities {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+.moderation-property-detail__amenities > div {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.moderation-property-detail__amenities h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
 

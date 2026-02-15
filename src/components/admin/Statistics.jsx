@@ -44,8 +44,8 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [realAuctions, setRealAuctions] = useState([]); // Реальные аукционные объявления из БД
   const [isLoadingAuctions, setIsLoadingAuctions] = useState(true);
-  const [propertiesCount, setPropertiesCount] = useState(null); // Количество объектов из БД
-  const [auctionsCount, setAuctionsCount] = useState(null); // Количество аукционов из БД
+  const [propertiesCount, setPropertiesCount] = useState(0); // Количество объектов из БД
+  const [auctionsCount, setAuctionsCount] = useState(0); // Количество аукционов из БД
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
 
   useEffect(() => {
@@ -136,69 +136,136 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
 
   // Загружаем количество объектов и аукционов из API
   useEffect(() => {
+    let isMounted = true; // Флаг для проверки, что компонент еще смонтирован
+    
     const fetchCounts = async () => {
+      // Используем относительный путь через proxy Vite
+      const API_BASE_URL = '/api';
+      console.log('🔄 Начинаем загрузку количества объектов и аукционов...');
+      console.log('🔗 API_BASE_URL:', API_BASE_URL);
+      
       try {
         setIsLoadingCounts(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
         
-        // Загружаем количество одобренных объектов
-        let approvedCount = 0;
+        // Загружаем общее количество всех объявлений
+        let totalPropertiesCount = 0;
         try {
-          const approvedResponse = await fetch(`${API_BASE_URL}/properties/approved`);
-          if (approvedResponse.ok) {
-            const approvedData = await approvedResponse.json();
-            console.log('📊 Ответ /properties/approved:', approvedData);
-            if (approvedData.success && Array.isArray(approvedData.data)) {
-              approvedCount = approvedData.data.length;
+          const url = `${API_BASE_URL}/admin/properties/count`;
+          console.log('📡 Запрос к:', url);
+          
+          const propertiesResponse = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            cache: 'no-store',
+            credentials: 'include'
+          });
+          
+          console.log('📥 Статус ответа properties:', propertiesResponse.status, propertiesResponse.statusText);
+          
+          if (propertiesResponse.ok) {
+            const propertiesData = await propertiesResponse.json();
+            console.log('📊 Ответ /admin/properties/count (полный):', JSON.stringify(propertiesData));
+            console.log('📊 propertiesData.success:', propertiesData.success);
+            console.log('📊 propertiesData.count:', propertiesData.count, 'тип:', typeof propertiesData.count);
+            
+            if (propertiesData.success && (propertiesData.count !== undefined && propertiesData.count !== null)) {
+              totalPropertiesCount = Number(propertiesData.count);
+              console.log('✅ Количество объектов получено и преобразовано:', totalPropertiesCount);
             } else {
-              console.warn('⚠️ Неверный формат ответа /properties/approved:', approvedData);
+              console.warn('⚠️ Неверный формат ответа /admin/properties/count:', propertiesData);
+              // Пробуем получить count напрямую, если структура другая
+              if (propertiesData.count !== undefined) {
+                totalPropertiesCount = Number(propertiesData.count) || 0;
+                console.log('⚠️ Используем count напрямую:', totalPropertiesCount);
+              }
             }
           } else {
-            console.warn('⚠️ Ошибка HTTP при загрузке одобренных объектов:', approvedResponse.status, approvedResponse.statusText);
-            const errorText = await approvedResponse.text();
+            const errorText = await propertiesResponse.text();
+            console.warn('⚠️ Ошибка HTTP при загрузке количества объявлений:', propertiesResponse.status, propertiesResponse.statusText);
             console.warn('⚠️ Текст ошибки:', errorText);
           }
         } catch (error) {
-          console.error('❌ Ошибка при загрузке одобренных объектов:', error);
+          console.error('❌ Ошибка при загрузке количества объявлений:', error);
+          console.error('❌ Детали ошибки:', error.message, error.stack);
         }
 
-        // Загружаем количество аукционных объявлений по всем типам
-        const types = ['commercial', 'villa', 'apartment', 'house'];
+        // Загружаем количество всех аукционов (is_auction = 1)
         let totalAuctionsCount = 0;
-        
-        for (const type of types) {
-          try {
-            const response = await fetch(`${API_BASE_URL}/properties/auctions?type=${type}`);
-            if (response.ok) {
-              const data = await response.json();
-              console.log(`📊 Ответ /properties/auctions?type=${type}:`, data);
-              if (data.success && Array.isArray(data.data)) {
-                totalAuctionsCount += data.data.length;
-              } else {
-                console.warn(`⚠️ Неверный формат ответа для типа ${type}:`, data);
-              }
+        try {
+          const url = `${API_BASE_URL}/admin/auctions/count`;
+          console.log('📡 Запрос к:', url);
+          
+          const auctionsResponse = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            cache: 'no-store',
+            credentials: 'include'
+          });
+          
+          console.log('📥 Статус ответа auctions:', auctionsResponse.status, auctionsResponse.statusText);
+          
+          if (auctionsResponse.ok) {
+            const auctionsData = await auctionsResponse.json();
+            console.log('📊 Ответ /admin/auctions/count (полный):', JSON.stringify(auctionsData));
+            console.log('📊 auctionsData.success:', auctionsData.success);
+            console.log('📊 auctionsData.count:', auctionsData.count, 'тип:', typeof auctionsData.count);
+            
+            if (auctionsData.success && (auctionsData.count !== undefined && auctionsData.count !== null)) {
+              totalAuctionsCount = Number(auctionsData.count);
+              console.log('✅ Количество аукционов получено и преобразовано:', totalAuctionsCount);
             } else {
-              console.warn(`⚠️ Ошибка HTTP при загрузке аукционов типа ${type}:`, response.status, response.statusText);
+              console.warn('⚠️ Неверный формат ответа /admin/auctions/count:', auctionsData);
+              // Пробуем получить count напрямую, если структура другая
+              if (auctionsData.count !== undefined) {
+                totalAuctionsCount = Number(auctionsData.count) || 0;
+                console.log('⚠️ Используем count напрямую:', totalAuctionsCount);
+              }
             }
-          } catch (error) {
-            console.error(`❌ Ошибка загрузки аукционных объявлений типа ${type}:`, error);
+          } else {
+            const errorText = await auctionsResponse.text();
+            console.warn('⚠️ Ошибка HTTP при загрузке количества аукционов:', auctionsResponse.status, auctionsResponse.statusText);
+            console.warn('⚠️ Текст ошибки:', errorText);
           }
+        } catch (error) {
+          console.error('❌ Ошибка при загрузке количества аукционов:', error);
+          console.error('❌ Детали ошибки:', error.message, error.stack);
         }
 
-        console.log('✅ Итоговые данные - объектов:', approvedCount, 'аукционов:', totalAuctionsCount);
-        setPropertiesCount(approvedCount);
-        setAuctionsCount(totalAuctionsCount);
+        // Проверяем, что компонент еще смонтирован перед обновлением состояния
+        if (isMounted) {
+          console.log('✅ Итоговые данные перед установкой - объектов:', totalPropertiesCount, 'аукционов:', totalAuctionsCount);
+          console.log('✅ Типы данных - propertiesCount:', typeof totalPropertiesCount, 'auctionsCount:', typeof totalAuctionsCount);
+          
+          // Устанавливаем значения (даже если они 0)
+          setPropertiesCount(totalPropertiesCount);
+          setAuctionsCount(totalAuctionsCount);
+          
+          // Убеждаемся, что isLoadingCounts устанавливается в false
+          setIsLoadingCounts(false);
+          console.log('✅ Состояние обновлено - propertiesCount:', totalPropertiesCount, 'auctionsCount:', totalAuctionsCount, 'isLoadingCounts: false');
+        }
       } catch (error) {
         console.error('❌ Критическая ошибка при загрузке количества объектов и аукционов:', error);
+        console.error('❌ Детали ошибки:', error.message, error.stack);
         // Устанавливаем 0, чтобы показать, что данные не загрузились
-        setPropertiesCount(0);
-        setAuctionsCount(0);
-      } finally {
-        setIsLoadingCounts(false);
+        if (isMounted) {
+          setPropertiesCount(0);
+          setAuctionsCount(0);
+          setIsLoadingCounts(false);
+        }
       }
     };
 
     fetchCounts();
+    
+    // Cleanup функция для отмены обновлений, если компонент размонтирован
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Загружаем реальные аукционные объявления из API
@@ -696,14 +763,14 @@ const Statistics = ({ businessInfo, onShowUsers }) => {
       },
       {
         title: 'Выставленные Объекты',
-        value: isLoadingCounts ? '...' : (propertiesCount !== null && propertiesCount !== undefined ? propertiesCount : 0),
+        value: isLoadingCounts ? '...' : propertiesCount,
         changePercent: '15.2',
         icon: 'fas fa-building',
         iconClass: 'orange'
       },
       {
         title: 'Количество Аукционов',
-        value: isLoadingCounts ? '...' : (auctionsCount !== null && auctionsCount !== undefined ? auctionsCount : 0),
+        value: isLoadingCounts ? '...' : auctionsCount,
         changePercent: '18.4',
         icon: 'fas fa-gavel',
         iconClass: 'blue'

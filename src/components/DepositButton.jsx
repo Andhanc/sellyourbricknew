@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FaWallet, FaArrowRight } from 'react-icons/fa'
 import './DepositButton.css'
 
 const DepositButton = ({ amount = 0 }) => {
   const navigate = useNavigate()
   const [isHovered, setIsHovered] = useState(false)
+  const [isHidden, setIsHidden] = useState(false)
 
   const formatAmount = (amount) => {
     if (amount >= 1000000) {
@@ -17,9 +18,67 @@ const DepositButton = ({ amount = 0 }) => {
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
+  // Отслеживаем прокрутку страницы для скрытия/показа кнопки
+  useEffect(() => {
+    let lastScrollY = window.scrollY
+    let ticking = false
+    let hideTimeout = null
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+
+      // Вычисляем, насколько близко к концу страницы (в пределах 400px от низа)
+      const distanceFromBottom = documentHeight - (currentScrollY + windowHeight)
+      const scrollingDown = currentScrollY > lastScrollY
+      
+      // Очищаем предыдущий таймаут
+      if (hideTimeout) {
+        clearTimeout(hideTimeout)
+        hideTimeout = null
+      }
+
+      // Скрываем кнопку при прокрутке вниз, когда близко к концу страницы
+      if (distanceFromBottom < 400 && scrollingDown && currentScrollY > 300) {
+        setIsHidden(true)
+      } 
+      // Показываем кнопку при прокрутке вверх или когда далеко от конца
+      else if (distanceFromBottom >= 400 || !scrollingDown) {
+        // Небольшая задержка для плавности
+        hideTimeout = setTimeout(() => {
+          setIsHidden(false)
+        }, 100)
+      }
+
+      lastScrollY = currentScrollY
+      ticking = false
+    }
+
+    const requestTick = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(handleScroll)
+        ticking = true
+      }
+    }
+
+    const onScroll = () => {
+      requestTick()
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (hideTimeout) {
+        clearTimeout(hideTimeout)
+      }
+    }
+  }, [])
+
   return (
     <button 
-      className="deposit-button"
+      className={`deposit-button ${isHidden ? 'deposit-button--hidden' : ''}`}
       onClick={() => navigate('/wallet')}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

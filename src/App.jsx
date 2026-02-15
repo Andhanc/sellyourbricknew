@@ -77,26 +77,27 @@ function SessionValidator({ onBlockedChange }) {
 }
 
 // Компонент для очистки сессии администратора при переходе с админ-панели
-function AdminSessionCleaner() {
-  const location = useLocation()
+// ОТКЛЮЧЕН: Сессия администратора больше не очищается автоматически при выходе из админ-панели
+// function AdminSessionCleaner() {
+//   const location = useLocation()
 
-  useEffect(() => {
-    // Если мы не на странице админ-панели и есть активная сессия администратора, очищаем её
-    if (location.pathname !== '/admin') {
-      const userRole = localStorage.getItem('userRole')
-      const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true'
+//   useEffect(() => {
+//     // Если мы не на странице админ-панели и есть активная сессия администратора, очищаем её
+//     if (location.pathname !== '/admin') {
+//       const userRole = localStorage.getItem('userRole')
+//       const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true'
       
-      if (isAdminLoggedIn && userRole === 'admin') {
-        console.log('🔄 Автоматическая очистка сессии администратора при переходе на:', location.pathname)
-        localStorage.removeItem('userRole')
-        localStorage.removeItem('isAdminLoggedIn')
-        localStorage.removeItem('isLoggedIn')
-      }
-    }
-  }, [location.pathname])
+//       if (isAdminLoggedIn && userRole === 'admin') {
+//         console.log('🔄 Автоматическая очистка сессии администратора при переходе на:', location.pathname)
+//         localStorage.removeItem('userRole')
+//         localStorage.removeItem('isAdminLoggedIn')
+//         localStorage.removeItem('isLoggedIn')
+//       }
+//     }
+//   }, [location.pathname])
 
-  return null
-}
+//   return null
+// }
 
 function App() {
   // Инициализируем состояние блокировки из localStorage сразу
@@ -194,7 +195,7 @@ function App() {
     <Router>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       <SessionValidator onBlockedChange={setIsBlocked} />
-      <AdminSessionCleaner />
+      {/* <AdminSessionCleaner /> - Отключено: сессия администратора больше не очищается автоматически */}
       <ClerkAuthSync />
       <ClerkAuthHandler />
       <div className={`app-layout ${isBlocked ? 'app-layout--blocked' : ''}`}>

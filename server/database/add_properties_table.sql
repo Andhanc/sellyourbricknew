@@ -48,6 +48,34 @@ CREATE TABLE IF NOT EXISTS properties (
     security INTEGER DEFAULT 0,
     furniture INTEGER DEFAULT 0,
     
+    -- Feature поля для удобств (feature1-feature26)
+    feature1 INTEGER DEFAULT 0,
+    feature2 INTEGER DEFAULT 0,
+    feature3 INTEGER DEFAULT 0,
+    feature4 INTEGER DEFAULT 0,
+    feature5 INTEGER DEFAULT 0,
+    feature6 INTEGER DEFAULT 0,
+    feature7 INTEGER DEFAULT 0,
+    feature8 INTEGER DEFAULT 0,
+    feature9 INTEGER DEFAULT 0,
+    feature10 INTEGER DEFAULT 0,
+    feature11 INTEGER DEFAULT 0,
+    feature12 INTEGER DEFAULT 0,
+    feature13 INTEGER DEFAULT 0,
+    feature14 INTEGER DEFAULT 0,
+    feature15 INTEGER DEFAULT 0,
+    feature16 INTEGER DEFAULT 0,
+    feature17 INTEGER DEFAULT 0,
+    feature18 INTEGER DEFAULT 0,
+    feature19 INTEGER DEFAULT 0,
+    feature20 INTEGER DEFAULT 0,
+    feature21 INTEGER DEFAULT 0,
+    feature22 INTEGER DEFAULT 0,
+    feature23 INTEGER DEFAULT 0,
+    feature24 INTEGER DEFAULT 0,
+    feature25 INTEGER DEFAULT 0,
+    feature26 INTEGER DEFAULT 0,
+    
     -- Медиа
     photos TEXT, -- JSON массив URL фото
     videos TEXT, -- JSON массив объектов видео

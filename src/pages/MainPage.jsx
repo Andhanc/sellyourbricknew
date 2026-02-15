@@ -23,6 +23,7 @@ import {
   FiStar,
   FiMail,
   FiShoppingCart,
+  FiLock,
 } from 'react-icons/fi'
 import {
   FaHome,
@@ -1587,10 +1588,20 @@ function MainPage() {
                   const localRole = localStorage.getItem('userRole')
                   const storedRole = userData.role || localRole
                   const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+                  const isAdminFlag = localStorage.getItem('isAdminLoggedIn') === 'true'
                   const isOwner =
                     storedRole === 'seller' ||
                     storedRole === 'owner' ||
                     isOwnerFlag
+                  const isAdmin =
+                    storedRole === 'admin' ||
+                    isAdminFlag
+
+                  // Если по локальным данным видно, что это администратор — ведем в админ-панель
+                  if (isAdmin) {
+                    navigate('/admin')
+                    return
+                  }
 
                   // Продавца ведем в кабинет продавца
                   if (isOwner) {
@@ -1893,10 +1904,20 @@ function MainPage() {
               const localRole = localStorage.getItem('userRole')
               const storedRole = userData.role || localRole
               const isOwnerFlag = localStorage.getItem('isOwnerLoggedIn') === 'true'
+              const isAdminFlag = localStorage.getItem('isAdminLoggedIn') === 'true'
               const isOwner =
                 storedRole === 'seller' ||
                 storedRole === 'owner' ||
                 isOwnerFlag
+              const isAdmin =
+                storedRole === 'admin' ||
+                isAdminFlag
+
+              // Если по локальным данным видно, что это администратор — ведем в админ-панель
+              if (isAdmin) {
+                navigate('/admin')
+                return
+              }
 
               // Продавца ведем в кабинет продавца
               if (isOwner) {
@@ -2114,6 +2135,12 @@ function MainPage() {
                           alt={apartment.name}
                           className="property-image"
                         />
+                        {apartment.reserved_until && new Date(apartment.reserved_until) > new Date() && (
+                          <div className="property-reserved-badge">
+                            <FiLock size={14} />
+                            <span>Забронирован</span>
+                          </div>
+                        )}
                         <div className="property-image-icons">
                           <button
                             type="button"
@@ -2181,7 +2208,31 @@ function MainPage() {
                           )
                         ) : (
                           <>
-                            <div className="property-price">{formatPrice(apartment.price)}</div>
+                            <div className="property-price">
+                              {apartment.is_shared_ownership && apartment.total_shares 
+                                ? formatPrice(Math.ceil(apartment.price / apartment.total_shares)) + ' за долю'
+                                : formatPrice(apartment.price)}
+                            </div>
+                            {apartment.is_shared_ownership && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#0ea5e9', 
+                                fontWeight: '600',
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                <span style={{ 
+                                  padding: '2px 6px', 
+                                  backgroundColor: '#e0f2fe', 
+                                  borderRadius: '4px' 
+                                }}>
+                                  Долевая продажа
+                                </span>
+                                <span>{(apartment.total_shares - (apartment.shares_sold || 0))} из {apartment.total_shares}</span>
+                              </div>
+                            )}
                             <div className="property-specs">
                             {apartment.beds && (
                               <div className="spec-item">
@@ -2304,6 +2355,12 @@ function MainPage() {
                           alt={villa.name}
                           className="property-image"
                         />
+                        {villa.reserved_until && new Date(villa.reserved_until) > new Date() && (
+                          <div className="property-reserved-badge">
+                            <FiLock size={14} />
+                            <span>Забронирован</span>
+                          </div>
+                        )}
                         <div className="property-image-icons">
                           <button
                             type="button"
@@ -2375,7 +2432,31 @@ function MainPage() {
                           )
                         ) : (
                           <>
-                            <div className="property-price">{formatPrice(villa.price)}</div>
+                            <div className="property-price">
+                              {villa.is_shared_ownership && villa.total_shares 
+                                ? formatPrice(Math.ceil(villa.price / villa.total_shares)) + ' за долю'
+                                : formatPrice(villa.price)}
+                            </div>
+                            {villa.is_shared_ownership && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#0ea5e9', 
+                                fontWeight: '600',
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                <span style={{ 
+                                  padding: '2px 6px', 
+                                  backgroundColor: '#e0f2fe', 
+                                  borderRadius: '4px' 
+                                }}>
+                                  Долевая продажа
+                                </span>
+                                <span>{(villa.total_shares - (villa.shares_sold || 0))} из {villa.total_shares}</span>
+                              </div>
+                            )}
                             <div className="property-specs">
                             {villa.beds && (
                               <div className="spec-item">
@@ -2498,6 +2579,12 @@ function MainPage() {
                           alt={flat.name}
                           className="property-image"
                         />
+                        {flat.reserved_until && new Date(flat.reserved_until) > new Date() && (
+                          <div className="property-reserved-badge">
+                            <FiLock size={14} />
+                            <span>Забронирован</span>
+                          </div>
+                        )}
                         <div className="property-image-icons">
                           <button
                             type="button"
@@ -2569,7 +2656,31 @@ function MainPage() {
                           )
                         ) : (
                           <>
-                            <div className="property-price">{formatPrice(flat.price)}</div>
+                            <div className="property-price">
+                              {flat.is_shared_ownership && flat.total_shares 
+                                ? formatPrice(Math.ceil(flat.price / flat.total_shares)) + ' за долю'
+                                : formatPrice(flat.price)}
+                            </div>
+                            {flat.is_shared_ownership && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#0ea5e9', 
+                                fontWeight: '600',
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                <span style={{ 
+                                  padding: '2px 6px', 
+                                  backgroundColor: '#e0f2fe', 
+                                  borderRadius: '4px' 
+                                }}>
+                                  Долевая продажа
+                                </span>
+                                <span>{(flat.total_shares - (flat.shares_sold || 0))} из {flat.total_shares}</span>
+                              </div>
+                            )}
                             <div className="property-specs">
                             {flat.beds && (
                               <div className="spec-item">
@@ -2763,7 +2874,31 @@ function MainPage() {
                           )
                         ) : (
                           <>
-                            <div className="property-price">{formatPrice(townhouse.price)}</div>
+                            <div className="property-price">
+                              {townhouse.is_shared_ownership && townhouse.total_shares 
+                                ? formatPrice(Math.ceil(townhouse.price / townhouse.total_shares)) + ' за долю'
+                                : formatPrice(townhouse.price)}
+                            </div>
+                            {townhouse.is_shared_ownership && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#0ea5e9', 
+                                fontWeight: '600',
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                <span style={{ 
+                                  padding: '2px 6px', 
+                                  backgroundColor: '#e0f2fe', 
+                                  borderRadius: '4px' 
+                                }}>
+                                  Долевая продажа
+                                </span>
+                                <span>{(townhouse.total_shares - (townhouse.shares_sold || 0))} из {townhouse.total_shares}</span>
+                              </div>
+                            )}
                             <div className="property-specs">
                             {townhouse.beds && (
                               <div className="spec-item">

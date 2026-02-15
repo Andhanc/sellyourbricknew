@@ -794,13 +794,28 @@ const OwnerDashboard = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      active: { text: 'Активно', class: 'status-badge--active' },
-      sold: { text: 'Продано', class: 'status-badge--sold' },
-      pending: { text: 'На модерации', class: 'status-badge--pending' },
-      rejected: { text: 'Отклонено', class: 'status-badge--rejected' }
+      active: { text: 'Опубликован', class: 'status-badge--active', icon: <FiCheck size={16} /> },
+      sold: { text: 'Продано', class: 'status-badge--sold', icon: <FiCheck size={16} /> },
+      pending: { text: 'На модерации', class: 'status-badge--pending', icon: <FiClock size={16} /> },
+      rejected: { text: 'Заблокирован', class: 'status-badge--rejected', icon: <FiX size={16} /> }
     }
     const config = statusConfig[status] || statusConfig.pending
-    return <span className={`status-badge ${config.class}`}>{config.text}</span>
+    return (
+      <span className={`status-badge ${config.class}`}>
+        {config.icon}
+        {config.text}
+      </span>
+    )
+  }
+
+  const getStatusText = (status) => {
+    const statusConfig = {
+      active: 'Опубликован',
+      sold: 'Продано',
+      pending: 'На модерации',
+      rejected: 'Заблокирован'
+    }
+    return statusConfig[status] || statusConfig.pending
   }
 
   // Фильтрация объявлений по статусу
@@ -837,8 +852,9 @@ const OwnerDashboard = () => {
     
     // Данные по объявлениям
     properties.forEach(property => {
-      const statusText = property.status === 'active' ? 'Активно' : 
+      const statusText = property.status === 'active' ? 'Опубликован' : 
                         property.status === 'sold' ? 'Продано' : 
+                        property.status === 'rejected' ? 'Заблокирован' :
                         'На модерации'
       
       analyticsData.push([
@@ -859,7 +875,7 @@ const OwnerDashboard = () => {
     analyticsData.push([])
     analyticsData.push(['ИТОГОВАЯ СТАТИСТИКА'])
     analyticsData.push(['Всего объявлений', totalProperties])
-    analyticsData.push(['Активных объявлений', activeProperties])
+    analyticsData.push(['Опубликованных объявлений', activeProperties])
     analyticsData.push(['Продано объявлений', soldProperties])
     analyticsData.push(['Всего просмотров', totalViews])
     analyticsData.push(['Всего запросов', totalInquiries])
@@ -1024,7 +1040,7 @@ const OwnerDashboard = () => {
             <div className="stat-card__content">
               <h3 className="stat-card__label">Всего объявлений</h3>
               <p className="stat-card__value">{totalProperties}</p>
-              <p className="stat-card__subtext">Активных: {activeProperties}</p>
+              <p className="stat-card__subtext">Опубликованных: {activeProperties}</p>
             </div>
           </div>
 
@@ -1096,7 +1112,7 @@ const OwnerDashboard = () => {
                 className={`filter-btn ${activeFilter === 'active' ? 'filter-btn--active' : ''}`}
                 onClick={() => setActiveFilter('active')}
               >
-                Активные
+                Опубликованные
               </button>
               <button 
                 className={`filter-btn ${activeFilter === 'pending' ? 'filter-btn--active' : ''}`}
@@ -1108,7 +1124,7 @@ const OwnerDashboard = () => {
                 className={`filter-btn ${activeFilter === 'rejected' ? 'filter-btn--active' : ''}`}
                 onClick={() => setActiveFilter('rejected')}
               >
-                Отклонено
+                Заблокировано
               </button>
             </div>
           </div>
@@ -1171,6 +1187,9 @@ const OwnerDashboard = () => {
                   </div>
 
                   <div className="property-card-owner__stats">
+                    <div className="property-card-owner__stat" style={{ fontWeight: 600, color: property.status === 'active' ? '#166534' : property.status === 'pending' ? '#92400e' : property.status === 'rejected' ? '#dc2626' : '#666' }}>
+                      <strong>Статус:</strong> {getStatusText(property.status)}
+                    </div>
                     <div className="property-card-owner__stat">
                       <FiEye size={14} />
                       <span>{property.views} просмотров</span>
@@ -1321,7 +1340,7 @@ const OwnerDashboard = () => {
                     <div className="status-stat-item">
                       <div className="status-stat-item__indicator status-stat-item__indicator--active"></div>
                       <div className="status-stat-item__content">
-                        <span className="status-stat-item__label">Активные</span>
+                        <span className="status-stat-item__label">Опубликованные</span>
                         <span className="status-stat-item__value">{activeProperties}</span>
                       </div>
                     </div>
@@ -1342,7 +1361,7 @@ const OwnerDashboard = () => {
                     <div className="status-stat-item">
                       <div className="status-stat-item__indicator status-stat-item__indicator--rejected"></div>
                       <div className="status-stat-item__content">
-                        <span className="status-stat-item__label">Отклонено</span>
+                        <span className="status-stat-item__label">Заблокировано</span>
                         <span className="status-stat-item__value">{rejectedProperties}</span>
                       </div>
                     </div>

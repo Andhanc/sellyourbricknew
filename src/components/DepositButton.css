@@ -16,6 +16,15 @@
   visibility: visible !important;
   opacity: 1 !important;
   overflow: visible;
+  transform: translateX(0);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+}
+
+/* Скрытое состояние - уходит вправо */
+.deposit-button--hidden {
+  transform: translateX(280px) !important;
+  opacity: 0.3 !important;
+  pointer-events: none;
 }
 
 .deposit-button__glow {
@@ -234,6 +243,11 @@
     right: 20px !important;
     min-width: 180px;
     height: 70px;
+  }
+
+  /* На мобильных устройствах уходит дальше вправо */
+  .deposit-button--hidden {
+    transform: translateX(220px) !important;
   }
 
   .deposit-button__content-wrapper {

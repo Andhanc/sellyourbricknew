@@ -129,6 +129,9 @@ const AddProperty = () => {
   
   const [formData, setFormData] = useState({
     propertyType: '', // Сначала выбираем тип
+    isSharedOwnership: false, // Долевая продажа
+    totalShares: '', // Количество долей
+    sharesSold: 0, // Проданные доли
     testDrive: null, // null, true или false
     title: '',
     description: '',
@@ -438,29 +441,34 @@ const AddProperty = () => {
     const value = e.target.value
     // Сохраняем числовое значение без запятых
     const numericValue = removeCommas(value)
-    setFormData(prev => ({
-      ...prev,
-      price: numericValue
-    }))
     
-    // Валидация: Проверяем, что стартовая цена меньше минимальной цены (если обе заполнены)
-    if (numericValue && formData.auctionStartingPrice) {
-      const priceNum = Number(numericValue)
-      // Убираем запятые из стартовой цены перед сравнением
-      const startingPriceNum = Number(removeCommas(String(formData.auctionStartingPrice)))
-      if (startingPriceNum >= priceNum) {
-        setValidationErrors(prev => ({
-          ...prev,
-          auctionStartingPrice: 'Стартовая сумма ставки должна быть меньше минимальной цены продажи'
-        }))
-      } else {
-        setValidationErrors(prev => {
-          const newErrors = { ...prev }
-          delete newErrors.auctionStartingPrice
-          return newErrors
-        })
+    // Используем функциональное обновление для получения актуального значения auctionStartingPrice
+    setFormData(prev => {
+      // Валидация: Проверяем, что стартовая цена меньше минимальной цены (если обе заполнены)
+      if (numericValue && prev.auctionStartingPrice) {
+        const priceNum = Number(numericValue)
+        const startingPriceNum = Number(removeCommas(String(prev.auctionStartingPrice)))
+        
+        // Обновляем ошибки валидации синхронно с обновлением формы
+        if (startingPriceNum >= priceNum) {
+          setValidationErrors(prevErrors => ({
+            ...prevErrors,
+            auctionStartingPrice: 'Стартовая сумма ставки должна быть меньше минимальной цены продажи'
+          }))
+        } else {
+          setValidationErrors(prevErrors => {
+            const newErrors = { ...prevErrors }
+            delete newErrors.auctionStartingPrice
+            return newErrors
+          })
+        }
       }
-    }
+      
+      return {
+        ...prev,
+        price: numericValue
+      }
+    })
   }
 
   // Обработчик для стартовой цены аукциона с форматированием
@@ -468,36 +476,41 @@ const AddProperty = () => {
     const value = e.target.value
     // Сохраняем числовое значение без запятых
     const numericValue = removeCommas(value)
-    setFormData(prev => ({
-      ...prev,
-      auctionStartingPrice: numericValue
-    }))
     
-    // Валидация: Стартовая сумма ставки должна быть меньше минимальной цены продажи
-    if (numericValue && formData.price) {
-      const startingPriceNum = Number(numericValue)
-      // Убираем запятые из цены перед сравнением
-      const priceNum = Number(removeCommas(String(formData.price)))
-      if (startingPriceNum >= priceNum) {
-        setValidationErrors(prev => ({
-          ...prev,
-          auctionStartingPrice: 'Стартовая сумма ставки должна быть меньше минимальной цены продажи'
-        }))
+    // Используем функциональное обновление для получения актуального значения price
+    setFormData(prev => {
+      // Валидация: Стартовая сумма ставки должна быть меньше минимальной цены продажи
+      if (numericValue && prev.price) {
+        const startingPriceNum = Number(numericValue)
+        const priceNum = Number(removeCommas(String(prev.price)))
+        
+        // Обновляем ошибки валидации синхронно с обновлением формы
+        if (startingPriceNum >= priceNum) {
+          setValidationErrors(prevErrors => ({
+            ...prevErrors,
+            auctionStartingPrice: 'Стартовая сумма ставки должна быть меньше минимальной цены продажи'
+          }))
+        } else {
+          setValidationErrors(prevErrors => {
+            const newErrors = { ...prevErrors }
+            delete newErrors.auctionStartingPrice
+            return newErrors
+          })
+        }
       } else {
-        setValidationErrors(prev => {
-          const newErrors = { ...prev }
+        // Очищаем ошибку, если одно из полей пустое
+        setValidationErrors(prevErrors => {
+          const newErrors = { ...prevErrors }
           delete newErrors.auctionStartingPrice
           return newErrors
         })
       }
-    } else {
-      // Очищаем ошибку, если одно из полей пустое
-      setValidationErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors.auctionStartingPrice
-        return newErrors
-      })
-    }
+      
+      return {
+        ...prev,
+        auctionStartingPrice: numericValue
+      }
+    })
   }
 
   const handleDetailChange = (field, value) => {
@@ -505,7 +518,7 @@ const AddProperty = () => {
     let validatedValue = value
     
     // Проверка на тип данных - только числа
-    if (['rooms', 'bathrooms', 'area', 'livingArea', 'floor', 'totalFloors', 'yearBuilt'].includes(field)) {
+    if (['rooms', 'bathrooms', 'area', 'livingArea', 'floor', 'totalFloors', 'yearBuilt', 'landArea', 'bedrooms'].includes(field)) {
       // Разрешаем пустую строку
       if (value === '') {
         validatedValue = value
@@ -694,8 +707,24 @@ const AddProperty = () => {
       if (formData.area) formDataToSend.append('area', String(formData.area))
       if (formData.livingArea) formDataToSend.append('living_area', String(formData.livingArea))
       if (formData.buildingType) formDataToSend.append('building_type', formData.buildingType)
-      if (formData.rooms) formDataToSend.append('rooms', String(formData.rooms))
-      if (formData.bedrooms) formDataToSend.append('bedrooms', String(formData.bedrooms))
+      
+      // Для квартир/апартаментов отправляем rooms, для домов/вилл - bedrooms
+      const isApartmentOrCommercial = formData.propertyType === 'apartment' || formData.propertyType === 'commercial'
+      const isHouseOrVilla = formData.propertyType === 'house' || formData.propertyType === 'villa'
+      
+      // ВАЖНО: отправляем всегда, даже если пустое, чтобы сервер мог корректно обработать
+      if (isApartmentOrCommercial) {
+        formDataToSend.append('rooms', formData.rooms ? String(formData.rooms) : '')
+      }
+      if (isHouseOrVilla) {
+        formDataToSend.append('bedrooms', formData.bedrooms ? String(formData.bedrooms) : '')
+      }
+      // Для других типов отправляем оба поля (на случай, если тип не определен)
+      if (!isApartmentOrCommercial && !isHouseOrVilla) {
+        formDataToSend.append('rooms', formData.rooms ? String(formData.rooms) : '')
+        formDataToSend.append('bedrooms', formData.bedrooms ? String(formData.bedrooms) : '')
+      }
+      
       if (formData.bathrooms) formDataToSend.append('bathrooms', String(formData.bathrooms))
       if (formData.floor) formDataToSend.append('floor', String(formData.floor))
       if (formData.totalFloors) formDataToSend.append('total_floors', String(formData.totalFloors))
@@ -1706,7 +1735,34 @@ const AddProperty = () => {
 
   // Обработчик выбора типа недвижимости
   const handlePropertyTypeSelect = (type) => {
-    setFormData(prev => ({ ...prev, propertyType: type }))
+    // Очищаем поля rooms и bedrooms при смене типа, чтобы избежать путаницы
+    // Для квартир/апартаментов используем rooms, для домов/вилл - bedrooms
+    const isApartmentOrCommercial = type === 'apartment' || type === 'commercial'
+    const isHouseOrVilla = type === 'house' || type === 'villa'
+    
+    setFormData(prev => ({
+      ...prev,
+      propertyType: type,
+      // Очищаем bedrooms для квартир/апартаментов
+      bedrooms: isApartmentOrCommercial ? '' : prev.bedrooms,
+      // Очищаем rooms для домов/вилл
+      rooms: isHouseOrVilla ? '' : prev.rooms
+    }))
+    setCurrentStep('shared-ownership-question')
+  }
+
+  // Обработчик ответа на вопрос о долевой продаже
+  const handleSharedOwnershipAnswer = (answer) => {
+    console.log('🔍 handleSharedOwnershipAnswer вызван с answer:', answer)
+    setFormData(prev => ({
+      ...prev,
+      isSharedOwnership: answer,
+      // Если это не долевая продажа, очищаем связанные поля
+      totalShares: answer ? prev.totalShares : '',
+      sharesSold: answer ? prev.sharesSold : 0,
+      // Для долевой продажи аукцион недоступен
+      isAuction: answer ? false : prev.isAuction
+    }))
     setCurrentStep('test-drive-question')
   }
 
@@ -2489,6 +2545,41 @@ const AddProperty = () => {
       }
     }
     
+    // Проверка для формы дома и виллы
+    if (formData.propertyType === 'house' || formData.propertyType === 'villa') {
+      // Проверка обязательных полей
+      if (!formData.landArea || formData.landArea === '' || parseFloat(formData.landArea) <= 0) {
+        errors.landArea = 'Укажите площадь участка'
+      }
+      if (!formData.area || formData.area === '' || parseFloat(formData.area) <= 0) {
+        errors.area = 'Укажите площадь дома (общую)'
+      }
+      if (!formData.livingArea || formData.livingArea === '' || parseFloat(formData.livingArea) <= 0) {
+        errors.livingArea = 'Укажите площадь дома (жилую)'
+      }
+      if (!formData.totalFloors || formData.totalFloors === '' || parseFloat(formData.totalFloors) <= 0) {
+        errors.totalFloors = 'Укажите количество этажей'
+      }
+      if (!formData.bedrooms || formData.bedrooms === '' || parseFloat(formData.bedrooms) <= 0) {
+        errors.bedrooms = 'Укажите количество спален'
+      }
+      if (!formData.bathrooms || formData.bathrooms === '' || parseFloat(formData.bathrooms) <= 0) {
+        errors.bathrooms = 'Укажите количество ванных комнат'
+      }
+      if (!formData.yearBuilt || formData.yearBuilt === '' || parseFloat(formData.yearBuilt) <= 0) {
+        errors.yearBuilt = 'Укажите год постройки'
+      }
+      if (!formData.buildingType || formData.buildingType === '') {
+        errors.buildingType = 'Выберите материал постройки'
+      }
+      
+      // Проверка года постройки - только что год не больше текущего
+      const yearBuilt = parseFloat(formData.yearBuilt)
+      if (yearBuilt > currentYear) {
+        errors.yearBuilt = `Год постройки не может быть больше ${currentYear}`
+      }
+    }
+    
     // Если есть ошибки, показываем их и не переходим дальше
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors)
@@ -2528,11 +2619,15 @@ const AddProperty = () => {
     // Очищаем ошибки
     setValidationErrors({})
     
-    // Сохраняем данные о спальнях в formData
-    setFormData(prev => ({
-      ...prev,
-      bedrooms: bedrooms.filter(b => getTotalBedsCount(b.beds) > 0).length
-    }))
+    // Сохраняем данные о спальнях в formData ТОЛЬКО для старого режима (не для домов/вилл)
+    // Для домов/вилл bedrooms уже заполнено числовым вводом
+    const isHouseOrVilla = formData.propertyType === 'house' || formData.propertyType === 'villa'
+    if (!isHouseOrVilla) {
+      setFormData(prev => ({
+        ...prev,
+        bedrooms: bedrooms.filter(b => getTotalBedsCount(b.beds) > 0).length
+      }))
+    }
     setCurrentStep('amenities')
   }
 
@@ -2909,7 +3004,7 @@ const AddProperty = () => {
             <button 
               className="back-btn"
               onClick={() => {
-                if (currentStep === 'test-drive-question') {
+                if (currentStep === 'shared-ownership-question') {
                   // В режиме редактирования тип уже выбран, поэтому возвращаемся на главную
                   if (isEditMode) {
                     navigate('/owner')
@@ -2917,6 +3012,9 @@ const AddProperty = () => {
                     setCurrentStep('type-selection')
                     setFormData(prev => ({ ...prev, propertyType: '' }))
                   }
+                } else if (currentStep === 'test-drive-question') {
+                  setCurrentStep('shared-ownership-question')
+                  setFormData(prev => ({ ...prev, isSharedOwnership: false, totalShares: '', sharesSold: 0 }))
                 } else if (currentStep === 'property-name') {
                   setCurrentStep('test-drive-question')
                   setFormData(prev => ({ ...prev, testDrive: null }))
@@ -3053,6 +3151,37 @@ const AddProperty = () => {
             </div>
 
      
+          </div>
+        ) : currentStep === 'shared-ownership-question' ? (
+          /* Экран вопроса о долевой продаже */
+          <div className="test-drive-question-screen">
+            <div className="test-drive-question-content">
+              <div className="test-drive-property-icon">
+                {getPropertyTypeIcon(formData.propertyType)}
+              </div>
+              <h2 className="test-drive-question-title">
+                Это долевая продажа?
+              </h2>
+              <p className="test-drive-question-description">
+                При долевой продаже покупатели могут выкупать отдельные доли вашего объекта. Вы указываете общую стоимость и количество долей, на которые разбивается объект.
+              </p>
+              <div className="test-drive-buttons">
+                <button
+                  type="button"
+                  className="test-drive-button test-drive-button--yes"
+                  onClick={() => handleSharedOwnershipAnswer(true)}
+                >
+                  Да, долевая продажа
+                </button>
+                <button
+                  type="button"
+                  className="test-drive-button test-drive-button--no"
+                  onClick={() => handleSharedOwnershipAnswer(false)}
+                >
+                  Нет, обычная продажа
+                </button>
+              </div>
+            </div>
           </div>
         ) : currentStep === 'test-drive-question' ? (
           /* Экран вопроса о тест-драйве */
@@ -3659,7 +3788,7 @@ const AddProperty = () => {
               </h2>
               
               <div className="property-details-content-scrollable">
-                {/* Новая форма для квартир и апартаментов */}
+                {/* Форма для квартир и апартаментов */}
                 {(formData.propertyType === 'apartment' || formData.propertyType === 'commercial') ? (
                   <div className="property-details-form">
                     {/* Строка 1: Количество комнат | Количество ванных комнат */}
@@ -3845,6 +3974,195 @@ const AddProperty = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+                ) : (formData.propertyType === 'house' || formData.propertyType === 'villa') ? (
+                  /* Форма для дома и виллы */
+                  <div className="property-details-form">
+                    {/* Переключатель единиц измерения */}
+                    <div className="detail-form-field detail-form-field--centered">
+                      <label className="detail-form-label">
+                        <span className="detail-form-label-text">Единицы измерения</span>
+                      </label>
+                      <div className="area-unit-toggle">
+                        <button
+                          type="button"
+                          className={`area-unit-toggle-btn ${areaUnit === 'square_meters' ? 'active' : ''}`}
+                          onClick={() => setAreaUnit('square_meters')}
+                        >
+                          Метры квадратные
+                        </button>
+                        <button
+                          type="button"
+                          className={`area-unit-toggle-btn ${areaUnit === 'square_feet' ? 'active' : ''}`}
+                          onClick={() => setAreaUnit('square_feet')}
+                        >
+                          Футы квадратные
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Строка: Площадь участка | Площадь общая */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь участка</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.landArea}
+                          onChange={(e) => handleDetailChange('landArea', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.landArea ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.landArea && (
+                          <span className="detail-form-error">{validationErrors.landArea}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь общая</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.area}
+                          onChange={(e) => handleDetailChange('area', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.area ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.area && (
+                          <span className="detail-form-error">{validationErrors.area}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка: Площадь жилая | Количество этажей */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь жилая</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.livingArea}
+                          onChange={(e) => handleDetailChange('livingArea', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.livingArea ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.livingArea && (
+                          <span className="detail-form-error">{validationErrors.livingArea}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Количество этажей</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.totalFloors}
+                          onChange={(e) => handleDetailChange('totalFloors', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.totalFloors ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.totalFloors && (
+                          <span className="detail-form-error">{validationErrors.totalFloors}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка: Кол-во спален | Кол-во ванных */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Кол-во спален</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.bedrooms}
+                          onChange={(e) => handleDetailChange('bedrooms', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.bedrooms ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.bedrooms && (
+                          <span className="detail-form-error">{validationErrors.bedrooms}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Кол-во ванных</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.bathrooms}
+                          onChange={(e) => handleDetailChange('bathrooms', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.bathrooms ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.bathrooms && (
+                          <span className="detail-form-error">{validationErrors.bathrooms}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка: Год постройки | Материал постройки */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Год постройки</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.yearBuilt}
+                          onChange={(e) => handleDetailChange('yearBuilt', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.yearBuilt ? 'detail-form-input--error' : ''}`}
+                          placeholder="2025"
+                          max={new Date().getFullYear()}
+                        />
+                        {validationErrors.yearBuilt && (
+                          <span className="detail-form-error">{validationErrors.yearBuilt}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Материал постройки</span>
+                        </label>
+                        <select
+                          value={formData.buildingType}
+                          onChange={(e) => handleDetailChange('buildingType', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow detail-form-select ${validationErrors.buildingType ? 'detail-form-input--error' : ''}`}
+                        >
+                          <option value="">Выберите материал</option>
+                          <option value="monolithic">Монолитный</option>
+                          <option value="brick">Кирпичный</option>
+                          <option value="panel">Панельный</option>
+                          <option value="block">Блочный</option>
+                          <option value="wood">Деревянный</option>
+                          <option value="frame">Каркасный</option>
+                          <option value="aerated_concrete">Газобетонный</option>
+                          <option value="foam_concrete">Пенобетонный</option>
+                          <option value="other">Другой</option>
+                        </select>
+                        {validationErrors.buildingType && (
+                          <span className="detail-form-error">{validationErrors.buildingType}</span>
+                        )}
+                      </div>
+                    </div>
+
                   </div>
                 ) : (
                   /* Старая форма для других типов недвижимости */
@@ -4081,216 +4399,449 @@ const AddProperty = () => {
               </h2>
               
               <div className="property-amenities-content-scrollable">
-                {/* Парковка */}
-                <div className="amenities-category">
-                  <h4 className="amenities-category-title">
-                    <span className="amenities-category-icon">🚗</span>
-                    Парковка
-                  </h4>
-                  <div className="amenities-list">
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.parking || false}
-                        onChange={(e) => handleDetailChange('parking', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Парковочное место</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature1 || false}
-                        onChange={(e) => handleDetailChange('feature1', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Подземная парковка</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature12 || false}
-                        onChange={(e) => handleDetailChange('feature12', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Парковка для велосипедов</span>
-                    </label>
+                {/* Для квартир и апартаментов - только базовые удобства из БД */}
+                {(formData.propertyType === 'apartment' || formData.propertyType === 'commercial') ? (
+                  <div className="amenities-category">
+                    <h4 className="amenities-category-title">
+                      <span className="amenities-category-icon">✨</span>
+                      Удобства
+                    </h4>
+                    <div className="amenities-list">
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.balcony || false}
+                          onChange={(e) => handleDetailChange('balcony', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Балкон</span>
+                      </label>
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.parking || false}
+                          onChange={(e) => handleDetailChange('parking', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Парковка</span>
+                      </label>
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.elevator || false}
+                          onChange={(e) => handleDetailChange('elevator', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Лифт</span>
+                      </label>
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.electricity || false}
+                          onChange={(e) => handleDetailChange('electricity', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Электричество</span>
+                      </label>
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.internet || false}
+                          onChange={(e) => handleDetailChange('internet', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Интернет</span>
+                      </label>
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.security || false}
+                          onChange={(e) => handleDetailChange('security', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Охрана</span>
+                      </label>
+                      <label className="amenity-item">
+                        <input
+                          type="checkbox"
+                          checked={formData.furniture || false}
+                          onChange={(e) => handleDetailChange('furniture', e.target.checked)}
+                          className="amenity-checkbox"
+                        />
+                        <span className="amenity-label">Мебель</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* Для домов и вилл - все удобства */
+                  <>
+                    {/* Парковка */}
+                    <div className="amenities-category">
+                      <h4 className="amenities-category-title">
+                        <span className="amenities-category-icon">🚗</span>
+                        Парковка
+                      </h4>
+                      <div className="amenities-list">
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature1 || false}
+                            onChange={(e) => handleDetailChange('feature1', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Гараж</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature2 || false}
+                            onChange={(e) => handleDetailChange('feature2', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Навес для машины</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.parking || false}
+                            onChange={(e) => handleDetailChange('parking', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Парковочное место</span>
+                        </label>
+                      </div>
+                    </div>
 
-                {/* Мебель и техника */}
-                <div className="amenities-category">
-                  <h4 className="amenities-category-title">
-                    <span className="amenities-category-icon">🛋️</span>
-                    Мебель и техника
-                  </h4>
-                  <div className="amenities-list">
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature2 || false}
-                        onChange={(e) => handleDetailChange('feature2', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Кухонная мебель</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.furniture || false}
-                        onChange={(e) => handleDetailChange('furniture', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Встроенная мебель</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature3 || false}
-                        onChange={(e) => handleDetailChange('feature3', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Стиральная машина</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature4 || false}
-                        onChange={(e) => handleDetailChange('feature4', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Посудомоечная машина</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.electricity || false}
-                        onChange={(e) => handleDetailChange('electricity', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Кондиционер</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature18 || false}
-                        onChange={(e) => handleDetailChange('feature18', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Гардеробная</span>
-                    </label>
-                  </div>
-                </div>
+                    {/* Безопасность */}
+                    <div className="amenities-category">
+                      <h4 className="amenities-category-title">
+                        <span className="amenities-category-icon">🔒</span>
+                        Безопасность
+                      </h4>
+                      <div className="amenities-list">
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature3 || false}
+                            onChange={(e) => handleDetailChange('feature3', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Сигнализация</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature6 || false}
+                            onChange={(e) => handleDetailChange('feature6', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Видеонаблюдение</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature4 || false}
+                            onChange={(e) => handleDetailChange('feature4', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">"Умный дом"</span>
+                        </label>
+                      </div>
+                    </div>
 
-                {/* Коммуникации и безопасность */}
-                <div className="amenities-category">
-                  <h4 className="amenities-category-title">
-                    <span className="amenities-category-icon">🔒</span>
-                    Коммуникации и безопасность
-                  </h4>
-                  <div className="amenities-list">
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.internet || false}
-                        onChange={(e) => handleDetailChange('internet', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Интернет</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.security || false}
-                        onChange={(e) => handleDetailChange('security', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Охрана</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature5 || false}
-                        onChange={(e) => handleDetailChange('feature5', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Домофон</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature6 || false}
-                        onChange={(e) => handleDetailChange('feature6', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Видеонаблюдение</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature16 || false}
-                        onChange={(e) => handleDetailChange('feature16', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Видеодомофон</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature17 || false}
-                        onChange={(e) => handleDetailChange('feature17', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Консьерж</span>
-                    </label>
-                  </div>
-                </div>
+                    {/* Инфраструктура участка */}
+                    <div className="amenities-category">
+                      <h4 className="amenities-category-title">
+                        <span className="amenities-category-icon">🏡</span>
+                        Инфраструктура участка
+                      </h4>
+                      <div className="amenities-list">
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature5 || false}
+                            onChange={(e) => handleDetailChange('feature5', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Баня/Сауна</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.pool || false}
+                            onChange={(e) => handleDetailChange('pool', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Бассейн</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature7 || false}
+                            onChange={(e) => handleDetailChange('feature7', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Освещение участка</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature8 || false}
+                            onChange={(e) => handleDetailChange('feature8', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Спортивная площадка</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature9 || false}
+                            onChange={(e) => handleDetailChange('feature9', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Беседка</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature10 || false}
+                            onChange={(e) => handleDetailChange('feature10', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Кладовая</span>
+                        </label>
+                      </div>
+                    </div>
 
-                {/* Дополнительные помещения */}
-                <div className="amenities-category">
-                  <h4 className="amenities-category-title">
-                    <span className="amenities-category-icon">🏠</span>
-                    Дополнительные помещения
-                  </h4>
-                  <div className="amenities-list">
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.balcony || false}
-                        onChange={(e) => handleDetailChange('balcony', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Балкон</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature7 || false}
-                        onChange={(e) => handleDetailChange('feature7', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Лоджия</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.feature8 || false}
-                        onChange={(e) => handleDetailChange('feature8', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Кладовая</span>
-                    </label>
-                    <label className="amenity-item">
-                      <input
-                        type="checkbox"
-                        checked={formData.elevator || false}
-                        onChange={(e) => handleDetailChange('elevator', e.target.checked)}
-                        className="amenity-checkbox"
-                      />
-                      <span className="amenity-label">Лифт</span>
-                    </label>
-                  </div>
-                </div>
+                    {/* Удобства и коммуникации */}
+                    <div className="amenities-category">
+                      <h4 className="amenities-category-title">
+                        <span className="amenities-category-icon">⚡</span>
+                        Удобства и коммуникации
+                      </h4>
+                      <div className="amenities-list">
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.electricity || false}
+                            onChange={(e) => handleDetailChange('electricity', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Электричество</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={!!formData.waterSupply}
+                            onChange={(e) => handleDetailChange('waterSupply', e.target.checked ? 'yes' : '')}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Водоснабжение</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={!!formData.sewerage}
+                            onChange={(e) => handleDetailChange('sewerage', e.target.checked ? 'yes' : '')}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Канализация</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature11 || false}
+                            onChange={(e) => handleDetailChange('feature11', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Газ</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={!!formData.heating}
+                            onChange={(e) => handleDetailChange('heating', e.target.checked ? 'yes' : '')}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Отопление</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.internet || false}
+                            onChange={(e) => handleDetailChange('internet', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Интернет</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature12 || false}
+                            onChange={(e) => handleDetailChange('feature12', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Камин</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature13 || false}
+                            onChange={(e) => handleDetailChange('feature13', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Терасса</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Мебель и техника */}
+                    <div className="amenities-category">
+                      <h4 className="amenities-category-title">
+                        <span className="amenities-category-icon">🛋️</span>
+                        Мебель и техника
+                      </h4>
+                      <div className="amenities-list">
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.furniture || false}
+                            onChange={(e) => handleDetailChange('furniture', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Встроенная мебель</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature14 || false}
+                            onChange={(e) => handleDetailChange('feature14', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Холодильник</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature15 || false}
+                            onChange={(e) => handleDetailChange('feature15', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Стиральная машина</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature16 || false}
+                            onChange={(e) => handleDetailChange('feature16', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Посудомоечная машина</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature17 || false}
+                            onChange={(e) => handleDetailChange('feature17', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Микроволновка</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature18 || false}
+                            onChange={(e) => handleDetailChange('feature18', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Духовка</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature19 || false}
+                            onChange={(e) => handleDetailChange('feature19', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Телевизор</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature20 || false}
+                            onChange={(e) => handleDetailChange('feature20', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Кондиционер</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Дополнительные удобства */}
+                    <div className="amenities-category">
+                      <h4 className="amenities-category-title">
+                        <span className="amenities-category-icon">✨</span>
+                        Дополнительные удобства
+                      </h4>
+                      <div className="amenities-list">
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature21 || false}
+                            onChange={(e) => handleDetailChange('feature21', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Джакузи</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature22 || false}
+                            onChange={(e) => handleDetailChange('feature22', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Камин</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature23 || false}
+                            onChange={(e) => handleDetailChange('feature23', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Теплый пол</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature24 || false}
+                            onChange={(e) => handleDetailChange('feature24', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Винный погреб</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature25 || false}
+                            onChange={(e) => handleDetailChange('feature25', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Кинотеатр</span>
+                        </label>
+                        <label className="amenity-item">
+                          <input
+                            type="checkbox"
+                            checked={formData.feature26 || false}
+                            onChange={(e) => handleDetailChange('feature26', e.target.checked)}
+                            className="amenity-checkbox"
+                          />
+                          <span className="amenity-label">Тренажерный зал</span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Дополнительно */}
                 <div className="amenities-category">
@@ -4901,13 +5452,15 @@ const AddProperty = () => {
               </h2>
               
               <p className="property-price-description">
-                Укажите минимальную цену продажи вашей недвижимости. Вы также можете выставить объект на аукцион.
+                {formData.isSharedOwnership 
+                  ? 'Укажите общую стоимость объекта и количество долей, на которые он будет разбит.' 
+                  : 'Укажите минимальную цену продажи вашей недвижимости. Вы также можете выставить объект на аукцион.'}
               </p>
 
               {/* Блок цены */}
               <div className="price-input-section">
                 <label className="price-input-label">
-                  Минимальная цена продажи
+                  {formData.isSharedOwnership ? 'Общая стоимость объекта' : 'Минимальная цена продажи'}
                 </label>
                 <div className="price-input-wrapper-large">
                   <div className="currency-selector">
@@ -4954,28 +5507,91 @@ const AddProperty = () => {
                 </div>
               </div>
 
-              {/* Блок аукциона */}
-              <div className="auction-toggle-section">
-                <div className="auction-toggle-wrapper">
-                  <input
-                    type="checkbox"
-                    id="isAuction"
-                    name="isAuction"
-                    checked={formData.isAuction}
-                    onChange={handleInputChange}
-                    className="auction-toggle-checkbox"
-                  />
-                  <label htmlFor="isAuction" className="auction-toggle-label">
-                    <div className="auction-toggle-icon">
-                      <FiDollarSign size={20} />
+              {/* Блок долевой продажи */}
+              {formData.isSharedOwnership && (
+                <div className="shared-ownership-section" style={{ marginTop: '24px' }}>
+                  <div className="price-input-section">
+                    <label className="price-input-label">
+                      Количество долей
+                    </label>
+                    <div className="price-input-wrapper-large">
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        minWidth: '60px',
+                        padding: '0 16px',
+                        fontSize: '20px',
+                        fontWeight: '600',
+                        color: '#0ea5e9'
+                      }}>
+                        #
+                      </div>
+                      <input
+                        type="number"
+                        name="totalShares"
+                        value={formData.totalShares}
+                        onChange={handleInputChange}
+                        className="price-input-large"
+                        placeholder="50"
+                        min="2"
+                        max="1000"
+                        required
+                        inputMode="numeric"
+                      />
                     </div>
-                    <div className="auction-toggle-text">
-                      <span className="auction-toggle-title">Выставить объект на аукцион</span>
-                      <span className="auction-toggle-hint">Позволяет покупателям делать ставки</span>
+                    <p className="auction-toggle-hint" style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
+                      Укажите, на сколько частей будет разбит объект
+                    </p>
+                  </div>
+
+                  {/* Показываем цену за долю */}
+                  {formData.price && formData.totalShares && formData.totalShares > 0 && (
+                    <div className="shared-ownership-info" style={{ 
+                      marginTop: '16px', 
+                      padding: '16px', 
+                      backgroundColor: '#f0f9ff', 
+                      borderRadius: '12px',
+                      border: '1px solid #0ea5e9'
+                    }}>
+                      <div style={{ fontSize: '14px', color: '#0369a1', marginBottom: '8px', fontWeight: '500' }}>
+                        Цена одной доли
+                      </div>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#0c4a6e' }}>
+                        {currencies.find(c => c.code === currency)?.symbol} {formatNumberWithCommas(Math.ceil(parseFloat(formData.price.replace(/,/g, '')) / parseInt(formData.totalShares)))}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#0369a1', marginTop: '4px' }}>
+                        {formData.totalShares} {parseInt(formData.totalShares) === 1 ? 'доля' : parseInt(formData.totalShares) < 5 ? 'доли' : 'долей'} × {currencies.find(c => c.code === currency)?.symbol} {formatNumberWithCommas(Math.ceil(parseFloat(formData.price.replace(/,/g, '')) / parseInt(formData.totalShares)))}
+                      </div>
                     </div>
-                  </label>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Блок аукциона - только для обычной продажи */}
+              {!formData.isSharedOwnership && (
+                <div className="auction-toggle-section">
+                  <div className="auction-toggle-wrapper">
+                    <input
+                      type="checkbox"
+                      id="isAuction"
+                      name="isAuction"
+                      checked={formData.isAuction}
+                      onChange={handleInputChange}
+                      className="auction-toggle-checkbox"
+                    />
+                    <label htmlFor="isAuction" className="auction-toggle-label">
+                      <div className="auction-toggle-icon">
+                        <FiDollarSign size={20} />
+                      </div>
+                      <div className="auction-toggle-text">
+                        <span className="auction-toggle-title">Выставить объект на аукцион</span>
+                        <span className="auction-toggle-hint">Позволяет покупателям делать ставки</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Поля аукциона (показываются при включении) */}
               {formData.isAuction && (
@@ -5067,8 +5683,13 @@ const AddProperty = () => {
               <HintCard
                 icon={FiDollarSign}
                 iconColor="property-name-hint-icon--thumbs"
-                title="Как установить цену?"
-                content={[
+                title={formData.isSharedOwnership ? "Как работает долевая продажа?" : "Как установить цену?"}
+                content={formData.isSharedOwnership ? [
+                  "Укажите общую стоимость объекта",
+                  "Выберите количество долей (например, 50)",
+                  "Покупатели смогут выкупать отдельные доли",
+                  "Цена одной доли рассчитывается автоматически"
+                ] : [
                   "Изучите цены на аналогичные объекты в вашем районе",
                   "Учитывайте состояние и особенности недвижимости",
                   "Можно установить фиксированную цену или начать аукцион"
@@ -5076,14 +5697,26 @@ const AddProperty = () => {
                 show={showHints['price']}
                 onClose={() => setShowHints(prev => ({ ...prev, 'price': false }))}
               />
-              <HintCard
-                icon={MdLightbulb}
-                iconColor="property-name-hint-icon--bulb"
-                title="Что такое аукцион?"
-                content="Аукцион позволяет покупателям делать ставки, что может привести к более высокой цене продажи. Вы устанавливаете стартовую цену, а покупатели соревнуются за объект."
-                show={showHints['price']}
-                onClose={() => setShowHints(prev => ({ ...prev, 'price': false }))}
-              />
+              {!formData.isSharedOwnership && (
+                <HintCard
+                  icon={MdLightbulb}
+                  iconColor="property-name-hint-icon--bulb"
+                  title="Что такое аукцион?"
+                  content="Аукцион позволяет покупателям делать ставки, что может привести к более высокой цене продажи. Вы устанавливаете стартовую цену, а покупатели соревнуются за объект."
+                  show={showHints['price']}
+                  onClose={() => setShowHints(prev => ({ ...prev, 'price': false }))}
+                />
+              )}
+              {formData.isSharedOwnership && (
+                <HintCard
+                  icon={MdLightbulb}
+                  iconColor="property-name-hint-icon--bulb"
+                  title="Преимущества долевой продажи"
+                  content="Долевая продажа позволяет разделить объект на части, что делает его доступнее для покупателей. Каждый покупатель становится совладельцем недвижимости."
+                  show={showHints['price']}
+                  onClose={() => setShowHints(prev => ({ ...prev, 'price': false }))}
+                />
+              )}
             </div>
           </div>
         ) : (

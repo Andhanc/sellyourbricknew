@@ -351,6 +351,33 @@
   gap: 8px 16px;
 }
 
+.property-detail-info-block__content--amenities-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.amenities-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.amenities-group-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.amenities-group-items {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px 16px;
+}
+
 .amenity-item {
   font-size: 14px;
   color: #111827;
@@ -670,18 +697,20 @@
   padding: 12px 20px;
   border-radius: 8px;
   border: none;
-  background: #2563eb;
+  background: #111827;
   color: #ffffff;
   font-weight: 600;
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   width: 100%;
 }
 
 .property-detail-sidebar__history-btn:hover {
-  background: #1d4ed8;
+  background: #1f2937;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Функционал ставки */
@@ -704,53 +733,41 @@
 
 .bidding-section__quick-btn {
   flex: 1;
-  padding: 10px 16px;
+  padding: 12px 20px;
   border-radius: 8px;
-  border: 2px solid #e5e7eb;
-  background: #ffffff;
-  color: #2563eb;
+  border: none;
+  background: #1f2937;
+  color: #ffffff;
   font-weight: 600;
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.bidding-section__quick-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(37, 99, 235, 0.1);
-  transform: translate(-50%, -50%);
-  transition: width 0.3s ease, height 0.3s ease;
+  white-space: nowrap;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .bidding-section__quick-btn:hover {
-  border-color: #2563eb;
-  background: #eff6ff;
+  background: #111827;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
-}
-
-.bidding-section__quick-btn:hover::before {
-  width: 200px;
-  height: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .bidding-section__quick-btn:active {
   transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .bidding-section__quick-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Белые цифры в кнопках быстрого выбора */
+.bidding-section__quick-btn-number {
+  color: #ffffff;
 }
 
 .bidding-section__input-wrapper {
@@ -805,14 +822,14 @@
   padding: 12px 20px;
   border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #111827;
   color: #ffffff;
   font-weight: 600;
   font-family: 'Montserrat', sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
 }
@@ -824,13 +841,13 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
   transition: left 0.5s ease;
 }
 
 .bidding-section__submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  background: #1f2937;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
@@ -840,7 +857,7 @@
 
 .bidding-section__submit-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .bidding-section__submit-btn:disabled {
@@ -851,70 +868,140 @@
 }
 
 .property-detail-sidebar__buy-now-btn {
-  padding: 10px 20px;
-  border-radius: 10px;
+  padding: 12px 20px;
+  border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  background: linear-gradient(135deg, #d0d8f0 0%, #e8e8f5 40%, #f0e0eb 70%, #f8e8f0 100%);
+  color: #111827;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 87.5%;
+  margin: 12px auto 20px;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.property-detail-sidebar__buy-now-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.property-detail-sidebar__buy-now-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Долевая продажа */
+.property-detail-sidebar__shared-ownership {
+  margin-top: 16px;
+}
+
+.shared-ownership-badge {
+  display: inline-flex;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #0ea5e9;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0369a1;
+  margin-bottom: 16px;
+}
+
+.shared-ownership-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.shared-ownership-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shared-ownership-stat .stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.shared-ownership-stat .stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.shared-ownership-stat .stat-value--highlight {
+  color: #0ea5e9;
+}
+
+.shared-ownership-progress {
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9 0%, #0284c7 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.property-detail-sidebar__buy-shares-btn {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
   color: #ffffff;
   font-weight: 600;
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   width: 100%;
-  max-width: 70%;
-  margin: 12px auto 20px;
-  display: block;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-  letter-spacing: 0.3px;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
 }
 
-.property-detail-sidebar__buy-now-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-  transition: left 0.6s ease;
+.property-detail-sidebar__buy-shares-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
 }
 
-.property-detail-sidebar__buy-now-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.property-detail-sidebar__buy-now-btn:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.property-detail-sidebar__buy-now-btn:hover::before {
-  left: 100%;
-}
-
-.property-detail-sidebar__buy-now-btn:hover::after {
-  opacity: 1;
-}
-
-.property-detail-sidebar__buy-now-btn:active {
+.property-detail-sidebar__buy-shares-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
-  transition: all 0.1s ease;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.property-detail-sidebar__buy-shares-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Карта */
