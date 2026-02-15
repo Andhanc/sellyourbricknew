@@ -7,6 +7,7 @@ import { getUserData, isAuthenticated } from '../services/authService'
 import { validateLuhn, detectCardType, formatCardNumber, maskCardNumber } from '../utils/cardValidation'
 import { getApiBaseUrl, getApiBaseUrlSync } from '../utils/apiConfig'
 import UserBidHistoryModal from '../components/UserBidHistoryModal'
+import BuyNowModal from '../components/BuyNowModal'
 import './Wallet.css'
 
 // Используем синхронную версию для инициализации, затем обновим при загрузке
@@ -79,6 +80,8 @@ const Wallet = () => {
   })
   const [userBid, setUserBid] = useState(null)
   const [showBidHistory, setShowBidHistory] = useState(false)
+  const [wonProperty, setWonProperty] = useState(null) // Выигранный объект
+  const [isBuyNowModalOpen, setIsBuyNowModalOpen] = useState(false)
 
   // Получаем числовой ID из БД для Clerk пользователей
   useEffect(() => {
@@ -320,6 +323,54 @@ const Wallet = () => {
             }
             return prev
           })
+          
+          // Проверяем, выиграл ли пользователь объект
+          if (newUserBid.is_auction && newUserBid.auction_end_date) {
+            const now = new Date().getTime()
+            const endTime = new Date(newUserBid.auction_end_date).getTime()
+            const isExpired = endTime <= now
+            
+            if (isExpired) {
+              // Проверяем, является ли пользователь лидером
+              try {
+                const propertyBidsRes = await fetch(`${API_BASE_URL}/bids/property/${newUserBid.property_id}`)
+                if (propertyBidsRes.ok) {
+                  const propertyBidsData = await propertyBidsRes.json()
+                  if (propertyBidsData.success && propertyBidsData.data && propertyBidsData.data.length > 0) {
+                    // Находим максимальную ставку среди всех ставок
+                    const maxBid = Math.max(...propertyBidsData.data.map(b => b.bid_amount))
+                    // Находим максимальную ставку пользователя
+                    const userBids = propertyBidsData.data.filter(b => b.user_id === dbUserId)
+                    const userMaxBid = userBids.length > 0 ? Math.max(...userBids.map(b => b.bid_amount)) : 0
+                    // Проверяем, является ли пользователь лидером (его максимальная ставка равна максимальной ставке всех)
+                    const isWinner = userMaxBid === maxBid && userMaxBid > 0
+                    
+                    if (isWinner) {
+                      // Создаем объект выигранного объекта с максимальной ставкой пользователя
+                      const wonPropertyData = {
+                        ...newUserBid,
+                        bid_amount: userMaxBid
+                      }
+                      setWonProperty(wonPropertyData)
+                    } else {
+                      setWonProperty(null)
+                    }
+                  } else {
+                    setWonProperty(null)
+                  }
+                } else {
+                  setWonProperty(null)
+                }
+              } catch (error) {
+                console.error('Ошибка проверки выигранного объекта:', error)
+                setWonProperty(null)
+              }
+            } else {
+              setWonProperty(null)
+            }
+          } else {
+            setWonProperty(null)
+          }
         } else {
           setUserBid(prev => {
             if (prev !== null) {
@@ -327,7 +378,10 @@ const Wallet = () => {
             }
             return prev
           })
+          setWonProperty(null)
         }
+      } else {
+        setWonProperty(null)
       }
     } catch (error) {
       console.error('Ошибка загрузки данных:', error)
@@ -496,6 +550,19 @@ const Wallet = () => {
       console.error('Ошибка вывода:', error)
       alert('Ошибка при выводе средств')
     }
+  }
+
+  const handleBookNow = () => {
+    // Проверяем авторизацию
+    const isClerkAuth = user && userLoaded
+    const isOldAuth = isAuthenticated()
+    
+    if (!isClerkAuth && !isOldAuth) {
+      alert('Пожалуйста, войдите в систему для продолжения')
+      return
+    }
+    
+    setIsBuyNowModalOpen(true)
   }
 
   const getCardColor = () => {
@@ -897,8 +964,95 @@ const Wallet = () => {
           )}
         </div>
 
+        {/* Выигранный объект */}
+        {wonProperty && (
+          <div className="wallet-won-object">
+            <div className="wallet-won-object__badge">
+              <span className="wallet-won-object__badge-icon">🏆</span>
+              <span className="wallet-won-object__badge-text">Вы выиграли аукцион!</span>
+            </div>
+            <div className="wallet-won-object__content">
+              <div className="wallet-won-object__image-wrapper">
+                {(() => {
+                  // Обрабатываем photos - может быть массивом или JSON строкой
+                  let photos = []
+                  if (wonProperty.photos) {
+                    if (typeof wonProperty.photos === 'string') {
+                      try {
+                        photos = JSON.parse(wonProperty.photos)
+                      } catch (e) {
+                        photos = [wonProperty.photos]
+                      }
+                    } else if (Array.isArray(wonProperty.photos)) {
+                      photos = wonProperty.photos
+                    }
+                  }
+                  
+                  // Формируем URL для фото
+                  const firstPhoto = photos.length > 0 ? photos[0] : null
+                  let photoUrl = null
+                  
+                  if (firstPhoto) {
+                    if (typeof firstPhoto === 'string') {
+                      if (firstPhoto.startsWith('http://') || firstPhoto.startsWith('https://')) {
+                        photoUrl = firstPhoto
+                      } else {
+                        const baseUrl = API_BASE_URL ? API_BASE_URL.replace('/api', '').replace(/\/$/, '') : ''
+                        if (baseUrl) {
+                          const cleanPath = firstPhoto.startsWith('/') ? firstPhoto : `/${firstPhoto}`
+                          if (firstPhoto.startsWith('/uploads/') || firstPhoto.startsWith('uploads/')) {
+                            photoUrl = `${baseUrl}${cleanPath}`
+                          } else {
+                            photoUrl = `${baseUrl}/uploads${cleanPath}`
+                          }
+                        }
+                      }
+                    } else if (typeof firstPhoto === 'object' && firstPhoto !== null) {
+                      photoUrl = firstPhoto.url || firstPhoto.path || null
+                    }
+                  }
+                  
+                  return photoUrl ? (
+                    <img 
+                      src={photoUrl}
+                      alt={wonProperty.title || 'Объект недвижимости'}
+                      className="wallet-won-object__image"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="wallet-won-object__image-placeholder">
+                      Нет фото
+                    </div>
+                  )
+                })()}
+              </div>
+              <div className="wallet-won-object__info">
+                <h3 className="wallet-won-object__title">{wonProperty.title}</h3>
+                {wonProperty.location && (
+                  <p className="wallet-won-object__location">{wonProperty.location}</p>
+                )}
+                <div className="wallet-won-object__bid-info">
+                  <span className="wallet-won-object__bid-label">Выигрышная ставка:</span>
+                  <span className="wallet-won-object__bid-amount">
+                    {wonProperty.currency === 'USD' ? '$' : wonProperty.currency === 'EUR' ? '€' : wonProperty.currency === 'BYN' ? 'Br' : ''}
+                    {wonProperty.bid_amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <button
+                  className="wallet-won-object__buy-btn"
+                  onClick={handleBookNow}
+                >
+                  Перейти к покупке
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Объект с активной ставкой */}
-        {userBid && (
+        {userBid && !wonProperty && (
           <div className="wallet-bid-object" style={{
             background: 'rgba(255, 255, 255, 0.05)',
             borderRadius: '16px',
@@ -1122,6 +1276,23 @@ const Wallet = () => {
             </div>
           </div>
         </div>
+
+        {/* Модальное окно покупки для выигранного объекта */}
+        {wonProperty && (
+          <BuyNowModal
+            isOpen={isBuyNowModalOpen}
+            onClose={() => setIsBuyNowModalOpen(false)}
+            property={{
+              id: wonProperty.property_id,
+              title: wonProperty.title,
+              name: wonProperty.title,
+              price: wonProperty.bid_amount,
+              currency: wonProperty.currency || 'USD',
+              isAuction: true,
+              currentBid: wonProperty.bid_amount
+            }}
+          />
+        )}
       </div>
     </div>
   )
