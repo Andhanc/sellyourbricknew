@@ -1,23 +1,24 @@
 /**
  * Утилита для определения API Base URL
- * Всегда использует dev tunnel для бэкенда
+ * Использует localhost для локальной разработки
  */
 
-const DEV_TUNNEL_URL = 'https://5f5ntx8k-3000.euw.devtunnels.ms/api'
+// Используем относительный путь для работы через Vite proxy
+const API_BASE_URL = '/api'
 
 /**
  * Получает API Base URL
- * Всегда возвращает dev tunnel URL
+ * Возвращает localhost URL для локальной разработки
  */
 export async function getApiBaseUrl() {
-  return DEV_TUNNEL_URL
+  return API_BASE_URL
 }
 
 /**
- * Синхронная версия - возвращает dev tunnel URL
+ * Синхронная версия - возвращает localhost URL
  */
 export function getApiBaseUrlSync() {
-  return DEV_TUNNEL_URL
+  return API_BASE_URL
 }
 
 /**

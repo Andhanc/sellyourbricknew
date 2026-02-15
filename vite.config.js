@@ -5,8 +5,8 @@ export default defineConfig(({ mode }) => {
   // Загружаем переменные окружения
   const env = loadEnv(mode, process.cwd(), '')
   
-  // Всегда используем dev tunnel для бэкенда
-  const apiUrl = 'https://5f5ntx8k-3000.euw.devtunnels.ms'
+  // Используем localhost для локальной разработки
+  const apiUrl = 'http://localhost:3000'
   
   return {
     plugins: [react()],
@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
           secure: false,
-          // Для HTTPS dev tunnels
+          // Для локальной разработки
           configure: (proxy, _options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
               console.log(`[Proxy] ${req.method} ${req.url} -> ${apiUrl}${req.url}`)
