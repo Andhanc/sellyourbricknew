@@ -85,7 +85,18 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     port: PORT,
     serverPort: process.env.SERVER_PORT || 'not set',
-    railwayPort: process.env.PORT || 'not set'
+    railwayPort: process.env.PORT || 'not set',
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint для проверки доступности
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'Server is running',
+    port: PORT,
+    timestamp: new Date().toISOString()
   });
 });
 
