@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "server": "node server/server.js",
     "server:dev": "node --watch server/server.js",
-    "start": "concurrently -n \"SERVER,FRONTEND\" -c \"blue,green\" --kill-others-on-fail --restart-tries 3 \"npm run server\" \"npm run dev\"",
+    "start": "echo '🚀 Запуск приложения...' && concurrently -n \"SERVER,FRONTEND\" -c \"blue,green\" --kill-others-on-fail --restart-tries 3 \"npm run server\" \"npm run dev\"",
     "delete-user": "node delete-user-by-id.js",
     "clear-properties": "node clear-properties.js"
   },
