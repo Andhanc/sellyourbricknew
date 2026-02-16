@@ -7013,6 +7013,8 @@ app._router?.stack?.forEach((middleware) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 API доступен по адресу: http://0.0.0.0:${PORT}/api`);
+  console.log(`🌐 Railway PORT: ${process.env.PORT || 'не установлен'}`);
+  console.log(`🔧 SERVER_PORT: ${process.env.SERVER_PORT || 'не установлен, используется 3000'}`);
   console.log(`✅ Маршрут POST /api/properties/:id/test-timer зарегистрирован`);
   console.log(`✅ Маршрут GET /api/properties/test-timers зарегистрирован`);
   console.log(`✅ Маршрут DELETE /api/properties/:id/test-timer зарегистрирован`);
@@ -7027,6 +7029,19 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 // Graceful shutdown
+// Обработка ошибок при запуске
+process.on('uncaughtException', (error) => {
+  console.error('❌ Необработанная ошибка:', error);
+  closeDatabase();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Необработанное отклонение промиса:', reason);
+  closeDatabase();
+  process.exit(1);
+});
+
 process.on('SIGINT', () => {
   console.log('\n🛑 Остановка сервера...');
   closeDatabase();
