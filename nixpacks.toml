@@ -4,5 +4,8 @@ nixPkgs = ["nodejs-20_x", "python3"]
 [phases.install]
 cmds = ["npm install --legacy-peer-deps"]
 
+[phases.build]
+cmds = ["echo 'Skipping build - using dev mode'"]
+
 [start]
 cmd = "npm start"
