@@ -19,7 +19,9 @@ const { Client, LocalAuth } = whatsappPkg;
 
 const app = express();
 // На Railway: Vite использует PORT, сервер использует SERVER_PORT
-const PORT = process.env.SERVER_PORT || process.env.PORT || 3000;
+// Если SERVER_PORT не установлен, используем 3000 (для локальной разработки)
+// На Railway обязательно установите SERVER_PORT в переменных окружения
+const PORT = process.env.SERVER_PORT || 3000;
 
 /**
  * Валидация пароля
