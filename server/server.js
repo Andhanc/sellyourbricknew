@@ -7010,9 +7010,9 @@ app._router?.stack?.forEach((middleware) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
-  console.log(`📡 API доступен по адресу: http://localhost:${PORT}/api`);
+  console.log(`📡 API доступен по адресу: http://0.0.0.0:${PORT}/api`);
   console.log(`✅ Маршрут POST /api/properties/:id/test-timer зарегистрирован`);
   console.log(`✅ Маршрут GET /api/properties/test-timers зарегистрирован`);
   console.log(`✅ Маршрут DELETE /api/properties/:id/test-timer зарегистрирован`);

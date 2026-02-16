@@ -11,13 +11,15 @@ export default defineConfig(({ mode }) => {
   const apiUrl = process.env.API_URL || `http://localhost:${serverPort}`
   
   // Порт для Vite: в production на Railway используем PORT, иначе 5173
+  // Railway автоматически устанавливает PORT для основного веб-сервиса
   const vitePort = process.env.PORT ? parseInt(process.env.PORT) : 5173
   
   return {
     plugins: [react()],
     server: {
       port: vitePort,
-      host: true, // Слушаем на всех интерфейсах для Railway
+      host: '0.0.0.0', // Слушаем на всех интерфейсах для Railway
+      strictPort: false, // Позволяем использовать другой порт, если указанный занят
       proxy: {
         '/api': {
           target: apiUrl,
