@@ -2180,7 +2180,7 @@ export const purchaseRequestQueries = {
     // Формируем значения для дополнительных полей
     if (columnNames.includes('property_description')) valuesToInsert.push(requestData.propertyDescription || null);
     if (columnNames.includes('property_rooms')) valuesToInsert.push(requestData.propertyRooms || null);
-    if (columnNames.includes('property_bedrooms')) valuesToInsert.push(requestData.propertyBedrooms || null);
+    if (columnNames.includes('property_bedrooms')) valuesToInsert.push((requestData.propertyBedrooms !== undefined && requestData.propertyBedrooms !== null && requestData.propertyBedrooms !== '') ? requestData.propertyBedrooms : null);
     if (columnNames.includes('property_bathrooms')) valuesToInsert.push(requestData.propertyBathrooms || null);
     if (columnNames.includes('property_floor')) valuesToInsert.push(requestData.propertyFloor !== undefined && requestData.propertyFloor !== null ? requestData.propertyFloor : null);
     if (columnNames.includes('property_total_floors')) valuesToInsert.push(requestData.propertyTotalFloors !== undefined && requestData.propertyTotalFloors !== null ? requestData.propertyTotalFloors : null);
@@ -2958,7 +2958,19 @@ export const houseQueries = {
       propertyData.living_area || null,
       propertyData.land_area || null,
       propertyData.building_type || null,
-      propertyData.bedrooms || null,
+      (() => {
+        // Обрабатываем bedrooms: проверяем на валидность и преобразуем в число
+        if (propertyData.bedrooms !== undefined && propertyData.bedrooms !== null && propertyData.bedrooms !== '') {
+          const parsedBedrooms = typeof propertyData.bedrooms === 'number' 
+            ? propertyData.bedrooms 
+            : parseInt(propertyData.bedrooms, 10);
+          // Проверяем, что это валидное число (не NaN и конечное)
+          if (!isNaN(parsedBedrooms) && isFinite(parsedBedrooms)) {
+            return parsedBedrooms;
+          }
+        }
+        return null;
+      })(),
       propertyData.bathrooms || null,
       propertyData.floors || null, // Количество этажей дома
       propertyData.year_built || null,
@@ -3194,7 +3206,19 @@ export const houseQueries = {
       propertyData.living_area || null,
       propertyData.land_area || null,
       propertyData.building_type || null,
-      propertyData.bedrooms || null,
+      (() => {
+        // Обрабатываем bedrooms: проверяем на валидность и преобразуем в число
+        if (propertyData.bedrooms !== undefined && propertyData.bedrooms !== null && propertyData.bedrooms !== '') {
+          const parsedBedrooms = typeof propertyData.bedrooms === 'number' 
+            ? propertyData.bedrooms 
+            : parseInt(propertyData.bedrooms, 10);
+          // Проверяем, что это валидное число (не NaN и конечное)
+          if (!isNaN(parsedBedrooms) && isFinite(parsedBedrooms)) {
+            return parsedBedrooms;
+          }
+        }
+        return null;
+      })(),
       propertyData.bathrooms || null,
       propertyData.floors || null,
       propertyData.year_built || null,
@@ -3455,18 +3479,41 @@ export const propertyQueries = {
     if (useNewTables) {
       // Если известен тип, ищем в конкретной таблице
       if (propertyType === 'apartment' || propertyType === 'commercial') {
-        return apartmentQueries.getById(id);
+        const property = apartmentQueries.getById(id);
+        if (property) {
+          property.source_table = 'apartments';
+        }
+        return property;
       } else if (propertyType === 'house' || propertyType === 'villa') {
-        return houseQueries.getById(id);
+        const property = houseQueries.getById(id);
+        if (property) {
+          property.source_table = 'houses';
+        }
+        return property;
       }
       
       // Если тип неизвестен, ищем в обеих таблицах
-      let property = apartmentQueries.getById(id);
-      if (property) return property;
+      // ВАЖНО: Сначала проверяем houses, так как ID могут совпадать между таблицами
+      // Но правильнее искать в обеих таблицах параллельно и проверять property_type
+      let property = houseQueries.getById(id);
+      if (property) {
+        // Проверяем, что это действительно дом или вилла
+        if (property.property_type === 'house' || property.property_type === 'villa') {
+          property.source_table = 'houses';
+          return property;
+        }
+      }
       
-      property = houseQueries.getById(id);
-      if (property) return property;
+      property = apartmentQueries.getById(id);
+      if (property) {
+        // Проверяем, что это действительно квартира или коммерческая недвижимость
+        if (property.property_type === 'apartment' || property.property_type === 'commercial') {
+          property.source_table = 'apartments';
+          return property;
+        }
+      }
       
+      // Если не нашли ни в одной таблице, возвращаем null
       return null;
     } else {
       // Fallback на старую таблицу
@@ -3492,22 +3539,81 @@ export const propertyQueries = {
     }
     
     if (useNewTables) {
-      // Сначала пытаемся обновить в таблице apartments
+      console.log(`🔍 updateModerationStatus: обновление ID=${id}, status=${status}`);
+      
+      // ВАЖНО: Сначала определяем, в какой таблице находится объект, проверяя property_type
+      // Это предотвращает обновление объекта в неправильной таблице
+      let propertyInHouses = null;
+      let propertyInApartments = null;
+      
       try {
-        const result = apartmentQueries.updateModerationStatus(id, status, reviewedBy, rejectionReason);
-        if (result.changes > 0) {
-          return result;
-        }
+        propertyInHouses = db.prepare('SELECT id, property_type FROM properties_houses WHERE id = ?').get(id);
       } catch (e) {
-        console.log('Не найдено в apartments, пробуем houses');
+        // Игнорируем ошибку
       }
       
-      // Если не нашли в apartments, пробуем houses
       try {
-        return houseQueries.updateModerationStatus(id, status, reviewedBy, rejectionReason);
+        propertyInApartments = db.prepare('SELECT id, property_type FROM properties_apartments WHERE id = ?').get(id);
       } catch (e) {
-        throw new Error(`Объявление с ID ${id} не найдено ни в одной таблице`);
+        // Игнорируем ошибку
       }
+      
+      console.log(`🔍 updateModerationStatus: проверка наличия объекта ID=${id}:`, {
+        in_houses: !!propertyInHouses,
+        in_apartments: !!propertyInApartments,
+        houses_type: propertyInHouses?.property_type,
+        apartments_type: propertyInApartments?.property_type
+      });
+      
+      // Если объект найден в обеих таблицах (дубликат ID), определяем правильную таблицу по property_type
+      if (propertyInHouses && propertyInApartments) {
+        console.warn(`⚠️ updateModerationStatus: объект ID=${id} найден в обеих таблицах! Это дубликат ID.`);
+        // Определяем правильную таблицу по property_type
+        if (propertyInHouses.property_type === 'house' || propertyInHouses.property_type === 'villa') {
+          console.log(`✅ updateModerationStatus: используем houses (property_type=${propertyInHouses.property_type})`);
+          propertyInApartments = null; // Игнорируем apartments
+        } else if (propertyInApartments.property_type === 'apartment' || propertyInApartments.property_type === 'commercial') {
+          console.log(`✅ updateModerationStatus: используем apartments (property_type=${propertyInApartments.property_type})`);
+          propertyInHouses = null; // Игнорируем houses
+        }
+      }
+      
+      // Обновляем в правильной таблице
+      let result = null;
+      
+      // Если объект в houses (house или villa)
+      if (propertyInHouses && (propertyInHouses.property_type === 'house' || propertyInHouses.property_type === 'villa')) {
+        try {
+          result = houseQueries.updateModerationStatus(id, status, reviewedBy, rejectionReason);
+          console.log(`📊 updateModerationStatus houses: changes=${result?.changes || 0}`);
+          if (result && result.changes > 0) {
+            console.log(`✅ updateModerationStatus: обновлено в houses, ID=${id}, type=${propertyInHouses.property_type}`);
+            return result;
+          }
+        } catch (e) {
+          console.error(`❌ updateModerationStatus: ошибка при обновлении houses, ID=${id}:`, e.message);
+          throw new Error(`Ошибка при обновлении статуса модерации для объявления ID ${id} в houses: ${e.message}`);
+        }
+      }
+      
+      // Если объект в apartments (apartment или commercial)
+      if (propertyInApartments && (propertyInApartments.property_type === 'apartment' || propertyInApartments.property_type === 'commercial')) {
+        try {
+          result = apartmentQueries.updateModerationStatus(id, status, reviewedBy, rejectionReason);
+          console.log(`📊 updateModerationStatus apartments: changes=${result?.changes || 0}`);
+          if (result && result.changes > 0) {
+            console.log(`✅ updateModerationStatus: обновлено в apartments, ID=${id}, type=${propertyInApartments.property_type}`);
+            return result;
+          }
+        } catch (e) {
+          console.error(`❌ updateModerationStatus: ошибка при обновлении apartments, ID=${id}:`, e.message);
+          throw new Error(`Ошибка при обновлении статуса модерации для объявления ID ${id} в apartments: ${e.message}`);
+        }
+      }
+      
+      // Если объект не найден ни в одной таблице
+      console.error(`❌ updateModerationStatus: объект ID=${id} не найден ни в одной таблице`);
+      throw new Error(`Объявление с ID ${id} не найдено ни в одной таблице`);
     } else {
       // Fallback на старую таблицу
       const stmt = db.prepare(`
@@ -3731,7 +3837,7 @@ export const propertyQueries = {
           'apartments' as source_table
         FROM properties_apartments p
         LEFT JOIN users u ON p.user_id = u.id
-        WHERE p.moderation_status = 'approved' AND (p.is_auction = 0 OR p.is_auction IS NULL)
+        WHERE p.moderation_status = 'approved' AND (p.is_auction = 0 OR p.is_auction IS NULL OR p.is_auction = '0')
       `;
       
       let housesQuery = `
@@ -3745,7 +3851,7 @@ export const propertyQueries = {
           'houses' as source_table
         FROM properties_houses p
         LEFT JOIN users u ON p.user_id = u.id
-        WHERE p.moderation_status = 'approved' AND (p.is_auction = 0 OR p.is_auction IS NULL)
+        WHERE p.moderation_status = 'approved' AND (p.is_auction = 0 OR p.is_auction IS NULL OR p.is_auction = '0')
       `;
       
       const params = [];
@@ -3760,6 +3866,39 @@ export const propertyQueries = {
       
       const apartments = db.prepare(apartmentsQuery).all(...params);
       const houses = db.prepare(housesQuery).all(...params);
+      
+      console.log(`📊 getApproved: найдено apartments=${apartments.length}, houses=${houses.length}, фильтр type=${propertyType || 'null'}`);
+      
+      // Логируем запросы для отладки
+      if (propertyType === 'house' || propertyType === 'villa') {
+        console.log('🔍 SQL запрос для houses:', housesQuery);
+        console.log('🔍 Параметры запроса:', params);
+      }
+      
+      if (houses.length > 0) {
+        console.log('📊 Пример дома/виллы:', {
+          id: houses[0].id,
+          property_type: houses[0].property_type,
+          title: houses[0].title,
+          moderation_status: houses[0].moderation_status,
+          is_auction: houses[0].is_auction,
+          is_auction_type: typeof houses[0].is_auction
+        });
+      } else if (propertyType === 'house' || propertyType === 'villa') {
+        // Если не найдено, проверяем, есть ли вообще дома/виллы с approved статусом
+        const allHouses = db.prepare('SELECT id, property_type, title, moderation_status, is_auction FROM properties_houses WHERE moderation_status = ?').all('approved');
+        console.log('🔍 Всего домов/вилл со статусом approved:', allHouses.length);
+        if (allHouses.length > 0) {
+          console.log('🔍 Примеры домов/вилл:', allHouses.slice(0, 3).map(h => ({
+            id: h.id,
+            property_type: h.property_type,
+            title: h.title,
+            moderation_status: h.moderation_status,
+            is_auction: h.is_auction,
+            is_auction_type: typeof h.is_auction
+          })));
+        }
+      }
       
       // Объединяем и сортируем
       const allProperties = [...apartments, ...houses].sort((a, b) => {
@@ -3874,7 +4013,7 @@ export const propertyQueries = {
         FROM properties_apartments p
         LEFT JOIN users u ON p.user_id = u.id
         WHERE p.moderation_status = 'approved' 
-          AND p.is_auction = 1
+          AND (p.is_auction = 1 OR p.is_auction = '1')
           AND p.auction_end_date IS NOT NULL
           AND p.auction_end_date != ''
       `;
@@ -3891,7 +4030,7 @@ export const propertyQueries = {
         FROM properties_houses p
         LEFT JOIN users u ON p.user_id = u.id
         WHERE p.moderation_status = 'approved' 
-          AND p.is_auction = 1
+          AND (p.is_auction = 1 OR p.is_auction = '1')
           AND p.auction_end_date IS NOT NULL
           AND p.auction_end_date != ''
       `;
@@ -3908,6 +4047,41 @@ export const propertyQueries = {
       
       const apartments = db.prepare(apartmentsQuery).all(...params);
       const houses = db.prepare(housesQuery).all(...params);
+      
+      console.log(`📊 getAuctions: найдено apartments=${apartments.length}, houses=${houses.length}, фильтр type=${propertyType || 'null'}`);
+      
+      // Если не найдено, проверяем, есть ли вообще аукционные объекты
+      if (houses.length === 0 && (propertyType === 'house' || propertyType === 'villa' || !propertyType)) {
+        const allAuctionHouses = db.prepare(`
+          SELECT id, property_type, title, moderation_status, is_auction, auction_end_date 
+          FROM properties_houses 
+          WHERE moderation_status = 'approved' AND (is_auction = 1 OR is_auction = '1')
+        `).all();
+        console.log(`🔍 Всего аукционных домов/вилл со статусом approved: ${allAuctionHouses.length}`);
+        if (allAuctionHouses.length > 0) {
+          console.log('🔍 Примеры аукционных домов/вилл:', allAuctionHouses.slice(0, 3).map(h => ({
+            id: h.id,
+            property_type: h.property_type,
+            title: h.title,
+            moderation_status: h.moderation_status,
+            is_auction: h.is_auction,
+            is_auction_type: typeof h.is_auction,
+            auction_end_date: h.auction_end_date
+          })));
+        }
+      }
+      
+      if (houses.length > 0) {
+        console.log('📊 Пример аукционного дома/виллы:', {
+          id: houses[0].id,
+          property_type: houses[0].property_type,
+          title: houses[0].title,
+          moderation_status: houses[0].moderation_status,
+          is_auction: houses[0].is_auction,
+          is_auction_type: typeof houses[0].is_auction,
+          auction_end_date: houses[0].auction_end_date
+        });
+      }
       
       // Объединяем и сортируем по дате окончания аукциона
       const allProperties = [...apartments, ...houses].sort((a, b) => {

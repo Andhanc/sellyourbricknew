@@ -721,7 +721,7 @@ const PropertyDetail = () => {
                       {normalizedProperty.property_type === 'apartment' ? 'Квартира' :
                        normalizedProperty.property_type === 'house' ? 'Дом' :
                        normalizedProperty.property_type === 'villa' ? 'Вилла' :
-                       normalizedProperty.property_type === 'townhouse' ? 'Таунхаус' :
+                       normalizedProperty.property_type === 'townhouse' ? 'Дом' :
                        normalizedProperty.property_type === 'commercial' ? 'Коммерческая' :
                        normalizedProperty.property_type}
                     </span>

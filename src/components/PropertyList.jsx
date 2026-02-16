@@ -23,8 +23,8 @@ const PropertyList = ({ auctionProperties = null }) => {
     'Apartment': 'апартаменты',
     'Villa': 'вилла',
     'Flat': 'квартира',
-    'Townhouse': 'таунхаус',
-    'House': 'все' // для домов пока используем "все"
+    'Townhouse': 'дом',
+    'House': 'дом'
   }
   
   // Читаем параметры из URL при загрузке и прокручиваем к объектам
@@ -110,7 +110,7 @@ const PropertyList = ({ auctionProperties = null }) => {
           'квартира': ['apartment'],
           'апартаменты': ['commercial'],
           'вилла': ['villa'],
-          'таунхаус': ['house']
+          'дом': ['house']
         }
         if (typeMap[propertyType] && !typeMap[propertyType].includes(property.property_type)) {
           return false
@@ -122,7 +122,7 @@ const PropertyList = ({ auctionProperties = null }) => {
           'квартира': titleLower.includes('квартир') || titleLower.includes('студи'),
           'апартаменты': titleLower.includes('апартамент'),
           'вилла': titleLower.includes('вилл'),
-          'таунхаус': titleLower.includes('таунхаус')
+          'дом': titleLower.includes('дом') || titleLower.includes('таунхаус')
         }
         
         if (!typeMatch[propertyType]) {
@@ -212,10 +212,10 @@ const PropertyList = ({ auctionProperties = null }) => {
             Вилла
           </button>
           <button 
-            className={`type-button ${propertyType === 'таунхаус' ? 'active' : ''}`}
-            onClick={() => setPropertyType('таунхаус')}
+            className={`type-button ${propertyType === 'дом' ? 'active' : ''}`}
+            onClick={() => setPropertyType('дом')}
           >
-            Таунхаус
+            Дом
           </button>
         </div>
 

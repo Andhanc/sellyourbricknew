@@ -434,6 +434,9 @@ export const houseQueries = {
       }
     }
     
+    // Логируем bedrooms перед сохранением
+    console.log('🔍 houseQueries.create - propertyData.bedrooms:', propertyData.bedrooms, 'тип:', typeof propertyData.bedrooms);
+    
     const stmt = db.prepare(`
       INSERT INTO properties_houses (
         user_id, property_type, title, description, price, currency,
@@ -448,6 +451,18 @@ export const houseQueries = {
         moderation_status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+    
+    // Обрабатываем bedrooms: проверяем на валидность и преобразуем в число
+    let bedroomsValue = null;
+    if (propertyData.bedrooms !== undefined && propertyData.bedrooms !== null && propertyData.bedrooms !== '') {
+      const parsedBedrooms = typeof propertyData.bedrooms === 'number' 
+        ? propertyData.bedrooms 
+        : parseInt(propertyData.bedrooms, 10);
+      // Проверяем, что это валидное число (не NaN и конечное)
+      if (!isNaN(parsedBedrooms) && isFinite(parsedBedrooms)) {
+        bedroomsValue = parsedBedrooms;
+      }
+    }
     
     return stmt.run(
       propertyData.user_id,
@@ -464,7 +479,7 @@ export const houseQueries = {
       propertyData.living_area || null,
       propertyData.land_area || null,
       propertyData.building_type || null,
-      propertyData.bedrooms || null,
+      bedroomsValue, // Используем вычисленное значение
       propertyData.bathrooms || null,
       propertyData.floors || null, // Количество этажей дома
       propertyData.year_built || null,
@@ -500,6 +515,7 @@ export const houseQueries = {
     const property = stmt.get(id);
     
     if (property) {
+      console.log('🔍 houseQueries.getById - bedrooms из БД:', property.bedrooms, 'тип:', typeof property.bedrooms);
       // Парсим JSON поля с безопасной обработкой ошибок
       if (property.amenities) {
         try {
@@ -679,7 +695,19 @@ export const houseQueries = {
       propertyData.living_area || null,
       propertyData.land_area || null,
       propertyData.building_type || null,
-      propertyData.bedrooms || null,
+      (() => {
+        // Обрабатываем bedrooms: проверяем на валидность и преобразуем в число
+        if (propertyData.bedrooms !== undefined && propertyData.bedrooms !== null && propertyData.bedrooms !== '') {
+          const parsedBedrooms = typeof propertyData.bedrooms === 'number' 
+            ? propertyData.bedrooms 
+            : parseInt(propertyData.bedrooms, 10);
+          // Проверяем, что это валидное число (не NaN и конечное)
+          if (!isNaN(parsedBedrooms) && isFinite(parsedBedrooms)) {
+            return parsedBedrooms;
+          }
+        }
+        return null;
+      })(),
       propertyData.bathrooms || null,
       propertyData.floors || null,
       propertyData.year_built || null,

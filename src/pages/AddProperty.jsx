@@ -505,7 +505,7 @@ const AddProperty = () => {
     let validatedValue = value
     
     // Проверка на тип данных - только числа
-    if (['rooms', 'bathrooms', 'area', 'livingArea', 'floor', 'totalFloors', 'yearBuilt'].includes(field)) {
+    if (['rooms', 'bathrooms', 'area', 'livingArea', 'floor', 'totalFloors', 'yearBuilt', 'bedrooms'].includes(field)) {
       // Разрешаем пустую строку
       if (value === '') {
         validatedValue = value
@@ -605,6 +605,16 @@ const AddProperty = () => {
       }
     }
     
+    // Логируем для bedrooms
+    if (field === 'bedrooms') {
+      console.log('🔍 handleDetailChange - bedrooms:', {
+        value,
+        validatedValue,
+        type: typeof validatedValue,
+        numValue: field === 'bedrooms' ? parseFloat(value) : null
+      });
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: validatedValue
@@ -694,8 +704,36 @@ const AddProperty = () => {
       if (formData.area) formDataToSend.append('area', String(formData.area))
       if (formData.livingArea) formDataToSend.append('living_area', String(formData.livingArea))
       if (formData.buildingType) formDataToSend.append('building_type', formData.buildingType)
-      if (formData.rooms) formDataToSend.append('rooms', String(formData.rooms))
-      if (formData.bedrooms) formDataToSend.append('bedrooms', String(formData.bedrooms))
+      
+      // Для квартир/апартаментов отправляем rooms, для домов/вилл - bedrooms
+      const isApartmentOrCommercial = formData.propertyType === 'apartment' || formData.propertyType === 'commercial'
+      const isHouseOrVilla = formData.propertyType === 'house' || formData.propertyType === 'villa'
+      
+      // ВАЖНО: отправляем всегда, даже если пустое, чтобы сервер мог корректно обработать
+      // Важно: проверяем на undefined/null/пустую строку, а не на truthiness, чтобы 0 отправлялся как '0'
+      if (isApartmentOrCommercial) {
+        formDataToSend.append('rooms', (formData.rooms !== undefined && formData.rooms !== null && formData.rooms !== '') ? String(formData.rooms) : '')
+      }
+      if (isHouseOrVilla) {
+        // Как в рабочем проекте, но с поддержкой значения 0
+        // Проверяем на undefined/null/пустую строку, но НЕ на truthiness, чтобы 0 отправлялся
+        const bedroomsValue = (formData.bedrooms !== undefined && formData.bedrooms !== null && formData.bedrooms !== '') 
+          ? String(formData.bedrooms) 
+          : '';
+        console.log('🔍🔍🔍 AddProperty - ОТПРАВКА bedrooms:', {
+          formDataBedrooms: formData.bedrooms,
+          bedroomsValue,
+          type: typeof formData.bedrooms,
+          isHouseOrVilla
+        });
+        formDataToSend.append('bedrooms', bedroomsValue);
+      }
+      // Для других типов отправляем оба поля (на случай, если тип не определен)
+      if (!isApartmentOrCommercial && !isHouseOrVilla) {
+        formDataToSend.append('rooms', (formData.rooms !== undefined && formData.rooms !== null && formData.rooms !== '') ? String(formData.rooms) : '')
+        formDataToSend.append('bedrooms', (formData.bedrooms !== undefined && formData.bedrooms !== null && formData.bedrooms !== '') ? String(formData.bedrooms) : '')
+      }
+      
       if (formData.bathrooms) formDataToSend.append('bathrooms', String(formData.bathrooms))
       if (formData.floor) formDataToSend.append('floor', String(formData.floor))
       if (formData.totalFloors) formDataToSend.append('total_floors', String(formData.totalFloors))
@@ -1146,11 +1184,14 @@ const AddProperty = () => {
           area: property.area ? String(property.area) : '',
           livingArea: property.living_area ? String(property.living_area) : '',
           buildingType: property.building_type || '',
-          rooms: property.rooms ? String(property.rooms) : '',
-          bedrooms: property.bedrooms ? String(property.bedrooms) : '',
-          bathrooms: property.bathrooms ? String(property.bathrooms) : '',
+          rooms: (property.rooms !== undefined && property.rooms !== null && property.rooms !== '') ? String(property.rooms) : '',
+          bedrooms: (property.bedrooms !== undefined && property.bedrooms !== null && property.bedrooms !== '') ? String(property.bedrooms) : '',
+          bathrooms: (property.bathrooms !== undefined && property.bathrooms !== null && property.bathrooms !== '') ? String(property.bathrooms) : '',
           floor: property.floor ? String(property.floor) : '',
-          totalFloors: property.total_floors ? String(property.total_floors) : '',
+          // Для домов/вилл используем floors, для квартир/апартаментов - total_floors
+          totalFloors: (property.property_type === 'house' || property.property_type === 'villa') 
+            ? (property.floors ? String(property.floors) : '')
+            : (property.total_floors ? String(property.total_floors) : ''),
           yearBuilt: property.year_built ? String(property.year_built) : '',
           location: property.location || '',
           address: property.address || '',
@@ -1706,7 +1747,19 @@ const AddProperty = () => {
 
   // Обработчик выбора типа недвижимости
   const handlePropertyTypeSelect = (type) => {
-    setFormData(prev => ({ ...prev, propertyType: type }))
+    // Очищаем поля rooms и bedrooms при смене типа, чтобы избежать путаницы
+    // Для квартир/апартаментов используем rooms, для домов/вилл - bedrooms
+    const isApartmentOrCommercial = type === 'apartment' || type === 'commercial'
+    const isHouseOrVilla = type === 'house' || type === 'villa'
+    
+    setFormData(prev => ({
+      ...prev,
+      propertyType: type,
+      // Очищаем bedrooms для квартир/апартаментов
+      bedrooms: isApartmentOrCommercial ? '' : prev.bedrooms,
+      // Очищаем rooms для домов/вилл
+      rooms: isHouseOrVilla ? '' : prev.rooms
+    }))
     setCurrentStep('test-drive-question')
   }
 
@@ -2489,6 +2542,42 @@ const AddProperty = () => {
       }
     }
     
+    // Проверка для формы дома и виллы
+    if (formData.propertyType === 'house' || formData.propertyType === 'villa') {
+      // Проверка обязательных полей
+      if (!formData.landArea || formData.landArea === '' || parseFloat(formData.landArea) <= 0) {
+        errors.landArea = 'Укажите площадь участка'
+      }
+      if (!formData.area || formData.area === '' || parseFloat(formData.area) <= 0) {
+        errors.area = 'Укажите площадь дома (общую)'
+      }
+      if (!formData.livingArea || formData.livingArea === '' || parseFloat(formData.livingArea) <= 0) {
+        errors.livingArea = 'Укажите площадь дома (жилую)'
+      }
+      if (!formData.totalFloors || formData.totalFloors === '' || parseFloat(formData.totalFloors) <= 0) {
+        errors.totalFloors = 'Укажите количество этажей'
+      }
+      // Важно: проверяем на undefined/null/пустую строку, но разрешаем 0 как валидное значение
+      if (formData.bedrooms === undefined || formData.bedrooms === null || formData.bedrooms === '' || (formData.bedrooms !== '0' && parseFloat(formData.bedrooms) <= 0)) {
+        errors.bedrooms = 'Укажите количество спален'
+      }
+      if (!formData.bathrooms || formData.bathrooms === '' || parseFloat(formData.bathrooms) <= 0) {
+        errors.bathrooms = 'Укажите количество ванных комнат'
+      }
+      if (!formData.yearBuilt || formData.yearBuilt === '' || parseFloat(formData.yearBuilt) <= 0) {
+        errors.yearBuilt = 'Укажите год постройки'
+      }
+      if (!formData.buildingType || formData.buildingType === '') {
+        errors.buildingType = 'Выберите материал постройки'
+      }
+      
+      // Проверка года постройки - только что год не больше текущего
+      const yearBuilt = parseFloat(formData.yearBuilt)
+      if (yearBuilt > currentYear) {
+        errors.yearBuilt = `Год постройки не может быть больше ${currentYear}`
+      }
+    }
+    
     // Если есть ошибки, показываем их и не переходим дальше
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors)
@@ -2529,10 +2618,22 @@ const AddProperty = () => {
     setValidationErrors({})
     
     // Сохраняем данные о спальнях в formData
-    setFormData(prev => ({
-      ...prev,
-      bedrooms: bedrooms.filter(b => getTotalBedsCount(b.beds) > 0).length
-    }))
+    // ВАЖНО: для домов/вилл НЕ перезаписываем bedrooms, если оно уже было введено в простое поле
+    const isHouseOrVilla = formData.propertyType === 'house' || formData.propertyType === 'villa'
+    setFormData(prev => {
+      // Для домов/вилл сохраняем значение из простого поля ввода, если оно есть
+      if (isHouseOrVilla && prev.bedrooms !== undefined && prev.bedrooms !== null && prev.bedrooms !== '') {
+        return {
+          ...prev,
+          // Не перезаписываем bedrooms для домов/вилл
+        }
+      }
+      // Для квартир/апартаментов вычисляем из массива спален
+      return {
+        ...prev,
+        bedrooms: bedrooms.filter(b => getTotalBedsCount(b.beds) > 0).length
+      }
+    })
     setCurrentStep('amenities')
   }
 
@@ -3845,6 +3946,195 @@ const AddProperty = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+                ) : (formData.propertyType === 'house' || formData.propertyType === 'villa') ? (
+                  /* Форма для дома и виллы */
+                  <div className="property-details-form">
+                    {/* Переключатель единиц измерения */}
+                    <div className="detail-form-field detail-form-field--centered">
+                      <label className="detail-form-label">
+                        <span className="detail-form-label-text">Единицы измерения</span>
+                      </label>
+                      <div className="area-unit-toggle">
+                        <button
+                          type="button"
+                          className={`area-unit-toggle-btn ${areaUnit === 'square_meters' ? 'active' : ''}`}
+                          onClick={() => setAreaUnit('square_meters')}
+                        >
+                          Метры квадратные
+                        </button>
+                        <button
+                          type="button"
+                          className={`area-unit-toggle-btn ${areaUnit === 'square_feet' ? 'active' : ''}`}
+                          onClick={() => setAreaUnit('square_feet')}
+                        >
+                          Футы квадратные
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Строка: Площадь участка | Площадь общая */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь участка</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.landArea}
+                          onChange={(e) => handleDetailChange('landArea', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.landArea ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.landArea && (
+                          <span className="detail-form-error">{validationErrors.landArea}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь общая</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.area}
+                          onChange={(e) => handleDetailChange('area', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.area ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.area && (
+                          <span className="detail-form-error">{validationErrors.area}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка: Площадь жилая | Количество этажей */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Площадь жилая</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.livingArea}
+                          onChange={(e) => handleDetailChange('livingArea', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.livingArea ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                        />
+                        {validationErrors.livingArea && (
+                          <span className="detail-form-error">{validationErrors.livingArea}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Количество этажей</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.totalFloors}
+                          onChange={(e) => handleDetailChange('totalFloors', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.totalFloors ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.totalFloors && (
+                          <span className="detail-form-error">{validationErrors.totalFloors}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка: Кол-во спален | Кол-во ванных */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Кол-во спален</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.bedrooms}
+                          onChange={(e) => handleDetailChange('bedrooms', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.bedrooms ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.bedrooms && (
+                          <span className="detail-form-error">{validationErrors.bedrooms}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Кол-во ванных</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.bathrooms}
+                          onChange={(e) => handleDetailChange('bathrooms', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.bathrooms ? 'detail-form-input--error' : ''}`}
+                          placeholder="0"
+                          min="0"
+                        />
+                        {validationErrors.bathrooms && (
+                          <span className="detail-form-error">{validationErrors.bathrooms}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Строка: Год постройки | Материал постройки */}
+                    <div className="detail-form-field detail-form-field--split">
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Год постройки</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.yearBuilt}
+                          onChange={(e) => handleDetailChange('yearBuilt', e.target.value)}
+                          onWheel={(e) => e.target.blur()}
+                          className={`detail-form-input detail-form-input--narrow ${validationErrors.yearBuilt ? 'detail-form-input--error' : ''}`}
+                          placeholder="2025"
+                          max={new Date().getFullYear()}
+                        />
+                        {validationErrors.yearBuilt && (
+                          <span className="detail-form-error">{validationErrors.yearBuilt}</span>
+                        )}
+                      </div>
+                      <div className="detail-form-field-half">
+                        <label className="detail-form-label">
+                          <span className="detail-form-label-text">Материал постройки</span>
+                        </label>
+                        <select
+                          value={formData.buildingType}
+                          onChange={(e) => handleDetailChange('buildingType', e.target.value)}
+                          className={`detail-form-input detail-form-input--narrow detail-form-select ${validationErrors.buildingType ? 'detail-form-input--error' : ''}`}
+                        >
+                          <option value="">Выберите материал</option>
+                          <option value="monolithic">Монолитный</option>
+                          <option value="brick">Кирпичный</option>
+                          <option value="panel">Панельный</option>
+                          <option value="block">Блочный</option>
+                          <option value="wood">Деревянный</option>
+                          <option value="frame">Каркасный</option>
+                          <option value="aerated_concrete">Газобетонный</option>
+                          <option value="foam_concrete">Пенобетонный</option>
+                          <option value="other">Другой</option>
+                        </select>
+                        {validationErrors.buildingType && (
+                          <span className="detail-form-error">{validationErrors.buildingType}</span>
+                        )}
+                      </div>
+                    </div>
+
                   </div>
                 ) : (
                   /* Старая форма для других типов недвижимости */
