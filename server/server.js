@@ -18,7 +18,8 @@ const __dirname = dirname(__filename);
 const { Client, LocalAuth } = whatsappPkg;
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// На Railway: Vite использует PORT, сервер использует SERVER_PORT
+const PORT = process.env.SERVER_PORT || process.env.PORT || 3000;
 
 /**
  * Валидация пароля

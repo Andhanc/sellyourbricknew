@@ -5,12 +5,19 @@ export default defineConfig(({ mode }) => {
   // Загружаем переменные окружения
   const env = loadEnv(mode, process.cwd(), '')
   
-  // Используем localhost для локальной разработки
-  const apiUrl = 'http://localhost:3000'
+  // Определяем URL API
+  // В production на Railway: сервер будет на SERVER_PORT (или 3000), Vite на PORT
+  const serverPort = process.env.SERVER_PORT || '3000'
+  const apiUrl = process.env.API_URL || `http://localhost:${serverPort}`
+  
+  // Порт для Vite: в production на Railway используем PORT, иначе 5173
+  const vitePort = process.env.PORT ? parseInt(process.env.PORT) : 5173
   
   return {
     plugins: [react()],
     server: {
+      port: vitePort,
+      host: true, // Слушаем на всех интерфейсах для Railway
       proxy: {
         '/api': {
           target: apiUrl,
