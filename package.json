@@ -6,12 +6,12 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "npx vite",
+    "dev": "node node_modules/vite/bin/vite.js",
     "build": "echo 'Build skipped - using dev mode'",
     "preview": "vite preview",
     "server": "node server/server.js",
     "server:dev": "node --watch server/server.js",
-    "start": "echo '🚀 Запуск приложения...' && concurrently -n \"SERVER,FRONTEND\" -c \"blue,green\" --kill-others-on-fail --restart-tries 3 \"npm run server\" \"npm run dev\"",
+    "start": "echo '🚀 Запуск приложения...' && concurrently --raw --kill-others-on-fail \"npm run server\" \"npm run dev\"",
     "delete-user": "node delete-user-by-id.js",
     "clear-properties": "node clear-properties.js"
   },
