@@ -18,11 +18,13 @@ const __dirname = dirname(__filename);
 const { Client, LocalAuth } = whatsappPkg;
 
 // Логирование при старте для диагностики
-console.log('🚀 Начало инициализации сервера...');
-console.log('📋 Переменные окружения:');
-console.log('   - SERVER_PORT:', process.env.SERVER_PORT || 'не установлен (будет использован 3000)');
-console.log('   - PORT:', process.env.PORT || 'не установлен');
-console.log('   - NODE_ENV:', process.env.NODE_ENV || 'не установлен');
+console.log('═══════════════════════════════════════════════════════');
+console.log('[SERVER] 🚀 Начало инициализации сервера...');
+console.log('[SERVER] 📋 Переменные окружения:');
+console.log('[SERVER]    - SERVER_PORT:', process.env.SERVER_PORT || 'не установлен (будет использован 3000)');
+console.log('[SERVER]    - PORT:', process.env.PORT || 'не установлен');
+console.log('[SERVER]    - NODE_ENV:', process.env.NODE_ENV || 'не установлен');
+console.log('[SERVER] ═══════════════════════════════════════════════════════');
 
 const app = express();
 // На Railway: Vite использует PORT, сервер использует SERVER_PORT
