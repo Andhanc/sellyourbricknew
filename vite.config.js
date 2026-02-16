@@ -7,8 +7,10 @@ export default defineConfig(({ mode }) => {
   
   // Определяем URL API
   // В production на Railway: сервер будет на SERVER_PORT (или 3000), Vite на PORT
+  // Используем 127.0.0.1 вместо localhost для избежания проблем с IPv6 и DNS на Railway
   const serverPort = process.env.SERVER_PORT || '3000'
-  const apiUrl = process.env.API_URL || `http://localhost:${serverPort}`
+  // На Railway используем 127.0.0.1 для избежания проблем с IPv6/DNS (NO_SOCKET ошибки)
+  const apiUrl = process.env.API_URL || `http://127.0.0.1:${serverPort}`
   
   // Порт для Vite: в production на Railway используем PORT, иначе 5173
   // Railway автоматически устанавливает PORT для основного веб-сервиса
@@ -33,17 +35,25 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
           secure: false,
+          // Используем IPv4 для избежания проблем с IPv6 на Railway
+          // Это решает ошибки NO_SOCKET и IPV6_NDISC_BAD_CODE
+          family: 4, // Принудительно используем IPv4
           // Для локальной разработки
           configure: (proxy, _options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
               console.log(`[Proxy] ${req.method} ${req.url} -> ${apiUrl}${req.url}`)
+            })
+            proxy.on('error', (err, req, res) => {
+              console.error(`[Proxy Error] ${err.message} для ${req.url}`)
             })
           }
         },
         '/health': {
           target: apiUrl,
           changeOrigin: true,
-          secure: false
+          secure: false,
+          // Используем IPv4 для избежания проблем с IPv6 на Railway
+          family: 4 // Принудительно используем IPv4
         }
       }
     },

@@ -2,6 +2,7 @@
 FROM node:20-slim
 
 # Устанавливаем системные зависимости для better-sqlite3 и Puppeteer
+# Отключаем IPv6 для избежания проблем с NO_SOCKET и IPV6_NDISC_BAD_CODE на Railway
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -29,7 +30,9 @@ RUN apt-get update && apt-get install -y \
     libxau6 \
     libxdmcp6 \
     procps \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf \
+    && echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
@@ -48,6 +51,10 @@ COPY . .
 # Vite будет слушать на PORT (Railway установит, например 8080)
 # Сервер будет слушать на SERVER_PORT (3000, нужно установить в Railway Variables)
 EXPOSE 8080
+
+# Отключаем IPv6 для Node.js (избегаем проблем с NO_SOCKET и IPV6_NDISC_BAD_CODE)
+# Используем переменную окружения для принудительного использования IPv4
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
 # Запускаем приложение
 CMD ["npm", "start"]
