@@ -14,12 +14,17 @@ export default defineConfig(({ mode }) => {
   // Railway автоматически устанавливает PORT для основного веб-сервиса
   const vitePort = process.env.PORT ? parseInt(process.env.PORT) : 5173
   
+  // Логирование для диагностики
+  console.log('[Vite Config] PORT:', process.env.PORT || 'не установлен');
+  console.log('[Vite Config] SERVER_PORT:', process.env.SERVER_PORT || 'не установлен');
+  console.log('[Vite Config] Vite будет слушать на порту:', vitePort);
+  
   return {
     plugins: [react()],
     server: {
       port: vitePort,
       host: '0.0.0.0', // Слушаем на всех интерфейсах для Railway
-      strictPort: false, // Позволяем использовать другой порт, если указанный занят
+      strictPort: true, // ОБЯЗАТЕЛЬНО использовать указанный порт (PORT от Railway)
       hmr: {
         clientPort: vitePort // Для HMR на Railway
       },

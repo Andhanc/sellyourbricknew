@@ -6,7 +6,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "node node_modules/vite/bin/vite.js",
+    "dev": "echo '[FRONTEND] Запуск Vite на порту ${PORT:-5173}...' && node node_modules/vite/bin/vite.js",
     "build": "echo 'Build skipped - using dev mode'",
     "preview": "vite preview",
     "server": "node server/server.js",
