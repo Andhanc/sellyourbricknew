@@ -2432,19 +2432,37 @@ export const apartmentQueries = {
     const db = getDatabase();
     
     // Формируем JSON массив удобств из отдельных полей
+    // ВАЖНО: Добавляем в массив ТОЛЬКО те удобства, которые явно выбраны пользователем (равны 1 или true)
     const amenities = [];
-    if (propertyData.balcony) amenities.push('balcony');
-    if (propertyData.parking) amenities.push('parking');
-    if (propertyData.elevator) amenities.push('elevator');
-    if (propertyData.electricity) amenities.push('electricity');
-    if (propertyData.internet) amenities.push('internet');
-    if (propertyData.security) amenities.push('security');
-    if (propertyData.furniture) amenities.push('furniture');
     
-    // Добавляем feature поля в массив удобств
+    // Основные удобства - проверяем строго (только 1 или true, не 0, не undefined, не '0')
+    if (propertyData.balcony === 1 || propertyData.balcony === true || propertyData.balcony === '1') {
+      amenities.push('balcony');
+    }
+    if (propertyData.parking === 1 || propertyData.parking === true || propertyData.parking === '1') {
+      amenities.push('parking');
+    }
+    if (propertyData.elevator === 1 || propertyData.elevator === true || propertyData.elevator === '1') {
+      amenities.push('elevator');
+    }
+    if (propertyData.electricity === 1 || propertyData.electricity === true || propertyData.electricity === '1') {
+      amenities.push('electricity');
+    }
+    if (propertyData.internet === 1 || propertyData.internet === true || propertyData.internet === '1') {
+      amenities.push('internet');
+    }
+    if (propertyData.security === 1 || propertyData.security === true || propertyData.security === '1') {
+      amenities.push('security');
+    }
+    if (propertyData.furniture === 1 || propertyData.furniture === true || propertyData.furniture === '1') {
+      amenities.push('furniture');
+    }
+    
+    // Добавляем feature поля в массив удобств - проверяем строго
     for (let i = 1; i <= 26; i++) {
       const featureKey = `feature${i}`;
-      if (propertyData[featureKey]) {
+      const featureValue = propertyData[featureKey];
+      if (featureValue === 1 || featureValue === true || featureValue === '1') {
         amenities.push(featureKey);
       }
     }
@@ -3109,19 +3127,40 @@ export const houseQueries = {
     const db = getDatabase();
     
     // Формируем JSON массив удобств
+    // ВАЖНО: Добавляем в массив ТОЛЬКО те удобства, которые явно выбраны пользователем (равны 1 или true)
     const amenities = [];
-    if (propertyData.pool) amenities.push('pool');
-    if (propertyData.garden) amenities.push('garden');
-    if (propertyData.garage) amenities.push('garage');
-    if (propertyData.parking) amenities.push('parking');
-    if (propertyData.electricity) amenities.push('electricity');
-    if (propertyData.internet) amenities.push('internet');
-    if (propertyData.security) amenities.push('security');
-    if (propertyData.furniture) amenities.push('furniture');
     
+    // Основные удобства - проверяем строго (только 1 или true, не 0, не undefined, не '0')
+    if (propertyData.pool === 1 || propertyData.pool === true || propertyData.pool === '1') {
+      amenities.push('pool');
+    }
+    if (propertyData.garden === 1 || propertyData.garden === true || propertyData.garden === '1') {
+      amenities.push('garden');
+    }
+    if (propertyData.garage === 1 || propertyData.garage === true || propertyData.garage === '1') {
+      amenities.push('garage');
+    }
+    if (propertyData.parking === 1 || propertyData.parking === true || propertyData.parking === '1') {
+      amenities.push('parking');
+    }
+    if (propertyData.electricity === 1 || propertyData.electricity === true || propertyData.electricity === '1') {
+      amenities.push('electricity');
+    }
+    if (propertyData.internet === 1 || propertyData.internet === true || propertyData.internet === '1') {
+      amenities.push('internet');
+    }
+    if (propertyData.security === 1 || propertyData.security === true || propertyData.security === '1') {
+      amenities.push('security');
+    }
+    if (propertyData.furniture === 1 || propertyData.furniture === true || propertyData.furniture === '1') {
+      amenities.push('furniture');
+    }
+    
+    // Добавляем feature поля в массив удобств - проверяем строго
     for (let i = 1; i <= 26; i++) {
       const featureKey = `feature${i}`;
-      if (propertyData[featureKey]) {
+      const featureValue = propertyData[featureKey];
+      if (featureValue === 1 || featureValue === true || featureValue === '1') {
         amenities.push(featureKey);
       }
     }

@@ -584,72 +584,108 @@ const ModerationPropertyDetail = ({ property, onBack, onApprove, onReject }) => 
           <div className="moderation-property-detail__amenities">
             <h3>Удобства</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-              {(property.balcony === 1 || property.balcony === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Балкон</span>
-              )}
-              {(property.parking === 1 || property.parking === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Парковка</span>
-              )}
-              {(property.elevator === 1 || property.elevator === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Лифт</span>
-              )}
-              {(property.garage === 1 || property.garage === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Гараж</span>
-              )}
-              {(property.pool === 1 || property.pool === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Бассейн</span>
-              )}
-              {(property.garden === 1 || property.garden === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Сад</span>
-              )}
-              {(property.electricity === 1 || property.electricity === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Электричество</span>
-              )}
-              {(property.internet === 1 || property.internet === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Интернет</span>
-              )}
-              {(property.security === 1 || property.security === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Охрана</span>
-              )}
-              {(property.furniture === 1 || property.furniture === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Мебель</span>
-              )}
-              {(property.feature1 === 1 || property.feature1 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 1</span>
-              )}
-              {(property.feature2 === 1 || property.feature2 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 2</span>
-              )}
-              {(property.feature3 === 1 || property.feature3 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 3</span>
-              )}
-              {(property.feature4 === 1 || property.feature4 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 4</span>
-              )}
-              {(property.feature5 === 1 || property.feature5 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 5</span>
-              )}
-              {(property.feature6 === 1 || property.feature6 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 6</span>
-              )}
-              {(property.feature7 === 1 || property.feature7 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 7</span>
-              )}
-              {(property.feature8 === 1 || property.feature8 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 8</span>
-              )}
-              {(property.feature9 === 1 || property.feature9 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 9</span>
-              )}
-              {(property.feature10 === 1 || property.feature10 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 10</span>
-              )}
-              {(property.feature11 === 1 || property.feature11 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 11</span>
-              )}
-              {(property.feature12 === 1 || property.feature12 === true) && (
-                <span style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>Удобство 12</span>
-              )}
+              {(() => {
+                // Маппинг названий для основных удобств
+                const mainAmenitiesLabels = {
+                  balcony: 'Балкон',
+                  parking: 'Парковка',
+                  elevator: 'Лифт',
+                  garage: 'Гараж',
+                  pool: 'Бассейн',
+                  garden: 'Сад',
+                  electricity: 'Электричество',
+                  internet: 'Интернет',
+                  security: 'Охрана',
+                  furniture: 'Мебель'
+                }
+                
+                // Маппинг названий для feature полей
+                const featureLabels = {
+                  feature1: 'Подземная парковка',
+                  feature2: 'Кухонная мебель',
+                  feature3: 'Стиральная машина',
+                  feature4: 'Посудомоечная машина',
+                  feature5: 'Домофон',
+                  feature6: 'Видеонаблюдение',
+                  feature7: 'Лоджия',
+                  feature8: 'Кладовая',
+                  feature9: 'Терраса',
+                  feature10: 'Мансарда',
+                  feature11: 'Подвал',
+                  feature12: 'Парковка для велосипедов',
+                  feature13: 'Спортзал',
+                  feature14: 'Сауна',
+                  feature15: 'Хаммам',
+                  feature16: 'Видеодомофон',
+                  feature17: 'Консьерж',
+                  feature18: 'Гардеробная',
+                  feature19: 'Камин',
+                  feature20: 'Система умного дома',
+                  feature21: 'Солнечные панели',
+                  feature22: 'Система вентиляции',
+                  feature23: 'Центральное кондиционирование',
+                  feature24: 'Система фильтрации воды',
+                  feature25: 'Генератор',
+                  feature26: 'Система безопасности'
+                }
+                
+                // Получаем массив amenities (единственный источник правды)
+                const amenitiesArray = property.amenities || []
+                const isAmenitiesArray = Array.isArray(amenitiesArray)
+                
+                const amenityTags = []
+                
+                // Проверяем ТОЛЬКО массив amenities
+                if (isAmenitiesArray && amenitiesArray.length > 0) {
+                  // Основные удобства
+                  Object.entries(mainAmenitiesLabels).forEach(([key, label]) => {
+                    if (amenitiesArray.includes(key)) {
+                      amenityTags.push(
+                        <span key={key} style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>
+                          {label}
+                        </span>
+                      )
+                    }
+                  })
+                  
+                  // Feature поля
+                  for (let i = 1; i <= 26; i++) {
+                    const featureKey = `feature${i}`
+                    if (amenitiesArray.includes(featureKey) && featureLabels[featureKey]) {
+                      amenityTags.push(
+                        <span key={featureKey} style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>
+                          {featureLabels[featureKey]}
+                        </span>
+                      )
+                    }
+                  }
+                } else {
+                  // Fallback: если массива нет, проверяем отдельные поля (для старых записей)
+                  Object.entries(mainAmenitiesLabels).forEach(([key, label]) => {
+                    if (property[key] === 1 || property[key] === true || property[key] === '1') {
+                      amenityTags.push(
+                        <span key={key} style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>
+                          {label}
+                        </span>
+                      )
+                    }
+                  })
+                  
+                  for (let i = 1; i <= 26; i++) {
+                    const featureKey = `feature${i}`
+                    const featureValue = property[featureKey]
+                    if ((featureValue === 1 || featureValue === true || featureValue === '1') && featureLabels[featureKey]) {
+                      amenityTags.push(
+                        <span key={featureKey} style={{ padding: '5px 10px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>
+                          {featureLabels[featureKey]}
+                        </span>
+                      )
+                    }
+                  }
+                }
+                
+                return amenityTags.length > 0 ? amenityTags : <span style={{ color: '#999' }}>Удобства не указаны</span>
+              })()}
             </div>
             {/* Дополнительные удобства */}
             {property.additional_amenities && property.additional_amenities.trim() && (

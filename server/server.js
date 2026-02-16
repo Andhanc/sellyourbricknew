@@ -3561,6 +3561,19 @@ app.post('/api/properties', upload.fields([
     
     console.log('📋 Получен is_auction:', is_auction, 'тип:', typeof is_auction, 'нормализован:', normalizedIsAuction);
     
+    // Извлекаем feature поля из req.body
+    const featureFields = {};
+    for (let i = 1; i <= 26; i++) {
+      const featureKey = `feature${i}`;
+      featureFields[featureKey] = req.body[featureKey] || 0;
+    }
+    
+    // Логируем feature поля для отладки
+    const selectedFeatures = Object.entries(featureFields).filter(([key, value]) => value === '1' || value === 1 || value === true);
+    if (selectedFeatures.length > 0) {
+      console.log('📋 Получены feature поля:', selectedFeatures.map(([key]) => key).join(', '));
+    }
+    
     const {
       area,
       living_area,
@@ -3730,13 +3743,22 @@ app.post('/api/properties', upload.fields([
       country: country || null,
       city: city || null,
       coordinates: coordinates ? (typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates) : null,
-      balcony: balcony ? 1 : 0,
-      parking: parking ? 1 : 0,
-      elevator: elevator ? 1 : 0,
-      electricity: electricity ? 1 : 0,
-      internet: internet ? 1 : 0,
-      security: security ? 1 : 0,
-      furniture: furniture ? 1 : 0,
+      // ВАЖНО: Устанавливаем только если явно передано значение 1, true или '1'
+      // Если не передано или передано как 0, '0', false - устанавливаем 0
+      balcony: (balcony === 1 || balcony === true || balcony === '1') ? 1 : 0,
+      parking: (parking === 1 || parking === true || parking === '1') ? 1 : 0,
+      elevator: (elevator === 1 || elevator === true || elevator === '1') ? 1 : 0,
+      electricity: (electricity === 1 || electricity === true || electricity === '1') ? 1 : 0,
+      internet: (internet === 1 || internet === true || internet === '1') ? 1 : 0,
+      security: (security === 1 || security === true || security === '1') ? 1 : 0,
+      furniture: (furniture === 1 || furniture === true || furniture === '1') ? 1 : 0,
+      // Feature поля - добавляем из извлеченных данных
+      ...Object.fromEntries(
+        Object.entries(featureFields).map(([key, value]) => [
+          key,
+          value === '1' || value === 1 || value === true ? 1 : 0
+        ])
+      ),
       commercial_type: commercial_type || null,
       business_hours: business_hours || null,
       renovation: renovation || null,
@@ -3797,6 +3819,13 @@ app.post('/api/properties', upload.fields([
       floor: property.floor,
       total_floors: property.total_floors,
       year_built: property.year_built,
+      amenities: property.amenities,
+      amenities_type: typeof property.amenities,
+      additional_amenities: property.additional_amenities,
+      additional_amenities_type: typeof property.additional_amenities,
+      feature1: property.feature1,
+      feature2: property.feature2,
+      feature3: property.feature3,
       building_type: property.building_type,
       balcony: property.balcony,
       parking: property.parking,
@@ -4278,6 +4307,45 @@ app.get('/api/properties/pending', (req, res) => {
       } else if (!formatted.videos) {
         formatted.videos = [];
       }
+      
+      // Парсим amenities (JSON массив удобств)
+      let amenitiesArray = [];
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          amenitiesArray = JSON.parse(formatted.amenities);
+        } catch (e) {
+          console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+          amenitiesArray = [];
+        }
+      } else if (Array.isArray(formatted.amenities)) {
+        // Уже массив, оставляем как есть
+        amenitiesArray = formatted.amenities;
+      } else if (!formatted.amenities) {
+        amenitiesArray = [];
+      }
+      
+      // Сохраняем массив amenities
+      formatted.amenities = amenitiesArray;
+      
+      // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+      formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+      formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+      formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+      formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+      formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+      formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+      formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+      
+      // Обрабатываем feature поля (feature1, feature2, ...)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`;
+        formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+      }
+      
+      // additional_amenities - это текстовое поле
+      if (formatted.additional_amenities === undefined) {
+        formatted.additional_amenities = null;
+      }
       if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
         try {
           formatted.additional_documents = JSON.parse(formatted.additional_documents);
@@ -4315,61 +4383,157 @@ app.get('/api/properties/approved', (req, res) => {
     // Используем функцию из propertyQueries, которая работает с новыми таблицами
     const properties = propertyQueries.getApproved(type || null);
     
-    // Преобразуем данные в формат для фронтенда
+    console.log(`✅ Получено одобренных объявлений: ${properties.length}`);
+    if (properties.length > 0) {
+      console.log('📋 Пример данных из БД (первое объявление):', {
+        id: properties[0].id,
+        title: properties[0].title,
+        amenities: properties[0].amenities,
+        amenities_type: typeof properties[0].amenities,
+        additional_amenities: properties[0].additional_amenities,
+        additional_amenities_type: typeof properties[0].additional_amenities
+      });
+    }
+    
+    // Преобразуем данные в формат для фронтенда (возвращаем ВСЕ поля)
     const formattedProperties = properties.map(prop => {
-      // Парсим JSON поля
-      let photos = [];
-      let videos = [];
+      const formatted = { ...prop };
       
-      if (prop.photos) {
+      // Парсим JSON поля безопасно
+      if (formatted.photos && typeof formatted.photos === 'string') {
         try {
-          photos = typeof prop.photos === 'string' ? JSON.parse(prop.photos) : prop.photos;
+          formatted.photos = JSON.parse(formatted.photos);
         } catch (e) {
-          photos = [];
+          formatted.photos = [];
+        }
+      } else if (!formatted.photos) {
+        formatted.photos = [];
+      }
+      
+      if (formatted.videos && typeof formatted.videos === 'string') {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      } else if (!formatted.videos) {
+        formatted.videos = [];
+      }
+      
+      // Парсим amenities (JSON массив удобств)
+      // Проверяем, нужно ли парсить (если это строка, значит еще не распарсено)
+      let amenitiesArray = [];
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          amenitiesArray = JSON.parse(formatted.amenities);
+        } catch (e) {
+          console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+          amenitiesArray = [];
+        }
+      } else if (Array.isArray(formatted.amenities)) {
+        // Уже массив, оставляем как есть
+        amenitiesArray = formatted.amenities;
+      } else if (!formatted.amenities) {
+        amenitiesArray = [];
+      }
+      
+      // Сохраняем массив amenities
+      formatted.amenities = amenitiesArray;
+      
+      // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+      // (так как фронтенд ожидает отдельные поля, а не массив)
+      formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+      formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+      formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+      formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+      formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+      formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+      formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+      
+      // Обрабатываем feature поля (feature1, feature2, ...)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`;
+        formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+      }
+      
+      // additional_amenities - это текстовое поле, которое пользователь вводит сам
+      // Убеждаемся, что оно всегда возвращается (даже если null или пустое)
+      // Не парсим как JSON, это просто текст
+      if (formatted.additional_amenities === undefined || formatted.additional_amenities === null) {
+        // Если undefined или null, оставляем null (не пустую строку, чтобы фронтенд мог проверить)
+        formatted.additional_amenities = formatted.additional_amenities || null;
+      } else if (typeof formatted.additional_amenities === 'string' && formatted.additional_amenities.trim() === '') {
+        // Если пустая строка, оставляем как есть (может быть важно для фронтенда)
+        formatted.additional_amenities = formatted.additional_amenities;
+      }
+      // Если это непустая строка, оставляем как есть
+      
+      if (formatted.coordinates && typeof formatted.coordinates === 'string') {
+        try {
+          if (formatted.coordinates.startsWith('[') || formatted.coordinates.startsWith('{')) {
+            formatted.coordinates = JSON.parse(formatted.coordinates);
+          } else {
+            formatted.coordinates = formatted.coordinates.split(',').map(Number);
+          }
+        } catch (e) {
+          formatted.coordinates = null;
         }
       }
       
-      if (prop.videos) {
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
         try {
-          videos = typeof prop.videos === 'string' ? JSON.parse(prop.videos) : prop.videos;
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
         } catch (e) {
-          videos = [];
+          formatted.additional_documents = [];
+        }
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
+      }
+      
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
         }
       }
       
-      return {
-        id: prop.id,
-        name: prop.title,
-        title: prop.title,
-        location: prop.location || '',
-        price: prop.price || 0,
-        coordinates: prop.coordinates ? (
-          typeof prop.coordinates === 'string' 
-            ? (prop.coordinates.startsWith('[') || prop.coordinates.startsWith('{') 
-                ? JSON.parse(prop.coordinates) 
-                : prop.coordinates.split(',').map(Number))
-            : prop.coordinates
-        ) : null,
-        owner: {
-          firstName: prop.first_name || '',
-          lastName: prop.last_name || '',
-          email: prop.email || ''
-        },
-        image: photos && photos.length > 0 ? photos[0] : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-        images: photos || [],
-        videos: videos || [],
-        hasSamolyot: false,
-        isAuction: false,
-        currentBid: null,
-        endTime: null,
-        beds: prop.bedrooms || prop.rooms || 0,
-        baths: prop.bathrooms || 0,
-        sqft: prop.area || 0,
-        description: prop.description || '',
-        property_type: prop.property_type,
-        currency: prop.currency || 'USD'
+      // Добавляем дополнительные поля для обратной совместимости
+      formatted.name = formatted.title;
+      formatted.image = formatted.photos && formatted.photos.length > 0 
+        ? formatted.photos[0] 
+        : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80';
+      formatted.images = formatted.photos || [];
+      formatted.owner = {
+        firstName: formatted.first_name || '',
+        lastName: formatted.last_name || '',
+        email: formatted.email || ''
       };
+      formatted.beds = formatted.bedrooms || formatted.rooms || 0;
+      formatted.baths = formatted.bathrooms || 0;
+      formatted.sqft = formatted.area || 0;
+      formatted.hasSamolyot = false;
+      formatted.isAuction = false;
+      formatted.currentBid = null;
+      formatted.endTime = null;
+      
+      return formatted;
     });
+    
+    // Логируем для отладки (только для первого объекта)
+    if (formattedProperties.length > 0) {
+      console.log('📋 Отформатированные данные (первое объявление):', {
+        id: formattedProperties[0].id,
+        title: formattedProperties[0].title,
+        amenities: formattedProperties[0].amenities,
+        amenities_length: Array.isArray(formattedProperties[0].amenities) ? formattedProperties[0].amenities.length : 'not array',
+        additional_amenities: formattedProperties[0].additional_amenities,
+        additional_amenities_length: formattedProperties[0].additional_amenities ? formattedProperties[0].additional_amenities.length : 0,
+        balcony: formattedProperties[0].balcony,
+        parking: formattedProperties[0].parking,
+        elevator: formattedProperties[0].elevator
+      });
+    }
     
     res.json({
       success: true,
@@ -4392,45 +4556,69 @@ app.get('/api/properties/auctions', (req, res) => {
     // Используем функцию из propertyQueries, которая работает с новыми таблицами
     let properties = propertyQueries.getAuctions(type || null);
     
-    // Также получаем объекты с тестовыми таймерами
-    const db = getDatabase();
-    let testTimerQuery = `
-      SELECT 
-        p.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.phone_number,
-        u.role
-      FROM properties_apartments p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.moderation_status = 'approved'
-        AND p.test_timer_end_date IS NOT NULL
-        AND p.test_timer_end_date != ''
-    `;
-    
-    const testTimerParams = [];
-    if (type) {
-      testTimerQuery += ' AND p.property_type = ?';
-      testTimerParams.push(type);
+    console.log(`✅ Получено аукционных объявлений: ${properties.length}`);
+    if (properties.length > 0) {
+      console.log('📋 Пример данных из БД (первое объявление):', {
+        id: properties[0].id,
+        title: properties[0].title,
+        amenities: properties[0].amenities,
+        amenities_type: typeof properties[0].amenities,
+        additional_amenities: properties[0].additional_amenities,
+        additional_amenities_type: typeof properties[0].additional_amenities
+      });
     }
     
-    testTimerQuery += ' ORDER BY p.test_timer_end_date ASC';
-    
+    // Также получаем объекты с тестовыми таймерами (если поле существует)
+    const db = getDatabase();
     let apartmentsWithTestTimer = [];
     let housesWithTestTimer = [];
     
+    // Проверяем, существует ли поле test_timer_end_date в таблицах
     try {
-      apartmentsWithTestTimer = db.prepare(testTimerQuery).all(...testTimerParams);
+      const apartmentsPragma = db.prepare("PRAGMA table_info(properties_apartments)").all();
+      const housesPragma = db.prepare("PRAGMA table_info(properties_houses)").all();
+      const hasTestTimerField = apartmentsPragma.some(col => col.name === 'test_timer_end_date') ||
+                                housesPragma.some(col => col.name === 'test_timer_end_date');
+      
+      if (hasTestTimerField) {
+        let testTimerQuery = `
+          SELECT 
+            p.*,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.phone_number,
+            u.role
+          FROM properties_apartments p
+          LEFT JOIN users u ON p.user_id = u.id
+          WHERE p.moderation_status = 'approved'
+            AND p.test_timer_end_date IS NOT NULL
+            AND p.test_timer_end_date != ''
+        `;
+        
+        const testTimerParams = [];
+        if (type) {
+          testTimerQuery += ' AND p.property_type = ?';
+          testTimerParams.push(type);
+        }
+        
+        testTimerQuery += ' ORDER BY p.test_timer_end_date ASC';
+        
+        try {
+          apartmentsWithTestTimer = db.prepare(testTimerQuery).all(...testTimerParams);
+        } catch (e) {
+          console.warn('Ошибка при получении apartments с тестовыми таймерами:', e.message);
+        }
+        
+        try {
+          const housesTestTimerQuery = testTimerQuery.replace('properties_apartments', 'properties_houses');
+          housesWithTestTimer = db.prepare(housesTestTimerQuery).all(...testTimerParams);
+        } catch (e) {
+          console.warn('Ошибка при получении houses с тестовыми таймерами:', e.message);
+        }
+      }
     } catch (e) {
-      console.warn('Ошибка при получении apartments с тестовыми таймерами:', e);
-    }
-    
-    try {
-      const housesTestTimerQuery = testTimerQuery.replace('properties_apartments', 'properties_houses');
-      housesWithTestTimer = db.prepare(housesTestTimerQuery).all(...testTimerParams);
-    } catch (e) {
-      console.warn('Ошибка при получении houses с тестовыми таймерами:', e);
+      console.warn('Ошибка при проверке поля test_timer_end_date:', e.message);
     }
     
     // Объединяем аукционы и тестовые таймеры
@@ -4445,75 +4633,152 @@ app.get('/api/properties/auctions', (req, res) => {
       return new Date(aDate) - new Date(bDate);
     });
     
-    // Преобразуем данные в формат для фронтенда
+    // Преобразуем данные в формат для фронтенда (возвращаем ВСЕ поля)
     const formattedProperties = properties.map(prop => {
-      // Парсим JSON поля
-      let photos = [];
-      let videos = [];
+      const formatted = { ...prop };
       
-      if (prop.photos) {
+      // Парсим JSON поля безопасно
+      if (formatted.photos && typeof formatted.photos === 'string') {
         try {
-          photos = typeof prop.photos === 'string' ? JSON.parse(prop.photos) : prop.photos;
+          formatted.photos = JSON.parse(formatted.photos);
         } catch (e) {
-          photos = [];
+          formatted.photos = [];
+        }
+      } else if (!formatted.photos) {
+        formatted.photos = [];
+      }
+      
+      if (formatted.videos && typeof formatted.videos === 'string') {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      } else if (!formatted.videos) {
+        formatted.videos = [];
+      }
+      
+      // Парсим amenities (JSON массив удобств)
+      // Проверяем, нужно ли парсить (если это строка, значит еще не распарсено)
+      let amenitiesArray = [];
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          amenitiesArray = JSON.parse(formatted.amenities);
+        } catch (e) {
+          console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+          amenitiesArray = [];
+        }
+      } else if (Array.isArray(formatted.amenities)) {
+        // Уже массив, оставляем как есть
+        amenitiesArray = formatted.amenities;
+      } else if (!formatted.amenities) {
+        amenitiesArray = [];
+      }
+      
+      // Сохраняем массив amenities
+      formatted.amenities = amenitiesArray;
+      
+      // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+      // (так как фронтенд ожидает отдельные поля, а не массив)
+      formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+      formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+      formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+      formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+      formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+      formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+      formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+      
+      // Обрабатываем feature поля (feature1, feature2, ...)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`;
+        formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+      }
+      
+      // additional_amenities - это текстовое поле, которое пользователь вводит сам
+      // Убеждаемся, что оно всегда возвращается (даже если null или пустое)
+      // Не парсим как JSON, это просто текст
+      if (formatted.additional_amenities === undefined || formatted.additional_amenities === null) {
+        // Если undefined или null, оставляем null (не пустую строку, чтобы фронтенд мог проверить)
+        formatted.additional_amenities = formatted.additional_amenities || null;
+      } else if (typeof formatted.additional_amenities === 'string' && formatted.additional_amenities.trim() === '') {
+        // Если пустая строка, оставляем как есть (может быть важно для фронтенда)
+        formatted.additional_amenities = formatted.additional_amenities;
+      }
+      // Если это непустая строка, оставляем как есть
+      
+      if (formatted.coordinates && typeof formatted.coordinates === 'string') {
+        try {
+          if (formatted.coordinates.startsWith('[') || formatted.coordinates.startsWith('{')) {
+            formatted.coordinates = JSON.parse(formatted.coordinates);
+          } else {
+            formatted.coordinates = formatted.coordinates.split(',').map(Number);
+          }
+        } catch (e) {
+          formatted.coordinates = null;
         }
       }
       
-      if (prop.videos) {
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
         try {
-          videos = typeof prop.videos === 'string' ? JSON.parse(prop.videos) : prop.videos;
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
         } catch (e) {
-          videos = [];
+          formatted.additional_documents = [];
+        }
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
+      }
+      
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
         }
       }
       
-      return {
-        id: prop.id,
-        name: prop.title,
-        title: prop.title,
-        location: prop.location || '',
-        // price по-прежнему используем как стартовую ставку, чтобы не ломать фронт
-        price: prop.auction_starting_price || prop.price || 0,
-        coordinates: prop.coordinates ? (
-          typeof prop.coordinates === 'string' 
-            ? (prop.coordinates.startsWith('[') || prop.coordinates.startsWith('{') 
-                ? JSON.parse(prop.coordinates) 
-                : prop.coordinates.split(',').map(Number))
-            : prop.coordinates
-        ) : null,
-        owner: {
-          firstName: prop.first_name || '',
-          lastName: prop.last_name || '',
-          email: prop.email || ''
-        },
-        image: photos && photos.length > 0 ? photos[0] : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-        images: photos || [],
-        videos: videos || [],
-        hasSamolyot: false,
-        isAuction: true,
-        currentBid: prop.auction_starting_price || prop.price || 0,
-        endTime: prop.test_timer_end_date || prop.auction_end_date || null,
-        test_timer_end_date: prop.test_timer_end_date || null,
-        beds: prop.bedrooms || prop.rooms || 0,
-        baths: prop.bathrooms || 0,
-        sqft: prop.area || 0,
-        area: prop.area || 0,
-        rooms: prop.bedrooms || prop.rooms || 0,
-        description: prop.description || '',
-        property_type: prop.property_type,
-        currency: prop.currency || 'USD',
-        // Доп. поля для админки
-        // originalPrice - минимальная цена продажи (из поля price в БД)
-        originalPrice: prop.price || null,
-        // auctionStartingPrice - стартовая ставка (из поля auction_starting_price в БД)
-        // НЕ используем fallback на price, чтобы не смешивать с минимальной ценой
-        auctionStartingPrice: prop.auction_starting_price || null,
-        tag: prop.property_type === 'apartment' ? 'apartment' : 
-             prop.property_type === 'villa' ? 'villa' : 
-             prop.property_type === 'house' ? 'house' : 
-             prop.property_type === 'commercial' ? 'apartment' : 'apartment'
+      // Добавляем дополнительные поля для обратной совместимости
+      formatted.name = formatted.title;
+      formatted.image = formatted.photos && formatted.photos.length > 0 
+        ? formatted.photos[0] 
+        : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80';
+      formatted.images = formatted.photos || [];
+      formatted.owner = {
+        firstName: formatted.first_name || '',
+        lastName: formatted.last_name || '',
+        email: formatted.email || ''
       };
+      formatted.beds = formatted.bedrooms || formatted.rooms || 0;
+      formatted.baths = formatted.bathrooms || 0;
+      formatted.sqft = formatted.area || 0;
+      formatted.rooms = formatted.bedrooms || formatted.rooms || 0;
+      formatted.hasSamolyot = false;
+      formatted.isAuction = true;
+      formatted.currentBid = formatted.auction_starting_price || formatted.price || 0;
+      formatted.endTime = formatted.test_timer_end_date || formatted.auction_end_date || null;
+      formatted.originalPrice = formatted.price || null;
+      formatted.auctionStartingPrice = formatted.auction_starting_price || null;
+      formatted.tag = formatted.property_type === 'apartment' ? 'apartment' : 
+                      formatted.property_type === 'villa' ? 'villa' : 
+                      formatted.property_type === 'house' ? 'house' : 
+                      formatted.property_type === 'commercial' ? 'apartment' : 'apartment';
+      
+      return formatted;
     });
+    
+    // Логируем для отладки (только для первого объекта)
+    if (formattedProperties.length > 0) {
+      console.log('📋 Отформатированные данные аукциона (первое объявление):', {
+        id: formattedProperties[0].id,
+        title: formattedProperties[0].title,
+        amenities: formattedProperties[0].amenities,
+        amenities_length: Array.isArray(formattedProperties[0].amenities) ? formattedProperties[0].amenities.length : 'not array',
+        additional_amenities: formattedProperties[0].additional_amenities,
+        additional_amenities_length: formattedProperties[0].additional_amenities ? formattedProperties[0].additional_amenities.length : 0,
+        balcony: formattedProperties[0].balcony,
+        parking: formattedProperties[0].parking,
+        elevator: formattedProperties[0].elevator
+      });
+    }
     
     res.json({
       success: true,
@@ -4901,14 +5166,45 @@ app.get('/api/properties/:id', (req, res) => {
       }
     }
     
+    // Парсим amenities (JSON массив удобств)
+    let amenitiesArray = [];
     if (formatted.amenities && typeof formatted.amenities === 'string') {
       try {
-        formatted.amenities = JSON.parse(formatted.amenities);
+        amenitiesArray = JSON.parse(formatted.amenities);
       } catch (e) {
-        formatted.amenities = [];
+        console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+        amenitiesArray = [];
       }
+    } else if (Array.isArray(formatted.amenities)) {
+      // Уже массив, оставляем как есть
+      amenitiesArray = formatted.amenities;
     } else if (!formatted.amenities) {
-      formatted.amenities = [];
+      amenitiesArray = [];
+    }
+    
+    // Сохраняем массив amenities
+    formatted.amenities = amenitiesArray;
+    
+    // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+    // (так как фронтенд ожидает отдельные поля, а не массив)
+    formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+    formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+    formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+    formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+    formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+    formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+    formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+    
+    // Обрабатываем feature поля (feature1, feature2, ...)
+    for (let i = 1; i <= 26; i++) {
+      const featureKey = `feature${i}`;
+      formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+    }
+    
+    // additional_amenities - это текстовое поле, которое пользователь вводит сам
+    // Убеждаемся, что оно всегда возвращается (даже если null или пустое)
+    if (formatted.additional_amenities === undefined) {
+      formatted.additional_amenities = null;
     }
     
     // Обрабатываем координаты

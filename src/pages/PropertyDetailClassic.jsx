@@ -162,21 +162,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     return 'image'
   }
 
-  // Выводим ВСЕ данные в консоль для отладки
-  console.log('🔍 PropertyDetailClassic - ВСЕ ДАННЫЕ ОБЪЕКТА:', property)
-  console.log('🔍 PropertyDetailClassic - Координаты (raw):', property.coordinates)
-  console.log('🔍 PropertyDetailClassic - Удобства (raw):', {
-    balcony: property.balcony,
-    parking: property.parking,
-    elevator: property.elevator,
-    garage: property.garage,
-    pool: property.pool,
-    garden: property.garden,
-    electricity: property.electricity,
-    internet: property.internet,
-    security: property.security,
-    furniture: property.furniture,
-  })
+  // Убрали лишние логи, которые вызывают бесконечный цикл
 
   // Обрабатываем координаты (как в админке - просто используем как есть)
   let coordinates = [53.9045, 27.5615] // Дефолтные координаты (Минск)
@@ -203,7 +189,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     }
   }
 
-  console.log('🔍 PropertyDetailClassic - Координаты (processed):', coordinates)
+  // Убрали лишние логи
 
   // Геокодирование адреса, если координат нет
   useEffect(() => {
@@ -260,7 +246,8 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     }
 
     geocodeAddress()
-  }, [property.location, property.address, coordinates])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [property.location, property.address])
 
   // Инициализируем API URL при монтировании компонента
   useEffect(() => {
@@ -312,6 +299,33 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     internet: property.internet === true || property.internet === 1 || property.internet === '1',
     security: property.security === true || property.security === 1 || property.security === '1',
     furniture: property.furniture === true || property.furniture === 1 || property.furniture === '1',
+    // Feature поля (feature1 - feature26)
+    feature1: property.feature1 === true || property.feature1 === 1 || property.feature1 === '1',
+    feature2: property.feature2 === true || property.feature2 === 1 || property.feature2 === '1',
+    feature3: property.feature3 === true || property.feature3 === 1 || property.feature3 === '1',
+    feature4: property.feature4 === true || property.feature4 === 1 || property.feature4 === '1',
+    feature5: property.feature5 === true || property.feature5 === 1 || property.feature5 === '1',
+    feature6: property.feature6 === true || property.feature6 === 1 || property.feature6 === '1',
+    feature7: property.feature7 === true || property.feature7 === 1 || property.feature7 === '1',
+    feature8: property.feature8 === true || property.feature8 === 1 || property.feature8 === '1',
+    feature9: property.feature9 === true || property.feature9 === 1 || property.feature9 === '1',
+    feature10: property.feature10 === true || property.feature10 === 1 || property.feature10 === '1',
+    feature11: property.feature11 === true || property.feature11 === 1 || property.feature11 === '1',
+    feature12: property.feature12 === true || property.feature12 === 1 || property.feature12 === '1',
+    feature13: property.feature13 === true || property.feature13 === 1 || property.feature13 === '1',
+    feature14: property.feature14 === true || property.feature14 === 1 || property.feature14 === '1',
+    feature15: property.feature15 === true || property.feature15 === 1 || property.feature15 === '1',
+    feature16: property.feature16 === true || property.feature16 === 1 || property.feature16 === '1',
+    feature17: property.feature17 === true || property.feature17 === 1 || property.feature17 === '1',
+    feature18: property.feature18 === true || property.feature18 === 1 || property.feature18 === '1',
+    feature19: property.feature19 === true || property.feature19 === 1 || property.feature19 === '1',
+    feature20: property.feature20 === true || property.feature20 === 1 || property.feature20 === '1',
+    feature21: property.feature21 === true || property.feature21 === 1 || property.feature21 === '1',
+    feature22: property.feature22 === true || property.feature22 === 1 || property.feature22 === '1',
+    feature23: property.feature23 === true || property.feature23 === 1 || property.feature23 === '1',
+    feature24: property.feature24 === true || property.feature24 === 1 || property.feature24 === '1',
+    feature25: property.feature25 === true || property.feature25 === 1 || property.feature25 === '1',
+    feature26: property.feature26 === true || property.feature26 === 1 || property.feature26 === '1',
     // Цена - используем обычную стоимость объекта (минимальная цена продажи), а не начальную ставку
     price: property.price,
     currentBid: property.currentBid,
@@ -330,38 +344,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
     endTime: property.test_timer_end_date || property.endTime || null,
   }
 
-  console.log('🔍 PropertyDetailClassic - displayProperty:', displayProperty)
-  console.log('🔍 PropertyDetailClassic - test_drive:', {
-    property_test_drive: property.test_drive,
-    property_test_drive_type: typeof property.test_drive,
-    property_testDrive: property.testDrive,
-    displayProperty_test_drive: displayProperty.test_drive,
-    displayProperty_test_drive_type: typeof displayProperty.test_drive,
-    displayProperty_testDrive: displayProperty.testDrive,
-    check1: displayProperty.test_drive === 1,
-    check2: displayProperty.test_drive === true,
-    check3: displayProperty.testDrive === true,
-    willShow: (displayProperty.test_drive === 1 || displayProperty.test_drive === true || displayProperty.testDrive === true)
-  })
-  console.log('🔍 PropertyDetailClassic - Жилая площадь:', {
-    living_area: displayProperty.living_area,
-    property_living_area: property.living_area,
-    property_livingArea: property.livingArea,
-    type: typeof displayProperty.living_area,
-    isNull: displayProperty.living_area === null,
-    isUndefined: displayProperty.living_area === undefined,
-    isEmpty: displayProperty.living_area === ''
-  })
-  console.log('🔍 PropertyDetailClassic - building_type:', {
-    building_type: displayProperty.building_type,
-    property_building_type: property.building_type,
-    property_buildingType: property.buildingType
-  })
-  console.log('🔍 PropertyDetailClassic - Дополнительные удобства:', {
-    additional_amenities: displayProperty.additional_amenities,
-    property_additional_amenities: property.additional_amenities,
-    property_additionalAmenities: property.additionalAmenities
-  })
+  // Убрали лишние логи, которые вызывают бесконечный цикл
 
   const images =
     displayProperty.images && displayProperty.images.length > 0
@@ -1551,13 +1534,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                         {(() => {
                           const testDriveValue = displayProperty.test_drive;
                           const isTestDrive = testDriveValue === 1 || testDriveValue === true || displayProperty.testDrive === true;
-                          console.log('🔍 PropertyDetailClassic - Отображение test_drive:', {
-                            testDriveValue,
-                            testDriveValue_type: typeof testDriveValue,
-                            displayProperty_testDrive: displayProperty.testDrive,
-                            isTestDrive,
-                            result: isTestDrive ? 'Да' : 'Нет'
-                          });
+                          // Убрали логи;
                           return isTestDrive ? 'Да' : 'Нет';
                         })()}
                       </span>
@@ -1632,38 +1609,93 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                       return value === 1 || value === true || value === '1' || value === 'true'
                     }
                     
+                    // Маппинг названий для feature полей
+                    const featureLabels = {
+                      feature1: 'Подземная парковка',
+                      feature2: 'Кухонная мебель',
+                      feature3: 'Стиральная машина',
+                      feature4: 'Посудомоечная машина',
+                      feature5: 'Домофон',
+                      feature6: 'Видеонаблюдение',
+                      feature7: 'Лоджия',
+                      feature8: 'Кладовая',
+                      feature9: 'Терраса',
+                      feature10: 'Мансарда',
+                      feature11: 'Подвал',
+                      feature12: 'Парковка для велосипедов',
+                      feature13: 'Спортзал',
+                      feature14: 'Сауна',
+                      feature15: 'Хаммам',
+                      feature16: 'Видеодомофон',
+                      feature17: 'Консьерж',
+                      feature18: 'Гардеробная',
+                      feature19: 'Камин',
+                      feature20: 'Система умного дома',
+                      feature21: 'Солнечные панели',
+                      feature22: 'Система вентиляции',
+                      feature23: 'Центральное кондиционирование',
+                      feature24: 'Система фильтрации воды',
+                      feature25: 'Генератор',
+                      feature26: 'Система безопасности'
+                    }
+                    
                     const amenities = []
                     
-                    if (hasAmenity(property.balcony) || hasAmenity(displayProperty.balcony)) {
-                      amenities.push('Балкон')
+                    // Получаем массив amenities (если он есть)
+                    // Массив amenities - это единственный источник правды, потому что он формируется при сохранении
+                    const amenitiesArray = property.amenities || displayProperty.amenities || []
+                    const isAmenitiesArray = Array.isArray(amenitiesArray)
+                    
+                    // Маппинг названий для основных удобств
+                    const mainAmenitiesLabels = {
+                      balcony: 'Балкон',
+                      parking: 'Парковка',
+                      elevator: 'Лифт',
+                      garage: 'Гараж',
+                      pool: 'Бассейн',
+                      garden: 'Сад',
+                      electricity: 'Электричество',
+                      internet: 'Интернет',
+                      security: 'Охрана',
+                      furniture: 'Мебель'
                     }
-                    if (hasAmenity(property.parking) || hasAmenity(displayProperty.parking)) {
-                      amenities.push('Парковка')
+                    
+                    // Проверяем ТОЛЬКО массив amenities (единственный источник правды)
+                    if (isAmenitiesArray && amenitiesArray.length > 0) {
+                      // Основные удобства
+                      Object.entries(mainAmenitiesLabels).forEach(([key, label]) => {
+                        if (amenitiesArray.includes(key)) {
+                          amenities.push(label)
+                        }
+                      })
+                      
+                      // Feature поля (feature1 - feature26)
+                      for (let i = 1; i <= 26; i++) {
+                        const featureKey = `feature${i}`
+                        if (amenitiesArray.includes(featureKey) && featureLabels[featureKey]) {
+                          amenities.push(featureLabels[featureKey])
+                        }
+                      }
+                    } else {
+                      // Fallback: если массива нет, проверяем отдельные поля (для старых записей)
+                      // Но это должно быть редко, так как новые записи всегда имеют массив
+                      Object.entries(mainAmenitiesLabels).forEach(([key, label]) => {
+                        if (hasAmenity(property[key]) || hasAmenity(displayProperty[key])) {
+                          amenities.push(label)
+                        }
+                      })
+                      
+                      for (let i = 1; i <= 26; i++) {
+                        const featureKey = `feature${i}`
+                        const featureValue = displayProperty[featureKey] || property[featureKey]
+                        if (hasAmenity(featureValue) && featureLabels[featureKey]) {
+                          amenities.push(featureLabels[featureKey])
+                        }
+                      }
                     }
-                    if (hasAmenity(property.elevator) || hasAmenity(displayProperty.elevator)) {
-                      amenities.push('Лифт')
-                    }
-                    if (hasAmenity(property.garage) || hasAmenity(displayProperty.garage)) {
-                      amenities.push('Гараж')
-                    }
-                    if (hasAmenity(property.pool) || hasAmenity(displayProperty.pool)) {
-                      amenities.push('Бассейн')
-                    }
-                    if (hasAmenity(property.garden) || hasAmenity(displayProperty.garden)) {
-                      amenities.push('Сад')
-                    }
-                    if (hasAmenity(property.electricity) || hasAmenity(displayProperty.electricity)) {
-                      amenities.push('Электричество')
-                    }
-                    if (hasAmenity(property.internet) || hasAmenity(displayProperty.internet)) {
-                      amenities.push('Интернет')
-                    }
-                    if (hasAmenity(property.security) || hasAmenity(displayProperty.security)) {
-                      amenities.push('Охрана')
-                    }
-                    if (hasAmenity(property.furniture) || hasAmenity(displayProperty.furniture)) {
-                      amenities.push('Мебель')
-                    }
+                    
+                    // Логируем только один раз при монтировании (для отладки)
+                    // Убрали логирование, чтобы избежать бесконечного цикла
                     
                     if (amenities.length === 0) {
                       return <span className="amenity-item">Удобства не указаны</span>
@@ -1678,20 +1710,24 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
 
               {/* Дополнительная информация (текст, который пользователь написал сам) */}
               {(() => {
-                const additionalInfo = displayProperty.additional_amenities || property.additional_amenities || property.additionalAmenities
-                const hasAdditionalInfo = additionalInfo && typeof additionalInfo === 'string' && additionalInfo.trim() !== ''
-                console.log('🔍 Дополнительная информация:', {
-                  displayProperty_additional_amenities: displayProperty.additional_amenities,
-                  property_additional_amenities: property.additional_amenities,
-                  property_additionalAmenities: property.additionalAmenities,
-                  additionalInfo,
-                  hasAdditionalInfo
-                })
+                // Получаем additional_amenities из разных источников
+                const additionalInfo = displayProperty.additional_amenities || 
+                                      property.additional_amenities || 
+                                      property.additionalAmenities ||
+                                      null
+                
+                // Проверяем, что это не null, не undefined, и не пустая строка
+                const hasAdditionalInfo = additionalInfo !== null && 
+                                         additionalInfo !== undefined && 
+                                         String(additionalInfo).trim() !== ''
+                
+                // Убрали логи
+                
                 return hasAdditionalInfo ? (
                   <div className="property-detail-info-block">
-                    <h3 className="property-detail-info-block__title">Дополнительная информация</h3>
+                    <h3 className="property-detail-info-block__title">Дополнительные удобства</h3>
                     <div className="property-detail-info-block__content property-detail-info-block__content--text">
-                      <p>{additionalInfo}</p>
+                      <p>{String(additionalInfo)}</p>
                     </div>
                   </div>
                 ) : null
