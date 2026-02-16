@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
       port: vitePort,
       host: '0.0.0.0', // Слушаем на всех интерфейсах для Railway
       strictPort: false, // Позволяем использовать другой порт, если указанный занят
+      hmr: {
+        clientPort: vitePort // Для HMR на Railway
+      },
       proxy: {
         '/api': {
           target: apiUrl,
@@ -31,6 +34,11 @@ export default defineConfig(({ mode }) => {
               console.log(`[Proxy] ${req.method} ${req.url} -> ${apiUrl}${req.url}`)
             })
           }
+        },
+        '/health': {
+          target: apiUrl,
+          changeOrigin: true,
+          secure: false
         }
       }
     },

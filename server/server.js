@@ -71,6 +71,17 @@ function validatePassword(password) {
 
 // Настройка middleware
 // CORS с поддержкой dev tunnels и других доменов
+// Health check endpoint для Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    serverPort: process.env.SERVER_PORT || 'not set',
+    railwayPort: process.env.PORT || 'not set'
+  });
+});
+
 app.use(cors({
   origin: function (origin, callback) {
     // Разрешаем запросы без origin (например, Postman, мобильные приложения)
