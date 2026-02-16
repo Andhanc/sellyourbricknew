@@ -1747,7 +1747,9 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                     }
                     
                     // Проверяем ТОЛЬКО массив amenities (единственный источник правды)
-                    if (isAmenitiesArray && amenitiesArray.length > 0) {
+                    // Если массив существует (даже если пустой), используем только его
+                    // Fallback используем только если массива вообще нет (null/undefined)
+                    if (isAmenitiesArray) {
                       // Основные удобства
                       Object.entries(mainAmenitiesLabels).forEach(([key, label]) => {
                         if (amenitiesArray.includes(key)) {
@@ -1763,7 +1765,7 @@ function PropertyDetailClassic({ property: initialProperty, onBack, showDocument
                         }
                       }
                     } else {
-                      // Fallback: если массива нет, проверяем отдельные поля (для старых записей)
+                      // Fallback: если массива нет вообще (null/undefined), проверяем отдельные поля (для старых записей)
                       // Но это должно быть редко, так как новые записи всегда имеют массив
                       Object.entries(mainAmenitiesLabels).forEach(([key, label]) => {
                         if (hasAmenity(property[key]) || hasAmenity(displayProperty[key])) {
