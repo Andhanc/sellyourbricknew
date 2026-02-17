@@ -2,8 +2,12 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ mode }) => {
+  // Определяем режим: если NODE_ENV=production или запущено на Railway (есть PORT), то production
+  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.PORT
+  const actualMode = isProduction ? 'production' : (mode || 'development')
+  
   // Загружаем переменные окружения
-  const env = loadEnv(mode, process.cwd(), '')
+  const env = loadEnv(actualMode, process.cwd(), '')
   
   // ============================================================
   // КОНФИГУРАЦИЯ ПОРТОВ:
@@ -35,6 +39,8 @@ export default defineConfig(({ mode }) => {
   console.log('[FRONTEND]    - PORT:', process.env.PORT || 'не установлен');
   console.log('[FRONTEND]    - SERVER_PORT:', process.env.SERVER_PORT || 'не установлен');
   console.log('[FRONTEND]    - NODE_ENV:', process.env.NODE_ENV || 'не установлен');
+  console.log('[FRONTEND]    - Режим Vite:', actualMode);
+  console.log('[FRONTEND]    - HMR:', actualMode === 'production' ? 'отключен' : 'включен');
   console.log('[FRONTEND] 🌐 Vite будет слушать на порту:', vitePort);
   console.log('[FRONTEND] 🔗 API URL для прокси:', apiUrl);
   console.log('[FRONTEND] ═══════════════════════════════════════════════════════');
@@ -52,8 +58,9 @@ export default defineConfig(({ mode }) => {
         '.up.railway.app',
         'web-production-5f1e0.up.railway.app' // Конкретный хост из ошибки
       ],
-      hmr: {
-        clientPort: vitePort // Для HMR на Railway
+      // Отключаем HMR в production (на Railway) - он не нужен и вызывает проблемы с WebSocket
+      hmr: actualMode === 'production' ? false : {
+        clientPort: vitePort // Для HMR в development
       },
       proxy: {
         '/api': {
@@ -91,7 +98,7 @@ export default defineConfig(({ mode }) => {
       'process.env.REACT_APP_EMAILJS_TEMPLATE_ID': JSON.stringify(env.REACT_APP_EMAILJS_TEMPLATE_ID || env.VITE_EMAILJS_TEMPLATE_ID || ''),
       'process.env.REACT_APP_EMAILJS_PUBLIC_KEY': JSON.stringify(env.REACT_APP_EMAILJS_PUBLIC_KEY || env.VITE_EMAILJS_PUBLIC_KEY || ''),
       'process.env.REACT_APP_API_BASE_URL': JSON.stringify(env.REACT_APP_API_BASE_URL || env.VITE_API_BASE_URL || '/api'),
-      'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
+      'process.env.NODE_ENV': JSON.stringify(actualMode === 'production' ? 'production' : 'development'),
     },
   }
 })
