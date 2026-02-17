@@ -12,11 +12,12 @@ node_modules/
 
 # Misc
 .DS_Store
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# .env файлы теперь коммитятся в репозиторий для Railway деплоя
+# .env
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
 
 # Logs
 npm-debug.log*
