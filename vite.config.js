@@ -46,6 +46,12 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0', // Слушаем на всех интерфейсах для Railway
       strictPort: false, // НЕ строгий порт - если порт занят, попробуем другой (для диагностики)
       // ВАЖНО: Railway устанавливает PORT, но если порт занят, лучше увидеть ошибку, чем молча падать
+      // Разрешаем все Railway хосты
+      allowedHosts: [
+        '.railway.app',
+        '.up.railway.app',
+        'web-production-5f1e0.up.railway.app' // Конкретный хост из ошибки
+      ],
       hmr: {
         clientPort: vitePort // Для HMR на Railway
       },
