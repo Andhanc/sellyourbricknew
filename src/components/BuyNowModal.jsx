@@ -1,4 +1,5 @@
 import { useState } from 'react'
+<<<<<<< HEAD
 import { FiX, FiCheckCircle, FiFileText, FiCreditCard, FiShield, FiExternalLink, FiCopy } from 'react-icons/fi'
 import './BuyNowModal.css'
 
@@ -16,10 +17,23 @@ const BuyNowModal = ({ isOpen, onClose, property }) => {
     setCopied(false)
     onClose()
   }
+=======
+import { FiX, FiCheckCircle, FiFileText, FiCreditCard, FiShield } from 'react-icons/fi'
+import { useUser } from '@clerk/clerk-react'
+import { getUserData } from '../services/authService'
+import { getApiBaseUrl } from '../utils/apiConfig'
+import './BuyNowModal.css'
+
+const BuyNowModal = ({ isOpen, onClose, property }) => {
+  const { user, isLoaded: userLoaded } = useUser()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
   if (!isOpen) return null
 
   const propertyTitle = property?.title || property?.name || 'Объект недвижимости'
+<<<<<<< HEAD
   const isAuction = property?.isAuction || false
   // Для аукциона используем текущую ставку, для обычной покупки - цену
   const purchaseAmount = isAuction ? (property?.currentBid || property?.price || 0) : (property?.price || 0)
@@ -60,6 +74,164 @@ const BuyNowModal = ({ isOpen, onClose, property }) => {
         <button 
           className="buy-now-modal__close" 
           onClick={handleClose}
+=======
+  const propertyPrice = property?.price || 0
+  const currency = property?.currency || 'USD'
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'BYN' ? 'Br' : ''
+
+  const handleSubmitRequest = async () => {
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      // Получаем данные текущего пользователя
+      let buyerData = {}
+      
+      // Пробуем получить данные из Clerk
+      if (userLoaded && user) {
+        const userName = user.fullName || 
+          `${user.firstName || ''} ${user.lastName || ''}`.trim() || 
+          user.username || 
+          'Пользователь'
+        
+        const userEmail = user.primaryEmailAddress?.emailAddress || 
+          (user.emailAddresses && user.emailAddresses.length > 0 ? user.emailAddresses[0].emailAddress : '')
+        
+        const userPhone = user.primaryPhoneNumber?.phoneNumber || 
+          (user.phoneNumbers && user.phoneNumbers.length > 0 ? user.phoneNumbers[0].phoneNumber : '')
+        
+        buyerData = {
+          name: userName,
+          email: userEmail,
+          phone: userPhone,
+          userId: user.id
+        }
+      } else {
+        // Если Clerk не используется, получаем из старой системы
+        const userData = getUserData()
+        buyerData = {
+          name: userData.name || 'Пользователь',
+          email: userData.email || '',
+          phone: userData.phone || userData.phoneFormatted || '',
+          userId: userData.id || ''
+        }
+      }
+
+      // Получаем данные владельца объекта (пробуем все возможные варианты)
+      const sellerId = property.user_id || property.userId || property.sellerId || null
+      
+      // Имя владельца - пробуем все варианты
+      let sellerName = property.seller || property.sellerName || null
+      if (!sellerName && (property.first_name || property.last_name)) {
+        sellerName = `${property.first_name || ''} ${property.last_name || ''}`.trim() || null
+      }
+      if (!sellerName) {
+        sellerName = null // Будет показано "Владелец не указан" в админке
+      }
+      
+      // Email владельца
+      const sellerEmail = property.sellerEmail || property.email || null
+      
+      // Телефон владельца
+      const sellerPhone = property.sellerPhone || property.phone_number || null
+
+      // Формируем данные запроса со всеми данными об объекте
+      const requestData = {
+        // Данные покупателя
+        buyerName: buyerData.name,
+        buyerEmail: buyerData.email,
+        buyerPhone: buyerData.phone,
+        buyerId: buyerData.userId,
+        
+        // Данные владельца объекта
+        sellerId: sellerId,
+        sellerName: sellerName,
+        sellerEmail: sellerEmail,
+        sellerPhone: sellerPhone,
+        
+        // Данные объекта недвижимости (базовые)
+        propertyId: property.id,
+        propertyTitle: propertyTitle,
+        propertyDescription: property.description || '',
+        propertyPrice: propertyPrice,
+        propertyCurrency: currency,
+        propertyLocation: property.location || '',
+        propertyType: property.type || property.property_type || '',
+        propertyArea: property.area || property.sqft || '',
+        
+        // Характеристики объекта
+        propertyRooms: property.rooms || property.bedrooms || null,
+        propertyBedrooms: property.bedrooms || property.rooms || null,
+        propertyBathrooms: property.bathrooms || null,
+        propertyFloor: property.floor !== undefined && property.floor !== null ? property.floor : null,
+        propertyTotalFloors: property.total_floors !== undefined && property.total_floors !== null ? property.total_floors : null,
+        propertyYearBuilt: property.year_built !== undefined && property.year_built !== null ? property.year_built : null,
+        propertyLivingArea: property.living_area || property.livingArea || null,
+        propertyLandArea: property.land_area || property.landArea || null,
+        propertyBuildingType: property.building_type || property.buildingType || null,
+        
+        // Дополнительные характеристики
+        propertyRenovation: property.renovation || null,
+        propertyCondition: property.condition || null,
+        propertyHeating: property.heating || null,
+        propertyWaterSupply: property.water_supply || null,
+        propertySewerage: property.sewerage || null,
+        
+        // Удобства (булевы значения)
+        propertyBalcony: property.balcony === true || property.balcony === 1 ? 1 : 0,
+        propertyParking: property.parking === true || property.parking === 1 ? 1 : 0,
+        propertyElevator: property.elevator === true || property.elevator === 1 ? 1 : 0,
+        propertyGarage: property.garage === true || property.garage === 1 ? 1 : 0,
+        propertyPool: property.pool === true || property.pool === 1 ? 1 : 0,
+        propertyGarden: property.garden === true || property.garden === 1 ? 1 : 0,
+        propertyElectricity: property.electricity === true || property.electricity === 1 ? 1 : 0,
+        propertyInternet: property.internet === true || property.internet === 1 ? 1 : 0,
+        propertySecurity: property.security === true || property.security === 1 ? 1 : 0,
+        propertyFurniture: property.furniture === true || property.furniture === 1 ? 1 : 0,
+        
+        // Коммерческая недвижимость
+        propertyCommercialType: property.commercial_type || null,
+        propertyBusinessHours: property.business_hours || null,
+        
+        // Дополнительная информация
+        requestDate: new Date().toISOString(),
+        status: 'pending' // pending, processing, completed, cancelled
+      }
+
+      // Отправляем запрос на сервер
+      const API_BASE_URL = await getApiBaseUrl()
+      const response = await fetch(`${API_BASE_URL}/purchase-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        alert('✅ Запрос на покупку успешно отправлен! Наш менеджер свяжется с вами в течение 24 часов.')
+        onClose()
+      } else {
+        throw new Error(data.error || 'Не удалось отправить запрос')
+      }
+    } catch (error) {
+      console.error('Ошибка отправки запроса на покупку:', error)
+      setSubmitError('Не удалось отправить запрос. Попробуйте еще раз.')
+      alert('❌ Ошибка при отправке запроса. Пожалуйста, попробуйте позже или свяжитесь с нами напрямую.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="buy-now-modal-overlay" onClick={onClose}>
+      <div className="buy-now-modal" onClick={(e) => e.stopPropagation()}>
+        <button 
+          className="buy-now-modal__close" 
+          onClick={onClose}
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
           aria-label="Закрыть"
         >
           <FiX size={24} />
@@ -75,6 +247,7 @@ const BuyNowModal = ({ isOpen, onClose, property }) => {
           </div>
 
           <div className="buy-now-modal__price-block">
+<<<<<<< HEAD
             <span className="buy-now-modal__price-label">
               {isAuction ? 'Сумма покупки (ваша ставка):' : 'Стоимость:'}
             </span>
@@ -229,6 +402,14 @@ const BuyNowModal = ({ isOpen, onClose, property }) => {
             )}
           </div>
 
+=======
+            <span className="buy-now-modal__price-label">Стоимость:</span>
+            <span className="buy-now-modal__price-value">
+              {currencySymbol}{propertyPrice.toLocaleString('ru-RU')}
+            </span>
+          </div>
+
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
           <div className="buy-now-modal__instructions">
             <h3 className="buy-now-modal__instructions-title">Как купить объект:</h3>
             
@@ -284,6 +465,7 @@ const BuyNowModal = ({ isOpen, onClose, property }) => {
 
           <div className="buy-now-modal__actions">
             <button 
+<<<<<<< HEAD
               className="buy-now-modal__button buy-now-modal__button--secondary"
               onClick={handleClose}
             >
@@ -297,6 +479,20 @@ const BuyNowModal = ({ isOpen, onClose, property }) => {
               Подтвердить
             </button>
           </div>
+=======
+              className="buy-now-modal__button buy-now-modal__button--primary"
+              onClick={handleSubmitRequest}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Отправка...' : 'Отправить запрос на покупку'}
+            </button>
+          </div>
+          {submitError && (
+            <div className="buy-now-modal__error">
+              {submitError}
+            </div>
+          )}
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         </div>
       </div>
     </div>

@@ -2,7 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import { initDatabase, closeDatabase, getDatabase } from './database/database.js';
+<<<<<<< HEAD
 import { userQueries, documentQueries, notificationQueries, administratorQueries, whatsappUserQueries } from './database/database.js';
+=======
+import { userQueries, documentQueries, notificationQueries, administratorQueries, whatsappUserQueries, purchaseRequestQueries, apartmentQueries, houseQueries, propertyQueries } from './database/database.js';
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import multer from 'multer';
@@ -17,8 +21,66 @@ const __dirname = dirname(__filename);
 
 const { Client, LocalAuth } = whatsappPkg;
 
+// Логирование при старте для диагностики
+console.log('═══════════════════════════════════════════════════════');
+console.log('[SERVER] 🚀 Начало инициализации сервера...');
+console.log('[SERVER] 📋 Переменные окружения:');
+console.log('[SERVER]    - SERVER_PORT:', process.env.SERVER_PORT || 'не установлен (будет использован 3000)');
+console.log('[SERVER]    - PORT:', process.env.PORT || 'не установлен');
+console.log('[SERVER]    - NODE_ENV:', process.env.NODE_ENV || 'не установлен');
+console.log('[SERVER] ═══════════════════════════════════════════════════════');
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+// На Railway: Vite использует PORT, сервер использует SERVER_PORT
+// Если SERVER_PORT не установлен, используем 3000 (для локальной разработки)
+// На Railway обязательно установите SERVER_PORT в переменных окружения
+const PORT = process.env.SERVER_PORT || 3000;
+
+/**
+ * Валидация пароля
+ * Проверяет наличие заглавной буквы, спецсимволов и цифр
+ * @param {string} password - Пароль для проверки
+ * @returns {object} - { valid: boolean, errors: string[], missing: string[] }
+ */
+function validatePassword(password) {
+  const errors = [];
+  const missing = [];
+  const present = [];
+
+  // Проверка наличия заглавной буквы
+  if (!/[A-ZА-Я]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы одну заглавную букву');
+    missing.push('заглавную букву');
+  } else {
+    present.push('заглавную букву');
+  }
+
+  // Проверка наличия спецсимволов
+  if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы один спецсимвол (!@#$%^&*()_+-=[]{}|;:,.<>?)');
+    missing.push('спецсимвол');
+  } else {
+    present.push('спецсимвол');
+  }
+
+  // Проверка наличия цифры
+  if (!/[0-9]/.test(password)) {
+    errors.push('Пароль должен содержать хотя бы одну цифру');
+    missing.push('цифру');
+  } else {
+    present.push('цифру');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    missing,
+    present,
+    message: errors.length > 0 
+      ? `Пароль не соответствует требованиям. Добавьте: ${missing.join(', ')}. ${present.length > 0 ? `Уже есть: ${present.join(', ')}.` : ''}`
+      : 'Пароль соответствует всем требованиям'
+  };
+}
 
 /**
  * Валидация пароля
@@ -68,6 +130,31 @@ function validatePassword(password) {
 
 // Настройка middleware
 // CORS с поддержкой dev tunnels и других доменов
+<<<<<<< HEAD
+=======
+// Health check endpoint для Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    serverPort: process.env.SERVER_PORT || 'not set',
+    railwayPort: process.env.PORT || 'not set',
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint для проверки доступности
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'Server is running',
+    port: PORT,
+    timestamp: new Date().toISOString()
+  });
+});
+
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 app.use(cors({
   origin: function (origin, callback) {
     // Разрешаем запросы без origin (например, Postman, мобильные приложения)
@@ -125,6 +212,53 @@ const upload = multer({
 // Статическая папка для загрузок
 app.use('/uploads', express.static(uploadsDir));
 
+<<<<<<< HEAD
+=======
+// Middleware для логирования всех запросов и подсчета
+let requestCount = 0;
+let requestStats = {
+  total: 0,
+  byMethod: {},
+  byPath: {},
+  startTime: Date.now()
+};
+
+// Middleware для логирования всех запросов
+app.use((req, res, next) => {
+  requestCount++;
+  requestStats.total++;
+  
+  // Подсчет по методам
+  requestStats.byMethod[req.method] = (requestStats.byMethod[req.method] || 0) + 1;
+  
+  // Подсчет по путям (только для API запросов)
+  if (req.path.startsWith('/api/')) {
+    const pathKey = req.method + ' ' + req.path.split('?')[0]; // Убираем query параметры
+    requestStats.byPath[pathKey] = (requestStats.byPath[pathKey] || 0) + 1;
+  }
+  
+  // Логируем каждый запрос
+  const timestamp = new Date().toISOString();
+  console.log(`📥 [${requestCount}] ${req.method} ${req.path}${req.query && Object.keys(req.query).length > 0 ? '?' + new URLSearchParams(req.query).toString() : ''}`);
+  
+  // Логируем статистику каждые 10 запросов
+  if (requestCount % 10 === 0) {
+    const uptime = Math.floor((Date.now() - requestStats.startTime) / 1000);
+    console.log(`\n📊 Статистика запросов (за ${uptime} сек):`);
+    console.log(`   Всего запросов: ${requestStats.total}`);
+    console.log(`   По методам:`, requestStats.byMethod);
+    console.log(`   Топ-10 API запросов:`, Object.entries(requestStats.byPath)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([path, count]) => `${path}: ${count}`)
+      .join(', '));
+    console.log('');
+  }
+  
+  next();
+});
+
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 // Middleware для логирования запросов к test-timer (для диагностики)
 app.use('/api/properties', (req, res, next) => {
   if (req.path.includes('test-timer')) {
@@ -139,7 +273,14 @@ app.use('/api/properties', (req, res, next) => {
 });
 
 // Инициализация базы данных
-initDatabase();
+console.log('💾 Инициализация базы данных...');
+try {
+  initDatabase();
+  console.log('✅ База данных инициализирована успешно');
+} catch (error) {
+  console.error('❌ Ошибка при инициализации базы данных:', error);
+  process.exit(1);
+}
 
 // ========== НАСТРОЙКА WHATSAPP WEB КЛИЕНТА ==========
 let waClientReady = false;
@@ -161,8 +302,14 @@ const waClient = new Client({
       '--disable-gpu'
     ],
     // Увеличиваем таймаут для протокольных операций (по умолчанию 180000мс)
+<<<<<<< HEAD
     // Это решает ошибку "Runtime.callFunctionOn timed out"
     protocolTimeout: 300000, // 5 минут вместо 3 минут по умолчанию
+=======
+    // Это решает ошибку "Runtime.evaluate timed out" и "Runtime.callFunctionOn timed out"
+    // На Railway может потребоваться больше времени из-за ограниченных ресурсов
+    protocolTimeout: 600000, // 10 минут (для Railway и медленных соединений)
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     // Дополнительные настройки для стабильности
     defaultViewport: {
       width: 1280,
@@ -328,6 +475,7 @@ const checkClientState = async () => {
   }
 };
 
+<<<<<<< HEAD
 // Инициализируем WhatsApp клиент с обработкой ошибок
 // Используем try-catch для перехвата ошибок инициализации
 try {
@@ -345,6 +493,65 @@ try {
   console.error('❌ Критическая ошибка при инициализации WhatsApp:', error.message);
   console.log('⚠️ WhatsApp клиент будет недоступен до перезапуска сервера.');
 }
+=======
+// Функция для инициализации WhatsApp с повторными попытками
+let waInitAttempts = 0;
+const MAX_WA_INIT_ATTEMPTS = 3;
+const WA_INIT_RETRY_DELAY = 30000; // 30 секунд между попытками
+
+const initializeWhatsApp = () => {
+  waInitAttempts++;
+  console.log(`🔄 Попытка инициализации WhatsApp (${waInitAttempts}/${MAX_WA_INIT_ATTEMPTS})...`);
+  
+  try {
+    waClient.initialize().then(() => {
+      // После инициализации проверяем состояние через небольшую задержку
+      setTimeout(() => {
+        checkClientState();
+      }, 2000); // 2 секунды задержка для завершения инициализации
+    }).catch((error) => {
+      console.error('❌ Ошибка при инициализации WhatsApp клиента:', error.message);
+      
+      // Специальная обработка для timeout ошибок
+      if (error.message.includes('timed out') || error.message.includes('timeout')) {
+        console.warn('⚠️ Таймаут при инициализации WhatsApp (это нормально на Railway).');
+        
+        // Повторная попытка через некоторое время, если не превышен лимит
+        if (waInitAttempts < MAX_WA_INIT_ATTEMPTS) {
+          console.log(`🔄 Повторная попытка инициализации через ${WA_INIT_RETRY_DELAY / 1000} секунд...`);
+          setTimeout(() => {
+            initializeWhatsApp();
+          }, WA_INIT_RETRY_DELAY);
+        } else {
+          console.warn('   Достигнут лимит попыток инициализации.');
+          console.warn('   WhatsApp может инициализироваться позже или потребуется перезапуск.');
+          console.warn('   Сервер продолжит работу без WhatsApp функциональности.');
+          console.log('💡 Если нужно использовать WhatsApp, попробуйте:');
+          console.log('   1. Перезапустить сервис на Railway');
+          console.log('   2. Проверить логи через несколько минут (инициализация может занять время)');
+        }
+      } else if (error.message.includes('libglib') || error.message.includes('shared libraries')) {
+        console.warn('⚠️ Не хватает системных библиотек для Chrome/Puppeteer.');
+        console.warn('   WhatsApp функциональность будет недоступна, но сервер продолжит работу.');
+      } else {
+        console.log('💡 Это нормально, если WhatsApp Web еще не авторизован.');
+        console.log('   Отсканируйте QR-код, который появится в консоли, чтобы подключить WhatsApp.');
+      }
+      
+      // Сервер продолжает работу даже если WhatsApp не инициализировался
+      if (waInitAttempts >= MAX_WA_INIT_ATTEMPTS) {
+        console.log('✅ Сервер продолжает работу без WhatsApp функциональности.');
+      }
+    });
+  } catch (error) {
+    console.error('❌ Критическая ошибка при инициализации WhatsApp:', error.message);
+    console.log('⚠️ WhatsApp клиент будет недоступен до перезапуска сервера.');
+  }
+};
+
+// Инициализируем WhatsApp клиент с обработкой ошибок
+initializeWhatsApp();
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
 /**
  * Удаляет пароль из объекта пользователя (для безопасности)
@@ -2023,6 +2230,252 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
 });
 
 /**
+<<<<<<< HEAD
+=======
+ * POST /api/purchase-requests - Создать новый запрос на покупку
+ */
+app.post('/api/purchase-requests', async (req, res) => {
+  try {
+    const {
+      buyerId, buyerName, buyerEmail, buyerPhone,
+      sellerId, sellerName, sellerEmail, sellerPhone,
+      propertyId, propertyTitle, propertyDescription, propertyPrice, propertyCurrency,
+      propertyLocation, propertyType, propertyArea,
+      propertyRooms, propertyBedrooms, propertyBathrooms,
+      propertyFloor, propertyTotalFloors, propertyYearBuilt,
+      propertyLivingArea, propertyLandArea, propertyBuildingType,
+      propertyRenovation, propertyCondition, propertyHeating,
+      propertyWaterSupply, propertySewerage,
+      propertyBalcony, propertyParking, propertyElevator,
+      propertyGarage, propertyPool, propertyGarden,
+      propertyElectricity, propertyInternet, propertySecurity, propertyFurniture,
+      propertyCommercialType, propertyBusinessHours,
+      requestDate, status
+    } = req.body;
+
+    // Валидация обязательных полей
+    if (!buyerName) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать имя покупателя' });
+    }
+
+    if (!propertyTitle) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать название объекта' });
+    }
+
+    // Создаем запрос со всеми данными об объекте
+    const result = purchaseRequestQueries.create({
+      buyerId: buyerId || null,
+      buyerName,
+      buyerEmail: buyerEmail || null,
+      buyerPhone: buyerPhone || null,
+      sellerId: sellerId || null,
+      sellerName: sellerName || null,
+      sellerEmail: sellerEmail || null,
+      sellerPhone: sellerPhone || null,
+      propertyId: propertyId || null,
+      propertyTitle,
+      propertyDescription: propertyDescription || null,
+      propertyPrice: propertyPrice || null,
+      propertyCurrency: propertyCurrency || 'USD',
+      propertyLocation: propertyLocation || null,
+      propertyType: propertyType || null,
+      propertyArea: propertyArea || null,
+      propertyRooms: propertyRooms || null,
+      propertyBedrooms: propertyBedrooms || null,
+      propertyBathrooms: propertyBathrooms || null,
+      propertyFloor: propertyFloor !== undefined && propertyFloor !== null ? propertyFloor : null,
+      propertyTotalFloors: propertyTotalFloors !== undefined && propertyTotalFloors !== null ? propertyTotalFloors : null,
+      propertyYearBuilt: propertyYearBuilt !== undefined && propertyYearBuilt !== null ? propertyYearBuilt : null,
+      propertyLivingArea: propertyLivingArea || null,
+      propertyLandArea: propertyLandArea || null,
+      propertyBuildingType: propertyBuildingType || null,
+      propertyRenovation: propertyRenovation || null,
+      propertyCondition: propertyCondition || null,
+      propertyHeating: propertyHeating || null,
+      propertyWaterSupply: propertyWaterSupply || null,
+      propertySewerage: propertySewerage || null,
+      propertyBalcony: propertyBalcony === 1 || propertyBalcony === true ? 1 : 0,
+      propertyParking: propertyParking === 1 || propertyParking === true ? 1 : 0,
+      propertyElevator: propertyElevator === 1 || propertyElevator === true ? 1 : 0,
+      propertyGarage: propertyGarage === 1 || propertyGarage === true ? 1 : 0,
+      propertyPool: propertyPool === 1 || propertyPool === true ? 1 : 0,
+      propertyGarden: propertyGarden === 1 || propertyGarden === true ? 1 : 0,
+      propertyElectricity: propertyElectricity === 1 || propertyElectricity === true ? 1 : 0,
+      propertyInternet: propertyInternet === 1 || propertyInternet === true ? 1 : 0,
+      propertySecurity: propertySecurity === 1 || propertySecurity === true ? 1 : 0,
+      propertyFurniture: propertyFurniture === 1 || propertyFurniture === true ? 1 : 0,
+      propertyCommercialType: propertyCommercialType || null,
+      propertyBusinessHours: propertyBusinessHours || null,
+      requestDate: requestDate || new Date().toISOString(),
+      status: status || 'pending'
+    });
+
+    const newRequest = purchaseRequestQueries.getById(result.lastInsertRowid);
+    
+    console.log('✅ Создан новый запрос на покупку:', {
+      id: newRequest.id,
+      buyer: buyerName,
+      property: propertyTitle,
+      price: propertyPrice,
+      currency: propertyCurrency
+    });
+
+    // Отправляем WhatsApp сообщение покупателю (асинхронно, не блокируя основной ответ)
+    if (buyerPhone && waClientReady && waClient) {
+      // Форматируем номер телефона (убираем все кроме цифр)
+      const digits = String(buyerPhone).replace(/\D/g, '');
+      
+      if (digits && digits.length >= 10) {
+        // Формируем сообщение
+        const whatsappMessage = `Вы отправили запрос на покупку объекта "${propertyTitle}". Наш менеджер скоро с вами свяжется.`;
+        
+        // Отправляем сообщение асинхронно, не ожидая результата
+        setImmediate(async () => {
+          try {
+            const chatId = `${digits}@c.us`;
+            
+            // Применяем патч sendSeen перед отправкой
+            await applySendSeenPatch();
+            
+            // Отправляем сообщение
+            await waClient.sendMessage(chatId, whatsappMessage);
+            
+            console.log('📱 WhatsApp сообщение отправлено покупателю:', {
+              phone: digits,
+              buyer: buyerName,
+              property: propertyTitle
+            });
+          } catch (whatsappError) {
+            console.error('❌ Ошибка отправки WhatsApp сообщения покупателю:', {
+              error: whatsappError.message,
+              phone: digits,
+              buyer: buyerName
+            });
+          }
+        });
+      }
+    }
+
+    res.json({ success: true, data: newRequest, message: 'Запрос на покупку успешно создан' });
+  } catch (error) {
+    console.error('❌ Ошибка создания запроса на покупку:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/purchase-requests - Получить все запросы на покупку
+ */
+app.get('/api/purchase-requests', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    const status = req.query.status;
+
+    let requests;
+    if (status) {
+      requests = purchaseRequestQueries.getByStatus(status, limit, offset);
+    } else {
+      requests = purchaseRequestQueries.getAll(limit, offset);
+    }
+
+    const total = status 
+      ? purchaseRequestQueries.getCountByStatus(status)
+      : purchaseRequestQueries.getCount();
+
+    res.json({ 
+      success: true, 
+      data: requests, 
+      total,
+      limit,
+      offset 
+    });
+  } catch (error) {
+    console.error('❌ Ошибка получения запросов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/purchase-requests/:id - Получить запрос по ID
+ */
+app.get('/api/purchase-requests/:id', (req, res) => {
+  try {
+    const request = purchaseRequestQueries.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Запрос не найден' });
+    }
+    res.json({ success: true, data: request });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/purchase-requests/buyer/:buyerId - Получить запросы покупателя
+ */
+app.get('/api/purchase-requests/buyer/:buyerId', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const requests = purchaseRequestQueries.getByBuyerId(req.params.buyerId, limit, offset);
+    res.json({ success: true, data: requests });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/purchase-requests/:id/status - Обновить статус запроса
+ */
+app.put('/api/purchase-requests/:id/status', (req, res) => {
+  try {
+    const { status, adminNotes } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ success: false, error: 'Необходимо указать статус' });
+    }
+
+    const request = purchaseRequestQueries.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Запрос не найден' });
+    }
+
+    purchaseRequestQueries.updateStatus(req.params.id, status, adminNotes);
+    const updatedRequest = purchaseRequestQueries.getById(req.params.id);
+    
+    console.log(`✅ Статус запроса #${req.params.id} обновлен: ${status}`);
+    
+    res.json({ success: true, data: updatedRequest, message: 'Статус обновлен' });
+  } catch (error) {
+    console.error('❌ Ошибка обновления статуса:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/purchase-requests/:id - Удалить запрос
+ */
+app.delete('/api/purchase-requests/:id', (req, res) => {
+  try {
+    const request = purchaseRequestQueries.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Запрос не найден' });
+    }
+
+    purchaseRequestQueries.delete(req.params.id);
+    console.log(`✅ Запрос #${req.params.id} удален`);
+    
+    res.json({ success: true, message: 'Запрос успешно удален' });
+  } catch (error) {
+    console.error('❌ Ошибка удаления запроса:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
  * POST /api/auth/email/register - Регистрация через Email
  */
 app.post('/api/auth/email/register', async (req, res) => {
@@ -3283,6 +3736,7 @@ app.post('/api/properties', upload.fields([
     console.log('📋 Body:', req.body);
     console.log('📁 Files:', req.files);
     
+<<<<<<< HEAD
     const db = getDatabase();
     
     // Проверяем существование таблицы properties
@@ -3295,6 +3749,10 @@ app.post('/api/properties', upload.fields([
         error: 'Таблица properties не существует. Необходимо выполнить миграцию БД.' 
       });
     }
+=======
+    
+    const db = getDatabase();
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     
     const {
       user_id,
@@ -3309,6 +3767,17 @@ app.post('/api/properties', upload.fields([
       auction_starting_price
     } = req.body;
     
+<<<<<<< HEAD
+=======
+    // Проверяем, что property_type валиден для новых таблиц
+    if (!property_type || !['apartment', 'commercial', 'house', 'villa'].includes(property_type)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Необходимо указать корректный property_type: apartment, commercial, house или villa' 
+      });
+    }
+    
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     // Нормализуем is_auction: может быть строкой '0'/'1', числом 0/1, или булевым значением
     let normalizedIsAuction = 0;
     if (typeof is_auction === 'string') {
@@ -3321,6 +3790,22 @@ app.post('/api/properties', upload.fields([
     
     console.log('📋 Получен is_auction:', is_auction, 'тип:', typeof is_auction, 'нормализован:', normalizedIsAuction);
     
+<<<<<<< HEAD
+=======
+    // Извлекаем feature поля из req.body
+    const featureFields = {};
+    for (let i = 1; i <= 26; i++) {
+      const featureKey = `feature${i}`;
+      featureFields[featureKey] = req.body[featureKey] || 0;
+    }
+    
+    // Логируем feature поля для отладки
+    const selectedFeatures = Object.entries(featureFields).filter(([key, value]) => value === '1' || value === 1 || value === true);
+    if (selectedFeatures.length > 0) {
+      console.log('📋 Получены feature поля:', selectedFeatures.map(([key]) => key).join(', '));
+    }
+    
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     const {
       area,
       living_area,
@@ -3362,6 +3847,10 @@ app.post('/api/properties', upload.fields([
       test_drive_data,
       test_drive = 0
     } = req.body;
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
     // Нормализуем test_drive: может быть строкой '0'/'1', числом 0/1, или булевым значением
     let normalizedTestDrive = 0;
@@ -3451,6 +3940,7 @@ app.post('/api/properties', upload.fields([
       }
     }
 
+<<<<<<< HEAD
     const stmt = db.prepare(`
       INSERT INTO properties (
         user_id, property_type, title, description, price, currency,
@@ -3464,14 +3954,19 @@ app.post('/api/properties', upload.fields([
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+=======
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     // Используем location, если он указан (он уже содержит полный адрес)
     // Если location не указан, формируем его из отдельных полей
     let finalLocation = location || '';
     if (!finalLocation && (address || apartment || city || country)) {
       const locationParts = [];
       if (address) locationParts.push(address);
+<<<<<<< HEAD
       // Убираем автоматическое добавление квартиры, чтобы избежать дублирования
       // if (apartment) locationParts.push(`кв. ${apartment}`);
+=======
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       if (city) locationParts.push(city);
       if (country) locationParts.push(country);
       if (locationParts.length > 0) {
@@ -3479,6 +3974,7 @@ app.post('/api/properties', upload.fields([
       }
     }
 
+<<<<<<< HEAD
     const result = stmt.run(
       user_id, property_type, title, description || null, price || null, currency,
       normalizedIsAuction, auction_start_date || null, auction_end_date || null, auction_starting_price || null,
@@ -3495,24 +3991,163 @@ app.post('/api/properties', upload.fields([
       test_drive_data ? JSON.stringify(test_drive_data) : null,
       'pending'
     );
+=======
+    // Подготавливаем данные для сохранения
+    const propertyData = {
+      user_id: parseInt(user_id),
+      property_type,
+      title,
+      description: description || null,
+      price: price ? parseFloat(price) : null,
+      currency: currency || 'USD',
+      is_auction: normalizedIsAuction,
+      auction_start_date: auction_start_date || null,
+      auction_end_date: auction_end_date || null,
+      auction_starting_price: auction_starting_price ? parseFloat(auction_starting_price) : null,
+      area: area ? parseFloat(area) : null,
+      living_area: living_area ? parseFloat(living_area) : null,
+      building_type: building_type || null,
+      rooms: rooms ? parseInt(rooms) : null,
+      bathrooms: bathrooms ? parseInt(bathrooms) : null,
+      floor: floor ? parseInt(floor) : null,
+      total_floors: total_floors ? parseInt(total_floors) : null,
+      year_built: year_built ? parseInt(year_built) : null,
+      location: finalLocation || null,
+      address: address || null,
+      apartment: apartment || null,
+      country: country || null,
+      city: city || null,
+      coordinates: coordinates ? (typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates) : null,
+      // ВАЖНО: Устанавливаем только если явно передано значение 1, true или '1'
+      // Если не передано или передано как 0, '0', false - устанавливаем 0
+      balcony: (balcony === 1 || balcony === true || balcony === '1') ? 1 : 0,
+      parking: (parking === 1 || parking === true || parking === '1') ? 1 : 0,
+      elevator: (elevator === 1 || elevator === true || elevator === '1') ? 1 : 0,
+      electricity: (electricity === 1 || electricity === true || electricity === '1') ? 1 : 0,
+      internet: (internet === 1 || internet === true || internet === '1') ? 1 : 0,
+      security: (security === 1 || security === true || security === '1') ? 1 : 0,
+      furniture: (furniture === 1 || furniture === true || furniture === '1') ? 1 : 0,
+      // Feature поля - добавляем из извлеченных данных
+      ...Object.fromEntries(
+        Object.entries(featureFields).map(([key, value]) => [
+          key,
+          value === '1' || value === 1 || value === true ? 1 : 0
+        ])
+      ),
+      commercial_type: commercial_type || null,
+      business_hours: business_hours || null,
+      renovation: renovation || null,
+      condition: condition || null,
+      heating: heating || null,
+      water_supply: water_supply || null,
+      sewerage: sewerage || null,
+      additional_amenities: additional_amenities || null,
+      photos: parsedPhotos.length > 0 ? parsedPhotos : null,
+      videos: parsedVideos.length > 0 ? parsedVideos : null,
+      additional_documents: parsedAdditionalDocuments.length > 0 ? parsedAdditionalDocuments : null,
+      ownership_document: ownershipDocumentPath,
+      no_debts_document: noDebtsDocumentPath,
+      test_drive: normalizedTestDrive,
+      test_drive_data: test_drive_data ? (typeof test_drive_data === 'string' ? JSON.parse(test_drive_data) : test_drive_data) : null,
+      moderation_status: 'pending'
+    };
+
+    // Добавляем поля для домов/вилл
+    if (property_type === 'house' || property_type === 'villa') {
+      propertyData.land_area = land_area ? parseFloat(land_area) : null;
+      // Обрабатываем bedrooms: как в рабочем проекте, но с поддержкой значения 0
+      // ВАЖНО: проверяем на undefined/null/пустую строку, но НЕ на truthiness, чтобы 0 сохранялся
+      if (bedrooms !== undefined && bedrooms !== null && bedrooms !== '') {
+        const parsedBedrooms = parseInt(bedrooms, 10);
+        // Проверяем, что parseInt вернул валидное число (не NaN)
+        if (!isNaN(parsedBedrooms) && isFinite(parsedBedrooms)) {
+          propertyData.bedrooms = parsedBedrooms; // Сохраняем даже 0
+        } else {
+          propertyData.bedrooms = null;
+        }
+      } else {
+        propertyData.bedrooms = null;
+      }
+      // Для домов/вилл используем total_floors как floors (количество этажей дома)
+      propertyData.floors = total_floors ? parseInt(total_floors) : null;
+      propertyData.pool = pool ? 1 : 0;
+      propertyData.garden = garden ? 1 : 0;
+      propertyData.garage = garage ? 1 : 0;
+    }
+
+    // Используем соответствующий query в зависимости от типа
+    let result;
+    let property;
+    
+    // Логируем propertyData перед сохранением
+    if (property_type === 'house' || property_type === 'villa') {
+      console.log('🔍 POST /api/properties - propertyData перед сохранением:', {
+        bedrooms: propertyData.bedrooms,
+        bedroomsType: typeof propertyData.bedrooms,
+        property_type: propertyData.property_type
+      });
+    }
+    
+    if (property_type === 'apartment' || property_type === 'commercial') {
+      result = apartmentQueries.create(propertyData);
+      property = apartmentQueries.getById(result.lastInsertRowid);
+    } else if (property_type === 'house' || property_type === 'villa') {
+      result = houseQueries.create(propertyData);
+      property = houseQueries.getById(result.lastInsertRowid);
+      console.log('🔍 POST /api/properties - Создан дом/вилла, bedrooms в БД:', property.bedrooms, 'тип:', typeof property.bedrooms);
+    } else {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Неизвестный тип недвижимости' 
+      });
+    }
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     
     console.log('🔍 POST /api/properties - Сохранено test_drive в БД:', normalizedTestDrive, 'тип:', typeof normalizedTestDrive)
 
     const propertyId = result.lastInsertRowid;
+<<<<<<< HEAD
     const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(propertyId);
+=======
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
     console.log('✅ Объявление успешно создано с ID:', propertyId);
     console.log('📋 Статус модерации из БД:', property.moderation_status);
     console.log('📋 Сохраненные данные в БД:', {
+<<<<<<< HEAD
+=======
+      property_type: property.property_type,
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       rooms: property.rooms,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
       area: property.area,
       living_area: property.living_area,
+<<<<<<< HEAD
       floor: property.floor,
       total_floors: property.total_floors,
       year_built: property.year_built,
       building_type: property.building_type,
+=======
+      land_area: property.land_area,
+      floor: property.floor,
+      floors: property.floors,
+      total_floors: property.total_floors,
+      year_built: property.year_built,
+      building_type: property.building_type,
+      amenities: property.amenities,
+      amenities_type: typeof property.amenities,
+      pool: property.pool,
+      garden: property.garden,
+      garage: property.garage,
+      moderation_status: property.moderation_status,
+      additional_amenities: property.additional_amenities,
+      additional_amenities_type: typeof property.additional_amenities,
+      feature1: property.feature1,
+      feature2: property.feature2,
+      feature3: property.feature3,
+      building_type: property.building_type,
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       balcony: property.balcony,
       parking: property.parking,
       elevator: property.elevator,
@@ -3522,6 +4157,7 @@ app.post('/api/properties', upload.fields([
       test_drive_type: typeof property.test_drive,
     });
     
+<<<<<<< HEAD
     // Проверяем, что объявление действительно создано с правильным статусом
     const checkProperty = db.prepare('SELECT id, moderation_status, title FROM properties WHERE id = ?').get(propertyId);
     console.log('🔍 Проверка объявления в БД:', checkProperty);
@@ -3529,6 +4165,18 @@ app.post('/api/properties', upload.fields([
     // Проверяем количество объявлений на модерации
     const pendingCount = db.prepare('SELECT COUNT(*) as count FROM properties WHERE moderation_status = ?').get('pending');
     console.log('📊 Всего объявлений на модерации:', pendingCount.count);
+=======
+    // Проверяем количество объявлений на модерации
+    let pendingCount = 0;
+    try {
+      const apartmentsPending = db.prepare('SELECT COUNT(*) as count FROM properties_apartments WHERE moderation_status = ?').get('pending');
+      const housesPending = db.prepare('SELECT COUNT(*) as count FROM properties_houses WHERE moderation_status = ?').get('pending');
+      pendingCount = (apartmentsPending?.count || 0) + (housesPending?.count || 0);
+    } catch (e) {
+      console.warn('⚠️ Не удалось получить количество объявлений на модерации:', e.message);
+    }
+    console.log('📊 Всего объявлений на модерации:', pendingCount);
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
     res.json({ 
       success: true, 
@@ -3687,8 +4335,13 @@ app.put('/api/properties/:id', upload.fields([
     const isEdit = req.body.is_edit === '1' || req.body.is_edit === 1;
     const originalPropertyId = req.body.original_property_id || id;
     
+<<<<<<< HEAD
     // Проверяем существование оригинального объекта
     const originalProperty = db.prepare('SELECT * FROM properties WHERE id = ?').get(originalPropertyId);
+=======
+    // Проверяем существование оригинального объекта - используем propertyQueries для поиска в правильных таблицах
+    const originalProperty = propertyQueries.getById(originalPropertyId);
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     if (!originalProperty) {
       return res.status(404).json({ 
         success: false, 
@@ -3881,10 +4534,28 @@ app.put('/api/properties/:id', upload.fields([
         living_area ? parseFloat(living_area) : originalProperty.living_area,
         building_type || originalProperty.building_type,
         rooms ? parseInt(rooms) : originalProperty.rooms,
+<<<<<<< HEAD
         bedrooms ? parseInt(bedrooms) : originalProperty.bedrooms,
         bathrooms ? parseInt(bathrooms) : originalProperty.bathrooms,
         floor ? parseInt(floor) : originalProperty.floor,
         total_floors ? parseInt(total_floors) : originalProperty.total_floors,
+=======
+        // Важно: проверяем на undefined/null/пустую строку, а не на truthiness, чтобы 0 сохранялся как 0
+        (() => {
+          if (bedrooms !== undefined && bedrooms !== null && bedrooms !== '') {
+            const parsedBedrooms = parseInt(bedrooms, 10);
+            // Проверяем, что parseInt вернул валидное число (не NaN)
+            return (!isNaN(parsedBedrooms) && isFinite(parsedBedrooms)) ? parsedBedrooms : originalProperty.bedrooms;
+          }
+          return originalProperty.bedrooms;
+        })(),
+        bathrooms ? parseInt(bathrooms) : originalProperty.bathrooms,
+        floor ? parseInt(floor) : originalProperty.floor,
+        // Для домов/вилл используем floors, для квартир/апартаментов - total_floors
+        total_floors ? parseInt(total_floors) : ((originalProperty.property_type === 'house' || originalProperty.property_type === 'villa') 
+          ? (originalProperty.floors || originalProperty.total_floors) 
+          : originalProperty.total_floors),
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         year_built ? parseInt(year_built) : originalProperty.year_built,
         finalLocation || originalProperty.location,
         balcony === '1' || balcony === 1 || (typeof balcony === 'boolean' && balcony) ? 1 : 0,
@@ -3958,6 +4629,7 @@ app.put('/api/properties/:id', upload.fields([
  */
 app.get('/api/properties/pending', (req, res) => {
   try {
+<<<<<<< HEAD
     const db = getDatabase();
     console.log('📥 Запрос объявлений на модерации');
     
@@ -3974,6 +4646,12 @@ app.get('/api/properties/pending', (req, res) => {
       WHERE p.moderation_status = 'pending'
       ORDER BY p.created_at DESC
     `).all();
+=======
+    console.log('📥 Запрос объявлений на модерации');
+    
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const properties = propertyQueries.getPending();
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
     console.log(`✅ Найдено объявлений на модерации: ${properties.length}`);
     if (properties.length > 0) {
@@ -3981,29 +4659,103 @@ app.get('/api/properties/pending', (req, res) => {
       console.log('📋 Статусы:', properties.map(p => p.moderation_status).join(', '));
     }
 
+<<<<<<< HEAD
     // Парсим JSON поля
     const formattedProperties = properties.map(prop => {
       const formatted = { ...prop };
       if (formatted.photos) {
+=======
+    // Парсим JSON поля (если еще не распарсены)
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      if (formatted.photos && typeof formatted.photos === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.photos = JSON.parse(formatted.photos);
         } catch (e) {
           formatted.photos = [];
         }
+<<<<<<< HEAD
       }
       if (formatted.videos) {
+=======
+      } else if (!formatted.photos) {
+        formatted.photos = [];
+      }
+      if (formatted.videos && typeof formatted.videos === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.videos = JSON.parse(formatted.videos);
         } catch (e) {
           formatted.videos = [];
         }
+<<<<<<< HEAD
       }
       if (formatted.additional_documents) {
+=======
+      } else if (!formatted.videos) {
+        formatted.videos = [];
+      }
+      
+      // Парсим amenities (JSON массив удобств)
+      let amenitiesArray = [];
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          amenitiesArray = JSON.parse(formatted.amenities);
+        } catch (e) {
+          console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+          amenitiesArray = [];
+        }
+      } else if (Array.isArray(formatted.amenities)) {
+        // Уже массив, оставляем как есть
+        amenitiesArray = formatted.amenities;
+      } else if (!formatted.amenities) {
+        amenitiesArray = [];
+      }
+      
+      // Сохраняем массив amenities
+      formatted.amenities = amenitiesArray;
+      
+      // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+      formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+      formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+      formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+      formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+      formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+      formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+      formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+      
+      // Обрабатываем feature поля (feature1, feature2, ...)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`;
+        formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+      }
+      
+      // Для домов/вилл маппим floors в total_floors и добавляем удобства
+      if (formatted.property_type === 'house' || formatted.property_type === 'villa') {
+        if (formatted.floors !== undefined && formatted.floors !== null) {
+          formatted.total_floors = formatted.floors;
+        }
+        // Добавляем удобства для домов/вилл из amenities массива
+        formatted.pool = amenitiesArray.includes('pool') || formatted.pool === 1 || formatted.pool === true;
+        formatted.garden = amenitiesArray.includes('garden') || formatted.garden === 1 || formatted.garden === true;
+        formatted.garage = amenitiesArray.includes('garage') || formatted.garage === 1 || formatted.garage === true;
+        // Убеждаемся, что land_area передается
+        formatted.land_area = formatted.land_area || null;
+      }
+      
+      // additional_amenities - это текстовое поле
+      if (formatted.additional_amenities === undefined) {
+        formatted.additional_amenities = null;
+      }
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.additional_documents = JSON.parse(formatted.additional_documents);
         } catch (e) {
           formatted.additional_documents = [];
         }
+<<<<<<< HEAD
       }
       if (formatted.test_drive_data) {
         try {
@@ -4076,6 +4828,12 @@ app.get('/api/properties/pending', (req, res) => {
         }
       }
       if (formatted.test_drive_data) {
+=======
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
+      }
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
         } catch (e) {
@@ -4098,6 +4856,7 @@ app.get('/api/properties/pending', (req, res) => {
  */
 app.get('/api/properties/approved', (req, res) => {
   try {
+<<<<<<< HEAD
     const db = getDatabase();
     const { type } = req.query; // Опциональный фильтр по типу
     
@@ -4177,6 +4936,196 @@ app.get('/api/properties/approved', (req, res) => {
       };
     });
     
+=======
+    const { type } = req.query; // Опциональный фильтр по типу
+    
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const properties = propertyQueries.getApproved(type || null);
+    
+    console.log(`✅ Получено одобренных объявлений: ${properties.length}, фильтр type=${type || 'null'}`);
+    if (properties.length > 0) {
+      console.log('📋 Пример данных из БД (первое объявление):', {
+        id: properties[0].id,
+        title: properties[0].title,
+        property_type: properties[0].property_type,
+        source_table: properties[0].source_table,
+        moderation_status: properties[0].moderation_status,
+        is_auction: properties[0].is_auction,
+        amenities: properties[0].amenities,
+        amenities_type: typeof properties[0].amenities,
+        additional_amenities: properties[0].additional_amenities,
+        additional_amenities_type: typeof properties[0].additional_amenities
+      });
+    } else {
+      console.log('⚠️ Не найдено одобренных объявлений для типа:', type || 'все типы');
+    }
+    
+    // Преобразуем данные в формат для фронтенда (возвращаем ВСЕ поля)
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      
+      // Парсим JSON поля безопасно
+      if (formatted.photos && typeof formatted.photos === 'string') {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      } else if (!formatted.photos) {
+        formatted.photos = [];
+      }
+      
+      if (formatted.videos && typeof formatted.videos === 'string') {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      } else if (!formatted.videos) {
+        formatted.videos = [];
+      }
+      
+      // Парсим amenities (JSON массив удобств)
+      // Проверяем, нужно ли парсить (если это строка, значит еще не распарсено)
+      let amenitiesArray = [];
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          amenitiesArray = JSON.parse(formatted.amenities);
+        } catch (e) {
+          console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+          amenitiesArray = [];
+        }
+      } else if (Array.isArray(formatted.amenities)) {
+        // Уже массив, оставляем как есть
+        amenitiesArray = formatted.amenities;
+      } else if (!formatted.amenities) {
+        amenitiesArray = [];
+      }
+      
+      // Сохраняем массив amenities
+      formatted.amenities = amenitiesArray;
+      
+      // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+      // (так как фронтенд ожидает отдельные поля, а не массив)
+      formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+      formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+      formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+      formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+      formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+      formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+      formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+      
+      // Обрабатываем feature поля (feature1, feature2, ...)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`;
+        formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+      }
+      
+      // additional_amenities - это текстовое поле, которое пользователь вводит сам
+      // Убеждаемся, что оно всегда возвращается (даже если null или пустое)
+      // Не парсим как JSON, это просто текст
+      if (formatted.additional_amenities === undefined || formatted.additional_amenities === null) {
+        // Если undefined или null, оставляем null (не пустую строку, чтобы фронтенд мог проверить)
+        formatted.additional_amenities = formatted.additional_amenities || null;
+      } else if (typeof formatted.additional_amenities === 'string' && formatted.additional_amenities.trim() === '') {
+        // Если пустая строка, оставляем как есть (может быть важно для фронтенда)
+        formatted.additional_amenities = formatted.additional_amenities;
+      }
+      // Если это непустая строка, оставляем как есть
+      
+      if (formatted.coordinates && typeof formatted.coordinates === 'string') {
+        try {
+          if (formatted.coordinates.startsWith('[') || formatted.coordinates.startsWith('{')) {
+            formatted.coordinates = JSON.parse(formatted.coordinates);
+          } else {
+            formatted.coordinates = formatted.coordinates.split(',').map(Number);
+          }
+        } catch (e) {
+          formatted.coordinates = null;
+        }
+      }
+      
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
+        try {
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
+        } catch (e) {
+          formatted.additional_documents = [];
+        }
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
+      }
+      
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
+        }
+      }
+      
+      // Добавляем дополнительные поля для обратной совместимости
+      formatted.name = formatted.title;
+      formatted.image = formatted.photos && formatted.photos.length > 0 
+        ? formatted.photos[0] 
+        : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80';
+      formatted.images = formatted.photos || [];
+      formatted.owner = {
+        firstName: formatted.first_name || '',
+        lastName: formatted.last_name || '',
+        email: formatted.email || ''
+      };
+      // Для домов/вилл используем bedrooms, для квартир/апартаментов - rooms или bedrooms
+      if (formatted.property_type === 'house' || formatted.property_type === 'villa') {
+        formatted.beds = formatted.bedrooms || 0;
+        // Для домов/вилл маппим floors в total_floors для совместимости с фронтендом
+        if (formatted.floors !== undefined && formatted.floors !== null) {
+          formatted.total_floors = formatted.floors;
+        }
+        // Добавляем удобства для домов/вилл из amenities массива
+        if (Array.isArray(formatted.amenities)) {
+          formatted.pool = formatted.amenities.includes('pool') || formatted.pool === 1 || formatted.pool === true;
+          formatted.garden = formatted.amenities.includes('garden') || formatted.garden === 1 || formatted.garden === true;
+          formatted.garage = formatted.amenities.includes('garage') || formatted.garage === 1 || formatted.garage === true;
+        }
+        // Убеждаемся, что land_area передается
+        formatted.land_area = formatted.land_area || null;
+      } else {
+        // Для квартир/апартаментов используем rooms или bedrooms
+        formatted.beds = formatted.bedrooms || formatted.rooms || 0;
+      }
+      
+      formatted.baths = formatted.bathrooms || 0;
+      formatted.sqft = formatted.area || 0;
+      formatted.hasSamolyot = false;
+      formatted.isAuction = false;
+      formatted.currentBid = null;
+      formatted.endTime = null;
+      
+      // Устанавливаем tag для правильного отображения на фронтенде
+      formatted.tag = formatted.property_type === 'apartment' ? 'apartment' : 
+                      formatted.property_type === 'villa' ? 'villa' : 
+                      formatted.property_type === 'house' ? 'house' : 
+                      formatted.property_type === 'commercial' ? 'apartment' : 'apartment';
+      
+      return formatted;
+    });
+    
+    // Логируем для отладки (только для первого объекта)
+    if (formattedProperties.length > 0) {
+      console.log('📋 Отформатированные данные (первое объявление):', {
+        id: formattedProperties[0].id,
+        title: formattedProperties[0].title,
+        amenities: formattedProperties[0].amenities,
+        amenities_length: Array.isArray(formattedProperties[0].amenities) ? formattedProperties[0].amenities.length : 'not array',
+        additional_amenities: formattedProperties[0].additional_amenities,
+        additional_amenities_length: formattedProperties[0].additional_amenities ? formattedProperties[0].additional_amenities.length : 0,
+        balcony: formattedProperties[0].balcony,
+        parking: formattedProperties[0].parking,
+        elevator: formattedProperties[0].elevator
+      });
+    }
+    
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     res.json({
       success: true,
       data: formattedProperties
@@ -4193,6 +5142,7 @@ app.get('/api/properties/approved', (req, res) => {
  */
 app.get('/api/properties/auctions', (req, res) => {
   try {
+<<<<<<< HEAD
     const db = getDatabase();
     const { type } = req.query; // Опциональный фильтр по типу
     
@@ -4289,6 +5239,260 @@ app.get('/api/properties/auctions', (req, res) => {
       };
     });
     
+=======
+    const { type } = req.query; // Опциональный фильтр по типу
+    
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    let properties = propertyQueries.getAuctions(type || null);
+    
+    console.log(`✅ Получено аукционных объявлений: ${properties.length}`);
+    if (properties.length > 0) {
+      console.log('📋 Пример данных из БД (первое объявление):', {
+        id: properties[0].id,
+        title: properties[0].title,
+        amenities: properties[0].amenities,
+        amenities_type: typeof properties[0].amenities,
+        additional_amenities: properties[0].additional_amenities,
+        additional_amenities_type: typeof properties[0].additional_amenities
+      });
+    }
+    
+    // Также получаем объекты с тестовыми таймерами (если поле существует)
+    const db = getDatabase();
+    let apartmentsWithTestTimer = [];
+    let housesWithTestTimer = [];
+    
+    // Проверяем, существует ли поле test_timer_end_date в таблицах
+    try {
+      const apartmentsPragma = db.prepare("PRAGMA table_info(properties_apartments)").all();
+      const housesPragma = db.prepare("PRAGMA table_info(properties_houses)").all();
+      const hasTestTimerField = apartmentsPragma.some(col => col.name === 'test_timer_end_date') ||
+                                housesPragma.some(col => col.name === 'test_timer_end_date');
+      
+      if (hasTestTimerField) {
+        let testTimerQuery = `
+          SELECT 
+            p.*,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.phone_number,
+            u.role
+          FROM properties_apartments p
+          LEFT JOIN users u ON p.user_id = u.id
+          WHERE p.moderation_status = 'approved'
+            AND p.test_timer_end_date IS NOT NULL
+            AND p.test_timer_end_date != ''
+        `;
+        
+        const testTimerParams = [];
+        if (type) {
+          testTimerQuery += ' AND p.property_type = ?';
+          testTimerParams.push(type);
+        }
+        
+        testTimerQuery += ' ORDER BY p.test_timer_end_date ASC';
+        
+        try {
+          apartmentsWithTestTimer = db.prepare(testTimerQuery).all(...testTimerParams);
+        } catch (e) {
+          console.warn('Ошибка при получении apartments с тестовыми таймерами:', e.message);
+        }
+        
+        try {
+          const housesTestTimerQuery = testTimerQuery.replace('properties_apartments', 'properties_houses');
+          housesWithTestTimer = db.prepare(housesTestTimerQuery).all(...testTimerParams);
+        } catch (e) {
+          console.warn('Ошибка при получении houses с тестовыми таймерами:', e.message);
+        }
+      }
+    } catch (e) {
+      console.warn('Ошибка при проверке поля test_timer_end_date:', e.message);
+    }
+    
+    // Объединяем аукционы и тестовые таймеры
+    const allProperties = [...properties, ...apartmentsWithTestTimer, ...housesWithTestTimer];
+    
+    // Удаляем дубликаты по ID и сортируем
+    properties = Array.from(
+      new Map(allProperties.map(p => [p.id, p])).values()
+    ).sort((a, b) => {
+      const aDate = a.test_timer_end_date || a.auction_end_date || '';
+      const bDate = b.test_timer_end_date || b.auction_end_date || '';
+      return new Date(aDate) - new Date(bDate);
+    });
+    
+    // Преобразуем данные в формат для фронтенда (возвращаем ВСЕ поля)
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      
+      // Парсим JSON поля безопасно
+      if (formatted.photos && typeof formatted.photos === 'string') {
+        try {
+          formatted.photos = JSON.parse(formatted.photos);
+        } catch (e) {
+          formatted.photos = [];
+        }
+      } else if (!formatted.photos) {
+        formatted.photos = [];
+      }
+      
+      if (formatted.videos && typeof formatted.videos === 'string') {
+        try {
+          formatted.videos = JSON.parse(formatted.videos);
+        } catch (e) {
+          formatted.videos = [];
+        }
+      } else if (!formatted.videos) {
+        formatted.videos = [];
+      }
+      
+      // Парсим amenities (JSON массив удобств)
+      // Проверяем, нужно ли парсить (если это строка, значит еще не распарсено)
+      let amenitiesArray = [];
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          amenitiesArray = JSON.parse(formatted.amenities);
+        } catch (e) {
+          console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+          amenitiesArray = [];
+        }
+      } else if (Array.isArray(formatted.amenities)) {
+        // Уже массив, оставляем как есть
+        amenitiesArray = formatted.amenities;
+      } else if (!formatted.amenities) {
+        amenitiesArray = [];
+      }
+      
+      // Сохраняем массив amenities
+      formatted.amenities = amenitiesArray;
+      
+      // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+      // (так как фронтенд ожидает отдельные поля, а не массив)
+      formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+      formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+      formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+      formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+      formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+      formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+      formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+      
+      // Обрабатываем feature поля (feature1, feature2, ...)
+      for (let i = 1; i <= 26; i++) {
+        const featureKey = `feature${i}`;
+        formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+      }
+      
+      // additional_amenities - это текстовое поле, которое пользователь вводит сам
+      // Убеждаемся, что оно всегда возвращается (даже если null или пустое)
+      // Не парсим как JSON, это просто текст
+      if (formatted.additional_amenities === undefined || formatted.additional_amenities === null) {
+        // Если undefined или null, оставляем null (не пустую строку, чтобы фронтенд мог проверить)
+        formatted.additional_amenities = formatted.additional_amenities || null;
+      } else if (typeof formatted.additional_amenities === 'string' && formatted.additional_amenities.trim() === '') {
+        // Если пустая строка, оставляем как есть (может быть важно для фронтенда)
+        formatted.additional_amenities = formatted.additional_amenities;
+      }
+      // Если это непустая строка, оставляем как есть
+      
+      if (formatted.coordinates && typeof formatted.coordinates === 'string') {
+        try {
+          if (formatted.coordinates.startsWith('[') || formatted.coordinates.startsWith('{')) {
+            formatted.coordinates = JSON.parse(formatted.coordinates);
+          } else {
+            formatted.coordinates = formatted.coordinates.split(',').map(Number);
+          }
+        } catch (e) {
+          formatted.coordinates = null;
+        }
+      }
+      
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
+        try {
+          formatted.additional_documents = JSON.parse(formatted.additional_documents);
+        } catch (e) {
+          formatted.additional_documents = [];
+        }
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
+      }
+      
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+        try {
+          formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
+        } catch (e) {
+          formatted.test_drive_data = null;
+        }
+      }
+      
+      // Добавляем дополнительные поля для обратной совместимости
+      formatted.name = formatted.title;
+      formatted.image = formatted.photos && formatted.photos.length > 0 
+        ? formatted.photos[0] 
+        : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80';
+      formatted.images = formatted.photos || [];
+      formatted.owner = {
+        firstName: formatted.first_name || '',
+        lastName: formatted.last_name || '',
+        email: formatted.email || ''
+      };
+      // Для домов/вилл используем bedrooms, для квартир/апартаментов - rooms или bedrooms
+      if (formatted.property_type === 'house' || formatted.property_type === 'villa') {
+        formatted.beds = formatted.bedrooms || 0;
+        formatted.rooms = formatted.bedrooms || 0; // Для совместимости
+      } else {
+        formatted.beds = formatted.bedrooms || formatted.rooms || 0;
+        formatted.rooms = formatted.bedrooms || formatted.rooms || 0;
+      }
+      
+      formatted.baths = formatted.bathrooms || 0;
+      formatted.sqft = formatted.area || 0;
+      formatted.hasSamolyot = false;
+      formatted.isAuction = true;
+      formatted.currentBid = formatted.auction_starting_price || formatted.price || 0;
+      formatted.endTime = formatted.test_timer_end_date || formatted.auction_end_date || null;
+      formatted.originalPrice = formatted.price || null;
+      formatted.auctionStartingPrice = formatted.auction_starting_price || null;
+      formatted.tag = formatted.property_type === 'apartment' ? 'apartment' : 
+                      formatted.property_type === 'villa' ? 'villa' : 
+                      formatted.property_type === 'house' ? 'house' : 
+                      formatted.property_type === 'commercial' ? 'apartment' : 'apartment';
+      
+      // Для домов/вилл маппим floors в total_floors для совместимости с фронтендом
+      // и добавляем удобства pool, garden, garage
+      if (formatted.property_type === 'house' || formatted.property_type === 'villa') {
+        if (formatted.floors !== undefined && formatted.floors !== null) {
+          formatted.total_floors = formatted.floors;
+        }
+        // Добавляем удобства для домов/вилл из amenities массива
+        if (Array.isArray(formatted.amenities)) {
+          formatted.pool = formatted.amenities.includes('pool') || formatted.pool === 1 || formatted.pool === true;
+          formatted.garden = formatted.amenities.includes('garden') || formatted.garden === 1 || formatted.garden === true;
+          formatted.garage = formatted.amenities.includes('garage') || formatted.garage === 1 || formatted.garage === true;
+        }
+        // Убеждаемся, что land_area передается
+        formatted.land_area = formatted.land_area || null;
+      }
+      
+      return formatted;
+    });
+    
+    // Логируем для отладки (только для первого объекта)
+    if (formattedProperties.length > 0) {
+      console.log('📋 Отформатированные данные аукциона (первое объявление):', {
+        id: formattedProperties[0].id,
+        title: formattedProperties[0].title,
+        amenities: formattedProperties[0].amenities,
+        amenities_length: Array.isArray(formattedProperties[0].amenities) ? formattedProperties[0].amenities.length : 'not array',
+        additional_amenities: formattedProperties[0].additional_amenities,
+        additional_amenities_length: formattedProperties[0].additional_amenities ? formattedProperties[0].additional_amenities.length : 0,
+        balcony: formattedProperties[0].balcony,
+        parking: formattedProperties[0].parking,
+        elevator: formattedProperties[0].elevator
+      });
+    }
+    
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     res.json({
       success: true,
       data: formattedProperties
@@ -4578,6 +5782,7 @@ app.get('/api/properties/:id', (req, res) => {
   }
   
   try {
+<<<<<<< HEAD
     const db = getDatabase();
     
     const property = db.prepare(`
@@ -4600,25 +5805,85 @@ app.get('/api/properties/:id', (req, res) => {
     if (!property) {
       return res.status(404).json({ success: false, error: 'Объявление не найдено' });
     }
+=======
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    console.log(`🔍 GET /api/properties/:id - Поиск объекта с ID=${id}`);
+    const property = propertyQueries.getById(id);
+    
+    if (!property) {
+      console.log(`❌ GET /api/properties/:id - Объект с ID=${id} не найден`);
+      return res.status(404).json({ success: false, error: 'Объявление не найдено' });
+    }
+    
+    console.log(`✅ GET /api/properties/:id - Объект найден:`, {
+      id: property.id,
+      property_type: property.property_type,
+      source_table: property.source_table || 'unknown',
+      title: property.title
+    });
+    
+    // Получаем информацию о пользователе
+    const user = userQueries.getById(property.user_id);
+    if (user) {
+      property.first_name = user.first_name;
+      property.last_name = user.last_name;
+      property.email = user.email;
+      property.phone_number = user.phone_number;
+      property.role = user.role;
+    }
+    
+    const db = getDatabase();
+    // Проверяем наличие поля test_timer_duration в новых таблицах
+    let hasTestTimerDurationField = false;
+    try {
+      const apartmentsPragma = db.prepare("PRAGMA table_info(properties_apartments)").all();
+      const housesPragma = db.prepare("PRAGMA table_info(properties_houses)").all();
+      hasTestTimerDurationField = apartmentsPragma.some(col => col.name === 'test_timer_duration') ||
+                                   housesPragma.some(col => col.name === 'test_timer_duration');
+    } catch (e) {
+      // Игнорируем ошибку
+    }
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 
     // Логируем данные из базы для отладки
     console.log('📥 GET /api/properties/:id - Данные из БД:', {
       id: property.id,
+<<<<<<< HEAD
+=======
+      property_type: property.property_type,
+      source_table: property.source_table || 'unknown',
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       rooms: property.rooms,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
       area: property.area,
       living_area: property.living_area,
+<<<<<<< HEAD
       floor: property.floor,
+=======
+      land_area: property.land_area,
+      floor: property.floor,
+      floors: property.floors,
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       total_floors: property.total_floors,
       year_built: property.year_built,
       building_type: property.building_type,
       balcony: property.balcony,
       parking: property.parking,
       elevator: property.elevator,
+<<<<<<< HEAD
       price: property.price,
       auction_starting_price: property.auction_starting_price,
       test_drive: property.test_drive,
+=======
+      pool: property.pool,
+      garden: property.garden,
+      garage: property.garage,
+      price: property.price,
+      auction_starting_price: property.auction_starting_price,
+      test_drive: property.test_drive,
+      moderation_status: property.moderation_status,
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     });
     
     console.log('🔍 GET /api/properties/:id - test_drive из БД:', {
@@ -4627,36 +5892,68 @@ app.get('/api/properties/:id', (req, res) => {
       test_drive_raw: property.test_drive
     });
 
+<<<<<<< HEAD
     // Парсим JSON поля
     const formatted = { ...property };
     if (formatted.photos) {
+=======
+    // Парсим JSON поля (если они еще не распарсены)
+    const formatted = { ...property };
+    
+    // Проверяем, нужно ли парсить (если это строка, значит еще не распарсено)
+    if (formatted.photos && typeof formatted.photos === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       try {
         formatted.photos = JSON.parse(formatted.photos);
       } catch (e) {
         formatted.photos = [];
       }
+<<<<<<< HEAD
     } else {
       formatted.photos = [];
     }
     if (formatted.videos) {
+=======
+    } else if (!formatted.photos) {
+      formatted.photos = [];
+    }
+    
+    if (formatted.videos && typeof formatted.videos === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       try {
         formatted.videos = JSON.parse(formatted.videos);
       } catch (e) {
         formatted.videos = [];
       }
+<<<<<<< HEAD
     } else {
       formatted.videos = [];
     }
     if (formatted.additional_documents) {
+=======
+    } else if (!formatted.videos) {
+      formatted.videos = [];
+    }
+    
+    if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       try {
         formatted.additional_documents = JSON.parse(formatted.additional_documents);
       } catch (e) {
         formatted.additional_documents = [];
       }
+<<<<<<< HEAD
     } else {
       formatted.additional_documents = [];
     }
     if (formatted.test_drive_data) {
+=======
+    } else if (!formatted.additional_documents) {
+      formatted.additional_documents = [];
+    }
+    
+    if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       try {
         formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
       } catch (e) {
@@ -4664,6 +5961,62 @@ app.get('/api/properties/:id', (req, res) => {
       }
     }
     
+<<<<<<< HEAD
+=======
+    // Парсим amenities (JSON массив удобств)
+    let amenitiesArray = [];
+    if (formatted.amenities && typeof formatted.amenities === 'string') {
+      try {
+        amenitiesArray = JSON.parse(formatted.amenities);
+      } catch (e) {
+        console.warn('⚠️ Ошибка парсинга amenities для property ID', formatted.id, ':', e.message);
+        amenitiesArray = [];
+      }
+    } else if (Array.isArray(formatted.amenities)) {
+      // Уже массив, оставляем как есть
+      amenitiesArray = formatted.amenities;
+    } else if (!formatted.amenities) {
+      amenitiesArray = [];
+    }
+    
+    // Сохраняем массив amenities
+    formatted.amenities = amenitiesArray;
+    
+    // Преобразуем массив amenities в отдельные булевы поля для фронтенда
+    // (так как фронтенд ожидает отдельные поля, а не массив)
+    formatted.balcony = amenitiesArray.includes('balcony') || formatted.balcony === 1 || formatted.balcony === true;
+    formatted.parking = amenitiesArray.includes('parking') || formatted.parking === 1 || formatted.parking === true;
+    formatted.elevator = amenitiesArray.includes('elevator') || formatted.elevator === 1 || formatted.elevator === true;
+    formatted.electricity = amenitiesArray.includes('electricity') || formatted.electricity === 1 || formatted.electricity === true;
+    formatted.internet = amenitiesArray.includes('internet') || formatted.internet === 1 || formatted.internet === true;
+    formatted.security = amenitiesArray.includes('security') || formatted.security === 1 || formatted.security === true;
+    formatted.furniture = amenitiesArray.includes('furniture') || formatted.furniture === 1 || formatted.furniture === true;
+    
+    // Обрабатываем feature поля (feature1, feature2, ...)
+    for (let i = 1; i <= 26; i++) {
+      const featureKey = `feature${i}`;
+      formatted[featureKey] = amenitiesArray.includes(featureKey) || formatted[featureKey] === 1 || formatted[featureKey] === true;
+    }
+    
+    // Для домов/вилл маппим floors в total_floors для совместимости с фронтендом
+    // и добавляем удобства pool, garden, garage
+    if (formatted.property_type === 'house' || formatted.property_type === 'villa') {
+      if (formatted.floors !== undefined && formatted.floors !== null) {
+        formatted.total_floors = formatted.floors;
+      }
+      // Добавляем удобства для домов/вилл
+      formatted.pool = amenitiesArray.includes('pool') || formatted.pool === 1 || formatted.pool === true;
+      formatted.garden = amenitiesArray.includes('garden') || formatted.garden === 1 || formatted.garden === true;
+      formatted.garage = amenitiesArray.includes('garage') || formatted.garage === 1 || formatted.garage === true;
+    }
+    
+    // additional_amenities - это текстовое поле, которое пользователь вводит сам
+    // Убеждаемся, что оно всегда возвращается (даже если null или пустое)
+    if (formatted.additional_amenities === undefined) {
+      formatted.additional_amenities = null;
+    }
+    
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     // Обрабатываем координаты
     if (formatted.coordinates) {
       try {
@@ -4728,6 +6081,7 @@ app.get('/api/properties/:id', (req, res) => {
  */
 app.get('/api/properties/user/:userId', (req, res) => {
   try {
+<<<<<<< HEAD
     const db = getDatabase();
     const { userId } = req.params;
     
@@ -4749,39 +6103,128 @@ app.get('/api/properties/user/:userId', (req, res) => {
     const formattedProperties = properties.map(prop => {
       const formatted = { ...prop };
       if (formatted.photos) {
+=======
+    const { userId } = req.params;
+    console.log('📥 Запрос объявлений пользователя:', userId);
+    
+    const db = getDatabase();
+    
+    // Получаем информацию о пользователе
+    const user = userQueries.getById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+    
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const properties = propertyQueries.getByUserId(userId);
+    
+    console.log(`✅ Найдено объявлений пользователя: ${properties.length}`);
+
+    // Добавляем информацию о пользователе к каждому объекту и парсим JSON поля
+    const formattedProperties = properties.map(prop => {
+      const formatted = { ...prop };
+      
+      // Добавляем информацию о пользователе
+      formatted.first_name = user.first_name;
+      formatted.last_name = user.last_name;
+      formatted.email = user.email;
+      formatted.phone_number = user.phone_number;
+      formatted.role = user.role;
+      
+      // Парсим JSON поля безопасно
+      if (formatted.photos && typeof formatted.photos === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.photos = JSON.parse(formatted.photos);
         } catch (e) {
           formatted.photos = [];
         }
+<<<<<<< HEAD
       } else {
         formatted.photos = [];
       }
       if (formatted.videos) {
+=======
+      } else if (!formatted.photos) {
+        formatted.photos = [];
+      }
+      if (formatted.videos && typeof formatted.videos === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.videos = JSON.parse(formatted.videos);
         } catch (e) {
           formatted.videos = [];
         }
+<<<<<<< HEAD
       } else {
         formatted.videos = [];
       }
       if (formatted.additional_documents) {
+=======
+      } else if (!formatted.videos) {
+        formatted.videos = [];
+      }
+      if (formatted.additional_documents && typeof formatted.additional_documents === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.additional_documents = JSON.parse(formatted.additional_documents);
         } catch (e) {
           formatted.additional_documents = [];
         }
+<<<<<<< HEAD
       } else {
         formatted.additional_documents = [];
       }
       if (formatted.test_drive_data) {
+=======
+      } else if (!formatted.additional_documents) {
+        formatted.additional_documents = [];
+      }
+      if (formatted.test_drive_data && typeof formatted.test_drive_data === 'string') {
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
         try {
           formatted.test_drive_data = JSON.parse(formatted.test_drive_data);
         } catch (e) {
           formatted.test_drive_data = null;
         }
       }
+<<<<<<< HEAD
+=======
+      if (formatted.amenities && typeof formatted.amenities === 'string') {
+        try {
+          formatted.amenities = JSON.parse(formatted.amenities);
+        } catch (e) {
+          formatted.amenities = [];
+        }
+      } else if (!formatted.amenities) {
+        formatted.amenities = [];
+      }
+      if (formatted.coordinates && typeof formatted.coordinates === 'string') {
+        try {
+          formatted.coordinates = JSON.parse(formatted.coordinates);
+        } catch (e) {
+          formatted.coordinates = null;
+        }
+      }
+      
+      // Для домов/вилл маппим floors в total_floors и добавляем удобства
+      if (formatted.property_type === 'house' || formatted.property_type === 'villa') {
+        if (formatted.floors !== undefined && formatted.floors !== null) {
+          formatted.total_floors = formatted.floors;
+        }
+        // Добавляем удобства для домов/вилл из amenities массива
+        if (Array.isArray(formatted.amenities)) {
+          formatted.pool = formatted.amenities.includes('pool') || formatted.pool === 1 || formatted.pool === true;
+          formatted.garden = formatted.amenities.includes('garden') || formatted.garden === 1 || formatted.garden === true;
+          formatted.garage = formatted.amenities.includes('garage') || formatted.garage === 1 || formatted.garage === true;
+        }
+        // Убеждаемся, что land_area передается
+        formatted.land_area = formatted.land_area || null;
+        // Убеждаемся, что bedrooms передается для домов/вилл (сохраняем 0 как валидное значение)
+        formatted.bedrooms = (formatted.bedrooms !== undefined && formatted.bedrooms !== null && formatted.bedrooms !== '') ? formatted.bedrooms : null;
+      }
+      
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       return formatted;
     });
 
@@ -4797,11 +6240,19 @@ app.get('/api/properties/user/:userId', (req, res) => {
  */
 app.put('/api/properties/:id/approve', (req, res) => {
   try {
+<<<<<<< HEAD
     const db = getDatabase();
     const { id } = req.params;
     const { reviewed_by } = req.body;
 
     const property = db.prepare('SELECT * FROM properties WHERE id = ?').get(id);
+=======
+    const { id } = req.params;
+    const { reviewed_by } = req.body;
+
+    // Используем функцию из propertyQueries, которая работает с новыми таблицами
+    const property = propertyQueries.getById(id);
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     if (!property) {
       return res.status(404).json({ success: false, error: 'Объявление не найдено' });
     }
@@ -5061,6 +6512,7 @@ app.put('/api/properties/:id/approve', (req, res) => {
       });
     } else {
       // Обычное одобрение нового объявления
+<<<<<<< HEAD
       console.log('🔍 Одобрение нового объявления - test_drive перед одобрением:', {
         test_drive: property.test_drive,
         test_drive_type: typeof property.test_drive
@@ -5078,6 +6530,122 @@ app.put('/api/properties/:id/approve', (req, res) => {
       // Проверяем, что объявление действительно одобрено и сохраняет is_auction
       const updatedProperty = db.prepare('SELECT id, title, property_type, moderation_status, is_auction, test_drive FROM properties WHERE id = ?').get(id);
       console.log(`✅ Объявление обновлено:`, updatedProperty);
+=======
+      console.log('🔍 Одобрение нового объявления:', {
+        id: id,
+        property_type: property.property_type,
+        current_moderation_status: property.moderation_status,
+        is_auction: property.is_auction,
+        source_table: property.source_table || 'unknown'
+      });
+      
+      // ВАЖНО: Определяем правильную таблицу по property_type перед обновлением
+      // Это предотвращает обновление объекта в неправильной таблице
+      const db = getDatabase();
+      let actualTable = null;
+      
+      // Проверяем, в какой таблице на самом деле находится объект
+      if (property.property_type === 'house' || property.property_type === 'villa') {
+        const checkInHouses = db.prepare('SELECT id FROM properties_houses WHERE id = ?').get(id);
+        if (checkInHouses) {
+          actualTable = 'houses';
+          console.log(`✅ Объект ID=${id} найден в таблице houses (property_type=${property.property_type})`);
+        } else {
+          console.error(`❌ Объект ID=${id} с property_type=${property.property_type} не найден в таблице houses!`);
+        }
+      } else if (property.property_type === 'apartment' || property.property_type === 'commercial') {
+        const checkInApartments = db.prepare('SELECT id FROM properties_apartments WHERE id = ?').get(id);
+        if (checkInApartments) {
+          actualTable = 'apartments';
+          console.log(`✅ Объект ID=${id} найден в таблице apartments (property_type=${property.property_type})`);
+        } else {
+          console.error(`❌ Объект ID=${id} с property_type=${property.property_type} не найден в таблице apartments!`);
+        }
+      }
+      
+      // Используем функцию из propertyQueries, которая работает с новыми таблицами
+      const result = propertyQueries.updateModerationStatus(id, 'approved', reviewed_by, null);
+      
+      if (result.changes === 0) {
+        console.error(`❌ Одобрение: объект ID=${id} не был обновлен (changes=0)`);
+        return res.status(404).json({ success: false, error: 'Объявление не найдено или не было изменено' });
+      }
+      
+      console.log(`✅ Одобрение: статус обновлен, changes=${result.changes}`);
+      
+      // Получаем обновленное объявление для проверки
+      const updatedProperty = propertyQueries.getById(id);
+      if (!updatedProperty) {
+        console.error(`❌ Одобрение: объект ID=${id} не найден после обновления`);
+        return res.status(404).json({ success: false, error: 'Объявление не найдено после обновления' });
+      }
+      console.log(`✅ Объявление обновлено:`, {
+        id: updatedProperty.id,
+        title: updatedProperty.title,
+        property_type: updatedProperty.property_type,
+        moderation_status: updatedProperty.moderation_status,
+        is_auction: updatedProperty.is_auction,
+        is_auction_type: typeof updatedProperty.is_auction,
+        source_table: updatedProperty.source_table || 'unknown'
+      });
+      
+      // Проверяем, что объявление попадает в список одобренных или аукционных
+      // Для аукционных объектов проверяем getAuctions, для обычных - getApproved
+      let isInList = false;
+      let listName = '';
+      
+      if (updatedProperty.is_auction === 1 || updatedProperty.is_auction === '1' || updatedProperty.is_auction === true) {
+        const auctionsCheck = propertyQueries.getAuctions(null);
+        isInList = auctionsCheck.some(p => p.id === parseInt(id));
+        listName = 'аукционных';
+        console.log(`📋 Проверка публикации (аукцион): объявление ${id} ${isInList ? 'найдено' : 'НЕ найдено'} в списке ${listName} (всего ${listName}: ${auctionsCheck.length})`);
+      } else {
+        const approvedCheck = propertyQueries.getApproved(null);
+        isInList = approvedCheck.some(p => p.id === parseInt(id));
+        listName = 'одобренных';
+        console.log(`📋 Проверка публикации: объявление ${id} ${isInList ? 'найдено' : 'НЕ найдено'} в списке ${listName} (всего ${listName}: ${approvedCheck.length})`);
+      }
+      
+      // Если не найдено, проверяем напрямую в БД
+      if (!isInList) {
+        try {
+          const db = getDatabase();
+          const tableName = (updatedProperty.property_type === 'house' || updatedProperty.property_type === 'villa') 
+            ? 'properties_houses' 
+            : 'properties_apartments';
+          
+          const directCheck = db.prepare(`
+            SELECT id, property_type, moderation_status, is_auction, auction_end_date
+            FROM ${tableName} 
+            WHERE id = ? AND moderation_status = 'approved'
+          `).get(id);
+          
+          if (directCheck) {
+            console.log(`🔍 Прямая проверка в БД (${tableName}):`, directCheck);
+            console.log(`⚠️ Объект найден в БД, но не попадает в список ${listName}. Возможные причины:`);
+            console.log(`   - is_auction: ${directCheck.is_auction} (тип: ${typeof directCheck.is_auction})`);
+            console.log(`   - auction_end_date: ${directCheck.auction_end_date || 'NULL'}`);
+            if (updatedProperty.is_auction === 1 || updatedProperty.is_auction === '1') {
+              console.log(`   - Для аукционных объектов требуется auction_end_date`);
+            }
+          } else {
+            console.log(`🔍 Прямая проверка в БД (${tableName}): объект не найден со статусом 'approved'`);
+            // Проверяем в другой таблице на всякий случай
+            const otherTable = tableName === 'properties_houses' ? 'properties_apartments' : 'properties_houses';
+            const directCheck2 = db.prepare(`
+              SELECT id, property_type, moderation_status, is_auction 
+              FROM ${otherTable} 
+              WHERE id = ? AND moderation_status = 'approved'
+            `).get(id);
+            if (directCheck2) {
+              console.log(`⚠️ Объект найден в другой таблице ${otherTable}:`, directCheck2);
+            }
+          }
+        } catch (dbError) {
+          console.error('❌ Ошибка при прямой проверке в БД:', dbError.message);
+        }
+      }
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       console.log('🔍 Одобрение нового объявления - test_drive после одобрения:', {
         test_drive: updatedProperty.test_drive,
         test_drive_type: typeof updatedProperty.test_drive
@@ -6141,9 +7709,17 @@ app._router?.stack?.forEach((middleware) => {
   }
 });
 
+<<<<<<< HEAD
 app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 API доступен по адресу: http://localhost:${PORT}/api`);
+=======
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Сервер запущен на порту ${PORT}`);
+  console.log(`📡 API доступен по адресу: http://0.0.0.0:${PORT}/api`);
+  console.log(`🌐 Railway PORT: ${process.env.PORT || 'не установлен'}`);
+  console.log(`🔧 SERVER_PORT: ${process.env.SERVER_PORT || 'не установлен, используется 3000'}`);
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
   console.log(`✅ Маршрут POST /api/properties/:id/test-timer зарегистрирован`);
   console.log(`✅ Маршрут GET /api/properties/test-timers зарегистрирован`);
   console.log(`✅ Маршрут DELETE /api/properties/:id/test-timer зарегистрирован`);
@@ -6158,6 +7734,19 @@ app.listen(PORT, () => {
 });
 
 // Graceful shutdown
+// Обработка ошибок при запуске
+process.on('uncaughtException', (error) => {
+  console.error('❌ Необработанная ошибка:', error);
+  closeDatabase();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Необработанное отклонение промиса:', reason);
+  closeDatabase();
+  process.exit(1);
+});
+
 process.on('SIGINT', () => {
   console.log('\n🛑 Остановка сервера...');
   closeDatabase();

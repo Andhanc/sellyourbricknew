@@ -1,5 +1,9 @@
 import React from 'react';
+<<<<<<< HEAD
 import { FaChartBar, FaUsers, FaShieldAlt, FaComment, FaBuilding, FaSignOutAlt, FaKey, FaWhatsapp, FaAddressBook, FaFlask } from 'react-icons/fa';
+=======
+import { FaChartBar, FaUsers, FaShieldAlt, FaComment, FaBuilding, FaSignOutAlt, FaKey, FaWhatsapp, FaAddressBook, FaShoppingCart, FaFlask } from 'react-icons/fa';
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 import './Sidebar.css';
 
 const Sidebar = ({ activeSection, onSectionChange, onLogout, adminPermissions }) => {
@@ -15,6 +19,10 @@ const Sidebar = ({ activeSection, onSectionChange, onLogout, adminPermissions })
     { id: 'objects', icon: FaBuilding, label: 'Объекты', permission: 'can_access_objects' },
     { id: 'whatsapp', icon: FaWhatsapp, label: 'WhatsApp', permission: 'can_access_whatsapp' },
     { id: 'clients', icon: FaAddressBook, label: 'Клиенты', permission: 'can_access_clients' },
+<<<<<<< HEAD
+=======
+    { id: 'purchase_requests', icon: FaShoppingCart, label: 'Запросы на покупку', permission: 'can_access_purchase_requests' },
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     { id: 'testing', icon: FaFlask, label: 'Тестирование', permission: 'can_access_objects' },
     { id: 'access_management', icon: FaKey, label: 'Доступы', permission: 'can_access_access_management' }
   ];

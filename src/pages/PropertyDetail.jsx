@@ -721,7 +721,11 @@ const PropertyDetail = () => {
                       {normalizedProperty.property_type === 'apartment' ? 'Квартира' :
                        normalizedProperty.property_type === 'house' ? 'Дом' :
                        normalizedProperty.property_type === 'villa' ? 'Вилла' :
+<<<<<<< HEAD
                        normalizedProperty.property_type === 'townhouse' ? 'Таунхаус' :
+=======
+                       normalizedProperty.property_type === 'townhouse' ? 'Дом' :
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
                        normalizedProperty.property_type === 'commercial' ? 'Коммерческая' :
                        normalizedProperty.property_type}
                     </span>

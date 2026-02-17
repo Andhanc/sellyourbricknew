@@ -12,6 +12,10 @@ import ObjectsList from '../components/admin/ObjectsList';
 import AdminChat from '../components/admin/AdminChat';
 import WhatsApp from '../components/admin/WhatsApp';
 import Clients from '../components/admin/Clients';
+<<<<<<< HEAD
+=======
+import PurchaseRequests from '../components/admin/PurchaseRequests';
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
 import AccessManagement from '../components/admin/AccessManagement';
 import Testing from '../components/admin/Testing';
 import { mockBusinessInfo } from '../data/mockData';
@@ -62,6 +66,10 @@ const AdminPanelPage = () => {
     objects: 'Объекты',
     whatsapp: 'WhatsApp',
     clients: 'Клиенты',
+<<<<<<< HEAD
+=======
+    purchase_requests: 'Запросы на покупку',
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
     testing: 'Тестирование',
     access_management: 'Доступы'
   };
@@ -81,6 +89,10 @@ const AdminPanelPage = () => {
       objects: adminPermissions.can_access_objects,
       whatsapp: adminPermissions.can_access_whatsapp,
       clients: adminPermissions.can_access_clients,
+<<<<<<< HEAD
+=======
+      purchase_requests: adminPermissions.can_access_purchase_requests,
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       testing: adminPermissions.can_access_objects,
       access_management: adminPermissions.can_access_access_management
     };
@@ -141,6 +153,11 @@ const AdminPanelPage = () => {
         return <WhatsApp />;
       case 'clients':
         return <Clients />;
+<<<<<<< HEAD
+=======
+      case 'purchase_requests':
+        return <PurchaseRequests />;
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
       case 'testing':
         return <Testing />;
       case 'access_management':

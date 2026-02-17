@@ -404,7 +404,7 @@ function MainPage() {
     purpose: null, // 'для себя', 'под сдачу', 'инвестиции'
     budget: null,
     location: null, // 'Испания', 'Дубай'
-    propertyType: null, // 'квартира', 'вилла', 'апартаменты', 'таунхаус'
+    propertyType: null, // 'квартира', 'вилла', 'апартаменты', 'дом'
     rooms: null,
     area: null,
     other: null
@@ -913,6 +913,7 @@ function MainPage() {
 
   // Объединяем статические данные с данными из API
   const combinedApartments = useMemo(() => {
+<<<<<<< HEAD
     return [...apartmentsData, ...approvedProperties.apartments]
   }, [approvedProperties.apartments])
 
@@ -926,6 +927,33 @@ function MainPage() {
 
   const combinedTownhouses = useMemo(() => {
     return [...townhousesData, ...approvedProperties.houses]
+=======
+    // Убираем дубликаты по ID, приоритет у данных из API
+    const apiIds = new Set(approvedProperties.apartments.map(p => p.id))
+    const uniqueStaticApartments = apartmentsData.filter(p => !apiIds.has(p.id))
+    return [...uniqueStaticApartments, ...approvedProperties.apartments]
+  }, [approvedProperties.apartments])
+
+  const combinedVillas = useMemo(() => {
+    // Убираем дубликаты по ID, приоритет у данных из API
+    const apiIds = new Set(approvedProperties.villas.map(p => p.id))
+    const uniqueStaticVillas = villasData.filter(p => !apiIds.has(p.id))
+    return [...uniqueStaticVillas, ...approvedProperties.villas]
+  }, [approvedProperties.villas])
+
+  const combinedFlats = useMemo(() => {
+    // Убираем дубликаты по ID, приоритет у данных из API
+    const apiIds = new Set(approvedProperties.flats.map(p => p.id))
+    const uniqueStaticFlats = flatsData.filter(p => !apiIds.has(p.id))
+    return [...uniqueStaticFlats, ...approvedProperties.flats]
+  }, [approvedProperties.flats])
+
+  const combinedTownhouses = useMemo(() => {
+    // Убираем дубликаты по ID, приоритет у данных из API
+    const apiIds = new Set(approvedProperties.houses.map(p => p.id))
+    const uniqueStaticHouses = townhousesData.filter(p => !apiIds.has(p.id))
+    return [...uniqueStaticHouses, ...approvedProperties.houses]
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
   }, [approvedProperties.houses])
 
   const filteredApartments = useMemo(() => filterBySearch(combinedApartments), [searchQuery, combinedApartments])
@@ -1184,8 +1212,8 @@ function MainPage() {
       setUserPreferences(prev => ({ ...prev, propertyType: 'квартира' }))
     } else if (lowerMessage.includes('вилл') || lowerMessage.includes('villa')) {
       setUserPreferences(prev => ({ ...prev, propertyType: 'вилла' }))
-    } else if (lowerMessage.includes('таунхаус') || lowerMessage.includes('townhouse')) {
-      setUserPreferences(prev => ({ ...prev, propertyType: 'таунхаус' }))
+    } else if (lowerMessage.includes('дом') || lowerMessage.includes('таунхаус') || lowerMessage.includes('townhouse') || lowerMessage.includes('house')) {
+      setUserPreferences(prev => ({ ...prev, propertyType: 'дом' }))
     }
     
     // Извлекаем количество комнат

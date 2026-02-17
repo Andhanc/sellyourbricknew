@@ -316,15 +316,34 @@ const OwnerDashboard = () => {
               console.warn('⚠️ Нет фотографий для объявления:', prop.id, 'photos:', prop.photos, 'photosArray:', photosArray)
             }
             
+<<<<<<< HEAD
+=======
+            // Для домов/вилл используем bedrooms, для квартир/апартаментов - rooms
+            const isHouseOrVilla = prop.property_type === 'house' || prop.property_type === 'villa'
+            const beds = isHouseOrVilla 
+              ? (prop.bedrooms || 0)
+              : (prop.bedrooms || prop.rooms || 0)
+            
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
             return {
             id: prop.id,
             title: prop.title || 'Без названия',
             location: prop.location || 'Не указано',
             price: prop.price || 0,
             image: imageUrl,
+<<<<<<< HEAD
             beds: prop.bedrooms || prop.rooms || 0,
             baths: prop.bathrooms || 0,
             sqft: prop.area || 0,
+=======
+            beds: beds,
+            baths: prop.bathrooms || 0,
+            sqft: prop.area || 0,
+            property_type: prop.property_type || 'apartment',
+            land_area: prop.land_area || null,
+            bedrooms: prop.bedrooms || null,
+            floors: prop.floors || prop.total_floors || null,
+>>>>>>> 9834624ce85afa7fe9aa397716cd67d8da737a39
             status: prop.moderation_status === 'approved' ? 'active' : 
                    prop.moderation_status === 'pending' ? 'pending' : 
                    prop.moderation_status === 'rejected' ? 'rejected' : 'pending',
