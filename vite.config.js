@@ -46,7 +46,49 @@ export default defineConfig(({ mode }) => {
   console.log('[FRONTEND] ═══════════════════════════════════════════════════════');
   
   return {
-    plugins: [react()],
+    plugins: [
+      react({
+        // Используем более стабильные настройки для Railway
+        jsxRuntime: 'automatic',
+        // Отключаем быструю рефреш в production для избежания проблем
+        fastRefresh: actualMode !== 'production',
+      })
+    ],
+    // Настройки esbuild для стабильной работы на Railway
+    esbuild: {
+      // Увеличиваем лимит для больших файлов
+      target: 'es2020',
+      // Отключаем minify в dev режиме для избежания проблем
+      minifyIdentifiers: actualMode === 'production',
+      minifySyntax: actualMode === 'production',
+      minifyWhitespace: actualMode === 'production',
+      // Логируем ошибки вместо падения
+      logOverride: { 'this-is-undefined-in-esm': 'silent' },
+    },
+    // Оптимизация для production
+    optimizeDeps: {
+      // Предварительно обрабатываем зависимости
+      include: ['react', 'react-dom', 'react-router-dom'],
+      // Исключаем проблемные зависимости из оптимизации
+      exclude: [],
+      // Принудительно пересобираем зависимости при проблемах
+      force: false,
+      // Используем esbuild для оптимизации
+      esbuildOptions: {
+        target: 'es2020',
+      },
+    },
+    // Обработка ошибок сборки
+    build: {
+      // Увеличиваем размер чанков для избежания проблем
+      chunkSizeWarningLimit: 1000,
+      // Используем более стабильные настройки
+      rollupOptions: {
+        output: {
+          manualChunks: undefined, // Отключаем ручное разбиение для dev режима
+        },
+      },
+    },
     server: {
       port: vitePort,
       host: '0.0.0.0', // Слушаем на всех интерфейсах для Railway
@@ -60,7 +102,8 @@ export default defineConfig(({ mode }) => {
       ],
       // Отключаем HMR в production (на Railway) - он не нужен и вызывает проблемы с WebSocket
       hmr: actualMode === 'production' ? false : {
-        clientPort: vitePort // Для HMR в development
+        clientPort: vitePort, // Для HMR в development
+        overlay: false // Отключаем overlay для избежания ошибок esbuild на Railway
       },
       proxy: {
         '/api': {
